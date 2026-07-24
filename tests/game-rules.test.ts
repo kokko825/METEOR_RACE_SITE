@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import {
   applyMeteor,
   applyMove,
+  activePlayers,
+  finishTurn,
   initialGameState,
   legalMoves,
   samePos,
@@ -21,8 +23,7 @@ function placementTargets(state: GameState): Array<{ target: Pos; size: MeteorSi
         const target = { r, c };
         if (
           (r === mid && c === mid) ||
-          samePos(target, state.probes.red) ||
-          samePos(target, state.probes.blue) ||
+          activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
           state.meteors.some((meteor) => samePos(meteor, target))
         ) continue;
         const relevant =
@@ -111,6 +112,24 @@ for (const first of ["red", "blue"] as Player[]) {
     false,
     `${first}に序盤6アクション以内の強制勝利がない`,
   );
+}
+
+{
+  const state = initialGameState(9, "green", 4);
+  assert.equal(state.size, 11, "3・4人対戦は11×11に固定される");
+  assert.deepEqual(state.players, ["red", "blue", "green", "yellow"]);
+  assert.deepEqual(state.probes.red, { r: 10, c: 5 });
+  assert.deepEqual(state.probes.blue, { r: 0, c: 5 });
+  assert.deepEqual(state.probes.green, { r: 5, c: 0 });
+  assert.deepEqual(state.probes.yellow, { r: 5, c: 10 });
+  assert.equal(finishTurn(state).turn, "yellow", "4人対戦の手番が次の色へ進む");
+}
+
+{
+  const state = initialGameState(9, "red", 3);
+  assert.equal(state.size, 11);
+  assert.deepEqual(state.players, ["red", "blue", "green"]);
+  assert.equal(finishTurn({ ...state, turn: "green" }).turn, "red");
 }
 
 console.log("game-rules: all checks passed");

@@ -8,6 +8,8 @@
   --line: rgba(124, 190, 218, 0.19);
   --red: #ff3f37;
   --blue: #29a9ff;
+  --green: #35dc8b;
+  --yellow: #ffd83d;
   --gold: #ffd363;
 }
 
@@ -46,13 +48,19 @@ button { color: inherit; }
 .player-card.active { opacity: 1; transform: translateY(-3px); }
 .red-card { color: var(--red); box-shadow: inset 0 2px 0 rgba(255,63,55,.45); }
 .blue-card { color: var(--blue); box-shadow: inset 0 2px 0 rgba(41,169,255,.45); }
+.green-card { color: var(--green); box-shadow: inset 0 2px 0 rgba(53,220,139,.45); }
+.yellow-card { color: var(--yellow); box-shadow: inset 0 2px 0 rgba(255,216,61,.45); }
 .player-card.active.red-card { box-shadow: 0 0 35px rgba(255,63,55,.14), inset 0 2px 0 var(--red); }
 .player-card.active.blue-card { box-shadow: 0 0 35px rgba(41,169,255,.14), inset 0 2px 0 var(--blue); }
+.player-card.active.green-card { box-shadow: 0 0 35px rgba(53,220,139,.14), inset 0 2px 0 var(--green); }
+.player-card.active.yellow-card { box-shadow: 0 0 35px rgba(255,216,61,.14), inset 0 2px 0 var(--yellow); }
 .eyebrow { color: #778f9f; letter-spacing: .24em; font-size: 9px; }
 .player-card h2 { margin: 4px 0 22px; letter-spacing: .22em; font-size: 23px; }
 
 .probe-portrait { width: 96px; height: 118px; margin: 0 auto 28px; position: relative; filter: drop-shadow(0 0 15px currentColor); }
 .probe-portrait.blue { transform: rotate(180deg); }
+.probe-portrait.green { transform: rotate(90deg); }
+.probe-portrait.yellow { transform: rotate(-90deg); }
 .probe-portrait span { position: absolute; inset: 14px 20px 26px; border: 2px solid currentColor; clip-path: polygon(50% 0, 100% 76%, 72% 66%, 65% 100%, 35% 100%, 28% 66%, 0 76%); display: grid; place-items: center; font-size: 35px; background: color-mix(in srgb, currentColor 18%, transparent); }
 .probe-portrait i, .probe-portrait b { position:absolute; bottom:7px; width:18px; height:36px; background: linear-gradient(currentColor, transparent); clip-path: polygon(30% 0,70% 0,100% 100%,0 100%); opacity:.75; }
 .probe-portrait i { left:24px; transform:rotate(8deg); }
@@ -71,6 +79,8 @@ button { color: inherit; }
 .status-dot { width:8px; height:8px; border-radius:50%; background:currentColor; box-shadow:0 0 10px currentColor; }
 .status-dot.red { color:var(--red); }
 .status-dot.blue { color:var(--blue); }
+.status-dot.green { color:var(--green); }
+.status-dot.yellow { color:var(--yellow); }
 .board { width: min(100%, 680px); aspect-ratio: 1; display:grid; border: 1px solid rgba(123,203,232,.45); background: rgba(4,12,19,.92); box-shadow: 0 0 70px rgba(12,100,128,.16), inset 0 0 30px rgba(18,88,114,.12); }
 .cell { min-width:0; min-height:0; position:relative; border:0; border-right:1px solid rgba(92,157,183,.18); border-bottom:1px solid rgba(92,157,183,.18); background:transparent; padding:0; display:grid; place-items:center; cursor:default; }
 .cell:not(:disabled) { cursor:pointer; }
@@ -86,11 +96,15 @@ button { color: inherit; }
 .probe-token { --probe-rotation:0deg; position:absolute; inset:0; width:100%; aspect-ratio:1; display:grid; place-items:center; color:white; clip-path:polygon(50% 0, 92% 82%, 65% 69%, 50% 100%, 35% 69%, 8% 82%); transform:rotate(var(--probe-rotation)); }
 .probe-token.red { background:linear-gradient(145deg,#ff8b71,#c21419 60%,#52030b); filter:drop-shadow(0 0 8px var(--red)); }
 .probe-token.blue { --probe-rotation:180deg; background:linear-gradient(145deg,#8cddff,#0873d3 60%,#032954); filter:drop-shadow(0 0 8px var(--blue)); }
+.probe-token.green { --probe-rotation:90deg; background:linear-gradient(145deg,#9affca,#079b59 60%,#073e27); filter:drop-shadow(0 0 8px var(--green)); }
+.probe-token.yellow { --probe-rotation:-90deg; background:linear-gradient(145deg,#fff6a1,#d99c08 60%,#604202); filter:drop-shadow(0 0 8px var(--yellow)); }
 .probe-token i { font-style:normal; font-size:clamp(9px,2vw,24px); text-shadow:0 1px 2px #000; }
 .meteor-token { position:absolute; width:58%; aspect-ratio:1; display:grid; place-items:center; z-index:3; color:#f5c477; clip-path:polygon(19% 4%,42% 10%,58% 0,76% 13%,95% 24%,88% 45%,100% 61%,82% 78%,66% 96%,46% 87%,27% 100%,15% 79%,0 65%,10% 45%,4% 26%); background:radial-gradient(circle at 30% 29%,#21130f 0 9%,transparent 10%),radial-gradient(circle at 68% 62%,#28150f 0 12%,transparent 13%),radial-gradient(circle at 62% 23%,#e39a50 0 5%,transparent 6%),linear-gradient(145deg,#c9823f,#70401f 43%,#2c1812 76%,#100b09); box-shadow:0 0 11px #e15b28; font-size:clamp(7px,1.4vw,17px); text-shadow:0 1px 2px #000; }
 .meteor-token.large { width:78%; clip-path:polygon(13% 2%,31% 9%,48% 0,61% 10%,79% 5%,93% 21%,88% 39%,100% 53%,91% 72%,76% 78%,64% 98%,45% 89%,28% 100%,18% 82%,2% 71%,9% 51%,0 34%,14% 23%); background:radial-gradient(circle at 27% 31%,#1b100c 0 10%,transparent 11%),radial-gradient(circle at 67% 60%,#21120d 0 14%,transparent 15%),radial-gradient(circle at 72% 25%,#f0a64d 0 7%,transparent 8%),linear-gradient(140deg,#d78a3c,#6a381b 45%,#24130e 75%,#090706); box-shadow:0 0 18px #ff7b2e; }
 .meteor-token.red { background-color:#7a171c; box-shadow:0 0 15px rgba(255,63,55,.95), inset 0 0 18px rgba(255,46,51,.27); outline:2px solid rgba(255,83,75,.82); }
 .meteor-token.blue { background-color:#083b70; box-shadow:0 0 15px rgba(41,169,255,.95), inset 0 0 18px rgba(32,140,255,.3); outline:2px solid rgba(79,190,255,.82); }
+.meteor-token.green { background-color:#075c39; box-shadow:0 0 15px rgba(53,220,139,.95), inset 0 0 18px rgba(53,220,139,.3); outline:2px solid rgba(98,242,169,.82); }
+.meteor-token.yellow { background-color:#725605; box-shadow:0 0 15px rgba(255,216,61,.95), inset 0 0 18px rgba(255,216,61,.3); outline:2px solid rgba(255,232,112,.86); }
 .impact-flash { position:absolute; z-index:2; width:42%; aspect-ratio:1; border-radius:50%; background:#fff3c8; box-shadow:0 0 16px 7px #ffb32d,0 0 38px 16px rgba(255,76,25,.86); animation:impact-flash .55s ease-out both; pointer-events:none; }
 .impact-flash.blue { box-shadow:0 0 16px 7px #d7f3ff,0 0 38px 16px rgba(40,150,255,.75); }
 .shockwave { position:absolute; z-index:6; width:100%; aspect-ratio:1; border:clamp(2px,.32vw,5px) solid rgba(255,217,122,.9); border-radius:50%; box-shadow:0 0 15px rgba(255,135,43,.8),inset 0 0 13px rgba(255,216,123,.35); pointer-events:none; animation:shockwave-small .82s cubic-bezier(.1,.62,.18,1) .1s both; }
@@ -100,6 +114,8 @@ button { color: inherit; }
 .meteor-shatter { z-index:8; animation:meteor-shatter .88s ease-out both; }
 .meteor-shatter.return-red { --return-x:-360%; }
 .meteor-shatter.return-blue { --return-x:360%; }
+.meteor-shatter.return-green { --return-x:0%; --return-y:360%; }
+.meteor-shatter.return-yellow { --return-x:0%; --return-y:-360%; }
 .meteor-shatter .shard { position:absolute; width:34%; height:34%; background:currentColor; box-shadow:0 0 8px currentColor; }
 .meteor-shatter .shard-a { left:-22%; top:4%; transform:rotate(25deg); }
 .meteor-shatter .shard-b { right:-25%; top:25%; transform:rotate(67deg); }
@@ -136,8 +152,14 @@ button { color: inherit; }
   0% { opacity:1; transform:scale(1) rotate(0); filter:brightness(1); }
   22% { transform:scale(1.25) rotate(-12deg); filter:brightness(2.4); }
   58% { opacity:1; transform:scale(.72) rotate(38deg); }
-  100% { opacity:0; transform:translateX(var(--return-x)) translateY(-80%) scale(.22) rotate(220deg); filter:brightness(1.8); }
+  100% { opacity:0; transform:translateX(var(--return-x, 0%)) translateY(var(--return-y, -80%)) scale(.22) rotate(220deg); filter:brightness(1.8); }
 }
+
+.extra-players { width:min(860px,100%); margin:16px auto 0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.extra-players .player-card.compact { min-height:0; display:grid; grid-template-columns:auto auto 1fr; align-items:center; gap:16px; padding:14px 18px; }
+.extra-players .player-card.compact h2 { margin:0; }
+.extra-players .probe-portrait { width:48px; height:58px; margin:0; }
+.extra-players .inventory { border-top:0; border-left:1px solid currentColor; padding:0 0 0 16px; }
 
 @media (prefers-reduced-motion: reduce) {
   .impact-flash,.shockwave,.meteor-fall,.probe-motion.blast-lift,.meteor-shatter { animation-duration:.01ms !important; animation-delay:0ms !important; }

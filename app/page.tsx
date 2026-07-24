@@ -1,13 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  PLAYER_ORDER,
+  activePlayers,
+  distance,
+  finishTurn,
+  initialGameState as initialState,
+  legalMoves,
+  meteorName,
+  playerName,
+  samePos,
+  type GameState,
+  type Inventory,
+  type Meteor,
+  type MeteorSize,
+  type Player,
+  type Pos,
+} from "./game-rules";
 
-type Player = "red" | "blue";
-type MeteorSize = "small" | "large";
-type Pos = { r: number; c: number };
-type Meteor = Pos & { owner: Player; size: MeteorSize; id: number };
-type Inventory = Record<Player, Record<MeteorSize, number>>;
-type Phase = "move" | "place" | "over";
 type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
   stage: "probe" | "recover";
@@ -23,90 +34,13 @@ type OnlineRoom = {
   role: Player | null;
   status: "idle" | "waiting" | "playing" | "finished";
   version: number;
+  maxPlayers: number;
+  joinedPlayers: number;
   error: string;
   pending: boolean;
 };
 
-type GameState = {
-  size: number;
-  turn: Player;
-  phase: Phase;
-  turnCount: number;
-  probes: Record<Player, Pos>;
-  meteors: Meteor[];
-  inventory: Inventory;
-  selected: MeteorSize;
-  winner: Player | "draw" | null;
-  message: string;
-  log: string[];
-  nextMeteorId: number;
-  repetitions: Record<string, number>;
-};
-
 const other = (player: Player): Player => (player === "red" ? "blue" : "red");
-const samePos = (a: Pos, b: Pos) => a.r === b.r && a.c === b.c;
-const distance = (a: Pos, b: Pos) =>
-  Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
-const playerName = (p: Player) => (p === "red" ? "RED" : "BLUE");
-const meteorName = (s: MeteorSize) => (s === "small" ? "小メテオ" : "大メテオ");
-
-function initialState(size: number, first: Player): GameState {
-  const mid = Math.floor(size / 2);
-  const probes: Record<Player, Pos> =
-    first === "red"
-      ? { red: { r: size - 1, c: mid }, blue: { r: 0, c: mid } }
-      : { red: { r: size - 1, c: mid }, blue: { r: 0, c: mid } };
-  return {
-    size,
-    turn: first,
-    phase: "move",
-    turnCount: 0,
-    probes,
-    meteors: [],
-    inventory: {
-      red: { small: 2, large: 1 },
-      blue: { small: 2, large: 1 },
-    },
-    selected: "small",
-    winner: null,
-    message: `${playerName(first)}：探査機を1マス移動`,
-    log: [`ゲーム開始 — ${playerName(first)}が先攻`],
-    nextMeteorId: 1,
-    repetitions: {},
-  };
-}
-
-function legalMoves(state: GameState, player = state.turn): Pos[] {
-  const p = state.probes[player];
-  return [
-    { r: p.r - 1, c: p.c },
-    { r: p.r + 1, c: p.c },
-    { r: p.r, c: p.c - 1 },
-    { r: p.r, c: p.c + 1 },
-  ].filter(
-    (q) =>
-      q.r >= 0 &&
-      q.c >= 0 &&
-      q.r < state.size &&
-      q.c < state.size &&
-      !samePos(q, state.probes[other(player)]) &&
-      !state.meteors.some((m) => samePos(m, q)),
-  );
-}
-
-function stateKey(state: GameState, nextTurn: Player) {
-  const ms = [...state.meteors]
-    .sort((a, b) => a.r - b.r || a.c - b.c)
-    .map((m) => `${m.r},${m.c},${m.owner},${m.size}`)
-    .join("|");
-  return [
-    nextTurn,
-    `${state.probes.red.r},${state.probes.red.c}`,
-    `${state.probes.blue.r},${state.probes.blue.c}`,
-    ms,
-    JSON.stringify(state.inventory),
-  ].join("/");
-}
 
 function Game() {
   const [size, setSize] = useState(9);
@@ -119,11 +53,14 @@ function Game() {
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [onlinePlayerCount, setOnlinePlayerCount] = useState<2 | 3 | 4>(2);
   const [online, setOnline] = useState<OnlineRoom>({
     code: "",
     role: null,
     status: "idle",
     version: 0,
+    maxPlayers: 2,
+    joinedPlayers: 0,
     error: "",
     pending: false,
   });
@@ -151,7 +88,11 @@ function Game() {
   const createOnlineRoom = async () => {
     setOnline((current) => ({ ...current, pending: true, error: "" }));
     try {
-      const data = await roomRequest({ action: "create", size, first });
+      const data = await roomRequest({
+        action: "create",
+        size: onlinePlayerCount > 2 ? 11 : size,
+        playerCount: onlinePlayerCount,
+      });
       setGame(data.state);
       setHistory([]);
       setOnline({
@@ -159,6 +100,8 @@ function Game() {
         role: data.role,
         status: data.status,
         version: data.version,
+        maxPlayers: data.maxPlayers,
+        joinedPlayers: data.joinedPlayers,
         error: "",
         pending: false,
       });
@@ -185,6 +128,8 @@ function Game() {
         role: data.role,
         status: data.status,
         version: data.version,
+        maxPlayers: data.maxPlayers,
+        joinedPlayers: data.joinedPlayers,
         error: "",
         pending: false,
       });
@@ -217,6 +162,8 @@ function Game() {
         ...current,
         status: data.status,
         version: data.version,
+        maxPlayers: data.maxPlayers,
+        joinedPlayers: data.joinedPlayers,
         pending: false,
         error: "",
       }));
@@ -229,6 +176,33 @@ function Game() {
         status: room?.status ?? current.status,
         pending: false,
         error: error instanceof Error ? error.message : "盤面を同期できませんでした",
+      }));
+    }
+  };
+
+  const rematchOnlineRoom = async () => {
+    if (!online.code || online.status !== "finished") return;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({ action: "rematch", code: online.code });
+      setGame(data.state);
+      setHistory([]);
+      setBlastFx(null);
+      setIsAnimating(false);
+      setOnline((current) => ({
+        ...current,
+        status: data.status,
+        version: data.version,
+        maxPlayers: data.maxPlayers,
+        joinedPlayers: data.joinedPlayers,
+        pending: false,
+        error: "",
+      }));
+    } catch (error) {
+      setOnline((current) => ({
+        ...current,
+        pending: false,
+        error: error instanceof Error ? error.message : "再戦を開始できませんでした",
       }));
     }
   };
@@ -277,41 +251,6 @@ function Game() {
     } catch {
       // Some browsers block generated audio until the first user interaction.
     }
-  };
-
-  const finishTurn = (draft: GameState, extraLog?: string): GameState => {
-    const nextTurn = other(draft.turn);
-    const nextCount = draft.turnCount + 1;
-    const key = stateKey(draft, nextTurn);
-    const repetitions = {
-      ...draft.repetitions,
-      [key]: (draft.repetitions[key] ?? 0) + 1,
-    };
-    const drawByRepeat = repetitions[key] >= 3;
-    const drawByLimit = nextCount >= 120;
-    if (drawByRepeat || drawByLimit) {
-      const reason = drawByRepeat ? "同一局面が3回繰り返されました" : "60ラウンドが終了しました";
-      return {
-        ...draft,
-        phase: "over",
-        winner: "draw",
-        message: `引き分け — ${reason}`,
-        repetitions,
-        turnCount: nextCount,
-        log: [...draft.log, ...(extraLog ? [extraLog] : []), `引き分け：${reason}`],
-      };
-    }
-    return {
-      ...draft,
-      turn: nextTurn,
-      phase: "move",
-      turnCount: nextCount,
-      repetitions,
-      selected:
-        draft.inventory[nextTurn].small > 0 ? "small" : "large",
-      message: `${playerName(nextTurn)}：探査機を1マス移動`,
-      log: [...draft.log, ...(extraLog ? [extraLog] : [])],
-    };
   };
 
   const moveProbe = (target: Pos) => {
@@ -373,8 +312,7 @@ function Game() {
       isAnimating ||
       game.phase !== "place" ||
       samePos(target, { r: mid, c: mid }) ||
-      samePos(target, game.probes.red) ||
-      samePos(target, game.probes.blue) ||
+      activePlayers(game).some((player) => samePos(target, game.probes[player])) ||
       game.meteors.some((m) => samePos(m, target)) ||
       game.inventory[game.turn][chosenSize] <= 0
     )
@@ -390,10 +328,9 @@ function Game() {
       size: chosenSize,
       id: game.nextMeteorId,
     };
-    const inventory: Inventory = {
-      red: { ...game.inventory.red },
-      blue: { ...game.inventory.blue },
-    };
+    const inventory = Object.fromEntries(
+      PLAYER_ORDER.map((player) => [player, { ...game.inventory[player] }]),
+    ) as Inventory;
     inventory[game.turn][chosenSize] -= 1;
     destroyed.forEach((m) => {
       inventory[m.owner][m.size] += 1;
@@ -401,13 +338,12 @@ function Game() {
     const remaining = [...survivors, placed];
     const blockingMeteors = [...game.meteors, placed];
     const before = game.probes;
-    const probes: Record<Player, Pos> = {
-      red: { ...before.red },
-      blue: { ...before.blue },
-    };
+    const probes = Object.fromEntries(
+      PLAYER_ORDER.map((player) => [player, { ...before[player] }]),
+    ) as Record<Player, Pos>;
     const reached: Player[] = [];
 
-    (["red", "blue"] as Player[]).forEach((player) => {
+    activePlayers(game).forEach((player) => {
       const start = before[player];
       const d = distance(start, target);
       const steps =
@@ -432,7 +368,9 @@ function Game() {
           next.r >= game.size ||
           next.c >= game.size ||
           blockingMeteors.some((m) => samePos(m, next)) ||
-          samePos(next, before[other(player)]);
+          activePlayers(game).some(
+            (candidate) => candidate !== player && samePos(next, before[candidate]),
+          );
         if (blocked) break;
         pos = next;
         if (pos.r === mid && pos.c === mid) {
@@ -479,7 +417,7 @@ function Game() {
       size: chosenSize,
       destroyedIds: destroyed.map((meteor) => meteor.id),
       pushed: Object.fromEntries(
-        (["red", "blue"] as Player[])
+        activePlayers(game)
           .filter((player) => !samePos(before[player], probes[player]))
           .map((player) => [
             player,
@@ -535,8 +473,7 @@ function Game() {
     canControl &&
     game.phase === "place" &&
     !(r === mid && c === mid) &&
-    !samePos({ r, c }, game.probes.red) &&
-    !samePos({ r, c }, game.probes.blue) &&
+    !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
     !game.meteors.some((m) => m.r === r && m.c === c);
 
   const isAiTurn =
@@ -559,6 +496,8 @@ function Game() {
             ...current,
             status: data.status,
             version: data.version,
+            maxPlayers: data.maxPlayers,
+            joinedPlayers: data.joinedPlayers,
             error: "",
           }));
         }
@@ -710,11 +649,8 @@ function Game() {
               const r = Math.floor(index / game.size);
               const c = index % game.size;
               const pos = { r, c };
-              const probe = samePos(pos, game.probes.red)
-                ? "red"
-                : samePos(pos, game.probes.blue)
-                  ? "blue"
-                  : null;
+              const probe =
+                activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
               const legal =
                 canControl &&
@@ -801,7 +737,13 @@ function Game() {
               </button>
             )}
             {game.phase === "over" && (
-              <button className="primary-action" onClick={reset}>もう一度プレイ</button>
+              <button
+                className="primary-action"
+                onClick={mode === "online" ? rematchOnlineRoom : reset}
+                disabled={mode === "online" && online.pending}
+              >
+                同じメンバーでもう一度
+              </button>
             )}
           </div>
         </section>
@@ -813,6 +755,23 @@ function Game() {
           <InventoryPanel inventory={game.inventory.blue} color="blue" />
         </aside>
       </section>
+      {activePlayers(game).length > 2 && (
+        <section className="extra-players" aria-label="追加プレイヤー">
+          {activePlayers(game).slice(2).map((player, index) => (
+            <aside
+              key={player}
+              className={`player-card compact ${player}-card ${
+                game.turn === player && game.phase !== "over" ? "active" : ""
+              }`}
+            >
+              <span className="eyebrow">PLAYER {String(index + 3).padStart(2, "0")}</span>
+              <h2>{playerName(player)}</h2>
+              <ProbeIcon color={player} />
+              <InventoryPanel inventory={game.inventory[player]} color={player} />
+            </aside>
+          ))}
+        </section>
+      )}
 
       <section className="control-strip">
         <div className="settings">
@@ -862,11 +821,26 @@ function Game() {
               <strong>
                 {online.code
                   ? online.status === "waiting"
-                    ? "対戦相手を待っています"
-                    : `${online.role === "red" ? "RED" : "BLUE"}として参加中`
+                    ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}`
+                    : `${online.role ? playerName(online.role) : "観戦"}として参加中`
                   : "ルームを作るか、6文字のコードで参加"}
               </strong>
             </div>
+            {!online.code && (
+              <label className="online-count">
+                PLAYERS
+                <select
+                  value={onlinePlayerCount}
+                  onChange={(event) =>
+                    setOnlinePlayerCount(Number(event.target.value) as 2 | 3 | 4)
+                  }
+                >
+                  <option value={2}>2</option>
+                  <option value={3}>3（11×11）</option>
+                  <option value={4}>4（11×11）</option>
+                </select>
+              </label>
+            )}
             <input
               value={roomCodeInput}
               onChange={(event) =>
@@ -878,6 +852,11 @@ function Game() {
             />
             <button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button>
             <button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button>
+            {online.status === "finished" && (
+              <button onClick={rematchOnlineRoom} disabled={online.pending}>
+                SAME ROOM REMATCH
+              </button>
+            )}
             {online.code && <code>{online.code}</code>}
             <a href="/signin-with-chatgpt?return_to=%2F">SIGN IN WITH CHATGPT</a>
             {online.error && <small>{online.error}</small>}

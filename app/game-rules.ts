@@ -1,4 +1,4 @@
-export type Player = "red" | "blue";
+export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number };
@@ -7,6 +7,7 @@ export type Phase = "move" | "place" | "over";
 
 export type GameState = {
   size: number;
+  players: Player[];
   turn: Player;
   phase: Phase;
   turnCount: number;
@@ -29,25 +30,43 @@ export type MeteorResolution = {
   pushed: Partial<Record<Player, { from: Pos; dr: number; dc: number }>>;
 };
 
-export const other = (player: Player): Player => (player === "red" ? "blue" : "red");
+export const PLAYER_ORDER: Player[] = ["red", "blue", "green", "yellow"];
+export const activePlayers = (state: GameState): Player[] =>
+  state.players?.length ? state.players : ["red", "blue"];
+export const nextPlayer = (state: GameState, player = state.turn): Player => {
+  const players = activePlayers(state);
+  return players[(players.indexOf(player) + 1) % players.length];
+};
 export const samePos = (a: Pos, b: Pos) => a.r === b.r && a.c === b.c;
 export const distance = (a: Pos, b: Pos) =>
   Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
-export const playerName = (player: Player) => (player === "red" ? "RED" : "BLUE");
+export const playerName = (player: Player) => player.toUpperCase();
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 
-export function initialGameState(size = 9, first: Player = "red"): GameState {
+export function initialGameState(size = 9, first: Player = "red", playerCount = 2): GameState {
+  const count = Math.max(2, Math.min(4, playerCount));
+  const players = PLAYER_ORDER.slice(0, count);
+  if (!players.includes(first)) first = players[0];
+  if (count > 2) size = 11;
   const mid = Math.floor(size / 2);
   return {
     size,
+    players,
     turn: first,
     phase: "move",
     turnCount: 0,
-    probes: { red: { r: size - 1, c: mid }, blue: { r: 0, c: mid } },
+    probes: {
+      red: { r: size - 1, c: mid },
+      blue: { r: 0, c: mid },
+      green: { r: mid, c: 0 },
+      yellow: { r: mid, c: size - 1 },
+    },
     meteors: [],
     inventory: {
       red: { small: 2, large: 1 },
       blue: { small: 2, large: 1 },
+      green: { small: 2, large: 1 },
+      yellow: { small: 2, large: 1 },
     },
     selected: "small",
     winner: null,
@@ -60,6 +79,7 @@ export function initialGameState(size = 9, first: Player = "red"): GameState {
 
 export function legalMoves(state: GameState, player = state.turn): Pos[] {
   const probe = state.probes[player];
+  const players = activePlayers(state);
   return [
     { r: probe.r - 1, c: probe.c },
     { r: probe.r + 1, c: probe.c },
@@ -71,7 +91,9 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
       target.c >= 0 &&
       target.r < state.size &&
       target.c < state.size &&
-      !samePos(target, state.probes[other(player)]) &&
+      !players.some(
+        (candidate) => candidate !== player && samePos(target, state.probes[candidate]),
+      ) &&
       !state.meteors.some((meteor) => samePos(meteor, target)),
   );
 }
@@ -83,15 +105,16 @@ function stateKey(state: GameState, nextTurn: Player) {
     .join("|");
   return [
     nextTurn,
-    `${state.probes.red.r},${state.probes.red.c}`,
-    `${state.probes.blue.r},${state.probes.blue.c}`,
+    activePlayers(state)
+      .map((player) => `${player}:${state.probes[player].r},${state.probes[player].c}`)
+      .join("|"),
     meteors,
     JSON.stringify(state.inventory),
   ].join("/");
 }
 
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
-  const nextTurn = other(draft.turn);
+  const nextTurn = nextPlayer(draft);
   const nextCount = draft.turnCount + 1;
   const key = stateKey(draft, nextTurn);
   const repetitions = {
@@ -164,8 +187,7 @@ export function applyMeteor(
   if (
     state.phase !== "place" ||
     samePos(target, { r: mid, c: mid }) ||
-    samePos(target, state.probes.red) ||
-    samePos(target, state.probes.blue) ||
+    activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||
     state.inventory[state.turn][chosenSize] <= 0
   ) {
@@ -184,6 +206,8 @@ export function applyMeteor(
   const inventory: Inventory = {
     red: { ...state.inventory.red },
     blue: { ...state.inventory.blue },
+    green: { ...state.inventory.green },
+    yellow: { ...state.inventory.yellow },
   };
   inventory[state.turn][chosenSize] -= 1;
   destroyed.forEach((meteor) => {
@@ -193,13 +217,12 @@ export function applyMeteor(
   // Probe movement is resolved while every old meteor is still on the board.
   const blockingMeteors = [...state.meteors, placed];
   const before = state.probes;
-  const probes: Record<Player, Pos> = {
-    red: { ...before.red },
-    blue: { ...before.blue },
-  };
+  const probes = Object.fromEntries(
+    PLAYER_ORDER.map((player) => [player, { ...before[player] }]),
+  ) as Record<Player, Pos>;
   const reached: Player[] = [];
 
-  (["red", "blue"] as Player[]).forEach((player) => {
+  activePlayers(state).forEach((player) => {
     const start = before[player];
     const d = distance(start, target);
     const steps =
@@ -216,7 +239,9 @@ export function applyMeteor(
         next.r >= state.size ||
         next.c >= state.size ||
         blockingMeteors.some((meteor) => samePos(meteor, next)) ||
-        samePos(next, before[other(player)]);
+        activePlayers(state).some(
+          (candidate) => candidate !== player && samePos(next, before[candidate]),
+        );
       if (blocked) break;
       position = next;
       if (samePos(position, { r: mid, c: mid })) {
@@ -259,7 +284,7 @@ export function applyMeteor(
     size: chosenSize,
     destroyedIds: destroyed.map((meteor) => meteor.id),
     pushed: Object.fromEntries(
-      (["red", "blue"] as Player[])
+      activePlayers(state)
         .filter((player) => !samePos(before[player], probes[player]))
         .map((player) => [
           player,

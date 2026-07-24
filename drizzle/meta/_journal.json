@@ -8,6 +8,13 @@
       "when": 1784872800000,
       "tag": "0000_online_rooms",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784883600000,
+      "tag": "0001_multiplayer_rooms",
+      "breakpoints": true
     }
   ]
 }
