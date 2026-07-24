@@ -9,6 +9,13 @@ type Meteor = Pos & { owner: Player; size: MeteorSize; id: number };
 type Inventory = Record<Player, Record<MeteorSize, number>>;
 type Phase = "move" | "place" | "over";
 type Mode = "human" | "cpu" | "lab";
+type BlastFx = {
+  target: Pos;
+  owner: Player;
+  size: MeteorSize;
+  destroyedIds: number[];
+  pushed: Partial<Record<Player, { from: Pos; dr: number; dc: number }>>;
+};
 
 type GameState = {
   size: number;
@@ -99,6 +106,8 @@ function Game() {
   const [mode, setMode] = useState<Mode>("human");
   const [aiRunning, setAiRunning] = useState(true);
   const [aiSpeed, setAiSpeed] = useState(420);
+  const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [stats, setStats] = useState({ games: 0, red: 0, blue: 0, draw: 0, turns: 0 });
   const recordedOutcome = useRef("");
   const mid = Math.floor(game.size / 2);
@@ -107,6 +116,47 @@ function Game() {
   const commit = (next: GameState) => {
     setHistory((h) => [...h, game]);
     setGame(next);
+  };
+
+  const playBoom = () => {
+    try {
+      const AudioContextClass =
+        window.AudioContext ??
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = new AudioContextClass();
+      const duration = 0.72;
+      const gain = context.createGain();
+      const low = context.createOscillator();
+      const noise = context.createBufferSource();
+      const noiseFilter = context.createBiquadFilter();
+      const buffer = context.createBuffer(1, context.sampleRate * duration, context.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        const decay = Math.pow(1 - i / data.length, 2.8);
+        data[i] = (Math.random() * 2 - 1) * decay;
+      }
+      noise.buffer = buffer;
+      noiseFilter.type = "lowpass";
+      noiseFilter.frequency.setValueAtTime(720, context.currentTime);
+      noiseFilter.frequency.exponentialRampToValueAtTime(90, context.currentTime + duration);
+      low.type = "sine";
+      low.frequency.setValueAtTime(105, context.currentTime);
+      low.frequency.exponentialRampToValueAtTime(34, context.currentTime + duration);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.7, context.currentTime + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+      noise.connect(noiseFilter).connect(gain);
+      low.connect(gain);
+      gain.connect(context.destination);
+      noise.start();
+      low.start();
+      noise.stop(context.currentTime + duration);
+      low.stop(context.currentTime + duration);
+      window.setTimeout(() => void context.close(), 900);
+    } catch {
+      // Some browsers block generated audio until the first user interaction.
+    }
   };
 
   const finishTurn = (draft: GameState, extraLog?: string): GameState => {
@@ -198,6 +248,7 @@ function Game() {
   const placeMeteor = (target: Pos, sizeOverride?: MeteorSize) => {
     const chosenSize = sizeOverride ?? game.selected;
     if (
+      isAnimating ||
       game.phase !== "place" ||
       samePos(target, { r: mid, c: mid }) ||
       samePos(target, game.probes.red) ||
@@ -282,26 +333,56 @@ function Game() {
       log,
     };
 
+    let resolved: GameState;
     if (reached.length) {
       const winner = reached.length === 1 ? reached[0] : "draw";
-      commit({
+      resolved = {
         ...draft,
         phase: "over",
         winner,
         message: winner === "draw" ? "同時到達 — DRAW" : `${playerName(winner)} WIN!`,
         log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
-      });
-      return;
+      };
+    } else {
+      resolved = finishTurn(draft);
     }
-    commit(finishTurn(draft));
+
+    setIsAnimating(true);
+    setBlastFx({
+      target,
+      owner: game.turn,
+      size: chosenSize,
+      destroyedIds: destroyed.map((meteor) => meteor.id),
+      pushed: Object.fromEntries(
+        (["red", "blue"] as Player[])
+          .filter((player) => !samePos(before[player], probes[player]))
+          .map((player) => [
+            player,
+            {
+              from: before[player],
+              dr: probes[player].r - before[player].r,
+              dc: probes[player].c - before[player].c,
+            },
+          ]),
+      ),
+    });
+    playBoom();
+    window.setTimeout(() => commit(resolved), 820);
+    window.setTimeout(() => {
+      setBlastFx(null);
+      setIsAnimating(false);
+    }, 1080);
   };
 
   const handleCell = (r: number, c: number) => {
+    if (isAnimating) return;
     if (game.phase === "move") moveProbe({ r, c });
     if (game.phase === "place") placeMeteor({ r, c });
   };
 
   const reset = () => {
+    setBlastFx(null);
+    setIsAnimating(false);
     setHistory([]);
     setGame(initialState(size, first));
   };
@@ -350,7 +431,7 @@ function Game() {
   }, [mode, aiRunning, game.phase, aiSpeed, size, stats.games]);
 
   useEffect(() => {
-    if (!isAiTurn || !aiRunning || game.phase === "over") return;
+    if (!isAiTurn || !aiRunning || isAnimating || game.phase === "over") return;
     const timer = window.setTimeout(() => {
       if (game.phase === "move") {
         if (!moves.length) {
@@ -412,7 +493,7 @@ function Game() {
       if (options[0]) placeMeteor(options[0].p, options[0].size);
     }, aiSpeed);
     return () => window.clearTimeout(timer);
-  }, [game, mode, aiRunning, aiSpeed, isAiTurn, moves, mid]);
+  }, [game, mode, aiRunning, aiSpeed, isAiTurn, isAnimating, moves, mid]);
 
   const redRate = stats.games ? Math.round((stats.red / stats.games) * 100) : 0;
   const blueRate = stats.games ? Math.round((stats.blue / stats.games) * 100) : 0;
@@ -483,8 +564,33 @@ function Game() {
                   aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}`}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
-                  {meteor && <MeteorIcon meteor={meteor} />}
-                  {probe && <ProbeToken player={probe} />}
+                  {blastFx && samePos(pos, blastFx.target) && (
+                    <>
+                      <span className={`impact-flash ${blastFx.owner}`} />
+                      <span className={`shockwave ${blastFx.size}`} />
+                      <MeteorIcon
+                        meteor={{ ...blastFx.target, owner: blastFx.owner, size: blastFx.size, id: -1 }}
+                        falling
+                      />
+                    </>
+                  )}
+                  {meteor && (
+                    <MeteorIcon
+                      meteor={meteor}
+                      destroyed={blastFx?.destroyedIds.includes(meteor.id)}
+                    />
+                  )}
+                  {probe && (
+                    <ProbeToken
+                      player={probe}
+                      push={
+                        blastFx?.pushed[probe] &&
+                        samePos(pos, blastFx.pushed[probe].from)
+                          ? blastFx.pushed[probe]
+                          : undefined
+                      }
+                    />
+                  )}
                   {legal && <span className="move-pip" />}
                 </button>
               );
@@ -608,12 +714,55 @@ function ProbeIcon({ color }: { color: Player }) {
   return <div className={`probe-portrait ${color}`}><span>▲</span><i /><b /></div>;
 }
 
-function ProbeToken({ player }: { player: Player }) {
-  return <span className={`probe-token ${player}`}><i>▲</i></span>;
+function ProbeToken({
+  player,
+  push,
+}: {
+  player: Player;
+  push?: { from: Pos; dr: number; dc: number };
+}) {
+  return (
+    <span
+      className={`probe-token ${player}${push ? " blast-lift" : ""}`}
+      style={
+        push
+          ? ({
+              "--push-x": `${push.dc * 147}%`,
+              "--push-y": `${push.dr * 147}%`,
+            } as React.CSSProperties)
+          : undefined
+      }
+    >
+      <i>▲</i>
+    </span>
+  );
 }
 
-function MeteorIcon({ meteor }: { meteor: Meteor }) {
-  return <span className={`meteor-token ${meteor.owner} ${meteor.size}`}>{meteor.size === "large" ? "✦" : "●"}</span>;
+function MeteorIcon({
+  meteor,
+  falling = false,
+  destroyed = false,
+}: {
+  meteor: Meteor;
+  falling?: boolean;
+  destroyed?: boolean;
+}) {
+  return (
+    <span
+      className={[
+        "meteor-token",
+        meteor.owner,
+        meteor.size,
+        falling ? "meteor-fall" : "",
+        destroyed ? `meteor-shatter return-${meteor.owner}` : "",
+      ].join(" ")}
+    >
+      {meteor.size === "large" ? "✦" : "●"}
+      {destroyed && <i className="shard shard-a" />}
+      {destroyed && <i className="shard shard-b" />}
+      {destroyed && <i className="shard shard-c" />}
+    </span>
+  );
 }
 
 function InventoryPanel({
