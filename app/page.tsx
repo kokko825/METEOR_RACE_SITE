@@ -8,13 +8,23 @@ type Pos = { r: number; c: number };
 type Meteor = Pos & { owner: Player; size: MeteorSize; id: number };
 type Inventory = Record<Player, Record<MeteorSize, number>>;
 type Phase = "move" | "place" | "over";
-type Mode = "human" | "cpu" | "lab";
+type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
+  stage: "probe" | "recover";
   target: Pos;
   owner: Player;
   size: MeteorSize;
   destroyedIds: number[];
   pushed: Partial<Record<Player, { from: Pos; dr: number; dc: number }>>;
+};
+
+type OnlineRoom = {
+  code: string;
+  role: Player | null;
+  status: "idle" | "waiting" | "playing" | "finished";
+  version: number;
+  error: string;
+  pending: boolean;
 };
 
 type GameState = {
@@ -108,10 +118,120 @@ function Game() {
   const [aiSpeed, setAiSpeed] = useState(420);
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [online, setOnline] = useState<OnlineRoom>({
+    code: "",
+    role: null,
+    status: "idle",
+    version: 0,
+    error: "",
+    pending: false,
+  });
   const [stats, setStats] = useState({ games: 0, red: 0, blue: 0, draw: 0, turns: 0 });
   const recordedOutcome = useRef("");
   const mid = Math.floor(game.size / 2);
   const moves = useMemo(() => legalMoves(game), [game]);
+  const canControl =
+    mode !== "online" ||
+    (online.status === "playing" &&
+      online.role === game.turn &&
+      !online.pending);
+
+  const roomRequest = async (payload: Record<string, unknown>) => {
+    const response = await fetch("/api/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw Object.assign(new Error(data.error ?? "オンライン操作に失敗しました"), { data });
+    return data;
+  };
+
+  const createOnlineRoom = async () => {
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({ action: "create", size, first });
+      setGame(data.state);
+      setHistory([]);
+      setOnline({
+        code: data.code,
+        role: data.role,
+        status: data.status,
+        version: data.version,
+        error: "",
+        pending: false,
+      });
+      setRoomCodeInput(data.code);
+    } catch (error) {
+      setOnline((current) => ({
+        ...current,
+        pending: false,
+        error: error instanceof Error ? error.message : "ルームを作成できませんでした",
+      }));
+    }
+  };
+
+  const joinOnlineRoom = async () => {
+    const code = roomCodeInput.trim().toUpperCase();
+    if (!code) return;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({ action: "join", code });
+      setGame(data.state);
+      setHistory([]);
+      setOnline({
+        code: data.code,
+        role: data.role,
+        status: data.status,
+        version: data.version,
+        error: "",
+        pending: false,
+      });
+      setRoomCodeInput(data.code);
+    } catch (error) {
+      setOnline((current) => ({
+        ...current,
+        pending: false,
+        error: error instanceof Error ? error.message : "ルームに参加できませんでした",
+      }));
+    }
+  };
+
+  const submitOnlineAction = async (
+    action: "move" | "meteor",
+    target: Pos,
+    meteorSize?: MeteorSize,
+  ) => {
+    if (mode !== "online" || !online.code) return;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({
+        action,
+        code: online.code,
+        version: online.version,
+        target,
+        meteorSize,
+      });
+      setOnline((current) => ({
+        ...current,
+        status: data.status,
+        version: data.version,
+        pending: false,
+        error: "",
+      }));
+    } catch (error) {
+      const room = (error as Error & { data?: { room?: { state: GameState; version: number; status: OnlineRoom["status"] } } }).data?.room;
+      if (room) setGame(room.state);
+      setOnline((current) => ({
+        ...current,
+        version: room?.version ?? current.version,
+        status: room?.status ?? current.status,
+        pending: false,
+        error: error instanceof Error ? error.message : "盤面を同期できませんでした",
+      }));
+    }
+  };
 
   const commit = (next: GameState) => {
     setHistory((h) => [...h, game]);
@@ -195,7 +315,8 @@ function Game() {
   };
 
   const moveProbe = (target: Pos) => {
-    if (game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
+    if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
+    if (mode === "online") void submitOnlineAction("move", target);
     const probes = { ...game.probes, [game.turn]: target };
     const log = [...game.log, `${playerName(game.turn)}が (${target.r},${target.c}) へ移動`];
     if (target.r === mid && target.c === mid) {
@@ -248,6 +369,7 @@ function Game() {
   const placeMeteor = (target: Pos, sizeOverride?: MeteorSize) => {
     const chosenSize = sizeOverride ?? game.selected;
     if (
+      !canControl ||
       isAnimating ||
       game.phase !== "place" ||
       samePos(target, { r: mid, c: mid }) ||
@@ -257,6 +379,7 @@ function Game() {
       game.inventory[game.turn][chosenSize] <= 0
     )
       return;
+    if (mode === "online") void submitOnlineAction("meteor", target, chosenSize);
 
     const blastRadius = chosenSize === "small" ? 1 : 2;
     const destroyed = game.meteors.filter((m) => distance(m, target) <= blastRadius);
@@ -276,6 +399,7 @@ function Game() {
       inventory[m.owner][m.size] += 1;
     });
     const remaining = [...survivors, placed];
+    const blockingMeteors = [...game.meteors, placed];
     const before = game.probes;
     const probes: Record<Player, Pos> = {
       red: { ...before.red },
@@ -307,7 +431,7 @@ function Game() {
           next.c < 0 ||
           next.r >= game.size ||
           next.c >= game.size ||
-          remaining.some((m) => samePos(m, next)) ||
+          blockingMeteors.some((m) => samePos(m, next)) ||
           samePos(next, before[other(player)]);
         if (blocked) break;
         pos = next;
@@ -349,6 +473,7 @@ function Game() {
 
     setIsAnimating(true);
     setBlastFx({
+      stage: "probe",
       target,
       owner: game.turn,
       size: chosenSize,
@@ -367,11 +492,23 @@ function Game() {
       ),
     });
     playBoom();
-    window.setTimeout(() => commit(resolved), 820);
     window.setTimeout(() => {
+      setGame((current) => ({
+        ...current,
+        probes,
+        message: destroyed.length
+          ? `探査機移動完了 — メテオ${destroyed.length}個を回収`
+          : "探査機移動完了",
+      }));
+      setBlastFx((effect) =>
+        effect ? { ...effect, stage: "recover" } : effect,
+      );
+    }, 1100);
+    window.setTimeout(() => {
+      commit(resolved);
       setBlastFx(null);
       setIsAnimating(false);
-    }, 1080);
+    }, 2020);
   };
 
   const handleCell = (r: number, c: number) => {
@@ -395,6 +532,7 @@ function Game() {
   };
 
   const validPlacement = (r: number, c: number) =>
+    canControl &&
     game.phase === "place" &&
     !(r === mid && c === mid) &&
     !samePos({ r, c }, game.probes.red) &&
@@ -403,6 +541,36 @@ function Game() {
 
   const isAiTurn =
     mode === "lab" || (mode === "cpu" && game.turn === "blue");
+
+  useEffect(() => {
+    if (mode !== "online" || !online.code) return;
+    const poll = window.setInterval(async () => {
+      if (isAnimating || online.pending) return;
+      try {
+        const response = await fetch(`/api/rooms?code=${encodeURIComponent(online.code)}`, {
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error ?? "同期できませんでした");
+        if (data.version > online.version) {
+          setGame(data.state);
+          setHistory([]);
+          setOnline((current) => ({
+            ...current,
+            status: data.status,
+            version: data.version,
+            error: "",
+          }));
+        }
+      } catch (error) {
+        setOnline((current) => ({
+          ...current,
+          error: error instanceof Error ? error.message : "同期できませんでした",
+        }));
+      }
+    }, 1200);
+    return () => window.clearInterval(poll);
+  }, [mode, online.code, online.version, online.pending, isAnimating]);
 
   useEffect(() => {
     if (game.phase !== "over" || !game.winner) return;
@@ -548,7 +716,10 @@ function Game() {
                   ? "blue"
                   : null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
-              const legal = game.phase === "move" && moves.some((m) => samePos(m, pos));
+              const legal =
+                canControl &&
+                game.phase === "move" &&
+                moves.some((m) => samePos(m, pos));
               const placeable = validPlacement(r, c);
               return (
                 <button
@@ -566,18 +737,25 @@ function Game() {
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
                   {blastFx && samePos(pos, blastFx.target) && (
                     <>
-                      <span className={`impact-flash ${blastFx.owner}`} />
-                      <span className={`shockwave ${blastFx.size}`} />
+                      {blastFx.stage === "probe" && (
+                        <>
+                          <span className={`impact-flash ${blastFx.owner}`} />
+                          <span className={`shockwave ${blastFx.size}`} />
+                        </>
+                      )}
                       <MeteorIcon
                         meteor={{ ...blastFx.target, owner: blastFx.owner, size: blastFx.size, id: -1 }}
-                        falling
+                        falling={blastFx.stage === "probe"}
                       />
                     </>
                   )}
                   {meteor && (
                     <MeteorIcon
                       meteor={meteor}
-                      destroyed={blastFx?.destroyedIds.includes(meteor.id)}
+                      destroyed={
+                        blastFx?.stage === "recover" &&
+                        blastFx.destroyedIds.includes(meteor.id)
+                      }
                     />
                   )}
                   {probe && (
@@ -644,6 +822,7 @@ function Game() {
               <option value="human">2 PLAYERS</option>
               <option value="cpu">VS BLUE AI</option>
               <option value="lab">AI vs AI LAB</option>
+              <option value="online">ONLINE ROOM</option>
             </select>
           </label>
           <label>
@@ -660,8 +839,8 @@ function Game() {
               <option value="blue">BLUE</option>
             </select>
           </label>
-          <button onClick={reset}>NEW GAME</button>
-          <button onClick={undo} disabled={!history.length}>UNDO</button>
+          <button onClick={reset} disabled={mode === "online"}>NEW GAME</button>
+          <button onClick={undo} disabled={!history.length || mode === "online"}>UNDO</button>
           {mode === "lab" && (
             <>
               <button onClick={() => setAiRunning((v) => !v)}>{aiRunning ? "PAUSE AI" : "RUN AI"}</button>
@@ -676,6 +855,33 @@ function Game() {
             </>
           )}
         </div>
+        {mode === "online" && (
+          <section className="online-panel" aria-label="オンライン対戦">
+            <div className="online-copy">
+              <span>ONLINE MATCH</span>
+              <strong>
+                {online.code
+                  ? online.status === "waiting"
+                    ? "対戦相手を待っています"
+                    : `${online.role === "red" ? "RED" : "BLUE"}として参加中`
+                  : "ルームを作るか、6文字のコードで参加"}
+              </strong>
+            </div>
+            <input
+              value={roomCodeInput}
+              onChange={(event) =>
+                setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))
+              }
+              placeholder="ROOM CODE"
+              aria-label="ルームコード"
+              maxLength={6}
+            />
+            <button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button>
+            <button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button>
+            {online.code && <code>{online.code}</code>}
+            {online.error && <small>{online.error}</small>}
+          </section>
+        )}
         <section className="ai-lab">
           <div className="lab-title">
             <span>AI STRATEGY LAB</span>

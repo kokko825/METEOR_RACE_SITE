@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784872800000,
+      "tag": "0000_online_rooms",
+      "breakpoints": true
+    }
+  ]
 }
