@@ -165,6 +165,7 @@ button { color: inherit; }
 .online-panel input { width:135px; text-transform:uppercase; letter-spacing:.2em; font-weight:700; }
 .online-panel button { cursor:pointer; font-size:10px; letter-spacing:.1em; }
 .online-panel button:disabled { opacity:.35; }
+.online-panel a { color:#7fe8ff; border-bottom:1px solid rgba(127,232,255,.45); padding:7px 2px; font-size:9px; letter-spacing:.1em; text-decoration:none; }
 .online-panel code { color:var(--gold); border:1px solid rgba(255,211,99,.3); padding:8px 11px; letter-spacing:.22em; font-size:14px; }
 .online-panel small { width:100%; color:#ff8f83; font-size:10px; }
 .ai-lab { margin-top:14px; display:grid; grid-template-columns:minmax(220px,1.7fr) repeat(4,minmax(80px,.65fr)) auto; border:1px solid rgba(124,190,218,.16); background:linear-gradient(90deg,rgba(9,25,36,.92),rgba(5,13,21,.75)); }

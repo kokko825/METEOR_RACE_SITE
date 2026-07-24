@@ -879,6 +879,7 @@ function Game() {
             <button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button>
             <button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button>
             {online.code && <code>{online.code}</code>}
+            <a href="/signin-with-chatgpt?return_to=%2F">SIGN IN WITH CHATGPT</a>
             {online.error && <small>{online.error}</small>}
           </section>
         )}
