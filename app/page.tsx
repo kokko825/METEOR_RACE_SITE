@@ -723,7 +723,7 @@ function ProbeToken({
 }) {
   return (
     <span
-      className={`probe-token ${player}${push ? " blast-lift" : ""}`}
+      className={`probe-motion${push ? " blast-lift" : ""}`}
       style={
         push
           ? ({
@@ -733,7 +733,9 @@ function ProbeToken({
           : undefined
       }
     >
-      <i>▲</i>
+      <span className={`probe-token ${player}`}>
+        <i>▲</i>
+      </span>
     </span>
   );
 }
