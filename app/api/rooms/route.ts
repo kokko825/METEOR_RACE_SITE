@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { applyMeteor, applyMove, initialGameState, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { applyMeteor, applyMove, applyObstacle, initialGameState, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +103,7 @@ export async function POST(request: Request) {
     size?: number;
     first?: Player;
     playerCount?: number;
+    obstaclesEnabled?: boolean;
     version?: number;
     target?: Pos;
     meteorSize?: MeteorSize;
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
           email,
           playerCount,
           JSON.stringify(seats),
-          JSON.stringify(initialGameState(size, first, playerCount)),
+          JSON.stringify(initialGameState(size, first, playerCount, Boolean(body.obstaclesEnabled))),
           now,
           now,
         )
@@ -182,7 +183,12 @@ export async function POST(request: Request) {
     const players = previous.players?.length ?? room.max_players;
     const firstIndex = Math.max(0, previous.players?.indexOf(previous.turn) ?? 0);
     const nextFirst = (previous.players ?? ["red", "blue"])[(firstIndex + 1) % players] as Player;
-    const nextState = initialGameState(previous.size, nextFirst, players);
+    const nextState = initialGameState(
+      previous.size,
+      nextFirst,
+      players,
+      Boolean(previous.obstaclesEnabled),
+    );
     await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
     )
@@ -204,6 +210,8 @@ export async function POST(request: Request) {
     let effect = null;
     if (body.action === "move" && body.target) {
       nextState = applyMove(state, body.target);
+    } else if (body.action === "obstacle" && body.target) {
+      nextState = applyObstacle(state, body.target);
     } else if (body.action === "meteor" && body.target && body.meteorSize) {
       const resolution = applyMeteor(state, body.target, body.meteorSize);
       nextState = resolution.state;

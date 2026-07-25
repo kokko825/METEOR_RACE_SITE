@@ -2,6 +2,7 @@ export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number };
+export type ObstacleMeteor = Pos & { owner: Player; id: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
 export type Phase = "move" | "place" | "over";
 
@@ -13,8 +14,11 @@ export type GameState = {
   turnCount: number;
   probes: Record<Player, Pos>;
   meteors: Meteor[];
+  obstaclesEnabled: boolean;
+  obstacles: ObstacleMeteor[];
+  obstacleAvailable: Record<Player, boolean>;
   inventory: Inventory;
-  selected: MeteorSize;
+  selected: MeteorSize | "obstacle";
   winner: Player | "draw" | null;
   message: string;
   log: string[];
@@ -33,6 +37,10 @@ export type MeteorResolution = {
 export const PLAYER_ORDER: Player[] = ["red", "blue", "green", "yellow"];
 export const activePlayers = (state: GameState): Player[] =>
   state.players?.length ? state.players : ["red", "blue"];
+export const activeObstacles = (state: GameState): ObstacleMeteor[] =>
+  state.obstacles ?? [];
+export const canPlaceObstacle = (state: GameState, player = state.turn) =>
+  Boolean(state.obstaclesEnabled && (state.obstacleAvailable?.[player] ?? true));
 export const nextPlayer = (state: GameState, player = state.turn): Player => {
   const players = activePlayers(state);
   return players[(players.indexOf(player) + 1) % players.length];
@@ -43,7 +51,12 @@ export const distance = (a: Pos, b: Pos) =>
 export const playerName = (player: Player) => player.toUpperCase();
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 
-export function initialGameState(size = 9, first: Player = "red", playerCount = 2): GameState {
+export function initialGameState(
+  size = 9,
+  first: Player = "red",
+  playerCount = 2,
+  obstaclesEnabled = false,
+): GameState {
   const count = Math.max(2, Math.min(4, playerCount));
   const players = PLAYER_ORDER.slice(0, count);
   if (!players.includes(first)) first = players[0];
@@ -63,6 +76,14 @@ export function initialGameState(size = 9, first: Player = "red", playerCount = 
       yellow: { r: mid, c: size - 1 },
     },
     meteors: [],
+    obstaclesEnabled,
+    obstacles: [],
+    obstacleAvailable: {
+      red: obstaclesEnabled,
+      blue: obstaclesEnabled,
+      green: obstaclesEnabled,
+      yellow: obstaclesEnabled,
+    },
     inventory: {
       red: { small: 2, large: 1 },
       blue: { small: 2, large: 1 },
@@ -95,7 +116,8 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
       !players.some(
         (candidate) => candidate !== player && samePos(target, state.probes[candidate]),
       ) &&
-      !state.meteors.some((meteor) => samePos(meteor, target)),
+      !state.meteors.some((meteor) => samePos(meteor, target)) &&
+      !activeObstacles(state).some((obstacle) => samePos(obstacle, target)),
   );
 }
 
@@ -110,6 +132,10 @@ function stateKey(state: GameState, nextTurn: Player) {
       .map((player) => `${player}:${state.probes[player].r},${state.probes[player].c}`)
       .join("|"),
     meteors,
+    activeObstacles(state)
+      .map((obstacle) => `${obstacle.r},${obstacle.c},${obstacle.owner}`)
+      .join("|"),
+    JSON.stringify(state.obstacleAvailable ?? {}),
     JSON.stringify(state.inventory),
   ].join("/");
 }
@@ -142,7 +168,14 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     phase: "move",
     turnCount: nextCount,
     repetitions,
-    selected: draft.inventory[nextTurn].small > 0 ? "small" : "large",
+    selected:
+      draft.inventory[nextTurn].small > 0
+        ? "small"
+        : draft.inventory[nextTurn].large > 0
+          ? "large"
+          : canPlaceObstacle(draft, nextTurn)
+            ? "obstacle"
+            : "small",
     message: `${playerName(nextTurn)}：探査機を1マス移動`,
     log: [...draft.log, ...(extraLog ? [extraLog] : [])],
   };
@@ -168,8 +201,10 @@ export function applyMove(state: GameState, target: Pos): GameState {
   if (state.turnCount === 0) {
     return finishTurn({ ...state, probes, log }, "先攻の初手：メテオ配置なし");
   }
-  const hasMeteor = state.inventory[state.turn].small + state.inventory[state.turn].large > 0;
-  if (!hasMeteor) return finishTurn({ ...state, probes, log }, "手持ちメテオなし");
+  const hasPlacement =
+    state.inventory[state.turn].small + state.inventory[state.turn].large > 0 ||
+    canPlaceObstacle(state);
+  if (!hasPlacement) return finishTurn({ ...state, probes, log }, "配置できるメテオなし");
   return {
     ...state,
     probes,
@@ -190,6 +225,7 @@ export function applyMeteor(
     samePos(target, { r: mid, c: mid }) ||
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||
+    activeObstacles(state).some((obstacle) => samePos(obstacle, target)) ||
     state.inventory[state.turn][chosenSize] <= 0
   ) {
     throw new Error("そのマスにはメテオを配置できません");
@@ -216,7 +252,7 @@ export function applyMeteor(
   });
 
   // Probe movement is resolved while every old meteor is still on the board.
-  const blockingMeteors = [...state.meteors, placed];
+  const blockingMeteors = [...state.meteors, ...activeObstacles(state), placed];
   const before = state.probes;
   const probes = Object.fromEntries(
     PLAYER_ORDER.map((player) => [player, { ...before[player] }]),
@@ -297,4 +333,40 @@ export function applyMeteor(
         ]),
     ),
   };
+}
+
+export function applyObstacle(state: GameState, target: Pos): GameState {
+  const mid = Math.floor(state.size / 2);
+  if (
+    state.phase !== "place" ||
+    !canPlaceObstacle(state) ||
+    samePos(target, { r: mid, c: mid }) ||
+    activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
+    state.meteors.some((meteor) => samePos(meteor, target)) ||
+    activeObstacles(state).some((obstacle) => samePos(obstacle, target))
+  ) {
+    throw new Error("そのマスにはお邪魔メテオを配置できません");
+  }
+  const obstacleAvailable = {
+    ...state.obstacleAvailable,
+    [state.turn]: false,
+  };
+  const obstacle: ObstacleMeteor = {
+    ...target,
+    owner: state.turn,
+    id: state.nextMeteorId,
+  };
+  return finishTurn(
+    {
+      ...state,
+      obstacles: [...activeObstacles(state), obstacle],
+      obstacleAvailable,
+      nextMeteorId: state.nextMeteorId + 1,
+      log: [
+        ...state.log,
+        `${playerName(state.turn)}がお邪魔メテオを(${target.r},${target.c})に配置`,
+      ],
+    },
+    "お邪魔メテオは破壊・回収されません",
+  );
 }

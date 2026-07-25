@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PLAYER_ORDER,
+  activeObstacles,
   activePlayers,
+  applyObstacle,
+  canPlaceObstacle,
   distance,
   finishTurn,
   initialGameState as initialState,
@@ -15,6 +18,7 @@ import {
   type Inventory,
   type Meteor,
   type MeteorSize,
+  type ObstacleMeteor,
   type Player,
   type Pos,
 } from "./game-rules";
@@ -51,6 +55,8 @@ function Game() {
   const [activeFirst, setActiveFirst] = useState<Player>("red");
   const [aiPlayerCount, setAiPlayerCount] = useState<2 | 3 | 4>(2);
   const [aiRunning, setAiRunning] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [obstaclesEnabled, setObstaclesEnabled] = useState(false);
   const [aiSpeed, setAiSpeed] = useState(420);
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -109,6 +115,7 @@ function Game() {
         action: "create",
         size,
         playerCount: onlinePlayerCount,
+        obstaclesEnabled,
       });
       setGame(data.state);
       setHistory([]);
@@ -161,7 +168,7 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "move" | "meteor",
+    action: "move" | "meteor" | "obstacle",
     target: Pos,
     meteorSize?: MeteorSize,
   ) => {
@@ -230,6 +237,7 @@ function Game() {
   };
 
   const playBoom = () => {
+    if (!soundEnabled) return;
     try {
       const AudioContextClass =
         window.AudioContext ??
@@ -291,7 +299,8 @@ function Game() {
       return;
     }
     const hasMeteor =
-      game.inventory[game.turn].small + game.inventory[game.turn].large > 0;
+      game.inventory[game.turn].small + game.inventory[game.turn].large > 0 ||
+      canPlaceObstacle(game);
     if (!hasMeteor) {
       commit(finishTurn({ ...game, probes, log }, "手持ちメテオなし"));
       return;
@@ -308,7 +317,8 @@ function Game() {
   const skipBlockedMove = () => {
     if (game.phase !== "move" || moves.length > 0) return;
     const hasMeteor =
-      game.inventory[game.turn].small + game.inventory[game.turn].large > 0;
+      game.inventory[game.turn].small + game.inventory[game.turn].large > 0 ||
+      canPlaceObstacle(game);
     const log = [...game.log, `${playerName(game.turn)}は移動不能`];
     if (!hasMeteor) {
       commit(finishTurn({ ...game, log }, "手持ちメテオもないため手番終了"));
@@ -323,7 +333,8 @@ function Game() {
   };
 
   const placeMeteor = (target: Pos, sizeOverride?: MeteorSize) => {
-    const chosenSize = sizeOverride ?? game.selected;
+    const chosenSize: MeteorSize =
+      sizeOverride ?? (game.selected === "obstacle" ? "small" : game.selected);
     if (
       !canControl ||
       isAnimating ||
@@ -331,6 +342,7 @@ function Game() {
       samePos(target, { r: mid, c: mid }) ||
       activePlayers(game).some((player) => samePos(target, game.probes[player])) ||
       game.meteors.some((m) => samePos(m, target)) ||
+      activeObstacles(game).some((obstacle) => samePos(obstacle, target)) ||
       game.inventory[game.turn][chosenSize] <= 0
     )
       return;
@@ -353,7 +365,7 @@ function Game() {
       inventory[m.owner][m.size] += 1;
     });
     const remaining = [...survivors, placed];
-    const blockingMeteors = [...game.meteors, placed];
+    const blockingMeteors = [...game.meteors, ...activeObstacles(game), placed];
     const before = game.probes;
     const probes = Object.fromEntries(
       PLAYER_ORDER.map((player) => [player, { ...before[player] }]),
@@ -466,10 +478,24 @@ function Game() {
     }, 2020);
   };
 
+  const placeObstacle = (target: Pos) => {
+    if (!canControl || isAnimating || game.phase !== "place") return;
+    try {
+      const next = applyObstacle(game, target);
+      if (mode === "online") void submitOnlineAction("obstacle", target);
+      commit(next);
+    } catch {
+      return;
+    }
+  };
+
   const handleCell = (r: number, c: number) => {
     if (isAnimating) return;
     if (game.phase === "move") moveProbe({ r, c });
-    if (game.phase === "place") placeMeteor({ r, c });
+    if (game.phase === "place") {
+      if (game.selected === "obstacle") placeObstacle({ r, c });
+      else placeMeteor({ r, c });
+    }
   };
 
   const applyNewGameSettings = () => {
@@ -488,7 +514,7 @@ function Game() {
     setNeedsNewGame(false);
     recordedOutcome.current = "";
     if (setupMode !== "online") {
-      setGame(initialState(nextSize, nextFirst, playerCount));
+    setGame(initialState(nextSize, nextFirst, playerCount, obstaclesEnabled));
     }
   };
 
@@ -497,7 +523,14 @@ function Game() {
     setIsAnimating(false);
     setHistory([]);
     recordedOutcome.current = "";
-    setGame(initialState(game.size, activeFirst, activePlayers(game).length));
+    setGame(
+      initialState(
+        game.size,
+        activeFirst,
+        activePlayers(game).length,
+        Boolean(game.obstaclesEnabled),
+      ),
+    );
   };
 
   const undo = () => {
@@ -512,7 +545,8 @@ function Game() {
     game.phase === "place" &&
     !(r === mid && c === mid) &&
     !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
-    !game.meteors.some((m) => m.r === r && m.c === c);
+    !game.meteors.some((m) => m.r === r && m.c === c) &&
+    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c);
 
   const isAiTurn =
     mode === "lab" || (mode === "cpu" && game.turn !== "red");
@@ -597,6 +631,27 @@ function Game() {
           .sort((a, b) => b.score - a.score);
         moveProbe(scored[0].p);
         return;
+      }
+
+      if (canPlaceObstacle(game)) {
+        const obstacleTargets: Pos[] = [];
+        for (let r = 0; r < game.size; r += 1) {
+          for (let c = 0; c < game.size; c += 1) {
+            if (validPlacement(r, c)) obstacleTargets.push({ r, c });
+          }
+        }
+        obstacleTargets.sort(
+          (a, b) =>
+            Math.abs(a.r - mid) +
+            Math.abs(a.c - mid) -
+            Math.abs(b.r - mid) -
+            Math.abs(b.c - mid) +
+            (Math.random() - 0.5) * 0.2,
+        );
+        if (obstacleTargets[0]) {
+          placeObstacle(obstacleTargets[0]);
+          return;
+        }
       }
 
       const options: { p: Pos; size: MeteorSize; score: number }[] = [];
@@ -698,6 +753,7 @@ function Game() {
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
+              const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
               const legal =
                 canControl &&
                 game.phase === "move" &&
@@ -714,7 +770,7 @@ function Game() {
                   ].join(" ")}
                   onClick={() => handleCell(r, c)}
                   disabled={game.phase === "over" || (!legal && !placeable)}
-                  aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}`}
+                  aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}`}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
                   {blastFx && samePos(pos, blastFx.target) && (
@@ -740,6 +796,7 @@ function Game() {
                       }
                     />
                   )}
+                  {obstacle && <ObstacleIcon obstacle={obstacle} />}
                   {probe && (
                     <ProbeToken
                       player={probe}
@@ -775,6 +832,15 @@ function Game() {
                 >
                   ✦ 大 <b>{game.inventory[game.turn].large}</b>
                 </button>
+                {game.obstaclesEnabled && (
+                  <button
+                    className={`meteor-choice obstacle-choice ${game.selected === "obstacle" ? "selected" : ""}`}
+                    disabled={!canPlaceObstacle(game)}
+                    onClick={() => setGame((g) => ({ ...g, selected: "obstacle" }))}
+                  >
+                    ◆ お邪魔 <b>{canPlaceObstacle(game) ? 1 : 0}</b>
+                  </button>
+                )}
               </>
             )}
             {game.phase === "move" && moves.length === 0 && (
@@ -894,6 +960,25 @@ function Game() {
               ))}
             </select>
           </label>
+          <button
+            type="button"
+            className={obstaclesEnabled ? "setting-toggle selected" : "setting-toggle"}
+            aria-pressed={obstaclesEnabled}
+            onClick={() => {
+              setObstaclesEnabled((value) => !value);
+              setNeedsNewGame(true);
+            }}
+          >
+            お邪魔 {obstaclesEnabled ? "あり" : "なし"}
+          </button>
+          <button
+            type="button"
+            className={soundEnabled ? "setting-toggle selected" : "setting-toggle"}
+            aria-pressed={soundEnabled}
+            onClick={() => setSoundEnabled((value) => !value)}
+          >
+            効果音 {soundEnabled ? "ON" : "OFF"}
+          </button>
           <button className={`new-game-button ${needsNewGame ? "attention" : ""}`} onClick={applyNewGameSettings}>
             NEW GAME
             <small>{needsNewGame ? "設定を適用して開始" : "現在の設定で再開始"}</small>
@@ -1079,6 +1164,15 @@ function MeteorIcon({
       {destroyed && <i className="shard shard-a" />}
       {destroyed && <i className="shard shard-b" />}
       {destroyed && <i className="shard shard-c" />}
+    </span>
+  );
+}
+
+function ObstacleIcon({ obstacle }: { obstacle: ObstacleMeteor }) {
+  return (
+    <span className={`obstacle-token ${obstacle.owner}`} title="破壊不能のお邪魔メテオ">
+      <i />
+      <b>◆</b>
     </span>
   );
 }

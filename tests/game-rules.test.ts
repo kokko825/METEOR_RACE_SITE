@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   applyMeteor,
   applyMove,
+  applyObstacle,
   activePlayers,
   finishTurn,
   initialGameState,
@@ -137,6 +138,31 @@ for (const first of ["red", "blue"] as Player[]) {
   assert.equal(state.size, 13, "4人対戦でも13×13を選択できる");
   assert.equal(state.turn, "yellow", "4色すべてを先攻に選択できる");
   assert.deepEqual(state.probes.yellow, { r: 6, c: 12 });
+}
+
+{
+  const state = initialGameState(11, "red", 4, true);
+  state.turnCount = 2;
+  state.phase = "place";
+  const obstacleState = applyObstacle(state, { r: 5, c: 4 });
+  assert.equal(obstacleState.obstacles.length, 1);
+  assert.equal(obstacleState.obstacleAvailable.red, false);
+  const blockedState = {
+    ...obstacleState,
+    probes: { ...obstacleState.probes, green: { r: 5, c: 3 } },
+  };
+  assert.equal(
+    legalMoves(blockedState, "green").some((p) => samePos(p, { r: 5, c: 4 })),
+    false,
+    "お邪魔メテオは探査機の移動を遮る",
+  );
+  const blastState = {
+    ...obstacleState,
+    turn: "red" as Player,
+    phase: "place" as const,
+  };
+  const afterBlast = applyMeteor(blastState, { r: 4, c: 4 }, "small").state;
+  assert.equal(afterBlast.obstacles.length, 1, "お邪魔メテオは爆風で破壊されない");
 }
 
 console.log("game-rules: all checks passed");
