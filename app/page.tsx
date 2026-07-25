@@ -971,7 +971,7 @@ function Game() {
             {game.message}
           </div>
           <div
-            className="board"
+            className={`board turn-${game.turn}`}
             data-perspective={perspectiveSlot}
             style={{
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,

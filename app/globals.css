@@ -81,7 +81,11 @@ button { color: inherit; }
 .status-dot.blue { color:var(--blue); }
 .status-dot.green { color:var(--green); }
 .status-dot.yellow { color:var(--yellow); }
-.board { width: min(100%, 680px); aspect-ratio: 1; display:grid; overflow:hidden; border: 1px solid rgba(123,203,232,.45); background: rgba(4,12,19,.92); box-shadow: 0 0 70px rgba(12,100,128,.16), inset 0 0 30px rgba(18,88,114,.12); }
+.board { --turn-color:var(--red); --turn-glow:rgba(255,63,55,.32); width: min(100%, 680px); aspect-ratio: 1; display:grid; overflow:hidden; border: 2px solid var(--turn-color); background: rgba(4,12,19,.92); box-shadow: 0 0 18px var(--turn-glow), 0 0 70px color-mix(in srgb, var(--turn-color) 22%, transparent), inset 0 0 30px color-mix(in srgb, var(--turn-color) 14%, transparent); transition:border-color .25s ease,box-shadow .25s ease; }
+.board.turn-red { --turn-color:var(--red); --turn-glow:rgba(255,63,55,.34); }
+.board.turn-blue { --turn-color:var(--blue); --turn-glow:rgba(41,169,255,.34); }
+.board.turn-green { --turn-color:var(--green); --turn-glow:rgba(53,220,139,.34); }
+.board.turn-yellow { --turn-color:var(--yellow); --turn-glow:rgba(255,216,61,.34); }
 .cell { min-width:0; min-height:0; overflow:visible; position:relative; border:0; border-right:1px solid rgba(92,157,183,.18); border-bottom:1px solid rgba(92,157,183,.18); background:transparent; padding:0; display:grid; place-items:center; cursor:default; }
 .cell:not(:disabled) { cursor:pointer; }
 .cell.legal { background:rgba(99,223,255,.07); }
