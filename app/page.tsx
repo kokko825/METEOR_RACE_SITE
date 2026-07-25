@@ -14,6 +14,7 @@ import {
   legalMoves,
   meteorName,
   obstacleCount,
+  orthogonallyAdjacent,
   playerName,
   samePos,
   type GameState,
@@ -469,7 +470,8 @@ function Game() {
       ),
     });
     playBoom();
-    const effectScale = mode === "lab" && aiSpeed <= 60 ? 0.08 : 1;
+    const effectScale =
+      mode !== "lab" ? 1 : aiSpeed <= 60 ? 0.08 : aiSpeed <= 240 ? 0.18 : 0.48;
     window.setTimeout(() => {
       setGame((current) => ({
         ...current,
@@ -591,15 +593,24 @@ function Game() {
     setHistory((h) => h.slice(0, -1));
   };
 
-  const validPlacement = (r: number, c: number) =>
+  const validBasePlacement = (r: number, c: number) =>
     canControl &&
     game.phase === "place" &&
     !(r === mid && c === mid) &&
     !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
     !game.meteors.some((m) => m.r === r && m.c === c) &&
-    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c) &&
-    (game.selected !== "obstacle" ||
-      !activeObstacles(game).some((obstacle) => distance(obstacle, { r, c }) <= 1));
+    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c);
+
+  const validObstaclePlacement = (r: number, c: number) =>
+    validBasePlacement(r, c) &&
+    !activeObstacles(game).some((obstacle) =>
+      orthogonallyAdjacent(obstacle, { r, c }),
+    );
+
+  const validPlacement = (r: number, c: number) =>
+    game.selected === "obstacle"
+      ? validObstaclePlacement(r, c)
+      : validBasePlacement(r, c);
 
   const isAiTurn =
     mode === "lab" ||
@@ -703,7 +714,7 @@ function Game() {
         const obstacleTargets: Pos[] = [];
         for (let r = 0; r < game.size; r += 1) {
           for (let c = 0; c < game.size; c += 1) {
-            if (validPlacement(r, c)) obstacleTargets.push({ r, c });
+            if (validObstaclePlacement(r, c)) obstacleTargets.push({ r, c });
           }
         }
         const ownProbe = game.probes[game.turn];
@@ -833,7 +844,10 @@ function Game() {
           </div>
           <div
             className="board"
-            style={{ gridTemplateColumns: `repeat(${game.size}, 1fr)` }}
+            style={{
+              gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${game.size}, minmax(0, 1fr))`,
+            }}
             aria-label={`${game.size}×${game.size} ゲーム盤`}
           >
             {Array.from({ length: game.size * game.size }, (_, index) => {

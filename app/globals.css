@@ -81,8 +81,8 @@ button { color: inherit; }
 .status-dot.blue { color:var(--blue); }
 .status-dot.green { color:var(--green); }
 .status-dot.yellow { color:var(--yellow); }
-.board { width: min(100%, 680px); aspect-ratio: 1; display:grid; border: 1px solid rgba(123,203,232,.45); background: rgba(4,12,19,.92); box-shadow: 0 0 70px rgba(12,100,128,.16), inset 0 0 30px rgba(18,88,114,.12); }
-.cell { min-width:0; min-height:0; position:relative; border:0; border-right:1px solid rgba(92,157,183,.18); border-bottom:1px solid rgba(92,157,183,.18); background:transparent; padding:0; display:grid; place-items:center; cursor:default; }
+.board { width: min(100%, 680px); aspect-ratio: 1; display:grid; overflow:hidden; border: 1px solid rgba(123,203,232,.45); background: rgba(4,12,19,.92); box-shadow: 0 0 70px rgba(12,100,128,.16), inset 0 0 30px rgba(18,88,114,.12); }
+.cell { min-width:0; min-height:0; overflow:visible; position:relative; border:0; border-right:1px solid rgba(92,157,183,.18); border-bottom:1px solid rgba(92,157,183,.18); background:transparent; padding:0; display:grid; place-items:center; cursor:default; }
 .cell:not(:disabled) { cursor:pointer; }
 .cell.legal { background:rgba(99,223,255,.07); }
 .cell.legal:hover { background:rgba(99,223,255,.2); }

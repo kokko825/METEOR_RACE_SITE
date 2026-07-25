@@ -63,6 +63,8 @@ export const nextPlayer = (state: GameState, player = state.turn): Player => {
 export const samePos = (a: Pos, b: Pos) => a.r === b.r && a.c === b.c;
 export const distance = (a: Pos, b: Pos) =>
   Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
+export const orthogonallyAdjacent = (a: Pos, b: Pos) =>
+  Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
 export const playerName = (player: Player) => player.toUpperCase();
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 
@@ -393,8 +395,8 @@ export function applyObstacle(state: GameState, target: Pos): GameState {
     samePos(target, { r: mid, c: mid }) ||
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||
-    activeObstacles(state).some((obstacle) => samePos(obstacle, target))
-    || activeObstacles(state).some((obstacle) => distance(obstacle, target) <= 1)
+    activeObstacles(state).some((obstacle) => samePos(obstacle, target)) ||
+    activeObstacles(state).some((obstacle) => orthogonallyAdjacent(obstacle, target))
   ) {
     throw new Error("そのマスにはお邪魔メテオを配置できません");
   }
