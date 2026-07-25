@@ -948,8 +948,9 @@ function Game() {
             const radius = meteorSize === "small" ? 1 : 2;
             let score = Math.random() * 3;
             game.meteors.forEach((m) => {
-              if (distance(m, p) <= radius) score += m.owner === me ? -1.5 : 5;
+              if (distance(m, p) <= radius) score += m.owner === me ? 6 : -4;
             });
+            const projectedByPlayer: Partial<Record<Player, Pos>> = {};
             ([
               [me, 1],
               ...opponents.map((player) => [player, -1] as [Player, number]),
@@ -963,9 +964,52 @@ function Game() {
                 r: Math.max(0, Math.min(game.size - 1, start.r + Math.sign(start.r - p.r) * steps)),
                 c: Math.max(0, Math.min(game.size - 1, start.c + Math.sign(start.c - p.c) * steps)),
               };
+              projectedByPlayer[player] = projected;
               const gain = coreDistance(start) - coreDistance(projected);
               score += polarity * gain * 9;
               if (samePos(projected, center)) score += polarity * 1000;
+            });
+            const ownProjected = projectedByPlayer[me] ?? game.probes[me];
+            const opponentsAtCore = opponents.filter((player) =>
+              samePos(projectedByPlayer[player] ?? game.probes[player], center),
+            ).length;
+            if (samePos(ownProjected, center) && opponentsAtCore) {
+              score += opponentsAtCore * 1000;
+            }
+
+            const futureMeteors = [
+              ...game.meteors.filter((meteor) => distance(meteor, p) > radius),
+              { ...p, owner: me, size: meteorSize, id: game.nextMeteorId },
+            ];
+            opponents.forEach((player) => {
+              const start = projectedByPlayer[player] ?? game.probes[player];
+              const futureMoves = [
+                { r: start.r - 1, c: start.c },
+                { r: start.r + 1, c: start.c },
+                { r: start.r, c: start.c - 1 },
+                { r: start.r, c: start.c + 1 },
+              ].filter(
+                (candidate) =>
+                  candidate.r >= 0 &&
+                  candidate.c >= 0 &&
+                  candidate.r < game.size &&
+                  candidate.c < game.size &&
+                  !futureMeteors.some((meteor) => samePos(meteor, candidate)) &&
+                  !activeObstacles(game).some((obstacle) => samePos(obstacle, candidate)) &&
+                  !activePlayers(game).some(
+                    (other) =>
+                      other !== player &&
+                      samePos(
+                        projectedByPlayer[other] ?? game.probes[other],
+                        candidate,
+                      ),
+                  ),
+              );
+              if (!futureMoves.length) return;
+              const bestFutureDistance = Math.min(...futureMoves.map(coreDistance));
+              const futureGain = coreDistance(start) - bestFutureDistance;
+              score -= futureGain * 2.5;
+              if (bestFutureDistance === 0) score -= 120;
             });
             options.push({ p, size: meteorSize, score });
           }
