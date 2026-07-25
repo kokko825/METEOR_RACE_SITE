@@ -1301,7 +1301,12 @@ function Game() {
       </section>
       {activePlayers(game).length > 2 && (
         <section className="extra-players" aria-label="追加プレイヤー">
-          {activePlayers(game).slice(2).map((player, index) => (
+          {PLAYER_ORDER.filter(
+            (player) =>
+              player !== "red" &&
+              player !== "blue" &&
+              activePlayers(game).includes(player),
+          ).map((player, index) => (
             <aside
               key={player}
               className={`player-card compact ${player}-card ${
