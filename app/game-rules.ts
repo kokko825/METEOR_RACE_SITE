@@ -73,6 +73,13 @@ export const viewToBoardPos = (view: Pos, size: number, perspectiveSlot: number)
   if (slot === 3) return { r: last - view.c, c: view.r };
   return view;
 };
+export const boardToViewDelta = (delta: Pos, perspectiveSlot: number): Pos => {
+  const slot = ((perspectiveSlot % 4) + 4) % 4;
+  if (slot === 1) return { r: -delta.r, c: -delta.c };
+  if (slot === 2) return { r: -delta.c, c: delta.r };
+  if (slot === 3) return { r: delta.c, c: -delta.r };
+  return delta;
+};
 export const playerName = (player: Player) => player.toUpperCase();
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 

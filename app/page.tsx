@@ -7,6 +7,7 @@ import {
   activePlayers,
   applyObstacle,
   applyPass,
+  boardToViewDelta,
   canPlaceObstacle,
   distance,
   finishTurn,
@@ -38,6 +39,14 @@ type BlastFx = {
 };
 
 type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
+
+function pushForPerspective(
+  push: { from: Pos; dr: number; dc: number },
+  perspectiveSlot: number,
+) {
+  const delta = boardToViewDelta({ r: push.dr, c: push.dc }, perspectiveSlot);
+  return { ...push, dr: delta.r, dc: delta.c };
+}
 
 type OnlineRoom = {
   code: string;
@@ -1037,7 +1046,10 @@ function Game() {
                       push={
                         blastFx?.pushed[probe] &&
                         samePos(pos, blastFx.pushed[probe].from)
-                          ? blastFx.pushed[probe]
+                          ? pushForPerspective(
+                              blastFx.pushed[probe],
+                              perspectiveSlot,
+                            )
                           : undefined
                       }
                     />

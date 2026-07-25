@@ -5,6 +5,7 @@ import {
   applyObstacle,
   applyPass,
   activePlayers,
+  boardToViewDelta,
   finishTurn,
   initialGameState,
   legalMoves,
@@ -29,6 +30,11 @@ for (let slot = 0; slot < 4; slot += 1) {
     `perspective ${slot} must place its home probe at the bottom`,
   );
 }
+
+assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 0), { r: -2, c: 1 });
+assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 1), { r: 2, c: -1 });
+assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 2), { r: -1, c: -2 });
+assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 3), { r: 1, c: 2 });
 
 function placementTargets(state: GameState): Array<{ target: Pos; size: MeteorSize }> {
   const mid = Math.floor(state.size / 2);
