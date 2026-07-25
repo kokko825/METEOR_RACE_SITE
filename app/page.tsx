@@ -827,19 +827,23 @@ function Game() {
               </strong>
             </div>
             {!online.code && (
-              <label className="online-count">
-                PLAYERS
-                <select
-                  value={onlinePlayerCount}
-                  onChange={(event) =>
-                    setOnlinePlayerCount(Number(event.target.value) as 2 | 3 | 4)
-                  }
-                >
-                  <option value={2}>2</option>
-                  <option value={3}>3（11×11）</option>
-                  <option value={4}>4（11×11）</option>
-                </select>
-              </label>
+              <div className="online-count" aria-label="オンライン対戦の人数">
+                <span>対戦人数を選択</span>
+                <div className="player-count-buttons">
+                  {([2, 3, 4] as const).map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      className={onlinePlayerCount === count ? "selected" : ""}
+                      aria-pressed={onlinePlayerCount === count}
+                      onClick={() => setOnlinePlayerCount(count)}
+                    >
+                      <b>{count}人対戦</b>
+                      <small>{count > 2 ? "11×11" : `${size}×${size}`}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             <input
               value={roomCodeInput}
