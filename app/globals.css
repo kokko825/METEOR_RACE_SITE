@@ -220,6 +220,13 @@ button { color: inherit; }
 .online-copy { min-width:250px; margin-right:auto; display:grid; gap:3px; }
 .online-copy span { color:#63dfff; font-size:9px; letter-spacing:.18em; }
 .online-copy strong { color:#c9e6ef; font-size:12px; font-weight:500; }
+.own-room-identity { --identity-color:#91a8b4; display:flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid color-mix(in srgb,var(--identity-color) 55%,transparent); background:color-mix(in srgb,var(--identity-color) 10%,#07131d); }
+.own-room-identity.red { --identity-color:var(--red); }
+.own-room-identity.blue { --identity-color:var(--blue); }
+.own-room-identity.green { --identity-color:var(--green); }
+.own-room-identity.yellow { --identity-color:var(--yellow); }
+.own-room-identity span { color:#8ca5b2; font-size:8px; letter-spacing:.16em; }
+.own-room-identity b,.own-room-identity i { color:var(--identity-color); font-size:11px; font-style:normal; letter-spacing:.08em; }
 .online-panel input,.online-panel button { min-height:37px; border:1px solid rgba(123,203,232,.32); background:#07131d; color:#c9e6ef; padding:8px 12px; }
 .online-panel input { width:135px; text-transform:uppercase; letter-spacing:.2em; font-weight:700; }
 .online-panel button { cursor:pointer; font-size:10px; letter-spacing:.1em; }

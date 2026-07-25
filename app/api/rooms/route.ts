@@ -160,6 +160,7 @@ export async function POST(request: Request) {
               botPlayers,
             ),
             roomMemberNames: [normalizeNickname(body.nickname, email)],
+            roomPreferredRoles: ["red"],
           }),
           "waiting",
           now,
@@ -219,6 +220,13 @@ export async function POST(request: Request) {
       .map((member, index) => ({ member, name: names[index] }))
       .filter((entry) => Boolean(entry.member) && entry.member !== email)
       .map((entry) => entry.name);
+    state.roomPreferredRoles = memberEmails
+      .map((member, index) => ({
+        member,
+        role: state.roomPreferredRoles?.[index] ?? seats[index] ?? null,
+      }))
+      .filter((entry) => Boolean(entry.member) && entry.member !== email)
+      .map((entry) => entry.role);
     await env.DB.prepare(
       `UPDATE game_rooms
        SET host_email = ?, guest_email = ?, player3_email = ?, player4_email = ?,
@@ -321,14 +329,22 @@ export async function POST(request: Request) {
     const players = humanCount + aiCount;
     const playerList: Player[] = PLAYER_ORDER.slice(0, players);
     const previousSeats = JSON.parse(room.seat_order_json) as Player[];
+    const preferredRoles: Array<Player | null> = [
+      ...(previous.roomPreferredRoles ?? previousSeats),
+    ];
     const humanSeats: Player[] = [];
     for (let index = 0; index < humanCount; index += 1) {
-      const previousSeat = previousSeats[index];
-      if (previousSeat && playerList.includes(previousSeat) && !humanSeats.includes(previousSeat)) {
-        humanSeats.push(previousSeat);
+      const preferredRole = preferredRoles[index] ?? previousSeats[index];
+      if (
+        preferredRole &&
+        playerList.includes(preferredRole) &&
+        !humanSeats.includes(preferredRole)
+      ) {
+        humanSeats.push(preferredRole);
       } else {
         humanSeats.push(playerList.find((player) => !humanSeats.includes(player))!);
       }
+      preferredRoles[index] = humanSeats[index];
     }
     const botPlayers = playerList.filter((player) => !humanSeats.includes(player));
     const requestedSize = body.size === 11 ? 11 : 9;
@@ -349,6 +365,11 @@ export async function POST(request: Request) {
     );
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
       previous.roomMemberNames ?? [];
+    (
+      nextState as typeof nextState & {
+        roomPreferredRoles: Array<Player | null>;
+      }
+    ).roomPreferredRoles = preferredRoles;
     const result = await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, seat_order_json = ?, max_players = 4, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
     )
@@ -394,6 +415,11 @@ export async function POST(request: Request) {
     );
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
       previous.roomMemberNames ?? [];
+    (
+      nextState as typeof nextState & {
+        roomPreferredRoles: Array<Player | null>;
+      }
+    ).roomPreferredRoles = previous.roomPreferredRoles ?? JSON.parse(room.seat_order_json);
     await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
     )

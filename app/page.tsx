@@ -1131,6 +1131,10 @@ function Game() {
       : (game.botPlayers ?? []).includes(game.turn)
         ? `${playerName(game.turn)} AI`
         : playerName(game.turn);
+  const ownMemberIndex =
+    online.role ? online.memberRoles.indexOf(online.role) : -1;
+  const ownDisplayName =
+    ownMemberIndex >= 0 ? online.memberNames[ownMemberIndex] : nickname.trim();
 
   return (
     <main className="shell">
@@ -1501,6 +1505,13 @@ function Game() {
                   : "ルームを作るか、6文字のコードで参加"}
               </strong>
             </div>
+            {online.code && (
+              <div className={`own-room-identity ${online.role ?? "spectator"}`}>
+                <span>YOU</span>
+                <b>{ownDisplayName || "PLAYER"}</b>
+                <i>{online.role ? playerName(online.role) : "WATCH"}</i>
+              </div>
+            )}
             {online.code && online.isHost && (
               <div className="online-count" aria-label="オンライン対戦の人数">
                 <span>次のゲームに参加する人間</span>
