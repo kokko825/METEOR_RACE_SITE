@@ -1135,7 +1135,9 @@ function Game() {
             <p>BLAST YOUR WAY TO THE CORE</p>
           </div>
         </div>
-        <div className="round">ROUND {Math.floor(game.turnCount / 2) + 1}</div>
+        <div className="round">
+          ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
+        </div>
       </header>
 
       <section className="game-layout">
@@ -1147,9 +1149,11 @@ function Game() {
         </aside>
 
         <section className="arena">
-          {activePlayers(game).length >= 3 && game.turnCount === 15 && (
+          {activePlayers(game).length >= 3 &&
+            game.turnCount === activePlayers(game).length * 14 && (
             <div className="supply-banner" role="status">
-              METEOR SUPPLY <b>大メテオ＋1</b>
+              <span className="supply-meteor" aria-hidden="true">✦</span>
+              METEOR SUPPLY <b>全員に大メテオ＋1</b>
             </div>
           )}
           <div className={`turn-callout ${game.turn}`} aria-live="polite">

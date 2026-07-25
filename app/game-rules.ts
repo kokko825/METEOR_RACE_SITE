@@ -196,7 +196,8 @@ function stateKey(state: GameState, nextTurn: Player) {
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
   const nextTurn = nextPlayer(draft);
   const nextCount = draft.turnCount + 1;
-  const supplyLargeMeteor = activePlayers(draft).length >= 3 && nextCount === 15;
+  const playerCount = activePlayers(draft).length;
+  const supplyLargeMeteor = playerCount >= 3 && nextCount === playerCount * 14;
   const inventory = supplyLargeMeteor
     ? (Object.fromEntries(
         PLAYER_ORDER.map((player) => [

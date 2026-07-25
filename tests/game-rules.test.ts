@@ -67,7 +67,7 @@ assert.deepEqual(twoPlayerEdges.probes.blue, { r: 0, c: 5 });
 
 {
   const state = initialGameState(11, "red", 3);
-  state.turnCount = 14;
+  state.turnCount = activePlayers(state).length * 14 - 1;
   const before = Object.fromEntries(
     activePlayers(state).map((player) => [player, state.inventory[player].large]),
   ) as Record<Player, number>;

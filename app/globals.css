@@ -75,8 +75,12 @@ button { color: inherit; }
 .mini-meteor.large { font-size:20px; }
 
 .arena { min-width: 0; }
-.supply-banner { margin-bottom:8px; padding:9px 12px; border:1px solid rgba(255,211,99,.65); background:linear-gradient(90deg,rgba(255,183,35,.18),rgba(8,24,34,.92)); color:#ffd873; text-align:center; font-size:10px; letter-spacing:.18em; box-shadow:0 0 20px rgba(255,190,48,.2); }
+.supply-banner { position:relative; overflow:hidden; margin-bottom:8px; padding:9px 12px; border:1px solid rgba(255,211,99,.65); background:linear-gradient(90deg,rgba(255,183,35,.18),rgba(8,24,34,.92)); color:#ffd873; text-align:center; font-size:10px; letter-spacing:.18em; box-shadow:0 0 20px rgba(255,190,48,.2); animation:supply-pulse 1.4s ease-out both; }
 .supply-banner b { margin-left:8px; color:#fff1b5; font-size:13px; }
+.supply-meteor { display:inline-block; margin-right:9px; color:#fff3a8; text-shadow:0 0 12px #ffba32,0 0 24px #ff7a18; animation:supply-drop .8s cubic-bezier(.2,.85,.35,1.15) both; }
+@keyframes supply-drop { 0% { opacity:0; transform:translateY(-24px) scale(.45) rotate(-35deg); } 65% { opacity:1; transform:translateY(2px) scale(1.3) rotate(8deg); } 100% { opacity:1; transform:translateY(0) scale(1) rotate(0); } }
+@keyframes supply-pulse { 0% { box-shadow:0 0 0 rgba(255,190,48,0); filter:brightness(1); } 38% { box-shadow:0 0 32px rgba(255,190,48,.65); filter:brightness(1.35); } 100% { box-shadow:0 0 20px rgba(255,190,48,.2); filter:brightness(1); } }
+@media (prefers-reduced-motion: reduce) { .supply-banner,.supply-meteor { animation:none; } }
 .turn-callout { --turn-accent:var(--red); margin-bottom:8px; min-height:44px; display:flex; align-items:center; gap:10px; padding:8px 13px; border:2px solid var(--turn-accent); background:color-mix(in srgb,var(--turn-accent) 12%,#06111a); box-shadow:0 0 20px color-mix(in srgb,var(--turn-accent) 28%,transparent); transition:border-color .2s,box-shadow .2s,background .2s; }
 .turn-callout.red { --turn-accent:var(--red); }
 .turn-callout.blue { --turn-accent:var(--blue); }
