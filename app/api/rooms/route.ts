@@ -282,7 +282,7 @@ export async function POST(request: Request) {
       size,
       first,
       players,
-      Boolean(body.obstaclesEnabled),
+      players === 2 && size === 9 ? false : Boolean(body.obstaclesEnabled),
       nextOffset,
       botPlayers,
     );

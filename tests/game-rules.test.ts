@@ -6,6 +6,7 @@ import {
   applyPass,
   activePlayers,
   boardToViewDelta,
+  coreWinner,
   finishTurn,
   initialGameState,
   legalMoves,
@@ -47,6 +48,12 @@ assert.deepEqual(fourPlayerInset.probes.yellow, { r: 5, c: 9 });
 const twoPlayerEdges = initialGameState(11, "red", 2);
 assert.deepEqual(twoPlayerEdges.probes.red, { r: 10, c: 5 });
 assert.deepEqual(twoPlayerEdges.probes.blue, { r: 0, c: 5 });
+
+{
+  const state = initialGameState(11, "green", 4);
+  assert.equal(coreWinner(state, ["red", "green"]), "green");
+  assert.equal(coreWinner(state, ["yellow", "blue"]), "yellow");
+}
 
 function placementTargets(state: GameState): Array<{ target: Pos; size: MeteorSize }> {
   const mid = Math.floor(state.size / 2);

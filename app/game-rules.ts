@@ -83,6 +83,17 @@ export const boardToViewDelta = (delta: Pos, perspectiveSlot: number): Pos => {
 export const playerName = (player: Player) => player.toUpperCase();
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 
+export function coreWinner(state: GameState, reached: Player[]): Player {
+  if (reached.includes(state.turn)) return state.turn;
+  const players = activePlayers(state);
+  const turnIndex = players.indexOf(state.turn);
+  for (let offset = 1; offset <= players.length; offset += 1) {
+    const candidate = players[(turnIndex + offset) % players.length];
+    if (reached.includes(candidate)) return candidate;
+  }
+  return reached[0];
+}
+
 export function initialGameState(
   size = 9,
   first: Player = "red",
@@ -372,7 +383,7 @@ export function applyMeteor(
 
   let next: GameState;
   if (reached.length) {
-    const winner = reached.length === 1 ? reached[0] : "draw";
+    const winner = coreWinner(state, reached) as Player | "draw";
     next = {
       ...draft,
       phase: "over",

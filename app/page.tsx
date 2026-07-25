@@ -9,6 +9,7 @@ import {
   applyPass,
   boardToViewDelta,
   canPlaceObstacle,
+  coreWinner,
   distance,
   finishTurn,
   initialGameState as initialState,
@@ -119,6 +120,7 @@ function Game() {
       : setupMode === "online"
         ? onlinePlayerCount + onlineAiCount
         : 2 + localAiCount;
+  const competitiveNine = setupPlayerCount === 2 && size === 9;
   const setupPlayers = PLAYER_ORDER.slice(0, setupPlayerCount);
   const roomSettingsLocked =
     setupMode === "online" && Boolean(online.code) && !online.isHost;
@@ -128,6 +130,10 @@ function Game() {
         ? PLAYER_ORDER.slice(0, onlinePlayerCount + onlineAiCount)
         : activePlayers(game)
       : setupPlayers;
+
+  useEffect(() => {
+    if (competitiveNine && obstaclesEnabled) setObstaclesEnabled(false);
+  }, [competitiveNine, obstaclesEnabled]);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/rooms", {
@@ -504,7 +510,7 @@ function Game() {
 
     let resolved: GameState;
     if (reached.length) {
-      const winner = reached.length === 1 ? reached[0] : "draw";
+      const winner = coreWinner(game, reached) as Player | "draw";
       resolved = {
         ...draft,
         phase: "over",
@@ -600,7 +606,10 @@ function Game() {
           version: online.version,
           size,
           first,
-          obstaclesEnabled,
+          obstaclesEnabled:
+            onlinePlayerCount + onlineAiCount === 2 && size === 9
+              ? false
+              : obstaclesEnabled,
           humanCount: onlinePlayerCount,
           aiCount: onlineAiCount,
         });
@@ -645,12 +654,15 @@ function Game() {
           ? 2 + localAiCount
           : onlinePlayerCount + onlineAiCount;
     const nextSize = playerCount > 2 && size === 9 ? 11 : size;
+    const nextObstaclesEnabled =
+      playerCount === 2 && nextSize === 9 ? false : obstaclesEnabled;
     const nextPlayers = PLAYER_ORDER.slice(0, playerCount);
     const nextFirst = nextPlayers.includes(first) ? first : nextPlayers[0];
     setSize(nextSize);
     setFirst(nextFirst);
     setActiveFirst(nextFirst);
     setMode(setupMode);
+    setObstaclesEnabled(nextObstaclesEnabled);
     setNeedsNewGame(false);
     recordedOutcome.current = "";
     if (setupMode !== "online") {
@@ -667,7 +679,7 @@ function Game() {
           nextSize,
           nextFirst,
           playerCount,
-          obstaclesEnabled,
+          nextObstaclesEnabled,
           layoutOffset,
           botPlayers,
         ),
@@ -1303,9 +1315,13 @@ function Game() {
           </label>
           <button
             type="button"
-            disabled={roomSettingsLocked}
-            className={obstaclesEnabled ? "setting-toggle selected" : "setting-toggle"}
-            aria-pressed={obstaclesEnabled}
+            disabled={roomSettingsLocked || competitiveNine}
+            className={
+              !competitiveNine && obstaclesEnabled
+                ? "setting-toggle selected"
+                : "setting-toggle"
+            }
+            aria-pressed={!competitiveNine && obstaclesEnabled}
             onClick={() => {
               setObstaclesEnabled((value) => !value);
               setNeedsNewGame(true);
