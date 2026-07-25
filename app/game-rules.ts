@@ -204,11 +204,32 @@ function stateKey(state: GameState, nextTurn: Player) {
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
   const nextTurn = nextPlayer(draft);
   const nextCount = draft.turnCount + 1;
+  const supplyLargeMeteor = activePlayers(draft).length >= 3 && nextCount === 15;
+  const inventory = supplyLargeMeteor
+    ? (Object.fromEntries(
+        PLAYER_ORDER.map((player) => [
+          player,
+          {
+            ...draft.inventory[player],
+            large:
+              draft.inventory[player].large +
+              (activePlayers(draft).includes(player) ? 1 : 0),
+          },
+        ]),
+      ) as Inventory)
+    : draft.inventory;
+  const turnDraft = { ...draft, inventory };
+  const turnLogs = [
+    ...(extraLog ? [extraLog] : []),
+    ...(supplyLargeMeteor
+      ? ["METEOR SUPPLY：全プレイヤーに大メテオ＋1"]
+      : []),
+  ];
   const playerTurns = {
     ...(draft.playerTurns ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
     [draft.turn]: (draft.playerTurns?.[draft.turn] ?? 0) + 1,
   };
-  const key = stateKey(draft, nextTurn);
+  const key = stateKey(turnDraft, nextTurn);
   const repetitions = {
     ...draft.repetitions,
     [key]: (draft.repetitions[key] ?? 0) + 1,
@@ -218,7 +239,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
   if (drawByRepeat || drawByLimit) {
     const reason = drawByRepeat ? "同一局面が3回繰り返されました" : "60ラウンドが終了しました";
     return {
-      ...draft,
+      ...turnDraft,
       phase: "over",
       winner: "draw",
       message: `引き分け — ${reason}`,
@@ -229,22 +250,22 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     };
   }
   return {
-    ...draft,
+    ...turnDraft,
     turn: nextTurn,
     phase: "move",
     turnCount: nextCount,
     playerTurns,
     repetitions,
     selected:
-      draft.inventory[nextTurn].small > 0
+      inventory[nextTurn].small > 0
         ? "small"
-        : draft.inventory[nextTurn].large > 0
+        : inventory[nextTurn].large > 0
           ? "large"
           : canPlaceObstacle(draft, nextTurn)
             ? "obstacle"
             : "small",
     message: `${playerName(nextTurn)}：探査機を1マス移動`,
-    log: [...draft.log, ...(extraLog ? [extraLog] : [])],
+    log: [...draft.log, ...turnLogs],
   };
 }
 

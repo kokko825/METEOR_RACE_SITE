@@ -1135,6 +1135,11 @@ function Game() {
         </aside>
 
         <section className="arena">
+          {activePlayers(game).length >= 3 && game.turnCount === 15 && (
+            <div className="supply-banner" role="status">
+              METEOR SUPPLY <b>大メテオ＋1</b>
+            </div>
+          )}
           <div className={`turn-callout ${game.turn}`} aria-live="polite">
             <span>CURRENT TURN</span>
             <b>{turnDisplayName}</b>
