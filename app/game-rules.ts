@@ -196,28 +196,9 @@ function stateKey(state: GameState, nextTurn: Player) {
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
   const nextTurn = nextPlayer(draft);
   const nextCount = draft.turnCount + 1;
-  const playerCount = activePlayers(draft).length;
-  const supplyLargeMeteor = playerCount >= 3 && nextCount === playerCount * 14;
-  const inventory = supplyLargeMeteor
-    ? (Object.fromEntries(
-        PLAYER_ORDER.map((player) => [
-          player,
-          {
-            ...draft.inventory[player],
-            large:
-              draft.inventory[player].large +
-              (activePlayers(draft).includes(player) ? 1 : 0),
-          },
-        ]),
-      ) as Inventory)
-    : draft.inventory;
-  const turnDraft = { ...draft, inventory };
-  const turnLogs = [
-    ...(extraLog ? [extraLog] : []),
-    ...(supplyLargeMeteor
-      ? ["METEOR SUPPLY：全プレイヤーに大メテオ＋1"]
-      : []),
-  ];
+  const inventory = draft.inventory;
+  const turnDraft = draft;
+  const turnLogs = extraLog ? [extraLog] : [];
   const playerTurns = {
     ...(draft.playerTurns ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
     [draft.turn]: (draft.playerTurns?.[draft.turn] ?? 0) + 1,

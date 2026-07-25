@@ -71,11 +71,10 @@ assert.deepEqual(twoPlayerEdges.probes.blue, { r: 0, c: 5 });
   const before = Object.fromEntries(
     activePlayers(state).map((player) => [player, state.inventory[player].large]),
   ) as Record<Player, number>;
-  const supplied = finishTurn(state);
+  const continued = finishTurn(state);
   activePlayers(state).forEach((player) => {
-    assert.equal(supplied.inventory[player].large, before[player] + 1);
+    assert.equal(continued.inventory[player].large, before[player]);
   });
-  assert.equal(supplied.log.at(-1), "METEOR SUPPLY：全プレイヤーに大メテオ＋1");
 }
 
 {
