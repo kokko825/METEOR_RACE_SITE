@@ -1005,6 +1005,11 @@ function Game() {
                   {probe && (
                     <ProbeToken
                       player={probe}
+                      rotation={
+                        viewR === mid && viewC === mid
+                          ? 0
+                          : Math.atan2(mid - viewC, viewR - mid) * (180 / Math.PI)
+                      }
                       push={
                         blastFx?.pushed[probe] &&
                         samePos(pos, blastFx.pushed[probe].from)
@@ -1394,9 +1399,11 @@ function ProbeIcon({ color }: { color: Player }) {
 
 function ProbeToken({
   player,
+  rotation,
   push,
 }: {
   player: Player;
+  rotation: number;
   push?: { from: Pos; dr: number; dc: number };
 }) {
   return (
@@ -1411,7 +1418,10 @@ function ProbeToken({
           : undefined
       }
     >
-      <span className={`probe-token ${player}`}>
+      <span
+        className={`probe-token ${player}`}
+        style={{ "--probe-rotation": `${rotation}deg` } as React.CSSProperties}
+      >
         <i>▲</i>
       </span>
     </span>
