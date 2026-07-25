@@ -985,7 +985,26 @@ function Game() {
             const radius = meteorSize === "small" ? 1 : 2;
             let score = Math.random() * 3;
             game.meteors.forEach((m) => {
-              if (distance(m, p) <= radius) score += m.owner === me ? 6 : -4;
+              if (distance(m, p) > radius) return;
+              if (m.owner === me) {
+                score += 6;
+                return;
+              }
+              const enemyInventory = game.inventory[m.owner];
+              const enemyMeteorTotal =
+                enemyInventory.small + enemyInventory.large;
+              const enemyCoreDistance = coreDistance(game.probes[m.owner]);
+              let returnPenalty = 4;
+              if (enemyInventory[m.size] === 0) returnPenalty += 5;
+              if (enemyMeteorTotal === 0) {
+                returnPenalty += 14;
+                if (enemyCoreDistance <= 3) returnPenalty += 30;
+                else if (enemyCoreDistance <= 5) returnPenalty += 12;
+              }
+              if (m.size === "large" && enemyCoreDistance <= 4) {
+                returnPenalty += 10;
+              }
+              score -= returnPenalty;
             });
             const projectedByPlayer: Partial<Record<Player, Pos>> = {};
             ([
