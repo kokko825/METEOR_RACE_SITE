@@ -98,11 +98,12 @@ export function initialGameState(
   if (![9, 11].includes(size)) size = 9;
   if (count > 2 && size === 9) size = 11;
   const mid = Math.floor(size / 2);
+  const inset = count > 2 ? 1 : 0;
   const slots = [
-    { r: size - 1, c: mid },
-    { r: 0, c: mid },
-    { r: mid, c: 0 },
-    { r: mid, c: size - 1 },
+    { r: size - 1 - inset, c: mid },
+    { r: inset, c: mid },
+    { r: mid, c: inset },
+    { r: mid, c: size - 1 - inset },
   ];
   const offset = ((layoutOffset % 4) + 4) % 4;
   return {

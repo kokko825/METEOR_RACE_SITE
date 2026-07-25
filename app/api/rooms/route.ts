@@ -315,7 +315,7 @@ export async function POST(request: Request) {
         ...nextState,
         onlineEffect: {
           ...effect,
-          owner: role,
+          owner: state.turn,
           version: nextVersion,
         },
       };

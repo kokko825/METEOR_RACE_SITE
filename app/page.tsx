@@ -806,7 +806,14 @@ function Game() {
   }, [mode, aiRunning, game, aiSpeed, stats.games]);
 
   useEffect(() => {
-    if (!isAiTurn || !aiRunning || needsNewGame || isAnimating || game.phase === "over") return;
+    if (
+      !isAiTurn ||
+      !aiRunning ||
+      !canControl ||
+      needsNewGame ||
+      isAnimating ||
+      game.phase === "over"
+    ) return;
     const timer = window.setTimeout(() => {
       if (game.phase === "move") {
         if (!moves.length) {
@@ -921,7 +928,18 @@ function Game() {
       }
     }, aiSpeed);
     return () => window.clearTimeout(timer);
-  }, [game, mode, aiRunning, aiSpeed, isAiTurn, needsNewGame, isAnimating, moves, mid]);
+  }, [
+    game,
+    mode,
+    aiRunning,
+    aiSpeed,
+    isAiTurn,
+    canControl,
+    needsNewGame,
+    isAnimating,
+    moves,
+    mid,
+  ]);
 
   const winRates = Object.fromEntries(
     PLAYER_ORDER.map((player) => [

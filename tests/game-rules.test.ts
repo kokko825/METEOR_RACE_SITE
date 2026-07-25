@@ -36,6 +36,18 @@ assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 1), { r: 2, c: -1 });
 assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 2), { r: -1, c: -2 });
 assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 3), { r: 1, c: 2 });
 
+const threePlayerInset = initialGameState(11, "red", 3);
+assert.deepEqual(threePlayerInset.probes.red, { r: 9, c: 5 });
+assert.deepEqual(threePlayerInset.probes.blue, { r: 1, c: 5 });
+assert.deepEqual(threePlayerInset.probes.green, { r: 5, c: 1 });
+
+const fourPlayerInset = initialGameState(11, "red", 4);
+assert.deepEqual(fourPlayerInset.probes.yellow, { r: 5, c: 9 });
+
+const twoPlayerEdges = initialGameState(11, "red", 2);
+assert.deepEqual(twoPlayerEdges.probes.red, { r: 10, c: 5 });
+assert.deepEqual(twoPlayerEdges.probes.blue, { r: 0, c: 5 });
+
 function placementTargets(state: GameState): Array<{ target: Pos; size: MeteorSize }> {
   const mid = Math.floor(state.size / 2);
   const targets: Array<{ target: Pos; size: MeteorSize }> = [];
@@ -141,10 +153,10 @@ for (const first of ["red", "blue"] as Player[]) {
   const state = initialGameState(9, "green", 4);
   assert.equal(state.size, 11, "3・4人対戦は11×11に固定される");
   assert.deepEqual(state.players, ["red", "blue", "green", "yellow"]);
-  assert.deepEqual(state.probes.red, { r: 10, c: 5 });
-  assert.deepEqual(state.probes.blue, { r: 0, c: 5 });
-  assert.deepEqual(state.probes.green, { r: 5, c: 0 });
-  assert.deepEqual(state.probes.yellow, { r: 5, c: 10 });
+  assert.deepEqual(state.probes.red, { r: 9, c: 5 });
+  assert.deepEqual(state.probes.blue, { r: 1, c: 5 });
+  assert.deepEqual(state.probes.green, { r: 5, c: 1 });
+  assert.deepEqual(state.probes.yellow, { r: 5, c: 9 });
   assert.equal(finishTurn(state).turn, "yellow", "4人対戦の手番が次の色へ進む");
 }
 
@@ -159,7 +171,7 @@ for (const first of ["red", "blue"] as Player[]) {
   const state = initialGameState(13, "yellow", 4);
   assert.equal(state.size, 11, "廃止された13×13は11×11へ変換される");
   assert.equal(state.turn, "yellow", "4色すべてを先攻に選択できる");
-  assert.deepEqual(state.probes.yellow, { r: 5, c: 10 });
+  assert.deepEqual(state.probes.yellow, { r: 5, c: 9 });
 }
 
 {
