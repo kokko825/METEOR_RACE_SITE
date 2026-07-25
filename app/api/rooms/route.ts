@@ -40,6 +40,11 @@ function emailFrom(request: Request) {
   return request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase() ?? null;
 }
 
+function displayNameFromEmail(email: string) {
+  const local = email.split("@")[0] ?? "PLAYER";
+  return local.replace(/[._-]+/g, " ").trim().slice(0, 24) || "PLAYER";
+}
+
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -74,6 +79,9 @@ function roomPayload(room: RoomRow, email: string) {
     version: room.version,
     maxPlayers: 4,
     joinedPlayers,
+    memberNames: memberEmails
+      .filter((member): member is string => Boolean(member))
+      .map(displayNameFromEmail),
     isHost: email === room.host_email,
     state,
   };
@@ -156,6 +164,57 @@ export async function POST(request: Request) {
   if (!code) return json({ error: "ルームコードが必要です" }, 400);
   let room = await roomByCode(code);
   if (!room) return json({ error: "ルームが見つかりません" }, 404);
+
+  if (body.action === "leave") {
+    const memberEmails = [
+      room.host_email,
+      room.guest_email,
+      room.player3_email,
+      room.player4_email,
+    ];
+    const seats = JSON.parse(room.seat_order_json) as Player[];
+    const leavingIndex = memberEmails.indexOf(email);
+    if (leavingIndex < 0) return json({ left: true });
+    const leavingRole = seats[leavingIndex] ?? null;
+    const remaining = memberEmails
+      .map((member, index) => ({ member, seat: seats[index] ?? null }))
+      .filter((entry): entry is { member: string; seat: Player | null } =>
+        Boolean(entry.member) && entry.member !== email,
+      );
+    if (!remaining.length) {
+      await env.DB.prepare("DELETE FROM game_rooms WHERE code = ?").bind(code).run();
+      return json({ left: true });
+    }
+    const state = JSON.parse(room.state_json);
+    if (
+      leavingRole &&
+      room.status === "playing" &&
+      !(state.botPlayers ?? []).includes(leavingRole)
+    ) {
+      state.botPlayers = [...(state.botPlayers ?? []), leavingRole];
+    }
+    const nextSeats = remaining
+      .map((entry) => entry.seat)
+      .filter((seat): seat is Player => Boolean(seat));
+    await env.DB.prepare(
+      `UPDATE game_rooms
+       SET host_email = ?, guest_email = ?, player3_email = ?, player4_email = ?,
+           seat_order_json = ?, state_json = ?, version = version + 1, updated_at = ?
+       WHERE code = ?`,
+    )
+      .bind(
+        remaining[0].member,
+        remaining[1]?.member ?? null,
+        remaining[2]?.member ?? null,
+        remaining[3]?.member ?? null,
+        JSON.stringify(nextSeats),
+        JSON.stringify(state),
+        Date.now(),
+        code,
+      )
+      .run();
+    return json({ left: true });
+  }
 
   if (body.action === "join") {
     for (let attempt = 0; attempt < 4; attempt += 1) {

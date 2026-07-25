@@ -218,6 +218,11 @@ button { color: inherit; }
 .online-panel code { color:var(--gold); border:1px solid rgba(255,211,99,.3); padding:8px 11px; letter-spacing:.22em; font-size:14px; }
 .spectator-badge { color:#9ff1ff; border:1px solid rgba(127,232,255,.42); background:rgba(69,191,232,.08); padding:9px 12px; font-size:9px; letter-spacing:.16em; }
 .room-leader-badge { color:#ffe29a; border:1px solid rgba(255,211,99,.45); background:rgba(255,211,99,.08); padding:9px 12px; font-size:9px; letter-spacing:.16em; }
+.room-members { flex:1 1 100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:#8aa7b6; font-size:9px; letter-spacing:.1em; }
+.room-members span { color:#63dfff; }
+.room-members b { padding:6px 9px; border:1px solid rgba(123,203,232,.24); background:rgba(10,28,39,.8); color:#d5edf4; font-weight:500; }
+.online-panel .leave-room-button { margin-left:auto; border-color:rgba(255,95,83,.5); color:#ff9b91; }
+.online-panel .leave-room-button:hover { background:rgba(255,63,55,.12); }
 .online-panel small { width:100%; color:#ff8f83; font-size:10px; }
 .online-count { flex:1 1 100%; display:flex; align-items:center; gap:12px; color:#9db5c3; font-size:10px; letter-spacing:.14em; }
 .player-count-buttons { display:grid; grid-template-columns:repeat(3,minmax(92px,1fr)); gap:8px; flex:1; }

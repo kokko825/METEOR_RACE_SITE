@@ -55,6 +55,7 @@ type OnlineRoom = {
   version: number;
   maxPlayers: number;
   joinedPlayers: number;
+  memberNames: string[];
   error: string;
   pending: boolean;
   isHost: boolean;
@@ -87,6 +88,7 @@ function Game() {
     version: 0,
     maxPlayers: 2,
     joinedPlayers: 0,
+    memberNames: [],
     error: "",
     pending: false,
     isHost: false,
@@ -159,6 +161,7 @@ function Game() {
         version: data.version,
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
+        memberNames: data.memberNames ?? [],
         error: "",
         pending: false,
         isHost: Boolean(data.isHost),
@@ -194,6 +197,7 @@ function Game() {
         version: data.version,
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
+        memberNames: data.memberNames ?? [],
         error: "",
         pending: false,
         isHost: Boolean(data.isHost),
@@ -235,6 +239,7 @@ function Game() {
         version: data.version,
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
+        memberNames: data.memberNames ?? current.memberNames,
         pending: false,
         error: "",
       }));
@@ -248,6 +253,30 @@ function Game() {
         pending: false,
         error: error instanceof Error ? error.message : "盤面を同期できませんでした",
       }));
+    }
+  };
+
+  const leaveOnlineRoom = async () => {
+    if (!online.code) return;
+    const code = online.code;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      await roomRequest({ action: "leave", code });
+    } finally {
+      setOnline({
+        code: "",
+        role: null,
+        status: "idle",
+        version: 0,
+        maxPlayers: 2,
+        joinedPlayers: 0,
+        memberNames: [],
+        error: "",
+        pending: false,
+        isHost: false,
+      });
+      setRoomCodeInput("");
+      setNeedsNewGame(true);
     }
   };
 
@@ -266,6 +295,7 @@ function Game() {
         version: data.version,
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
+        memberNames: data.memberNames ?? current.memberNames,
         pending: false,
         error: "",
       }));
@@ -590,6 +620,7 @@ function Game() {
           role: data.role,
           maxPlayers: data.maxPlayers,
           joinedPlayers: data.joinedPlayers,
+          memberNames: data.memberNames ?? current.memberNames,
           isHost: Boolean(data.isHost),
           pending: false,
           error: "",
@@ -622,7 +653,8 @@ function Game() {
     setNeedsNewGame(false);
     recordedOutcome.current = "";
     if (setupMode !== "online") {
-      const layoutOffset = playerCount === 3 ? Math.floor(Math.random() * 4) : 0;
+      const layoutOffset =
+        setupMode !== "cpu" && playerCount === 3 ? Math.floor(Math.random() * 4) : 0;
       const botPlayers =
         setupMode === "lab"
           ? nextPlayers
@@ -744,6 +776,7 @@ function Game() {
             role: data.role,
             maxPlayers: data.maxPlayers,
             joinedPlayers: data.joinedPlayers,
+            memberNames: data.memberNames ?? current.memberNames,
             isHost: Boolean(data.isHost),
             error: "",
           }));
@@ -765,6 +798,22 @@ function Game() {
     }, 1200);
     return () => window.clearInterval(poll);
   }, [mode, online.code, online.version, online.pending, isAnimating]);
+
+  useEffect(() => {
+    if (mode !== "online" || !online.code) return;
+    const code = online.code;
+    const leaveOnClose = (event: PageTransitionEvent) => {
+      if (event.persisted) return;
+      navigator.sendBeacon(
+        "/api/rooms",
+        new Blob([JSON.stringify({ action: "leave", code })], {
+          type: "application/json",
+        }),
+      );
+    };
+    window.addEventListener("pagehide", leaveOnClose);
+    return () => window.removeEventListener("pagehide", leaveOnClose);
+  }, [mode, online.code]);
 
   useEffect(() => {
     if (game.phase !== "over" || !game.winner) return;
@@ -1387,8 +1436,28 @@ function Game() {
               </button>
             )}
             {online.code && <code>{online.code}</code>}
+            {online.code && (
+              <div className="room-members" aria-label="ルームメンバー">
+                <span>MEMBERS</span>
+                {online.memberNames.map((name, index) => (
+                  <b key={`${name}-${index}`}>
+                    {name}{index === 0 ? " / LEADER" : ""}
+                  </b>
+                ))}
+              </div>
+            )}
             {online.code && online.isHost && (
               <span className="room-leader-badge">ROOM LEADER</span>
+            )}
+            {online.code && (
+              <button
+                type="button"
+                className="leave-room-button"
+                onClick={() => void leaveOnlineRoom()}
+                disabled={online.pending}
+              >
+                ルーム退出
+              </button>
             )}
             <a href="/signin-with-chatgpt?return_to=%2F">SIGN IN WITH CHATGPT</a>
             {online.error && <small>{online.error}</small>}
