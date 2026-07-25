@@ -60,6 +60,16 @@ function codeValue() {
   return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
 }
 
+function shuffledPlayers(players: Player[]) {
+  const shuffled = [...players];
+  const random = crypto.getRandomValues(new Uint32Array(Math.max(1, shuffled.length)));
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const target = random[index] % (index + 1);
+    [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
+  }
+  return shuffled;
+}
+
 async function roomByCode(code: string) {
   return env.DB.prepare(
     "SELECT code, host_email, guest_email, player3_email, player4_email, max_players, seat_order_json, state_json, version, status FROM game_rooms WHERE code = ?",
@@ -349,10 +359,8 @@ export async function POST(request: Request) {
     const botPlayers = playerList.filter((player) => !humanSeats.includes(player));
     const requestedSize = body.size === 11 ? 11 : 9;
     const size = players > 2 && requestedSize === 9 ? 11 : requestedSize;
-    const first =
-      body.first && playerList.includes(body.first)
-        ? body.first
-        : previous.startingPlayer ?? playerList[0];
+    const turnOrder = shuffledPlayers(playerList);
+    const first = turnOrder[0];
     const nextOffset =
       players === 3 ? ((previous.layoutOffset ?? 0) + 1) % 4 : 0;
     const nextState = initialGameState(
@@ -363,6 +371,7 @@ export async function POST(request: Request) {
       nextOffset,
       botPlayers,
     );
+    nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
       previous.roomMemberNames ?? [];
     (
@@ -398,11 +407,9 @@ export async function POST(request: Request) {
     if (room.status !== "finished") return json({ error: "対局終了後に再戦できます" }, 409);
     const previous = JSON.parse(room.state_json);
     const players = previous.players?.length ?? room.max_players;
-    const playerList = previous.players ?? ["red", "blue"];
-    const previousFirst = previous.startingPlayer ?? playerList[0];
-    const firstIndex = Math.max(0, playerList.indexOf(previousFirst));
-    const nextFirst =
-      players === 2 ? playerList[(firstIndex + 1) % players] : previousFirst;
+    const playerList = PLAYER_ORDER.slice(0, players);
+    const turnOrder = shuffledPlayers(playerList);
+    const nextFirst = turnOrder[0];
     const nextOffset =
       players === 3 ? ((previous.layoutOffset ?? 0) + 1) % 4 : 0;
     const nextState = initialGameState(
@@ -413,6 +420,7 @@ export async function POST(request: Request) {
       nextOffset,
       previous.botPlayers ?? [],
     );
+    nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
       previous.roomMemberNames ?? [];
     (

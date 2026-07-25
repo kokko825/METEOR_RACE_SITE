@@ -1402,18 +1402,24 @@ function Game() {
           </label>
           <label>
             FIRST
-            <select
-              value={first}
-              disabled={roomSettingsLocked}
-              onChange={(e) => {
-                setFirst(e.target.value as Player);
-                setNeedsNewGame(true);
-              }}
-            >
-              {settingPlayers.map((player) => (
-                <option key={player} value={player}>{playerName(player)}</option>
-              ))}
-            </select>
+            {setupMode === "online" ? (
+              <select value="random" disabled aria-label="先攻はランダム">
+                <option value="random">RANDOM</option>
+              </select>
+            ) : (
+              <select
+                value={first}
+                disabled={roomSettingsLocked}
+                onChange={(e) => {
+                  setFirst(e.target.value as Player);
+                  setNeedsNewGame(true);
+                }}
+              >
+                {settingPlayers.map((player) => (
+                  <option key={player} value={player}>{playerName(player)}</option>
+                ))}
+              </select>
+            )}
           </label>
           <button
             type="button"
