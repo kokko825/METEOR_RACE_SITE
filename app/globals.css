@@ -179,6 +179,10 @@ button { color: inherit; }
 .settings select, .settings button { color:#bdd4df; border:1px solid var(--line); background:#08131d; padding:8px 12px; min-height:35px; }
 .settings button { cursor:pointer; letter-spacing:.1em; font-size:10px; }
 .settings button:disabled { opacity:.3; }
+.vs-ai-count { display:flex; align-items:center; gap:6px; padding:5px 7px; border:1px solid rgba(255,211,99,.22); background:rgba(255,211,99,.04); }
+.vs-ai-count > span { color:#9d8d5d; font-size:9px; letter-spacing:.12em; margin-right:3px; }
+.settings .vs-ai-count button { min-height:32px; padding:6px 11px; }
+.settings .vs-ai-count button.selected { color:#07131d; border-color:var(--gold); background:linear-gradient(135deg,#ffe78f,#ffbd39); box-shadow:0 0 14px rgba(255,211,99,.24); font-weight:800; }
 .online-panel { margin-top:12px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:12px 14px; border:1px solid rgba(99,223,255,.24); background:linear-gradient(90deg,rgba(8,31,44,.95),rgba(5,16,25,.88)); }
 .online-copy { min-width:250px; margin-right:auto; display:grid; gap:3px; }
 .online-copy span { color:#63dfff; font-size:9px; letter-spacing:.18em; }

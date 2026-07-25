@@ -40,14 +40,13 @@ type OnlineRoom = {
   pending: boolean;
 };
 
-const other = (player: Player): Player => (player === "red" ? "blue" : "red");
-
 function Game() {
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [history, setHistory] = useState<GameState[]>([]);
   const [mode, setMode] = useState<Mode>("human");
+  const [aiPlayerCount, setAiPlayerCount] = useState<2 | 3 | 4>(2);
   const [aiRunning, setAiRunning] = useState(true);
   const [aiSpeed, setAiSpeed] = useState(420);
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
@@ -459,7 +458,18 @@ function Game() {
     setBlastFx(null);
     setIsAnimating(false);
     setHistory([]);
-    setGame(initialState(size, first));
+    const playerCount = mode === "cpu" ? aiPlayerCount : 2;
+    setGame(initialState(playerCount > 2 ? 11 : size, first, playerCount));
+  };
+
+  const startVsAi = (playerCount: 2 | 3 | 4) => {
+    setAiPlayerCount(playerCount);
+    setMode("cpu");
+    setBlastFx(null);
+    setIsAnimating(false);
+    setHistory([]);
+    setGame(initialState(playerCount > 2 ? 11 : size, "red", playerCount));
+    setFirst("red");
   };
 
   const undo = () => {
@@ -477,7 +487,7 @@ function Game() {
     !game.meteors.some((m) => m.r === r && m.c === c);
 
   const isAiTurn =
-    mode === "lab" || (mode === "cpu" && game.turn === "blue");
+    mode === "lab" || (mode === "cpu" && game.turn !== "red");
 
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
@@ -561,7 +571,7 @@ function Game() {
       const options: { p: Pos; size: MeteorSize; score: number }[] = [];
       const center = { r: mid, c: mid };
       const me = game.turn;
-      const foe = other(me);
+      const opponents = activePlayers(game).filter((player) => player !== me);
       const coreDistance = (p: Pos) =>
         Math.abs(p.r - center.r) + Math.abs(p.c - center.c);
       (["small", "large"] as MeteorSize[]).forEach((meteorSize) => {
@@ -573,11 +583,11 @@ function Game() {
             const radius = meteorSize === "small" ? 1 : 2;
             let score = Math.random() * 3;
             game.meteors.forEach((m) => {
-              if (distance(m, p) <= radius) score += m.owner === foe ? 5 : -1.5;
+              if (distance(m, p) <= radius) score += m.owner === me ? -1.5 : 5;
             });
             ([
               [me, 1],
-              [foe, -1],
+              ...opponents.map((player) => [player, -1] as [Player, number]),
             ] as [Player, number][]).forEach(([player, polarity]) => {
               const start = game.probes[player];
               const d = distance(start, p);
@@ -779,11 +789,27 @@ function Game() {
             MODE
             <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
               <option value="human">2 PLAYERS</option>
-              <option value="cpu">VS BLUE AI</option>
+              <option value="cpu">VS AI</option>
               <option value="lab">AI vs AI LAB</option>
               <option value="online">ONLINE ROOM</option>
             </select>
           </label>
+          {mode === "cpu" && (
+            <div className="vs-ai-count" aria-label="VS AIの対戦人数">
+              <span>VS AI人数</span>
+              {([2, 3, 4] as const).map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  className={aiPlayerCount === count ? "selected" : ""}
+                  aria-pressed={aiPlayerCount === count}
+                  onClick={() => startVsAi(count)}
+                >
+                  {count}人
+                </button>
+              ))}
+            </div>
+          )}
           <label>
             BOARD
             <select value={size} onChange={(e) => setSize(Number(e.target.value))}>
