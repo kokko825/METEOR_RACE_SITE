@@ -107,7 +107,11 @@ function Game() {
   const roomSettingsLocked =
     setupMode === "online" && Boolean(online.code) && !online.isHost;
   const settingPlayers =
-    setupMode === "online" && online.code ? activePlayers(game) : setupPlayers;
+    setupMode === "online" && online.code
+      ? online.isHost
+        ? PLAYER_ORDER.slice(0, onlinePlayerCount + onlineAiCount)
+        : activePlayers(game)
+      : setupPlayers;
 
   const roomRequest = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/rooms", {
@@ -146,6 +150,9 @@ function Game() {
         pending: false,
         isHost: Boolean(data.isHost),
       });
+      setOnlinePlayerCount(1);
+      setOnlineAiCount(1);
+      setNeedsNewGame(true);
       setRoomCodeInput(data.code);
     } catch (error) {
       setOnline((current) => ({
@@ -178,6 +185,12 @@ function Game() {
         pending: false,
         isHost: Boolean(data.isHost),
       });
+      setOnlinePlayerCount(
+        activePlayers(data.state).filter(
+          (player) => !(data.state.botPlayers ?? []).includes(player),
+        ).length as 1 | 2 | 3 | 4,
+      );
+      setOnlineAiCount((data.state.botPlayers ?? []).length as 0 | 1 | 2 | 3);
       setRoomCodeInput(data.code);
     } catch (error) {
       setOnline((current) => ({
@@ -544,6 +557,8 @@ function Game() {
           size,
           first,
           obstaclesEnabled,
+          humanCount: onlinePlayerCount,
+          aiCount: onlineAiCount,
         });
         setGame(data.state);
         setSize(data.state.size);
@@ -559,8 +574,10 @@ function Game() {
           ...current,
           status: data.status,
           version: data.version,
+          role: data.role,
           maxPlayers: data.maxPlayers,
           joinedPlayers: data.joinedPlayers,
+          isHost: Boolean(data.isHost),
           pending: false,
           error: "",
         }));
@@ -688,10 +705,20 @@ function Game() {
             ...current,
             status: data.status,
             version: data.version,
+            role: data.role,
             maxPlayers: data.maxPlayers,
             joinedPlayers: data.joinedPlayers,
+            isHost: Boolean(data.isHost),
             error: "",
           }));
+          if (online.isHost && data.joinedPlayers > online.joinedPlayers) {
+            const nextHumans = Math.min(4, data.joinedPlayers) as 1 | 2 | 3 | 4;
+            setOnlinePlayerCount(nextHumans);
+            setOnlineAiCount((current) =>
+              Math.min(current, 4 - nextHumans) as 0 | 1 | 2 | 3,
+            );
+            setNeedsNewGame(true);
+          }
         }
       } catch (error) {
         setOnline((current) => ({
@@ -1219,7 +1246,7 @@ function Game() {
             設定はまだ対局に反映されていません。「NEW GAME」を押すと新しい設定で開始します。
           </div>
         )}
-        {mode === "online" && !needsNewGame && (
+        {mode === "online" && (
           <section className="online-panel" aria-label="オンライン対戦">
             <div className="online-copy">
               <span>ONLINE MATCH</span>
@@ -1231,9 +1258,9 @@ function Game() {
                   : "ルームを作るか、6文字のコードで参加"}
               </strong>
             </div>
-            {!online.code && (
+            {online.code && online.isHost && (
               <div className="online-count" aria-label="オンライン対戦の人数">
-                <span>対戦人数を選択</span>
+                <span>次のゲームに参加する人間</span>
                 <div className="player-count-buttons">
                   {([1, 2, 3, 4] as const).map((count) => (
                     <button
@@ -1241,32 +1268,37 @@ function Game() {
                       type="button"
                       className={onlinePlayerCount === count ? "selected" : ""}
                       aria-pressed={onlinePlayerCount === count}
-                      disabled={count + onlineAiCount > 4}
+                      disabled={count > online.joinedPlayers || count + onlineAiCount > 4}
                       onClick={() => {
                         setOnlinePlayerCount(count);
                         if (count + onlineAiCount > 2 && size === 9) setSize(11);
+                        setNeedsNewGame(true);
                       }}
                     >
-                      <b>{count}人対戦</b>
-                      <small>人間</small>
+                      <b>{count}人</b>
+                      <small>{count <= online.joinedPlayers ? "参加" : "未入室"}</small>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-            {!online.code && (
+            {online.code && online.isHost && (
               <div className="online-count" aria-label="オンライン追加AI人数">
-                <span>追加AI</span>
+                <span>次のゲームに追加するAI</span>
                 <div className="player-count-buttons">
                   {([0, 1, 2, 3] as const).map((count) => (
                     <button
                       key={count}
                       type="button"
-                      disabled={onlinePlayerCount + count > 4}
+                      disabled={
+                        onlinePlayerCount + count > 4 ||
+                        (onlinePlayerCount === 1 && count === 0)
+                      }
                       className={onlineAiCount === count ? "selected" : ""}
                       onClick={() => {
                         setOnlineAiCount(count);
                         if (onlinePlayerCount + count > 2 && size === 9) setSize(11);
+                        setNeedsNewGame(true);
                       }}
                     >
                       <b>{count}体</b>

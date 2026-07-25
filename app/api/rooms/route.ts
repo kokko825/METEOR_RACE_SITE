@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { applyMeteor, applyMove, applyObstacle, applyPass, initialGameState, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyMeteor, applyMove, applyObstacle, applyPass, initialGameState, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -61,20 +61,21 @@ async function roomByCode(code: string) {
 function roomPayload(room: RoomRow, email: string) {
   const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
   const seats = JSON.parse(room.seat_order_json) as Player[];
+  const state = JSON.parse(room.state_json);
   const memberIndex = memberEmails.indexOf(email);
   const role: Player | null = memberIndex >= 0 ? seats[memberIndex] ?? null : null;
   const joinedPlayers = memberEmails
-    .slice(0, room.max_players)
+    .slice(0, 4)
     .filter(Boolean).length;
   return {
     code: room.code,
     role,
     status: room.status,
     version: room.version,
-    maxPlayers: room.max_players,
+    maxPlayers: 4,
     joinedPlayers,
     isHost: email === room.host_email,
-    state: JSON.parse(room.state_json),
+    state,
   };
 }
 
@@ -108,21 +109,13 @@ export async function POST(request: Request) {
   };
 
   if (body.action === "create") {
-    const humanCount = Math.max(1, Math.min(4, Number(body.humanCount ?? body.playerCount ?? 2)));
-    const aiCount = Math.max(0, Math.min(4 - humanCount, Number(body.aiCount ?? 0)));
-    const playerCount = humanCount + aiCount;
+    const playerCount = 2;
     const requestedSize = body.size === 11 ? 11 : 9;
     const size = playerCount > 2 && requestedSize === 9 ? 11 : requestedSize;
     const allowedPlayers: Player[] = ["red", "blue", "green", "yellow"].slice(0, playerCount) as Player[];
-    const seats = [...allowedPlayers];
-    for (let index = seats.length - 1; index > 0; index -= 1) {
-      const randomIndex = crypto.getRandomValues(new Uint8Array(1))[0] % (index + 1);
-      [seats[index], seats[randomIndex]] = [seats[randomIndex], seats[index]];
-    }
-    const first: Player =
-      allowedPlayers[crypto.getRandomValues(new Uint8Array(1))[0] % allowedPlayers.length];
-    const humanSeats = seats.slice(0, humanCount);
-    const botPlayers = seats.slice(humanCount);
+    const first: Player = allowedPlayers[0];
+    const humanSeats = [allowedPlayers[0]];
+    const botPlayers = [allowedPlayers[1]];
     const layoutOffset =
       playerCount === 3 ? crypto.getRandomValues(new Uint8Array(1))[0] % 4 : 0;
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -134,7 +127,7 @@ export async function POST(request: Request) {
         .bind(
           code,
           email,
-          humanCount,
+          4,
           JSON.stringify(humanSeats),
           JSON.stringify(
             initialGameState(
@@ -146,7 +139,7 @@ export async function POST(request: Request) {
               botPlayers,
             ),
           ),
-          humanCount === 1 ? "playing" : "waiting",
+          "waiting",
           now,
           now,
         )
@@ -174,16 +167,13 @@ export async function POST(request: Request) {
       ];
       const existingSlot = memberEmails.indexOf(email);
       if (existingSlot >= 0) return json(roomPayload(room, email));
-      if (room.status !== "waiting") return json(roomPayload(room, email));
-      const openSlot = memberEmails.slice(0, room.max_players).findIndex((member) => !member);
+      const openSlot = memberEmails.slice(0, 4).findIndex((member) => !member);
       if (openSlot < 0) return json(roomPayload(room, email));
       const column = ["host_email", "guest_email", "player3_email", "player4_email"][openSlot];
-      const nextJoined = memberEmails.slice(0, room.max_players).filter(Boolean).length + 1;
-      const nextStatus = nextJoined === room.max_players ? "playing" : "waiting";
       const result = await env.DB.prepare(
-        `UPDATE game_rooms SET ${column} = ?, status = ?, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
+        `UPDATE game_rooms SET ${column} = ?, max_players = 4, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
       )
-        .bind(email, nextStatus, Date.now(), code)
+        .bind(email, Date.now(), code)
         .run();
       room = (await roomByCode(code))!;
       if (result.meta.changes) return json(roomPayload(room, email));
@@ -199,8 +189,28 @@ export async function POST(request: Request) {
       return json({ error: "盤面が更新されました", room: roomPayload(room, email) }, 409);
     }
     const previous = JSON.parse(room.state_json);
-    const players = previous.players?.length ?? 2;
-    const playerList: Player[] = previous.players ?? ["red", "blue"];
+    const memberEmails = [
+      room.host_email,
+      room.guest_email,
+      room.player3_email,
+      room.player4_email,
+    ];
+    const joinedPlayers = memberEmails.slice(0, 4).filter(Boolean).length;
+    const humanCount = Math.max(
+      1,
+      Math.min(joinedPlayers, Number(body.humanCount ?? joinedPlayers)),
+    );
+    let aiCount = Math.max(0, Math.min(4 - humanCount, Number(body.aiCount ?? 0)));
+    if (humanCount + aiCount < 2) aiCount = 1;
+    const players = humanCount + aiCount;
+    const playerList: Player[] = PLAYER_ORDER.slice(0, players);
+    const seats = [...playerList];
+    for (let index = seats.length - 1; index > 0; index -= 1) {
+      const randomIndex = crypto.getRandomValues(new Uint8Array(1))[0] % (index + 1);
+      [seats[index], seats[randomIndex]] = [seats[randomIndex], seats[index]];
+    }
+    const humanSeats = seats.slice(0, humanCount);
+    const botPlayers = seats.slice(humanCount);
     const requestedSize = body.size === 11 ? 11 : 9;
     const size = players > 2 && requestedSize === 9 ? 11 : requestedSize;
     const first =
@@ -215,20 +225,18 @@ export async function POST(request: Request) {
       players,
       Boolean(body.obstaclesEnabled),
       nextOffset,
-      previous.botPlayers ?? [],
+      botPlayers,
     );
-    const memberEmails = [
-      room.host_email,
-      room.guest_email,
-      room.player3_email,
-      room.player4_email,
-    ];
-    const joinedPlayers = memberEmails.slice(0, room.max_players).filter(Boolean).length;
-    const status = joinedPlayers >= room.max_players ? "playing" : "waiting";
     const result = await env.DB.prepare(
-      "UPDATE game_rooms SET state_json = ?, version = version + 1, status = ?, updated_at = ? WHERE code = ? AND version = ?",
+      "UPDATE game_rooms SET state_json = ?, seat_order_json = ?, max_players = 4, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
     )
-      .bind(JSON.stringify(nextState), status, Date.now(), code, room.version)
+      .bind(
+        JSON.stringify(nextState),
+        JSON.stringify(humanSeats),
+        Date.now(),
+        code,
+        room.version,
+      )
       .run();
     if (!result.meta.changes) {
       return json({ error: "盤面が更新されました" }, 409);
