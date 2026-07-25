@@ -469,6 +469,7 @@ function Game() {
       ),
     });
     playBoom();
+    const effectScale = mode === "lab" && aiSpeed <= 60 ? 0.08 : 1;
     window.setTimeout(() => {
       setGame((current) => ({
         ...current,
@@ -480,12 +481,12 @@ function Game() {
       setBlastFx((effect) =>
         effect ? { ...effect, stage: "recover" } : effect,
       );
-    }, 1100);
+    }, Math.max(70, Math.round(1100 * effectScale)));
     window.setTimeout(() => {
       commit(resolved);
       setBlastFx(null);
       setIsAnimating(false);
-    }, 2020);
+    }, Math.max(140, Math.round(2020 * effectScale)));
   };
 
   const placeObstacle = (target: Pos) => {
@@ -780,6 +781,8 @@ function Game() {
         passPlacement();
       } else if (options[0]) {
         placeMeteor(options[0].p, options[0].size);
+      } else {
+        commit(finishTurn(game, "配置可能なマスがないため手番終了"));
       }
     }, aiSpeed);
     return () => window.clearTimeout(timer);
