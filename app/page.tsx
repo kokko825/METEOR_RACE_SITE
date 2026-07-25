@@ -5,6 +5,7 @@ import {
   PLAYER_ORDER,
   activeObstacles,
   activePlayers,
+  applyMove,
   applyObstacle,
   applyPass,
   boardToViewDelta,
