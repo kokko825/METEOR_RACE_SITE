@@ -79,7 +79,8 @@ export function initialGameState(
   const count = Math.max(2, Math.min(4, playerCount));
   const players = PLAYER_ORDER.slice(0, count);
   if (!players.includes(first)) first = players[0];
-  if (![9, 11, 13].includes(size)) size = 9;
+  if (size === 13) size = 11;
+  if (![9, 11].includes(size)) size = 9;
   if (count > 2 && size === 9) size = 11;
   const mid = Math.floor(size / 2);
   const slots = [

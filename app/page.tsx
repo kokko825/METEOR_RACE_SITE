@@ -710,6 +710,7 @@ function Game() {
         return;
       }
 
+      let bestObstacle: { p: Pos; score: number } | null = null;
       if (canPlaceObstacle(game)) {
         const obstacleTargets: Pos[] = [];
         for (let r = 0; r < game.size; r += 1) {
@@ -720,8 +721,8 @@ function Game() {
         const ownProbe = game.probes[game.turn];
         const scoreObstacle = (target: Pos) => {
           const coreDistance = Math.abs(target.r - mid) + Math.abs(target.c - mid);
-          let score = 14 - coreDistance * 1.2 + Math.random() * 2;
-          if (distance(target, ownProbe) === 1) score += 9;
+          let score = 1.5 - coreDistance * 0.35 + Math.random() * 1.5;
+          if (distance(target, ownProbe) === 1) score += 3;
           game.meteors.forEach((meteor) => {
             if (meteor.owner === game.turn || distance(meteor, ownProbe) > 2) return;
             const dr = Math.sign(ownProbe.r - meteor.r);
@@ -733,20 +734,18 @@ function Game() {
             .filter((player) => player !== game.turn)
             .forEach((player) => {
               const probe = game.probes[player];
-              if (distance(target, probe) === 1) score += 6;
+              if (distance(target, probe) === 1) score += 3;
               if (
                 Math.abs(probe.r - mid) > Math.abs(probe.c - mid)
                   ? target.c === mid
                   : target.r === mid
-              ) score += 5;
+              ) score += 1.5;
             });
           return score;
         };
-        obstacleTargets.sort((a, b) => scoreObstacle(b) - scoreObstacle(a));
-        if (obstacleTargets[0]) {
-          placeObstacle(obstacleTargets[0]);
-          return;
-        }
+        bestObstacle = obstacleTargets
+          .map((p) => ({ p, score: scoreObstacle(p) }))
+          .sort((a, b) => b.score - a.score)[0] ?? null;
       }
 
       const options: { p: Pos; size: MeteorSize; score: number }[] = [];
@@ -788,7 +787,16 @@ function Game() {
         }
       });
       options.sort((a, b) => b.score - a.score);
-      if ((game.passAvailable?.[game.turn] ?? true) && (!options[0] || options[0].score < 2.5)) {
+      if (
+        bestObstacle &&
+        bestObstacle.score >= 6 &&
+        (!options[0] || bestObstacle.score > options[0].score)
+      ) {
+        placeObstacle(bestObstacle.p);
+      } else if (
+        (game.passAvailable?.[game.turn] ?? true) &&
+        (!options[0] || options[0].score < 2.5)
+      ) {
         passPlacement();
       } else if (options[0]) {
         placeMeteor(options[0].p, options[0].size);
@@ -1073,7 +1081,6 @@ function Game() {
             >
               <option value={9} disabled={setupPlayerCount > 2}>9 × 9</option>
               <option value={11}>11 × 11</option>
-              <option value={13}>13 × 13</option>
             </select>
           </label>
           <label>

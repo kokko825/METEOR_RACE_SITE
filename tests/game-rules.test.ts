@@ -136,9 +136,9 @@ for (const first of ["red", "blue"] as Player[]) {
 
 {
   const state = initialGameState(13, "yellow", 4);
-  assert.equal(state.size, 13, "4人対戦でも13×13を選択できる");
+  assert.equal(state.size, 11, "廃止された13×13は11×11へ変換される");
   assert.equal(state.turn, "yellow", "4色すべてを先攻に選択できる");
-  assert.deepEqual(state.probes.yellow, { r: 6, c: 12 });
+  assert.deepEqual(state.probes.yellow, { r: 5, c: 10 });
 }
 
 {

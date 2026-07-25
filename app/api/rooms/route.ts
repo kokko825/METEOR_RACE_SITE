@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     const humanCount = Math.max(1, Math.min(4, Number(body.humanCount ?? body.playerCount ?? 2)));
     const aiCount = Math.max(0, Math.min(4 - humanCount, Number(body.aiCount ?? 0)));
     const playerCount = humanCount + aiCount;
-    const requestedSize = body.size === 13 ? 13 : body.size === 11 ? 11 : 9;
+    const requestedSize = body.size === 11 ? 11 : 9;
     const size = playerCount > 2 && requestedSize === 9 ? 11 : requestedSize;
     const allowedPlayers: Player[] = ["red", "blue", "green", "yellow"].slice(0, playerCount) as Player[];
     const seats = [...allowedPlayers];
@@ -170,24 +170,29 @@ export async function POST(request: Request) {
   if (!room) return json({ error: "ルームが見つかりません" }, 404);
 
   if (body.action === "join") {
-    const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
-    const existingSlot = memberEmails.indexOf(email);
-    const openSlot = memberEmails.slice(0, room.max_players).findIndex((member) => !member);
-    if (existingSlot < 0 && openSlot < 0) {
-      return json({ error: "このルームは満員です" }, 409);
-    }
-    if (existingSlot < 0) {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const memberEmails = [
+        room.host_email,
+        room.guest_email,
+        room.player3_email,
+        room.player4_email,
+      ];
+      const existingSlot = memberEmails.indexOf(email);
+      if (existingSlot >= 0) return json(roomPayload(room, email));
+      const openSlot = memberEmails.slice(0, room.max_players).findIndex((member) => !member);
+      if (openSlot < 0) return json({ error: "このルームは満員です" }, 409);
       const column = ["host_email", "guest_email", "player3_email", "player4_email"][openSlot];
       const nextJoined = memberEmails.slice(0, room.max_players).filter(Boolean).length + 1;
       const nextStatus = nextJoined === room.max_players ? "playing" : "waiting";
-      await env.DB.prepare(
+      const result = await env.DB.prepare(
         `UPDATE game_rooms SET ${column} = ?, status = ?, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
       )
         .bind(email, nextStatus, Date.now(), code)
         .run();
-      room = await roomByCode(code);
+      room = (await roomByCode(code))!;
+      if (result.meta.changes) return json(roomPayload(room, email));
     }
-    return json(roomPayload(room!, email));
+    return json({ error: "入室が重なりました。もう一度お試しください" }, 409);
   }
 
   const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
