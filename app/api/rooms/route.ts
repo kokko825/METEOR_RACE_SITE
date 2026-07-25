@@ -45,6 +45,11 @@ function displayNameFromEmail(email: string) {
   return local.replace(/[._-]+/g, " ").trim().slice(0, 24) || "PLAYER";
 }
 
+function normalizeNickname(value: unknown, email: string) {
+  const nickname = typeof value === "string" ? value.trim().slice(0, 16) : "";
+  return nickname || displayNameFromEmail(email);
+}
+
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -80,8 +85,15 @@ function roomPayload(room: RoomRow, email: string) {
     maxPlayers: 4,
     joinedPlayers,
     memberNames: memberEmails
-      .filter((member): member is string => Boolean(member))
-      .map(displayNameFromEmail),
+      .map((member, index) =>
+        member
+          ? state.roomMemberNames?.[index] || displayNameFromEmail(member)
+          : null,
+      )
+      .filter((name): name is string => Boolean(name)),
+    memberRoles: memberEmails
+      .map((member, index) => (member ? seats[index] ?? null : null))
+      .filter((_, index) => Boolean(memberEmails[index])),
     isHost: email === room.host_email,
     state,
   };
@@ -114,6 +126,7 @@ export async function POST(request: Request) {
     version?: number;
     target?: Pos;
     meteorSize?: MeteorSize;
+    nickname?: string;
   };
 
   if (body.action === "create") {
@@ -137,8 +150,8 @@ export async function POST(request: Request) {
           email,
           4,
           JSON.stringify(humanSeats),
-          JSON.stringify(
-            initialGameState(
+          JSON.stringify({
+            ...initialGameState(
               size,
               first,
               playerCount,
@@ -146,7 +159,8 @@ export async function POST(request: Request) {
               layoutOffset,
               botPlayers,
             ),
-          ),
+            roomMemberNames: [normalizeNickname(body.nickname, email)],
+          }),
           "waiting",
           now,
           now,
@@ -186,6 +200,11 @@ export async function POST(request: Request) {
       return json({ left: true });
     }
     const state = JSON.parse(room.state_json);
+    const names = memberEmails.map((member, index) =>
+      member
+        ? state.roomMemberNames?.[index] || displayNameFromEmail(member)
+        : null,
+    );
     if (
       leavingRole &&
       room.status === "playing" &&
@@ -196,6 +215,10 @@ export async function POST(request: Request) {
     const nextSeats = remaining
       .map((entry) => entry.seat)
       .filter((seat): seat is Player => Boolean(seat));
+    state.roomMemberNames = memberEmails
+      .map((member, index) => ({ member, name: names[index] }))
+      .filter((entry) => Boolean(entry.member) && entry.member !== email)
+      .map((entry) => entry.name);
     await env.DB.prepare(
       `UPDATE game_rooms
        SET host_email = ?, guest_email = ?, player3_email = ?, player4_email = ?,
@@ -225,19 +248,53 @@ export async function POST(request: Request) {
         room.player4_email,
       ];
       const existingSlot = memberEmails.indexOf(email);
-      if (existingSlot >= 0) return json(roomPayload(room, email));
+      if (existingSlot >= 0) {
+        const state = JSON.parse(room.state_json);
+        const names = [...(state.roomMemberNames ?? [])];
+        names[existingSlot] = normalizeNickname(body.nickname, email);
+        state.roomMemberNames = names;
+        await env.DB.prepare(
+          "UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?",
+        ).bind(JSON.stringify(state), Date.now(), code).run();
+        room = (await roomByCode(code))!;
+        return json(roomPayload(room, email));
+      }
       const openSlot = memberEmails.slice(0, 4).findIndex((member) => !member);
       if (openSlot < 0) return json(roomPayload(room, email));
       const column = ["host_email", "guest_email", "player3_email", "player4_email"][openSlot];
+      const state = JSON.parse(room.state_json);
+      const names = [...(state.roomMemberNames ?? [])];
+      names[openSlot] = normalizeNickname(body.nickname, email);
+      state.roomMemberNames = names;
       const result = await env.DB.prepare(
-        `UPDATE game_rooms SET ${column} = ?, max_players = 4, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
+        `UPDATE game_rooms SET ${column} = ?, state_json = ?, max_players = 4, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
       )
-        .bind(email, Date.now(), code)
+        .bind(email, JSON.stringify(state), Date.now(), code)
         .run();
       room = (await roomByCode(code))!;
       if (result.meta.changes) return json(roomPayload(room, email));
     }
     return json({ error: "入室が重なりました。もう一度お試しください" }, 409);
+  }
+
+  if (body.action === "nickname") {
+    const memberEmails = [
+      room.host_email,
+      room.guest_email,
+      room.player3_email,
+      room.player4_email,
+    ];
+    const memberIndex = memberEmails.indexOf(email);
+    if (memberIndex < 0) return json({ error: "ルームに参加していません" }, 403);
+    const state = JSON.parse(room.state_json);
+    const names = [...(state.roomMemberNames ?? [])];
+    names[memberIndex] = normalizeNickname(body.nickname, email);
+    state.roomMemberNames = names;
+    await env.DB.prepare(
+      "UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?",
+    ).bind(JSON.stringify(state), Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
   }
 
   if (body.action === "new_game") {
@@ -263,13 +320,17 @@ export async function POST(request: Request) {
     if (humanCount + aiCount < 2) aiCount = 1;
     const players = humanCount + aiCount;
     const playerList: Player[] = PLAYER_ORDER.slice(0, players);
-    const seats = [...playerList];
-    for (let index = seats.length - 1; index > 0; index -= 1) {
-      const randomIndex = crypto.getRandomValues(new Uint8Array(1))[0] % (index + 1);
-      [seats[index], seats[randomIndex]] = [seats[randomIndex], seats[index]];
+    const previousSeats = JSON.parse(room.seat_order_json) as Player[];
+    const humanSeats: Player[] = [];
+    for (let index = 0; index < humanCount; index += 1) {
+      const previousSeat = previousSeats[index];
+      if (previousSeat && playerList.includes(previousSeat) && !humanSeats.includes(previousSeat)) {
+        humanSeats.push(previousSeat);
+      } else {
+        humanSeats.push(playerList.find((player) => !humanSeats.includes(player))!);
+      }
     }
-    const humanSeats = seats.slice(0, humanCount);
-    const botPlayers = seats.slice(humanCount);
+    const botPlayers = playerList.filter((player) => !humanSeats.includes(player));
     const requestedSize = body.size === 11 ? 11 : 9;
     const size = players > 2 && requestedSize === 9 ? 11 : requestedSize;
     const first =
@@ -286,6 +347,8 @@ export async function POST(request: Request) {
       nextOffset,
       botPlayers,
     );
+    (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
+      previous.roomMemberNames ?? [];
     const result = await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, seat_order_json = ?, max_players = 4, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
     )
@@ -329,6 +392,8 @@ export async function POST(request: Request) {
       nextOffset,
       previous.botPlayers ?? [],
     );
+    (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
+      previous.roomMemberNames ?? [];
     await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
     )

@@ -57,6 +57,7 @@ type OnlineRoom = {
   maxPlayers: number;
   joinedPlayers: number;
   memberNames: string[];
+  memberRoles: Array<Player | null>;
   error: string;
   pending: boolean;
   isHost: boolean;
@@ -80,6 +81,7 @@ function Game() {
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [nickname, setNickname] = useState("");
   const [onlinePlayerCount, setOnlinePlayerCount] = useState<1 | 2 | 3 | 4>(2);
   const [onlineAiCount, setOnlineAiCount] = useState<0 | 1 | 2 | 3>(0);
   const [online, setOnline] = useState<OnlineRoom>({
@@ -90,6 +92,7 @@ function Game() {
     maxPlayers: 2,
     joinedPlayers: 0,
     memberNames: [],
+    memberRoles: [],
     error: "",
     pending: false,
     isHost: false,
@@ -155,6 +158,7 @@ function Game() {
         humanCount: onlinePlayerCount,
         aiCount: onlineAiCount,
         obstaclesEnabled,
+        nickname,
       });
       setGame(data.state);
       setSize(data.state.size);
@@ -169,6 +173,7 @@ function Game() {
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
         memberNames: data.memberNames ?? [],
+        memberRoles: data.memberRoles ?? [],
         error: "",
         pending: false,
         isHost: Boolean(data.isHost),
@@ -191,7 +196,7 @@ function Game() {
     if (!code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
     try {
-      const data = await roomRequest({ action: "join", code });
+      const data = await roomRequest({ action: "join", code, nickname });
       setGame(data.state);
       setSize(data.state.size);
       setFirst(data.state.startingPlayer);
@@ -205,6 +210,7 @@ function Game() {
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
         memberNames: data.memberNames ?? [],
+        memberRoles: data.memberRoles ?? [],
         error: "",
         pending: false,
         isHost: Boolean(data.isHost),
@@ -247,6 +253,7 @@ function Game() {
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
         memberNames: data.memberNames ?? current.memberNames,
+        memberRoles: data.memberRoles ?? current.memberRoles,
         pending: false,
         error: "",
       }));
@@ -278,12 +285,39 @@ function Game() {
         maxPlayers: 2,
         joinedPlayers: 0,
         memberNames: [],
+        memberRoles: [],
         error: "",
         pending: false,
         isHost: false,
       });
       setRoomCodeInput("");
       setNeedsNewGame(true);
+    }
+  };
+
+  const updateNickname = async () => {
+    if (!online.code || !nickname.trim()) return;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({
+        action: "nickname",
+        code: online.code,
+        nickname,
+      });
+      setOnline((current) => ({
+        ...current,
+        version: data.version,
+        memberNames: data.memberNames ?? current.memberNames,
+        memberRoles: data.memberRoles ?? current.memberRoles,
+        pending: false,
+        error: "",
+      }));
+    } catch (error) {
+      setOnline((current) => ({
+        ...current,
+        pending: false,
+        error: error instanceof Error ? error.message : "ニックネームを変更できませんでした",
+      }));
     }
   };
 
@@ -303,6 +337,7 @@ function Game() {
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
         memberNames: data.memberNames ?? current.memberNames,
+        memberRoles: data.memberRoles ?? current.memberRoles,
         pending: false,
         error: "",
       }));
@@ -631,6 +666,7 @@ function Game() {
           maxPlayers: data.maxPlayers,
           joinedPlayers: data.joinedPlayers,
           memberNames: data.memberNames ?? current.memberNames,
+          memberRoles: data.memberRoles ?? current.memberRoles,
           isHost: Boolean(data.isHost),
           pending: false,
           error: "",
@@ -790,6 +826,7 @@ function Game() {
             maxPlayers: data.maxPlayers,
             joinedPlayers: data.joinedPlayers,
             memberNames: data.memberNames ?? current.memberNames,
+            memberRoles: data.memberRoles ?? current.memberRoles,
             isHost: Boolean(data.isHost),
             error: "",
           }));
@@ -1067,6 +1104,14 @@ function Game() {
     mode === "online" && online.role
       ? (PLAYER_ORDER.indexOf(online.role) + (game.layoutOffset ?? 0)) % 4
       : 0;
+  const turnMemberIndex =
+    mode === "online" ? online.memberRoles.indexOf(game.turn) : -1;
+  const turnDisplayName =
+    turnMemberIndex >= 0
+      ? online.memberNames[turnMemberIndex]
+      : (game.botPlayers ?? []).includes(game.turn)
+        ? `${playerName(game.turn)} AI`
+        : playerName(game.turn);
 
   return (
     <main className="shell">
@@ -1090,6 +1135,11 @@ function Game() {
         </aside>
 
         <section className="arena">
+          <div className={`turn-callout ${game.turn}`} aria-live="polite">
+            <span>CURRENT TURN</span>
+            <b>{turnDisplayName}</b>
+            <i>{playerName(game.turn)}</i>
+          </div>
           <div className="status" aria-live="polite">
             <span className={`status-dot ${game.turn}`} />
             {game.message}
@@ -1478,6 +1528,22 @@ function Game() {
               </div>
             )}
             <input
+              value={nickname}
+              onChange={(event) => setNickname(event.target.value.slice(0, 16))}
+              placeholder="NICKNAME"
+              aria-label="ニックネーム"
+              maxLength={16}
+            />
+            {online.code && (
+              <button
+                type="button"
+                onClick={() => void updateNickname()}
+                disabled={online.pending || !nickname.trim()}
+              >
+                名前を変更
+              </button>
+            )}
+            <input
               value={roomCodeInput}
               onChange={(event) =>
                 setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))
@@ -1501,8 +1567,15 @@ function Game() {
               <div className="room-members" aria-label="ルームメンバー">
                 <span>MEMBERS</span>
                 {online.memberNames.map((name, index) => (
-                  <b key={`${name}-${index}`}>
-                    {name}{index === 0 ? " / LEADER" : ""}
+                  <b
+                    key={`${name}-${index}`}
+                    className={online.memberRoles[index] ?? "spectator"}
+                  >
+                    {name}
+                    {online.memberRoles[index]
+                      ? ` / ${playerName(online.memberRoles[index]!)}`
+                      : " / WATCH"}
+                    {index === 0 ? " / LEADER" : ""}
                   </b>
                 ))}
               </div>
