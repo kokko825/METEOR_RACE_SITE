@@ -86,11 +86,6 @@ export async function GET(request: Request) {
   if (!code) return json({ error: "ルームコードが必要です" }, 400);
   const room = await roomByCode(code);
   if (!room) return json({ error: "ルームが見つかりません" }, 404);
-  if (
-    ![room.host_email, room.guest_email, room.player3_email, room.player4_email].includes(email)
-  ) {
-    return json({ error: "このルームには参加していません" }, 403);
-  }
   return json(roomPayload(room, email));
 }
 
@@ -179,8 +174,9 @@ export async function POST(request: Request) {
       ];
       const existingSlot = memberEmails.indexOf(email);
       if (existingSlot >= 0) return json(roomPayload(room, email));
+      if (room.status !== "waiting") return json(roomPayload(room, email));
       const openSlot = memberEmails.slice(0, room.max_players).findIndex((member) => !member);
-      if (openSlot < 0) return json({ error: "このルームは満員です" }, 409);
+      if (openSlot < 0) return json(roomPayload(room, email));
       const column = ["host_email", "guest_email", "player3_email", "player4_email"][openSlot];
       const nextJoined = memberEmails.slice(0, room.max_players).filter(Boolean).length + 1;
       const nextStatus = nextJoined === room.max_players ? "playing" : "waiting";

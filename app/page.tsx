@@ -1208,7 +1208,10 @@ function Game() {
             />
             <button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button>
             <button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button>
-            {online.status === "finished" && (
+            {online.code && !online.role && (
+              <span className="spectator-badge">SPECTATING</span>
+            )}
+            {online.status === "finished" && online.role && (
               <button onClick={rematchOnlineRoom} disabled={online.pending}>
                 SAME ROOM REMATCH
               </button>
