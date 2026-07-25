@@ -876,6 +876,10 @@ function Game() {
       : labLeaders.length < 2 || labLeaders[0].rate - labLeaders[1].rate <= 10
         ? "現時点では大きな陣営差なし"
         : `${playerName(labLeaders[0].player)}側優勢。先攻・初期方向の影響を要観察`;
+  const perspectiveSlot =
+    mode === "online" && online.role
+      ? (PLAYER_ORDER.indexOf(online.role) + (game.layoutOffset ?? 0)) % 4
+      : 0;
 
   return (
     <main className="shell">
@@ -912,8 +916,17 @@ function Game() {
             aria-label={`${game.size}×${game.size} ゲーム盤`}
           >
             {Array.from({ length: game.size * game.size }, (_, index) => {
-              const r = Math.floor(index / game.size);
-              const c = index % game.size;
+              const viewR = Math.floor(index / game.size);
+              const viewC = index % game.size;
+              const last = game.size - 1;
+              const { r, c } =
+                perspectiveSlot === 1
+                  ? { r: last - viewR, c: last - viewC }
+                  : perspectiveSlot === 2
+                    ? { r: viewC, c: last - viewR }
+                    : perspectiveSlot === 3
+                      ? { r: last - viewC, c: viewR }
+                      : { r: viewR, c: viewC };
               const pos = { r, c };
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
