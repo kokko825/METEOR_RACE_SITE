@@ -73,6 +73,7 @@ function roomPayload(room: RoomRow, email: string) {
     version: room.version,
     maxPlayers: room.max_players,
     joinedPlayers,
+    isHost: email === room.host_email,
     state: JSON.parse(room.state_json),
   };
 }
@@ -103,6 +104,8 @@ export async function POST(request: Request) {
     size?: number;
     first?: Player;
     playerCount?: number;
+    humanCount?: number;
+    aiCount?: number;
     obstaclesEnabled?: boolean;
     version?: number;
     target?: Pos;
@@ -110,7 +113,9 @@ export async function POST(request: Request) {
   };
 
   if (body.action === "create") {
-    const playerCount = body.playerCount === 3 || body.playerCount === 4 ? body.playerCount : 2;
+    const humanCount = Math.max(1, Math.min(4, Number(body.humanCount ?? body.playerCount ?? 2)));
+    const aiCount = Math.max(0, Math.min(4 - humanCount, Number(body.aiCount ?? 0)));
+    const playerCount = humanCount + aiCount;
     const requestedSize = body.size === 13 ? 13 : body.size === 11 ? 11 : 9;
     const size = playerCount > 2 && requestedSize === 9 ? 11 : requestedSize;
     const allowedPlayers: Player[] = ["red", "blue", "green", "yellow"].slice(0, playerCount) as Player[];
@@ -121,19 +126,21 @@ export async function POST(request: Request) {
     }
     const first: Player =
       allowedPlayers[crypto.getRandomValues(new Uint8Array(1))[0] % allowedPlayers.length];
+    const humanSeats = seats.slice(0, humanCount);
+    const botPlayers = seats.slice(humanCount);
     const layoutOffset =
       playerCount === 3 ? crypto.getRandomValues(new Uint8Array(1))[0] % 4 : 0;
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const code = codeValue();
       const now = Date.now();
       const result = await env.DB.prepare(
-        "INSERT OR IGNORE INTO game_rooms (code, host_email, max_players, seat_order_json, state_json, version, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, 'waiting', ?, ?)",
+        "INSERT OR IGNORE INTO game_rooms (code, host_email, max_players, seat_order_json, state_json, version, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
       )
         .bind(
           code,
           email,
-          playerCount,
-          JSON.stringify(seats),
+          humanCount,
+          JSON.stringify(humanSeats),
           JSON.stringify(
             initialGameState(
               size,
@@ -141,8 +148,10 @@ export async function POST(request: Request) {
               playerCount,
               Boolean(body.obstaclesEnabled),
               layoutOffset,
+              botPlayers,
             ),
           ),
+          humanCount === 1 ? "playing" : "waiting",
           now,
           now,
         )
@@ -204,6 +213,7 @@ export async function POST(request: Request) {
       players,
       Boolean(previous.obstaclesEnabled),
       nextOffset,
+      previous.botPlayers ?? [],
     );
     await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
@@ -219,7 +229,9 @@ export async function POST(request: Request) {
   }
 
   const state = JSON.parse(room.state_json);
-  if (state.turn !== role) return json({ error: "相手の手番です" }, 403);
+  const hostControlsBot =
+    email === room.host_email && (state.botPlayers ?? []).includes(state.turn);
+  if (state.turn !== role && !hostControlsBot) return json({ error: "相手の手番です" }, 403);
 
   try {
     let nextState;

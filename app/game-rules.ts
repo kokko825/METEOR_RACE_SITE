@@ -19,6 +19,7 @@ export type GameState = {
   obstacleAvailable: Record<Player, number>;
   layoutOffset: number;
   startingPlayer: Player;
+  botPlayers: Player[];
   inventory: Inventory;
   selected: MeteorSize | "obstacle";
   winner: Player | "draw" | null;
@@ -68,6 +69,7 @@ export function initialGameState(
   playerCount = 2,
   obstaclesEnabled = false,
   layoutOffset = 0,
+  botPlayers: Player[] = [],
 ): GameState {
   const count = Math.max(2, Math.min(4, playerCount));
   const players = PLAYER_ORDER.slice(0, count);
@@ -87,6 +89,7 @@ export function initialGameState(
     players,
     turn: first,
     startingPlayer: first,
+    botPlayers: botPlayers.filter((player) => players.includes(player)),
     layoutOffset: offset,
     phase: "move",
     turnCount: 0,

@@ -43,6 +43,7 @@ type OnlineRoom = {
   joinedPlayers: number;
   error: string;
   pending: boolean;
+  isHost: boolean;
 };
 
 function Game() {
@@ -55,6 +56,7 @@ function Game() {
   const [needsNewGame, setNeedsNewGame] = useState(false);
   const [activeFirst, setActiveFirst] = useState<Player>("red");
   const [aiPlayerCount, setAiPlayerCount] = useState<2 | 3 | 4>(2);
+  const [localAiCount, setLocalAiCount] = useState<0 | 1 | 2>(0);
   const [aiRunning, setAiRunning] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [obstaclesEnabled, setObstaclesEnabled] = useState(false);
@@ -62,7 +64,8 @@ function Game() {
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
-  const [onlinePlayerCount, setOnlinePlayerCount] = useState<2 | 3 | 4>(2);
+  const [onlinePlayerCount, setOnlinePlayerCount] = useState<1 | 2 | 3 | 4>(2);
+  const [onlineAiCount, setOnlineAiCount] = useState<0 | 1 | 2 | 3>(0);
   const [online, setOnline] = useState<OnlineRoom>({
     code: "",
     role: null,
@@ -72,6 +75,7 @@ function Game() {
     joinedPlayers: 0,
     error: "",
     pending: false,
+    isHost: false,
   });
   const [stats, setStats] = useState({
     games: 0,
@@ -88,14 +92,15 @@ function Game() {
   const canControl =
     !needsNewGame && (mode !== "online" ||
     (online.status === "playing" &&
-      online.role === game.turn &&
+      (online.role === game.turn ||
+        (online.isHost && (game.botPlayers ?? []).includes(game.turn))) &&
       !online.pending));
   const setupPlayerCount =
     setupMode === "cpu" || setupMode === "lab"
       ? aiPlayerCount
       : setupMode === "online"
-        ? onlinePlayerCount
-        : 2;
+        ? onlinePlayerCount + onlineAiCount
+        : 2 + localAiCount;
   const setupPlayers = PLAYER_ORDER.slice(0, setupPlayerCount);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
@@ -115,7 +120,8 @@ function Game() {
       const data = await roomRequest({
         action: "create",
         size,
-        playerCount: onlinePlayerCount,
+        humanCount: onlinePlayerCount,
+        aiCount: onlineAiCount,
         obstaclesEnabled,
       });
       setGame(data.state);
@@ -129,6 +135,7 @@ function Game() {
         joinedPlayers: data.joinedPlayers,
         error: "",
         pending: false,
+        isHost: Boolean(data.isHost),
       });
       setRoomCodeInput(data.code);
     } catch (error) {
@@ -157,6 +164,7 @@ function Game() {
         joinedPlayers: data.joinedPlayers,
         error: "",
         pending: false,
+        isHost: Boolean(data.isHost),
       });
       setRoomCodeInput(data.code);
     } catch (error) {
@@ -504,7 +512,11 @@ function Game() {
     setIsAnimating(false);
     setHistory([]);
     const playerCount =
-      setupMode === "cpu" || setupMode === "lab" ? aiPlayerCount : 2;
+      setupMode === "cpu" || setupMode === "lab"
+        ? aiPlayerCount
+        : setupMode === "human"
+          ? 2 + localAiCount
+          : onlinePlayerCount + onlineAiCount;
     const nextSize = playerCount > 2 && size === 9 ? 11 : size;
     const nextPlayers = PLAYER_ORDER.slice(0, playerCount);
     const nextFirst = nextPlayers.includes(first) ? first : nextPlayers[0];
@@ -515,16 +527,23 @@ function Game() {
     setNeedsNewGame(false);
     recordedOutcome.current = "";
     if (setupMode !== "online") {
-    const layoutOffset = playerCount === 3 ? Math.floor(Math.random() * 4) : 0;
-    setGame(
-      initialState(
-        nextSize,
-        nextFirst,
-        playerCount,
-        obstaclesEnabled,
-        layoutOffset,
-      ),
-    );
+      const layoutOffset = playerCount === 3 ? Math.floor(Math.random() * 4) : 0;
+      const botPlayers =
+        setupMode === "lab"
+          ? nextPlayers
+          : setupMode === "cpu"
+            ? nextPlayers.slice(1)
+            : nextPlayers.slice(2);
+      setGame(
+        initialState(
+          nextSize,
+          nextFirst,
+          playerCount,
+          obstaclesEnabled,
+          layoutOffset,
+          botPlayers,
+        ),
+      );
     }
   };
 
@@ -547,6 +566,7 @@ function Game() {
         players.length,
         Boolean(game.obstaclesEnabled),
         nextOffset,
+        game.botPlayers ?? [],
       ),
     );
   };
@@ -569,7 +589,10 @@ function Game() {
       !activeObstacles(game).some((obstacle) => distance(obstacle, { r, c }) <= 1));
 
   const isAiTurn =
-    mode === "lab" || (mode === "cpu" && game.turn !== "red");
+    mode === "lab" ||
+    (mode === "cpu" && game.turn !== "red") ||
+    ((mode === "human" || (mode === "online" && online.isHost)) &&
+      (game.botPlayers ?? []).includes(game.turn));
 
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
@@ -635,6 +658,7 @@ function Game() {
           players.length,
           Boolean(game.obstaclesEnabled),
           nextOffset,
+          game.botPlayers ?? players,
         ),
       );
     }, Math.max(120, aiSpeed));
@@ -944,8 +968,8 @@ function Game() {
                   nextMode === "cpu" || nextMode === "lab"
                     ? aiPlayerCount
                     : nextMode === "online"
-                      ? onlinePlayerCount
-                      : 2;
+                      ? onlinePlayerCount + onlineAiCount
+                      : 2 + localAiCount;
                 setSetupMode(nextMode);
                 if (!PLAYER_ORDER.slice(0, nextCount).includes(first)) setFirst("red");
                 if (nextCount > 2 && size === 9) setSize(11);
@@ -975,6 +999,25 @@ function Game() {
                   }}
                 >
                   {count}人
+                </button>
+              ))}
+            </div>
+          )}
+          {setupMode === "human" && (
+            <div className="vs-ai-count" aria-label="追加AI人数">
+              <span>追加AI</span>
+              {([0, 1, 2] as const).map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  className={localAiCount === count ? "selected" : ""}
+                  onClick={() => {
+                    setLocalAiCount(count);
+                    if (count > 0 && size === 9) setSize(11);
+                    setNeedsNewGame(true);
+                  }}
+                >
+                  {count}体
                 </button>
               ))}
             </div>
@@ -1066,19 +1109,42 @@ function Game() {
               <div className="online-count" aria-label="オンライン対戦の人数">
                 <span>対戦人数を選択</span>
                 <div className="player-count-buttons">
-                  {([2, 3, 4] as const).map((count) => (
+                  {([1, 2, 3, 4] as const).map((count) => (
                     <button
                       key={count}
                       type="button"
                       className={onlinePlayerCount === count ? "selected" : ""}
                       aria-pressed={onlinePlayerCount === count}
+                      disabled={count + onlineAiCount > 4}
                       onClick={() => {
                         setOnlinePlayerCount(count);
-                        if (count > 2 && size === 9) setSize(11);
+                        if (count + onlineAiCount > 2 && size === 9) setSize(11);
                       }}
                     >
                       <b>{count}人対戦</b>
-                      <small>{size}×{size}</small>
+                      <small>人間</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!online.code && (
+              <div className="online-count" aria-label="オンライン追加AI人数">
+                <span>追加AI</span>
+                <div className="player-count-buttons">
+                  {([0, 1, 2, 3] as const).map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      disabled={onlinePlayerCount + count > 4}
+                      className={onlineAiCount === count ? "selected" : ""}
+                      onClick={() => {
+                        setOnlineAiCount(count);
+                        if (onlinePlayerCount + count > 2 && size === 9) setSize(11);
+                      }}
+                    >
+                      <b>{count}体</b>
+                      <small>AI</small>
                     </button>
                   ))}
                 </div>
