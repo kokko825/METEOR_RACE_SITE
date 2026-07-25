@@ -12,6 +12,7 @@ import {
   initialGameState as initialState,
   legalMoves,
   meteorName,
+  obstacleCount,
   playerName,
   samePos,
   type GameState,
@@ -514,7 +515,16 @@ function Game() {
     setNeedsNewGame(false);
     recordedOutcome.current = "";
     if (setupMode !== "online") {
-    setGame(initialState(nextSize, nextFirst, playerCount, obstaclesEnabled));
+    const layoutOffset = playerCount === 3 ? Math.floor(Math.random() * 4) : 0;
+    setGame(
+      initialState(
+        nextSize,
+        nextFirst,
+        playerCount,
+        obstaclesEnabled,
+        layoutOffset,
+      ),
+    );
     }
   };
 
@@ -523,12 +533,20 @@ function Game() {
     setIsAnimating(false);
     setHistory([]);
     recordedOutcome.current = "";
+    const players = activePlayers(game);
+    const nextFirst =
+      players.length === 2
+        ? players[(players.indexOf(game.startingPlayer ?? activeFirst) + 1) % 2]
+        : game.startingPlayer ?? activeFirst;
+    const nextOffset = players.length === 3 ? ((game.layoutOffset ?? 0) + 1) % 4 : 0;
+    setActiveFirst(nextFirst);
     setGame(
       initialState(
         game.size,
-        activeFirst,
-        activePlayers(game).length,
+        nextFirst,
+        players.length,
         Boolean(game.obstaclesEnabled),
+        nextOffset,
       ),
     );
   };
@@ -546,7 +564,9 @@ function Game() {
     !(r === mid && c === mid) &&
     !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
     !game.meteors.some((m) => m.r === r && m.c === c) &&
-    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c);
+    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c) &&
+    (game.selected !== "obstacle" ||
+      !activeObstacles(game).some((obstacle) => distance(obstacle, { r, c }) <= 1));
 
   const isAiTurn =
     mode === "lab" || (mode === "cpu" && game.turn !== "red");
@@ -607,7 +627,16 @@ function Game() {
       setActiveFirst(nextFirst);
       setHistory([]);
       recordedOutcome.current = "";
-      setGame(initialState(game.size, nextFirst, players.length));
+      const nextOffset = players.length === 3 ? ((game.layoutOffset ?? 0) + 1) % 4 : 0;
+      setGame(
+        initialState(
+          game.size,
+          nextFirst,
+          players.length,
+          Boolean(game.obstaclesEnabled),
+          nextOffset,
+        ),
+      );
     }, Math.max(120, aiSpeed));
     return () => window.clearTimeout(timer);
   }, [mode, aiRunning, game, aiSpeed, stats.games]);
@@ -640,14 +669,32 @@ function Game() {
             if (validPlacement(r, c)) obstacleTargets.push({ r, c });
           }
         }
-        obstacleTargets.sort(
-          (a, b) =>
-            Math.abs(a.r - mid) +
-            Math.abs(a.c - mid) -
-            Math.abs(b.r - mid) -
-            Math.abs(b.c - mid) +
-            (Math.random() - 0.5) * 0.2,
-        );
+        const ownProbe = game.probes[game.turn];
+        const scoreObstacle = (target: Pos) => {
+          const coreDistance = Math.abs(target.r - mid) + Math.abs(target.c - mid);
+          let score = 14 - coreDistance * 1.2 + Math.random() * 2;
+          if (distance(target, ownProbe) === 1) score += 9;
+          game.meteors.forEach((meteor) => {
+            if (meteor.owner === game.turn || distance(meteor, ownProbe) > 2) return;
+            const dr = Math.sign(ownProbe.r - meteor.r);
+            const dc = Math.sign(ownProbe.c - meteor.c);
+            if (samePos(target, { r: ownProbe.r + dr, c: ownProbe.c + dc })) score += 34;
+            if (samePos(target, { r: ownProbe.r + dr * 2, c: ownProbe.c + dc * 2 })) score += 20;
+          });
+          activePlayers(game)
+            .filter((player) => player !== game.turn)
+            .forEach((player) => {
+              const probe = game.probes[player];
+              if (distance(target, probe) === 1) score += 6;
+              if (
+                Math.abs(probe.r - mid) > Math.abs(probe.c - mid)
+                  ? target.c === mid
+                  : target.r === mid
+              ) score += 5;
+            });
+          return score;
+        };
+        obstacleTargets.sort((a, b) => scoreObstacle(b) - scoreObstacle(a));
         if (obstacleTargets[0]) {
           placeObstacle(obstacleTargets[0]);
           return;
@@ -838,7 +885,7 @@ function Game() {
                     disabled={!canPlaceObstacle(game)}
                     onClick={() => setGame((g) => ({ ...g, selected: "obstacle" }))}
                   >
-                    ◆ お邪魔 <b>{canPlaceObstacle(game) ? 1 : 0}</b>
+                    ◆ お邪魔 <b>{obstacleCount(game)}</b>
                   </button>
                 )}
               </>

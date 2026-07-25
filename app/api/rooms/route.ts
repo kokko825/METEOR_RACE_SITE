@@ -121,6 +121,8 @@ export async function POST(request: Request) {
     }
     const first: Player =
       allowedPlayers[crypto.getRandomValues(new Uint8Array(1))[0] % allowedPlayers.length];
+    const layoutOffset =
+      playerCount === 3 ? crypto.getRandomValues(new Uint8Array(1))[0] % 4 : 0;
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const code = codeValue();
       const now = Date.now();
@@ -132,7 +134,15 @@ export async function POST(request: Request) {
           email,
           playerCount,
           JSON.stringify(seats),
-          JSON.stringify(initialGameState(size, first, playerCount, Boolean(body.obstaclesEnabled))),
+          JSON.stringify(
+            initialGameState(
+              size,
+              first,
+              playerCount,
+              Boolean(body.obstaclesEnabled),
+              layoutOffset,
+            ),
+          ),
           now,
           now,
         )
@@ -181,13 +191,19 @@ export async function POST(request: Request) {
     if (room.status !== "finished") return json({ error: "対局終了後に再戦できます" }, 409);
     const previous = JSON.parse(room.state_json);
     const players = previous.players?.length ?? room.max_players;
-    const firstIndex = Math.max(0, previous.players?.indexOf(previous.turn) ?? 0);
-    const nextFirst = (previous.players ?? ["red", "blue"])[(firstIndex + 1) % players] as Player;
+    const playerList = previous.players ?? ["red", "blue"];
+    const previousFirst = previous.startingPlayer ?? playerList[0];
+    const firstIndex = Math.max(0, playerList.indexOf(previousFirst));
+    const nextFirst =
+      players === 2 ? playerList[(firstIndex + 1) % players] : previousFirst;
+    const nextOffset =
+      players === 3 ? ((previous.layoutOffset ?? 0) + 1) % 4 : 0;
     const nextState = initialGameState(
       previous.size,
       nextFirst,
       players,
       Boolean(previous.obstaclesEnabled),
+      nextOffset,
     );
     await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",

@@ -16,7 +16,9 @@ export type GameState = {
   meteors: Meteor[];
   obstaclesEnabled: boolean;
   obstacles: ObstacleMeteor[];
-  obstacleAvailable: Record<Player, boolean>;
+  obstacleAvailable: Record<Player, number>;
+  layoutOffset: number;
+  startingPlayer: Player;
   inventory: Inventory;
   selected: MeteorSize | "obstacle";
   winner: Player | "draw" | null;
@@ -40,7 +42,16 @@ export const activePlayers = (state: GameState): Player[] =>
 export const activeObstacles = (state: GameState): ObstacleMeteor[] =>
   state.obstacles ?? [];
 export const canPlaceObstacle = (state: GameState, player = state.turn) =>
-  Boolean(state.obstaclesEnabled && (state.obstacleAvailable?.[player] ?? true));
+  Boolean(
+    state.obstaclesEnabled &&
+      (typeof state.obstacleAvailable?.[player] === "number"
+        ? state.obstacleAvailable[player] > 0
+        : state.obstacleAvailable?.[player] ?? true),
+  );
+export const obstacleCount = (state: GameState, player = state.turn) => {
+  const value = state.obstacleAvailable?.[player];
+  return typeof value === "number" ? value : value === false ? 0 : state.obstaclesEnabled ? 1 : 0;
+};
 export const nextPlayer = (state: GameState, player = state.turn): Player => {
   const players = activePlayers(state);
   return players[(players.indexOf(player) + 1) % players.length];
@@ -56,6 +67,7 @@ export function initialGameState(
   first: Player = "red",
   playerCount = 2,
   obstaclesEnabled = false,
+  layoutOffset = 0,
 ): GameState {
   const count = Math.max(2, Math.min(4, playerCount));
   const players = PLAYER_ORDER.slice(0, count);
@@ -63,26 +75,35 @@ export function initialGameState(
   if (![9, 11, 13].includes(size)) size = 9;
   if (count > 2 && size === 9) size = 11;
   const mid = Math.floor(size / 2);
+  const slots = [
+    { r: size - 1, c: mid },
+    { r: 0, c: mid },
+    { r: mid, c: 0 },
+    { r: mid, c: size - 1 },
+  ];
+  const offset = ((layoutOffset % 4) + 4) % 4;
   return {
     size,
     players,
     turn: first,
+    startingPlayer: first,
+    layoutOffset: offset,
     phase: "move",
     turnCount: 0,
     probes: {
-      red: { r: size - 1, c: mid },
-      blue: { r: 0, c: mid },
-      green: { r: mid, c: 0 },
-      yellow: { r: mid, c: size - 1 },
+      red: slots[offset % 4],
+      blue: slots[(offset + 1) % 4],
+      green: slots[(offset + 2) % 4],
+      yellow: slots[(offset + 3) % 4],
     },
     meteors: [],
     obstaclesEnabled,
     obstacles: [],
     obstacleAvailable: {
-      red: obstaclesEnabled,
-      blue: obstaclesEnabled,
-      green: obstaclesEnabled,
-      yellow: obstaclesEnabled,
+      red: obstaclesEnabled ? 2 : 0,
+      blue: obstaclesEnabled ? 2 : 0,
+      green: obstaclesEnabled ? 2 : 0,
+      yellow: obstaclesEnabled ? 2 : 0,
     },
     inventory: {
       red: { small: 2, large: 1 },
@@ -344,12 +365,13 @@ export function applyObstacle(state: GameState, target: Pos): GameState {
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||
     activeObstacles(state).some((obstacle) => samePos(obstacle, target))
+    || activeObstacles(state).some((obstacle) => distance(obstacle, target) <= 1)
   ) {
     throw new Error("そのマスにはお邪魔メテオを配置できません");
   }
   const obstacleAvailable = {
     ...state.obstacleAvailable,
-    [state.turn]: false,
+    [state.turn]: Math.max(0, obstacleCount(state) - 1),
   };
   const obstacle: ObstacleMeteor = {
     ...target,

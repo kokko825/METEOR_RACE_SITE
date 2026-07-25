@@ -146,7 +146,7 @@ for (const first of ["red", "blue"] as Player[]) {
   state.phase = "place";
   const obstacleState = applyObstacle(state, { r: 5, c: 4 });
   assert.equal(obstacleState.obstacles.length, 1);
-  assert.equal(obstacleState.obstacleAvailable.red, false);
+  assert.equal(obstacleState.obstacleAvailable.red, 1);
   const blockedState = {
     ...obstacleState,
     probes: { ...obstacleState.probes, green: { r: 5, c: 3 } },
@@ -163,6 +163,18 @@ for (const first of ["red", "blue"] as Player[]) {
   };
   const afterBlast = applyMeteor(blastState, { r: 4, c: 4 }, "small").state;
   assert.equal(afterBlast.obstacles.length, 1, "お邪魔メテオは爆風で破壊されない");
+  const secondTurn = {
+    ...obstacleState,
+    turn: "red" as Player,
+    phase: "place" as const,
+  };
+  assert.throws(
+    () => applyObstacle(secondTurn, { r: 4, c: 4 }),
+    /配置できません/,
+    "お邪魔メテオ同士は斜めを含む隣接マスへ配置できない",
+  );
+  const twoObstacles = applyObstacle(secondTurn, { r: 3, c: 3 });
+  assert.equal(twoObstacles.obstacleAvailable.red, 0);
 }
 
 console.log("game-rules: all checks passed");
