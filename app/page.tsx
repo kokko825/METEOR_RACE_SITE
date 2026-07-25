@@ -902,13 +902,30 @@ function Game() {
           return;
         }
         const center = { r: mid, c: mid };
+        const coreDistance = (p: Pos) =>
+          Math.abs(p.r - center.r) + Math.abs(p.c - center.c);
+        const meteorless =
+          game.inventory[game.turn].small + game.inventory[game.turn].large === 0;
         const scored = moves
-          .map((p) => ({
-            p,
-            score:
-              -2.8 * (Math.abs(p.r - center.r) + Math.abs(p.c - center.c)) +
-              Math.random() * 2.4,
-          }))
+          .map((p) => {
+            if (meteorless && !game.bonusMove) {
+              const afterFirst = applyMove(game, p);
+              const secondMoves = legalMoves(afterFirst);
+              const finalDistance = secondMoves.length
+                ? Math.min(...secondMoves.map(coreDistance))
+                : coreDistance(p);
+              return {
+                p,
+                score: -finalDistance * 20 - coreDistance(p) + Math.random() * 0.2,
+              };
+            }
+            return {
+              p,
+              score:
+                -(game.bonusMove ? 20 : 2.8) * coreDistance(p) +
+                Math.random() * (game.bonusMove ? 0.2 : 2.4),
+            };
+          })
           .sort((a, b) => b.score - a.score);
         moveProbe(scored[0].p);
         return;
@@ -1070,7 +1087,7 @@ function Game() {
       } else {
         commit(finishTurn(game, "配置可能なマスがないため手番終了"));
       }
-    }, aiSpeed);
+    }, game.bonusMove ? Math.max(420, aiSpeed) : aiSpeed);
     return () => window.clearTimeout(timer);
   }, [
     game,
@@ -1279,6 +1296,11 @@ function Game() {
               <button className="primary-action" onClick={skipBlockedMove}>
                 移動不能 — メテオ配置へ
               </button>
+            )}
+            {game.phase === "move" && game.bonusMove && moves.length > 0 && (
+              <div className={`bonus-move-callout ${game.turn}`} role="status">
+                BONUS MOVE <b>2 / 2</b>
+              </div>
             )}
             {game.phase === "over" && (
               <button
