@@ -183,6 +183,16 @@ button { color: inherit; }
 .vs-ai-count > span { color:#9d8d5d; font-size:9px; letter-spacing:.12em; margin-right:3px; }
 .settings .vs-ai-count button { min-height:32px; padding:6px 11px; }
 .settings .vs-ai-count button.selected { color:#07131d; border-color:var(--gold); background:linear-gradient(135deg,#ffe78f,#ffbd39); box-shadow:0 0 14px rgba(255,211,99,.24); font-weight:800; }
+.settings .new-game-button { min-width:190px; min-height:56px; display:grid; place-items:center; gap:2px; padding:9px 18px; color:#07131d; border:1px solid var(--gold); background:linear-gradient(135deg,#ffe78f,#ffb52d); box-shadow:0 0 20px rgba(255,211,99,.18); font-size:14px; font-weight:900; }
+.settings .new-game-button small { color:#654600; font-size:8px; letter-spacing:.06em; }
+.settings .new-game-button.attention { animation:new-game-attention 1.4s ease-in-out infinite alternate; }
+.settings-pending { margin-top:9px; padding:9px 12px; border:1px solid rgba(255,211,99,.34); background:rgba(255,188,45,.08); color:#ffe29a; font-size:11px; letter-spacing:.04em; }
+.lab-stat.green b { color:var(--green); }
+.lab-stat.yellow b { color:var(--yellow); }
+@keyframes new-game-attention {
+  from { box-shadow:0 0 14px rgba(255,211,99,.2); transform:translateY(0); }
+  to { box-shadow:0 0 30px rgba(255,211,99,.48); transform:translateY(-2px); }
+}
 .online-panel { margin-top:12px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:12px 14px; border:1px solid rgba(99,223,255,.24); background:linear-gradient(90deg,rgba(8,31,44,.95),rgba(5,16,25,.88)); }
 .online-copy { min-width:250px; margin-right:auto; display:grid; gap:3px; }
 .online-copy span { color:#63dfff; font-size:9px; letter-spacing:.18em; }

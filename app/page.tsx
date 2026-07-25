@@ -46,6 +46,9 @@ function Game() {
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [history, setHistory] = useState<GameState[]>([]);
   const [mode, setMode] = useState<Mode>("human");
+  const [setupMode, setSetupMode] = useState<Mode>("human");
+  const [needsNewGame, setNeedsNewGame] = useState(false);
+  const [activeFirst, setActiveFirst] = useState<Player>("red");
   const [aiPlayerCount, setAiPlayerCount] = useState<2 | 3 | 4>(2);
   const [aiRunning, setAiRunning] = useState(true);
   const [aiSpeed, setAiSpeed] = useState(420);
@@ -63,15 +66,30 @@ function Game() {
     error: "",
     pending: false,
   });
-  const [stats, setStats] = useState({ games: 0, red: 0, blue: 0, draw: 0, turns: 0 });
+  const [stats, setStats] = useState({
+    games: 0,
+    red: 0,
+    blue: 0,
+    green: 0,
+    yellow: 0,
+    draw: 0,
+    turns: 0,
+  });
   const recordedOutcome = useRef("");
   const mid = Math.floor(game.size / 2);
   const moves = useMemo(() => legalMoves(game), [game]);
   const canControl =
-    mode !== "online" ||
+    !needsNewGame && (mode !== "online" ||
     (online.status === "playing" &&
       online.role === game.turn &&
-      !online.pending);
+      !online.pending));
+  const setupPlayerCount =
+    setupMode === "cpu" || setupMode === "lab"
+      ? aiPlayerCount
+      : setupMode === "online"
+        ? onlinePlayerCount
+        : 2;
+  const setupPlayers = PLAYER_ORDER.slice(0, setupPlayerCount);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/rooms", {
@@ -89,7 +107,7 @@ function Game() {
     try {
       const data = await roomRequest({
         action: "create",
-        size: onlinePlayerCount > 2 ? 11 : size,
+        size,
         playerCount: onlinePlayerCount,
       });
       setGame(data.state);
@@ -454,22 +472,32 @@ function Game() {
     if (game.phase === "place") placeMeteor({ r, c });
   };
 
-  const reset = () => {
+  const applyNewGameSettings = () => {
     setBlastFx(null);
     setIsAnimating(false);
     setHistory([]);
-    const playerCount = mode === "cpu" ? aiPlayerCount : 2;
-    setGame(initialState(playerCount > 2 ? 11 : size, first, playerCount));
+    const playerCount =
+      setupMode === "cpu" || setupMode === "lab" ? aiPlayerCount : 2;
+    const nextSize = playerCount > 2 && size === 9 ? 11 : size;
+    const nextPlayers = PLAYER_ORDER.slice(0, playerCount);
+    const nextFirst = nextPlayers.includes(first) ? first : nextPlayers[0];
+    setSize(nextSize);
+    setFirst(nextFirst);
+    setActiveFirst(nextFirst);
+    setMode(setupMode);
+    setNeedsNewGame(false);
+    recordedOutcome.current = "";
+    if (setupMode !== "online") {
+      setGame(initialState(nextSize, nextFirst, playerCount));
+    }
   };
 
-  const startVsAi = (playerCount: 2 | 3 | 4) => {
-    setAiPlayerCount(playerCount);
-    setMode("cpu");
+  const restartCurrentGame = () => {
     setBlastFx(null);
     setIsAnimating(false);
     setHistory([]);
-    setGame(initialState(playerCount > 2 ? 11 : size, "red", playerCount));
-    setFirst("red");
+    recordedOutcome.current = "";
+    setGame(initialState(game.size, activeFirst, activePlayers(game).length));
   };
 
   const undo = () => {
@@ -530,6 +558,8 @@ function Game() {
       games: s.games + 1,
       red: s.red + (game.winner === "red" ? 1 : 0),
       blue: s.blue + (game.winner === "blue" ? 1 : 0),
+      green: s.green + (game.winner === "green" ? 1 : 0),
+      yellow: s.yellow + (game.winner === "yellow" ? 1 : 0),
       draw: s.draw + (game.winner === "draw" ? 1 : 0),
       turns: s.turns + game.turnCount,
     }));
@@ -538,17 +568,18 @@ function Game() {
   useEffect(() => {
     if (mode !== "lab" || !aiRunning || game.phase !== "over") return;
     const timer = window.setTimeout(() => {
-      const nextFirst: Player = stats.games % 2 === 0 ? "blue" : "red";
-      setFirst(nextFirst);
+      const players = activePlayers(game);
+      const nextFirst = players[stats.games % players.length];
+      setActiveFirst(nextFirst);
       setHistory([]);
       recordedOutcome.current = "";
-      setGame(initialState(size, nextFirst));
+      setGame(initialState(game.size, nextFirst, players.length));
     }, Math.max(120, aiSpeed));
     return () => window.clearTimeout(timer);
-  }, [mode, aiRunning, game.phase, aiSpeed, size, stats.games]);
+  }, [mode, aiRunning, game, aiSpeed, stats.games]);
 
   useEffect(() => {
-    if (!isAiTurn || !aiRunning || isAnimating || game.phase === "over") return;
+    if (!isAiTurn || !aiRunning || needsNewGame || isAnimating || game.phase === "over") return;
     const timer = window.setTimeout(() => {
       if (game.phase === "move") {
         if (!moves.length) {
@@ -610,19 +641,24 @@ function Game() {
       if (options[0]) placeMeteor(options[0].p, options[0].size);
     }, aiSpeed);
     return () => window.clearTimeout(timer);
-  }, [game, mode, aiRunning, aiSpeed, isAiTurn, isAnimating, moves, mid]);
+  }, [game, mode, aiRunning, aiSpeed, isAiTurn, needsNewGame, isAnimating, moves, mid]);
 
-  const redRate = stats.games ? Math.round((stats.red / stats.games) * 100) : 0;
-  const blueRate = stats.games ? Math.round((stats.blue / stats.games) * 100) : 0;
+  const winRates = Object.fromEntries(
+    PLAYER_ORDER.map((player) => [
+      player,
+      stats.games ? Math.round((stats[player] / stats.games) * 100) : 0,
+    ]),
+  ) as Record<Player, number>;
   const averageTurns = stats.games ? (stats.turns / stats.games).toFixed(1) : "—";
+  const labLeaders = activePlayers(game)
+    .map((player) => ({ player, rate: winRates[player] }))
+    .sort((a, b) => b.rate - a.rate);
   const strategicRead =
     stats.games < 10
       ? "10戦以上で傾向を判定します"
-      : Math.abs(redRate - blueRate) <= 10
+      : labLeaders.length < 2 || labLeaders[0].rate - labLeaders[1].rate <= 10
         ? "現時点では大きな陣営差なし"
-        : redRate > blueRate
-          ? "赤側優勢。先後・初期方向の影響を要観察"
-          : "青側優勢。後攻の初手メテオが有力";
+        : `${playerName(labLeaders[0].player)}側優勢。先攻・初期方向の影響を要観察`;
 
   return (
     <main className="shell">
@@ -749,7 +785,7 @@ function Game() {
             {game.phase === "over" && (
               <button
                 className="primary-action"
-                onClick={mode === "online" ? rematchOnlineRoom : reset}
+                onClick={mode === "online" ? rematchOnlineRoom : restartCurrentGame}
                 disabled={mode === "online" && online.pending}
               >
                 同じメンバーでもう一度
@@ -787,23 +823,43 @@ function Game() {
         <div className="settings">
           <label>
             MODE
-            <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+            <select
+              value={setupMode}
+              onChange={(e) => {
+                const nextMode = e.target.value as Mode;
+                const nextCount =
+                  nextMode === "cpu" || nextMode === "lab"
+                    ? aiPlayerCount
+                    : nextMode === "online"
+                      ? onlinePlayerCount
+                      : 2;
+                setSetupMode(nextMode);
+                if (!PLAYER_ORDER.slice(0, nextCount).includes(first)) setFirst("red");
+                if (nextCount > 2 && size === 9) setSize(11);
+                setNeedsNewGame(true);
+              }}
+            >
               <option value="human">2 PLAYERS</option>
               <option value="cpu">VS AI</option>
               <option value="lab">AI vs AI LAB</option>
               <option value="online">ONLINE ROOM</option>
             </select>
           </label>
-          {mode === "cpu" && (
-            <div className="vs-ai-count" aria-label="VS AIの対戦人数">
-              <span>VS AI人数</span>
+          {(setupMode === "cpu" || setupMode === "lab") && (
+            <div className="vs-ai-count" aria-label="AI対戦の人数">
+              <span>{setupMode === "lab" ? "AI LAB人数" : "VS AI人数"}</span>
               {([2, 3, 4] as const).map((count) => (
                 <button
                   key={count}
                   type="button"
                   className={aiPlayerCount === count ? "selected" : ""}
                   aria-pressed={aiPlayerCount === count}
-                  onClick={() => startVsAi(count)}
+                  onClick={() => {
+                    setAiPlayerCount(count);
+                    if (count > 2 && size === 9) setSize(11);
+                    if (!PLAYER_ORDER.slice(0, count).includes(first)) setFirst("red");
+                    setNeedsNewGame(true);
+                  }}
                 >
                   {count}人
                 </button>
@@ -812,20 +868,37 @@ function Game() {
           )}
           <label>
             BOARD
-            <select value={size} onChange={(e) => setSize(Number(e.target.value))}>
-              <option value={9}>9 × 9</option>
+            <select
+              value={size}
+              onChange={(e) => {
+                setSize(Number(e.target.value));
+                setNeedsNewGame(true);
+              }}
+            >
+              <option value={9} disabled={setupPlayerCount > 2}>9 × 9</option>
               <option value={11}>11 × 11</option>
+              <option value={13}>13 × 13</option>
             </select>
           </label>
           <label>
             FIRST
-            <select value={first} onChange={(e) => setFirst(e.target.value as Player)}>
-              <option value="red">RED</option>
-              <option value="blue">BLUE</option>
+            <select
+              value={first}
+              onChange={(e) => {
+                setFirst(e.target.value as Player);
+                setNeedsNewGame(true);
+              }}
+            >
+              {setupPlayers.map((player) => (
+                <option key={player} value={player}>{playerName(player)}</option>
+              ))}
             </select>
           </label>
-          <button onClick={reset} disabled={mode === "online"}>NEW GAME</button>
-          <button onClick={undo} disabled={!history.length || mode === "online"}>UNDO</button>
+          <button className={`new-game-button ${needsNewGame ? "attention" : ""}`} onClick={applyNewGameSettings}>
+            NEW GAME
+            <small>{needsNewGame ? "設定を適用して開始" : "現在の設定で再開始"}</small>
+          </button>
+          <button onClick={undo} disabled={!history.length || mode === "online" || needsNewGame}>UNDO</button>
           {mode === "lab" && (
             <>
               <button onClick={() => setAiRunning((v) => !v)}>{aiRunning ? "PAUSE AI" : "RUN AI"}</button>
@@ -840,7 +913,12 @@ function Game() {
             </>
           )}
         </div>
-        {mode === "online" && (
+        {needsNewGame && (
+          <div className="settings-pending" role="status">
+            設定はまだ対局に反映されていません。「NEW GAME」を押すと新しい設定で開始します。
+          </div>
+        )}
+        {mode === "online" && !needsNewGame && (
           <section className="online-panel" aria-label="オンライン対戦">
             <div className="online-copy">
               <span>ONLINE MATCH</span>
@@ -862,10 +940,13 @@ function Game() {
                       type="button"
                       className={onlinePlayerCount === count ? "selected" : ""}
                       aria-pressed={onlinePlayerCount === count}
-                      onClick={() => setOnlinePlayerCount(count)}
+                      onClick={() => {
+                        setOnlinePlayerCount(count);
+                        if (count > 2 && size === 9) setSize(11);
+                      }}
                     >
                       <b>{count}人対戦</b>
-                      <small>{count > 2 ? "11×11" : `${size}×${size}`}</small>
+                      <small>{size}×{size}</small>
                     </button>
                   ))}
                 </div>
@@ -898,15 +979,34 @@ function Game() {
             <strong>{strategicRead}</strong>
           </div>
           <div className="lab-stat"><b>{stats.games}</b><span>対戦数</span></div>
-          <div className="lab-stat red"><b>{redRate}%</b><span>RED勝率</span></div>
-          <div className="lab-stat blue"><b>{blueRate}%</b><span>BLUE勝率</span></div>
+          {activePlayers(game).map((player) => (
+            <div key={player} className={`lab-stat ${player}`}>
+              <b>{winRates[player]}%</b>
+              <span>{playerName(player)}勝率</span>
+            </div>
+          ))}
           <div className="lab-stat"><b>{averageTurns}</b><span>平均手数</span></div>
           <div className="strategy-note">
             <b>AIの基本戦略</b>
             中央へ近づく移動を優先し、自機を中央へ押す配置、相手を遠ざける配置、相手メテオの破壊を評価します。
             勝率が一方へ60%以上偏り続ける場合、必勝に近い定石や先後差の候補です。
           </div>
-          <button className="reset-stats" onClick={() => setStats({ games: 0, red: 0, blue: 0, draw: 0, turns: 0 })}>RESET DATA</button>
+          <button
+            className="reset-stats"
+            onClick={() =>
+              setStats({
+                games: 0,
+                red: 0,
+                blue: 0,
+                green: 0,
+                yellow: 0,
+                draw: 0,
+                turns: 0,
+              })
+            }
+          >
+            RESET DATA
+          </button>
         </section>
         <details className="rules">
           <summary>HOW TO PLAY</summary>

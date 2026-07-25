@@ -132,4 +132,11 @@ for (const first of ["red", "blue"] as Player[]) {
   assert.equal(finishTurn({ ...state, turn: "green" }).turn, "red");
 }
 
+{
+  const state = initialGameState(13, "yellow", 4);
+  assert.equal(state.size, 13, "4人対戦でも13×13を選択できる");
+  assert.equal(state.turn, "yellow", "4色すべてを先攻に選択できる");
+  assert.deepEqual(state.probes.yellow, { r: 6, c: 12 });
+}
+
 console.log("game-rules: all checks passed");

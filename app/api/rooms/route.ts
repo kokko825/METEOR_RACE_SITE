@@ -110,7 +110,8 @@ export async function POST(request: Request) {
 
   if (body.action === "create") {
     const playerCount = body.playerCount === 3 || body.playerCount === 4 ? body.playerCount : 2;
-    const size = playerCount > 2 ? 11 : body.size === 11 ? 11 : 9;
+    const requestedSize = body.size === 13 ? 13 : body.size === 11 ? 11 : 9;
+    const size = playerCount > 2 && requestedSize === 9 ? 11 : requestedSize;
     const allowedPlayers: Player[] = ["red", "blue", "green", "yellow"].slice(0, playerCount) as Player[];
     const seats = [...allowedPlayers];
     for (let index = seats.length - 1; index > 0; index -= 1) {
