@@ -490,6 +490,13 @@ export async function POST(request: Request) {
     room = await roomByCode(code);
     return json({ ...roomPayload(room!, email), effect });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "操作できませんでした" }, 400);
+    room = await roomByCode(code);
+    return json(
+      {
+        error: error instanceof Error ? error.message : "操作できませんでした",
+        ...(room ? { room: roomPayload(room, email) } : {}),
+      },
+      400,
+    );
   }
 }

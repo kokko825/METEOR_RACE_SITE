@@ -246,6 +246,9 @@ function Game() {
         target,
         meteorSize,
       });
+      if ((action === "move" || action === "skip_move") && data.state) {
+        setGame(data.state);
+      }
       setOnline((current) => ({
         ...current,
         status: data.status,
@@ -399,7 +402,10 @@ function Game() {
 
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
-    if (mode === "online") void submitOnlineAction("move", target);
+    if (mode === "online") {
+      void submitOnlineAction("move", target);
+      return;
+    }
     commit(applyMove(game, target));
   };
 
@@ -1110,6 +1116,13 @@ function Game() {
     online.role ? online.memberRoles.indexOf(online.role) : -1;
   const ownDisplayName =
     ownMemberIndex >= 0 ? online.memberNames[ownMemberIndex] : nickname.trim();
+  const displayNameForPlayer = (player: Player, fallbackNumber: number) => {
+    if (mode !== "online") return `PLAYER ${String(fallbackNumber).padStart(2, "0")}`;
+    const memberIndex = online.memberRoles.indexOf(player);
+    if (memberIndex >= 0) return online.memberNames[memberIndex] || playerName(player);
+    if ((game.botPlayers ?? []).includes(player)) return `${playerName(player)} AI`;
+    return playerName(player);
+  };
 
   return (
     <main className="shell">
@@ -1126,7 +1139,7 @@ function Game() {
 
       <section className="game-layout">
         <aside className={`player-card red-card ${game.turn === "red" && game.phase !== "over" ? "active" : ""}`}>
-          <span className="eyebrow">PLAYER 01</span>
+          <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
           <ProbeIcon color="red" />
           <InventoryPanel inventory={game.inventory.red} color="red" />
@@ -1282,7 +1295,7 @@ function Game() {
         </section>
 
         <aside className={`player-card blue-card ${game.turn === "blue" && game.phase !== "over" ? "active" : ""}`}>
-          <span className="eyebrow">PLAYER 02</span>
+          <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
           <ProbeIcon color="blue" />
           <InventoryPanel inventory={game.inventory.blue} color="blue" />
@@ -1297,7 +1310,7 @@ function Game() {
                 game.turn === player && game.phase !== "over" ? "active" : ""
               }`}
             >
-              <span className="eyebrow">PLAYER {String(index + 3).padStart(2, "0")}</span>
+              <span className="eyebrow">{displayNameForPlayer(player, index + 3)}</span>
               <h2>{playerName(player)}</h2>
               <ProbeIcon color={player} />
               <InventoryPanel inventory={game.inventory[player]} color={player} />
