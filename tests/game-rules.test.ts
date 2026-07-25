@@ -50,6 +50,22 @@ assert.deepEqual(twoPlayerEdges.probes.red, { r: 10, c: 5 });
 assert.deepEqual(twoPlayerEdges.probes.blue, { r: 0, c: 5 });
 
 {
+  const state = initialGameState(11, "red", 2);
+  state.turnCount = 2;
+  state.inventory.red = { small: 0, large: 0 };
+  const firstMove = applyMove(state, { r: 9, c: 5 });
+  assert.equal(firstMove.turn, "red", "メテオ0なら1回目の移動後も同じ手番");
+  assert.equal(firstMove.phase, "move");
+  assert.equal(firstMove.bonusMove, true);
+  assert.deepEqual(firstMove.probes.red, { r: 9, c: 5 });
+  const secondMove = applyMove(firstMove, { r: 8, c: 5 });
+  assert.equal(secondMove.turn, "blue", "2回目の移動後に手番を終了");
+  assert.equal(secondMove.phase, "move");
+  assert.equal(secondMove.bonusMove, false);
+  assert.deepEqual(secondMove.probes.red, { r: 8, c: 5 });
+}
+
+{
   const state = initialGameState(11, "red", 3);
   state.turnCount = 14;
   const before = Object.fromEntries(
@@ -203,48 +219,12 @@ for (const first of ["red", "blue"] as Player[]) {
 
 {
   const state = initialGameState(11, "red", 4, true);
-  state.turnCount = 2;
+  assert.equal(state.obstaclesEnabled, false);
+  assert.deepEqual(state.obstacles, []);
+  assert.equal(state.obstacleAvailable.red, 0);
   state.phase = "place";
   state.playerTurns.red = 2;
-  const obstacleState = applyObstacle(state, { r: 5, c: 4 });
-  assert.equal(obstacleState.obstacles.length, 1);
-  assert.equal(obstacleState.obstacleAvailable.red, 1);
-  const blockedState = {
-    ...obstacleState,
-    probes: { ...obstacleState.probes, green: { r: 5, c: 3 } },
-  };
-  assert.equal(
-    legalMoves(blockedState, "green").some((p) => samePos(p, { r: 5, c: 4 })),
-    false,
-    "お邪魔メテオは探査機の移動を遮る",
-  );
-  const blastState = {
-    ...obstacleState,
-    turn: "red" as Player,
-    phase: "place" as const,
-  };
-  const afterBlast = applyMeteor(blastState, { r: 4, c: 4 }, "small").state;
-  assert.equal(afterBlast.obstacles.length, 1, "お邪魔メテオは爆風で破壊されない");
-  const secondTurn = {
-    ...obstacleState,
-    turn: "red" as Player,
-    phase: "place" as const,
-  };
-  assert.throws(
-    () => applyObstacle(secondTurn, { r: 4, c: 4 }),
-    /配置できません/,
-    "お邪魔メテオ同士は斜めを含む隣接マスへ配置できない",
-  );
-  const twoObstacles = applyObstacle(secondTurn, { r: 3, c: 3 });
-  assert.equal(twoObstacles.obstacleAvailable.red, 0);
-}
-
-{
-  const state = initialGameState(11, "red", 3, true);
-  state.phase = "place";
   assert.throws(() => applyObstacle(state, { r: 3, c: 3 }), /配置できません/);
-  state.playerTurns.red = 2;
-  assert.equal(applyObstacle(state, { r: 3, c: 3 }).obstacles.length, 1);
   const passed = applyPass(state);
   assert.equal(passed.passAvailable.red, false);
   assert.throws(() => applyPass({ ...passed, turn: "red", phase: "place" }), /使用できません/);

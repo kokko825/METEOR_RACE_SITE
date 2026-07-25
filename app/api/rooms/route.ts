@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyMeteor, applyMove, applyObstacle, applyPass, initialGameState, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyMeteor, applyMove, applyObstacle, applyPass, finishTurn, initialGameState, legalMoves, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -443,6 +443,16 @@ export async function POST(request: Request) {
     let effect = null;
     if (body.action === "move" && body.target) {
       nextState = applyMove(state, body.target);
+    } else if (
+      body.action === "skip_move" &&
+      state.phase === "move" &&
+      state.bonusMove &&
+      legalMoves(state).length === 0
+    ) {
+      nextState = finishTurn(
+        { ...state, bonusMove: false },
+        "ボーナス移動先なし・手番終了",
+      );
     } else if (body.action === "pass") {
       nextState = applyPass(state);
     } else if (body.action === "obstacle" && body.target) {

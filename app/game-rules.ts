@@ -11,6 +11,7 @@ export type GameState = {
   players: Player[];
   turn: Player;
   phase: Phase;
+  bonusMove: boolean;
   turnCount: number;
   probes: Record<Player, Pos>;
   meteors: Meteor[];
@@ -42,20 +43,9 @@ export type MeteorResolution = {
 export const PLAYER_ORDER: Player[] = ["red", "blue", "green", "yellow"];
 export const activePlayers = (state: GameState): Player[] =>
   state.players?.length ? state.players : ["red", "blue"];
-export const activeObstacles = (state: GameState): ObstacleMeteor[] =>
-  state.obstacles ?? [];
-export const canPlaceObstacle = (state: GameState, player = state.turn) =>
-  Boolean(
-    state.obstaclesEnabled &&
-      (state.playerTurns?.[player] ?? 0) >= 2 &&
-      (typeof state.obstacleAvailable?.[player] === "number"
-        ? state.obstacleAvailable[player] > 0
-        : state.obstacleAvailable?.[player] ?? true),
-  );
-export const obstacleCount = (state: GameState, player = state.turn) => {
-  const value = state.obstacleAvailable?.[player];
-  return typeof value === "number" ? value : value === false ? 0 : state.obstaclesEnabled ? 1 : 0;
-};
+export const activeObstacles = (_state: GameState): ObstacleMeteor[] => [];
+export const canPlaceObstacle = (_state: GameState, _player?: Player) => false;
+export const obstacleCount = (_state: GameState, _player?: Player) => 0;
 export const nextPlayer = (state: GameState, player = state.turn): Player => {
   const players = activePlayers(state);
   return players[(players.indexOf(player) + 1) % players.length];
@@ -127,6 +117,7 @@ export function initialGameState(
     passAvailable: { red: true, blue: true, green: true, yellow: true },
     layoutOffset: offset,
     phase: "move",
+    bonusMove: false,
     turnCount: 0,
     probes: {
       red: slots[offset % 4],
@@ -135,13 +126,13 @@ export function initialGameState(
       yellow: slots[(offset + 3) % 4],
     },
     meteors: [],
-    obstaclesEnabled,
+    obstaclesEnabled: false,
     obstacles: [],
     obstacleAvailable: {
-      red: obstaclesEnabled ? 2 : 0,
-      blue: obstaclesEnabled ? 2 : 0,
-      green: obstaclesEnabled ? 2 : 0,
-      yellow: obstaclesEnabled ? 2 : 0,
+      red: 0,
+      blue: 0,
+      green: 0,
+      yellow: 0,
     },
     inventory: {
       red: { small: 2, large: 1 },
@@ -198,6 +189,7 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.passAvailable ?? {}),
     JSON.stringify(state.playerTurns ?? {}),
     JSON.stringify(state.inventory),
+    state.bonusMove ? "bonus" : "normal",
   ].join("/");
 }
 
@@ -241,6 +233,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     return {
       ...turnDraft,
       phase: "over",
+      bonusMove: false,
       winner: "draw",
       message: `引き分け — ${reason}`,
       repetitions,
@@ -253,6 +246,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     ...turnDraft,
     turn: nextTurn,
     phase: "move",
+    bonusMove: false,
     turnCount: nextCount,
     playerTurns,
     repetitions,
@@ -294,6 +288,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
       ...state,
       probes,
       phase: "over",
+      bonusMove: false,
       winner: state.turn,
       message: `${playerName(state.turn)} WIN!`,
       log: [...log, `${playerName(state.turn)}が中央へ到達`],
@@ -301,6 +296,24 @@ export function applyMove(state: GameState, target: Pos): GameState {
   }
   if (state.turnCount === 0) {
     return finishTurn({ ...state, probes, log }, "先攻の初手：メテオ配置なし");
+  }
+  const meteorless =
+    state.inventory[state.turn].small + state.inventory[state.turn].large === 0;
+  if (meteorless && !state.bonusMove) {
+    return {
+      ...state,
+      probes,
+      phase: "move",
+      bonusMove: true,
+      message: `${playerName(state.turn)}：ボーナス移動でもう1マス`,
+      log: [...log, `${playerName(state.turn)}：手持ちメテオ0・ボーナス移動`],
+    };
+  }
+  if (state.bonusMove) {
+    return finishTurn(
+      { ...state, probes, bonusMove: false, log },
+      `${playerName(state.turn)}：ボーナス移動完了`,
+    );
   }
   const hasPlacement =
     state.inventory[state.turn].small + state.inventory[state.turn].large > 0 ||

@@ -232,8 +232,8 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "move" | "meteor" | "obstacle" | "pass",
-    target: Pos,
+    action: "move" | "meteor" | "obstacle" | "pass" | "skip_move",
+    target?: Pos,
     meteorSize?: MeteorSize,
   ) => {
     if (mode !== "online" || !online.code) return;
@@ -400,41 +400,16 @@ function Game() {
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
     if (mode === "online") void submitOnlineAction("move", target);
-    const probes = { ...game.probes, [game.turn]: target };
-    const log = [...game.log, `${playerName(game.turn)}が (${target.r},${target.c}) へ移動`];
-    if (target.r === mid && target.c === mid) {
-      commit({
-        ...game,
-        probes,
-        phase: "over",
-        winner: game.turn,
-        message: `${playerName(game.turn)} WIN!`,
-        log: [...log, `${playerName(game.turn)}が中央へ到達`],
-      });
-      return;
-    }
-    if (game.turnCount === 0) {
-      commit(finishTurn({ ...game, probes, log }, "先攻の初手：メテオ配置なし"));
-      return;
-    }
-    const hasMeteor =
-      game.inventory[game.turn].small + game.inventory[game.turn].large > 0 ||
-      canPlaceObstacle(game);
-    if (!hasMeteor) {
-      commit(finishTurn({ ...game, probes, log }, "手持ちメテオなし"));
-      return;
-    }
-    commit({
-      ...game,
-      probes,
-      phase: "place",
-      message: `${playerName(game.turn)}：メテオを配置`,
-      log,
-    });
+    commit(applyMove(game, target));
   };
 
   const skipBlockedMove = () => {
     if (game.phase !== "move" || moves.length > 0) return;
+    if (game.bonusMove) {
+      if (mode === "online") void submitOnlineAction("skip_move");
+      commit(finishTurn({ ...game, bonusMove: false }, "ボーナス移動先なし・手番終了"));
+      return;
+    }
     const hasMeteor =
       game.inventory[game.turn].small + game.inventory[game.turn].large > 0 ||
       canPlaceObstacle(game);
@@ -1280,15 +1255,6 @@ function Game() {
                 >
                   ✦ 大 <b>{game.inventory[game.turn].large}</b>
                 </button>
-                {game.obstaclesEnabled && (
-                  <button
-                    className={`meteor-choice obstacle-choice ${game.selected === "obstacle" ? "selected" : ""}`}
-                    disabled={!canPlaceObstacle(game)}
-                    onClick={() => setGame((g) => ({ ...g, selected: "obstacle" }))}
-                  >
-                    ◆ お邪魔 <b>{obstacleCount(game)}</b>
-                  </button>
-                )}
                 <button
                   className="meteor-choice pass-choice"
                   disabled={!(game.passAvailable?.[game.turn] ?? true)}
@@ -1435,22 +1401,6 @@ function Game() {
               ))}
             </select>
           </label>
-          <button
-            type="button"
-            disabled={roomSettingsLocked || competitiveNine}
-            className={
-              !competitiveNine && obstaclesEnabled
-                ? "setting-toggle selected"
-                : "setting-toggle"
-            }
-            aria-pressed={!competitiveNine && obstaclesEnabled}
-            onClick={() => {
-              setObstaclesEnabled((value) => !value);
-              setNeedsNewGame(true);
-            }}
-          >
-            お邪魔 {obstaclesEnabled ? "あり" : "なし"}
-          </button>
           <button
             type="button"
             className={soundEnabled ? "setting-toggle selected" : "setting-toggle"}
