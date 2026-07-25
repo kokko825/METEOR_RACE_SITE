@@ -17,6 +17,7 @@ import {
   orthogonallyAdjacent,
   playerName,
   samePos,
+  viewToBoardPos,
   type GameState,
   type Inventory,
   type Meteor,
@@ -35,6 +36,8 @@ type BlastFx = {
   destroyedIds: number[];
   pushed: Partial<Record<Player, { from: Pos; dr: number; dc: number }>>;
 };
+
+type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
 
 type OnlineRoom = {
   code: string;
@@ -89,6 +92,7 @@ function Game() {
     turns: 0,
   });
   const recordedOutcome = useRef("");
+  const playedOnlineEffect = useRef(0);
   const mid = Math.floor(game.size / 2);
   const moves = useMemo(() => legalMoves(game), [game]);
   const canControl =
@@ -696,7 +700,30 @@ function Game() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error ?? "同期できませんでした");
         if (data.version > online.version) {
-          setGame(data.state);
+          const remoteEffect = data.state.onlineEffect as OnlineEffect | undefined;
+          const shouldAnimate =
+            remoteEffect &&
+            remoteEffect.version === data.version &&
+            remoteEffect.version > playedOnlineEffect.current;
+          if (shouldAnimate) {
+            playedOnlineEffect.current = remoteEffect.version;
+            setIsAnimating(true);
+            setBlastFx({ ...remoteEffect, stage: "probe" });
+            playBoom();
+            window.setTimeout(() => {
+              setGame(data.state);
+              setBlastFx((effect) =>
+                effect ? { ...effect, stage: "recover" } : effect,
+              );
+            }, 1100);
+            window.setTimeout(() => {
+              setGame(data.state);
+              setBlastFx(null);
+              setIsAnimating(false);
+            }, 2020);
+          } else {
+            setGame(data.state);
+          }
           setSize(data.state.size);
           setFirst(data.state.startingPlayer);
           setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
@@ -936,6 +963,7 @@ function Game() {
           </div>
           <div
             className="board"
+            data-perspective={perspectiveSlot}
             style={{
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${game.size}, minmax(0, 1fr))`,
@@ -945,15 +973,11 @@ function Game() {
             {Array.from({ length: game.size * game.size }, (_, index) => {
               const viewR = Math.floor(index / game.size);
               const viewC = index % game.size;
-              const last = game.size - 1;
-              const { r, c } =
-                perspectiveSlot === 1
-                  ? { r: last - viewR, c: last - viewC }
-                  : perspectiveSlot === 2
-                    ? { r: viewC, c: last - viewR }
-                    : perspectiveSlot === 3
-                      ? { r: last - viewC, c: viewR }
-                      : { r: viewR, c: viewC };
+              const { r, c } = viewToBoardPos(
+                { r: viewR, c: viewC },
+                game.size,
+                perspectiveSlot,
+              );
               const pos = { r, c };
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;

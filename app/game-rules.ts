@@ -65,6 +65,14 @@ export const distance = (a: Pos, b: Pos) =>
   Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
 export const orthogonallyAdjacent = (a: Pos, b: Pos) =>
   Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+export const viewToBoardPos = (view: Pos, size: number, perspectiveSlot: number): Pos => {
+  const last = size - 1;
+  const slot = ((perspectiveSlot % 4) + 4) % 4;
+  if (slot === 1) return { r: last - view.r, c: last - view.c };
+  if (slot === 2) return { r: view.c, c: last - view.r };
+  if (slot === 3) return { r: last - view.c, c: view.r };
+  return view;
+};
 export const playerName = (player: Player) => player.toUpperCase();
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 

@@ -9,11 +9,26 @@ import {
   initialGameState,
   legalMoves,
   samePos,
+  viewToBoardPos,
   type GameState,
   type MeteorSize,
   type Player,
   type Pos,
 } from "../app/game-rules.js";
+
+for (let slot = 0; slot < 4; slot += 1) {
+  const home = [
+    { r: 10, c: 5 },
+    { r: 0, c: 5 },
+    { r: 5, c: 0 },
+    { r: 5, c: 10 },
+  ][slot];
+  assert.deepEqual(
+    viewToBoardPos({ r: 10, c: 5 }, 11, slot),
+    home,
+    `perspective ${slot} must place its home probe at the bottom`,
+  );
+}
 
 function placementTargets(state: GameState): Array<{ target: Pos; size: MeteorSize }> {
   const mid = Math.floor(state.size / 2);

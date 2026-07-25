@@ -310,6 +310,16 @@ export async function POST(request: Request) {
       return json({ error: "操作が正しくありません" }, 400);
     }
     const nextVersion = room.version + 1;
+    if (effect) {
+      nextState = {
+        ...nextState,
+        onlineEffect: {
+          ...effect,
+          owner: role,
+          version: nextVersion,
+        },
+      };
+    }
     const status = nextState.phase === "over" ? "finished" : "playing";
     const result = await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = ?, status = ?, updated_at = ? WHERE code = ? AND version = ?",
