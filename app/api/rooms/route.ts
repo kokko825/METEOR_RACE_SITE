@@ -191,6 +191,52 @@ export async function POST(request: Request) {
     return json({ error: "入室が重なりました。もう一度お試しください" }, 409);
   }
 
+  if (body.action === "new_game") {
+    if (email !== room.host_email) {
+      return json({ error: "ルームリーダーだけが設定を変更できます" }, 403);
+    }
+    if (body.version !== room.version) {
+      return json({ error: "盤面が更新されました", room: roomPayload(room, email) }, 409);
+    }
+    const previous = JSON.parse(room.state_json);
+    const players = previous.players?.length ?? 2;
+    const playerList: Player[] = previous.players ?? ["red", "blue"];
+    const requestedSize = body.size === 11 ? 11 : 9;
+    const size = players > 2 && requestedSize === 9 ? 11 : requestedSize;
+    const first =
+      body.first && playerList.includes(body.first)
+        ? body.first
+        : previous.startingPlayer ?? playerList[0];
+    const nextOffset =
+      players === 3 ? ((previous.layoutOffset ?? 0) + 1) % 4 : 0;
+    const nextState = initialGameState(
+      size,
+      first,
+      players,
+      Boolean(body.obstaclesEnabled),
+      nextOffset,
+      previous.botPlayers ?? [],
+    );
+    const memberEmails = [
+      room.host_email,
+      room.guest_email,
+      room.player3_email,
+      room.player4_email,
+    ];
+    const joinedPlayers = memberEmails.slice(0, room.max_players).filter(Boolean).length;
+    const status = joinedPlayers >= room.max_players ? "playing" : "waiting";
+    const result = await env.DB.prepare(
+      "UPDATE game_rooms SET state_json = ?, version = version + 1, status = ?, updated_at = ? WHERE code = ? AND version = ?",
+    )
+      .bind(JSON.stringify(nextState), status, Date.now(), code, room.version)
+      .run();
+    if (!result.meta.changes) {
+      return json({ error: "盤面が更新されました" }, 409);
+    }
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
+  }
+
   const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
   const seats = JSON.parse(room.seat_order_json) as Player[];
   const memberIndex = memberEmails.indexOf(email);

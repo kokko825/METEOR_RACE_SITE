@@ -104,6 +104,10 @@ function Game() {
         ? onlinePlayerCount + onlineAiCount
         : 2 + localAiCount;
   const setupPlayers = PLAYER_ORDER.slice(0, setupPlayerCount);
+  const roomSettingsLocked =
+    setupMode === "online" && Boolean(online.code) && !online.isHost;
+  const settingPlayers =
+    setupMode === "online" && online.code ? activePlayers(game) : setupPlayers;
 
   const roomRequest = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/rooms", {
@@ -127,6 +131,9 @@ function Game() {
         obstaclesEnabled,
       });
       setGame(data.state);
+      setSize(data.state.size);
+      setFirst(data.state.startingPlayer);
+      setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
       setHistory([]);
       setOnline({
         code: data.code,
@@ -156,6 +163,9 @@ function Game() {
     try {
       const data = await roomRequest({ action: "join", code });
       setGame(data.state);
+      setSize(data.state.size);
+      setFirst(data.state.startingPlayer);
+      setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
       setHistory([]);
       setOnline({
         code: data.code,
@@ -522,7 +532,47 @@ function Game() {
     }
   };
 
-  const applyNewGameSettings = () => {
+  const applyNewGameSettings = async () => {
+    if (setupMode === "online" && online.code) {
+      if (!online.isHost) return;
+      setOnline((current) => ({ ...current, pending: true, error: "" }));
+      try {
+        const data = await roomRequest({
+          action: "new_game",
+          code: online.code,
+          version: online.version,
+          size,
+          first,
+          obstaclesEnabled,
+        });
+        setGame(data.state);
+        setSize(data.state.size);
+        setFirst(data.state.startingPlayer);
+        setActiveFirst(data.state.startingPlayer);
+        setBlastFx(null);
+        setIsAnimating(false);
+        setHistory([]);
+        setMode("online");
+        setNeedsNewGame(false);
+        recordedOutcome.current = "";
+        setOnline((current) => ({
+          ...current,
+          status: data.status,
+          version: data.version,
+          maxPlayers: data.maxPlayers,
+          joinedPlayers: data.joinedPlayers,
+          pending: false,
+          error: "",
+        }));
+      } catch (error) {
+        setOnline((current) => ({
+          ...current,
+          pending: false,
+          error: error instanceof Error ? error.message : "ニューゲームを開始できませんでした",
+        }));
+      }
+      return;
+    }
     setBlastFx(null);
     setIsAnimating(false);
     setHistory([]);
@@ -630,6 +680,9 @@ function Game() {
         if (!response.ok) throw new Error(data.error ?? "同期できませんでした");
         if (data.version > online.version) {
           setGame(data.state);
+          setSize(data.state.size);
+          setFirst(data.state.startingPlayer);
+          setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
           setHistory([]);
           setOnline((current) => ({
             ...current,
@@ -1074,6 +1127,7 @@ function Game() {
             BOARD
             <select
               value={size}
+              disabled={roomSettingsLocked}
               onChange={(e) => {
                 setSize(Number(e.target.value));
                 setNeedsNewGame(true);
@@ -1087,18 +1141,20 @@ function Game() {
             FIRST
             <select
               value={first}
+              disabled={roomSettingsLocked}
               onChange={(e) => {
                 setFirst(e.target.value as Player);
                 setNeedsNewGame(true);
               }}
             >
-              {setupPlayers.map((player) => (
+              {settingPlayers.map((player) => (
                 <option key={player} value={player}>{playerName(player)}</option>
               ))}
             </select>
           </label>
           <button
             type="button"
+            disabled={roomSettingsLocked}
             className={obstaclesEnabled ? "setting-toggle selected" : "setting-toggle"}
             aria-pressed={obstaclesEnabled}
             onClick={() => {
@@ -1116,9 +1172,19 @@ function Game() {
           >
             効果音 {soundEnabled ? "ON" : "OFF"}
           </button>
-          <button className={`new-game-button ${needsNewGame ? "attention" : ""}`} onClick={applyNewGameSettings}>
+          <button
+            className={`new-game-button ${needsNewGame ? "attention" : ""}`}
+            onClick={applyNewGameSettings}
+            disabled={roomSettingsLocked || online.pending}
+          >
             NEW GAME
-            <small>{needsNewGame ? "設定を適用して開始" : "現在の設定で再開始"}</small>
+            <small>
+              {roomSettingsLocked
+                ? "ROOM LEADER ONLY"
+                : needsNewGame
+                  ? "設定を適用して開始"
+                  : "現在の設定で再開始"}
+            </small>
           </button>
           <button onClick={undo} disabled={!history.length || mode === "online" || needsNewGame}>UNDO</button>
           {mode === "lab" && (
@@ -1217,6 +1283,9 @@ function Game() {
               </button>
             )}
             {online.code && <code>{online.code}</code>}
+            {online.code && online.isHost && (
+              <span className="room-leader-badge">ROOM LEADER</span>
+            )}
             <a href="/signin-with-chatgpt?return_to=%2F">SIGN IN WITH CHATGPT</a>
             {online.error && <small>{online.error}</small>}
           </section>
