@@ -107,11 +107,12 @@ function Game() {
   const mid = Math.floor(game.size / 2);
   const moves = useMemo(() => legalMoves(game), [game]);
   const canControl =
-    !needsNewGame && (mode !== "online" ||
-    (online.status === "playing" &&
-      (online.role === game.turn ||
-        (online.isHost && (game.botPlayers ?? []).includes(game.turn))) &&
-      !online.pending));
+    (mode === "online" || !needsNewGame) &&
+    (mode !== "online" ||
+      (online.status === "playing" &&
+        (online.role === game.turn ||
+          (online.isHost && (game.botPlayers ?? []).includes(game.turn))) &&
+        !online.pending));
   const setupPlayerCount =
     setupMode === "cpu" || setupMode === "lab"
       ? aiPlayerCount
@@ -859,7 +860,7 @@ function Game() {
       !isAiTurn ||
       !aiRunning ||
       !canControl ||
-      needsNewGame ||
+      (needsNewGame && mode !== "online") ||
       isAnimating ||
       game.phase === "over"
     ) return;
