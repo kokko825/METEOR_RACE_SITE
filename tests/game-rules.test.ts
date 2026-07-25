@@ -3,6 +3,7 @@ import {
   applyMeteor,
   applyMove,
   applyObstacle,
+  applyPass,
   activePlayers,
   finishTurn,
   initialGameState,
@@ -144,6 +145,7 @@ for (const first of ["red", "blue"] as Player[]) {
   const state = initialGameState(11, "red", 4, true);
   state.turnCount = 2;
   state.phase = "place";
+  state.playerTurns.red = 2;
   const obstacleState = applyObstacle(state, { r: 5, c: 4 });
   assert.equal(obstacleState.obstacles.length, 1);
   assert.equal(obstacleState.obstacleAvailable.red, 1);
@@ -175,6 +177,17 @@ for (const first of ["red", "blue"] as Player[]) {
   );
   const twoObstacles = applyObstacle(secondTurn, { r: 3, c: 3 });
   assert.equal(twoObstacles.obstacleAvailable.red, 0);
+}
+
+{
+  const state = initialGameState(11, "red", 3, true);
+  state.phase = "place";
+  assert.throws(() => applyObstacle(state, { r: 3, c: 3 }), /配置できません/);
+  state.playerTurns.red = 2;
+  assert.equal(applyObstacle(state, { r: 3, c: 3 }).obstacles.length, 1);
+  const passed = applyPass(state);
+  assert.equal(passed.passAvailable.red, false);
+  assert.throws(() => applyPass({ ...passed, turn: "red", phase: "place" }), /使用できません/);
 }
 
 console.log("game-rules: all checks passed");

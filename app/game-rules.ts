@@ -20,6 +20,8 @@ export type GameState = {
   layoutOffset: number;
   startingPlayer: Player;
   botPlayers: Player[];
+  playerTurns: Record<Player, number>;
+  passAvailable: Record<Player, boolean>;
   inventory: Inventory;
   selected: MeteorSize | "obstacle";
   winner: Player | "draw" | null;
@@ -45,6 +47,7 @@ export const activeObstacles = (state: GameState): ObstacleMeteor[] =>
 export const canPlaceObstacle = (state: GameState, player = state.turn) =>
   Boolean(
     state.obstaclesEnabled &&
+      (state.playerTurns?.[player] ?? 0) >= 2 &&
       (typeof state.obstacleAvailable?.[player] === "number"
         ? state.obstacleAvailable[player] > 0
         : state.obstacleAvailable?.[player] ?? true),
@@ -90,6 +93,8 @@ export function initialGameState(
     turn: first,
     startingPlayer: first,
     botPlayers: botPlayers.filter((player) => players.includes(player)),
+    playerTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
+    passAvailable: { red: true, blue: true, green: true, yellow: true },
     layoutOffset: offset,
     phase: "move",
     turnCount: 0,
@@ -160,6 +165,8 @@ function stateKey(state: GameState, nextTurn: Player) {
       .map((obstacle) => `${obstacle.r},${obstacle.c},${obstacle.owner}`)
       .join("|"),
     JSON.stringify(state.obstacleAvailable ?? {}),
+    JSON.stringify(state.passAvailable ?? {}),
+    JSON.stringify(state.playerTurns ?? {}),
     JSON.stringify(state.inventory),
   ].join("/");
 }
@@ -167,6 +174,10 @@ function stateKey(state: GameState, nextTurn: Player) {
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
   const nextTurn = nextPlayer(draft);
   const nextCount = draft.turnCount + 1;
+  const playerTurns = {
+    ...(draft.playerTurns ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
+    [draft.turn]: (draft.playerTurns?.[draft.turn] ?? 0) + 1,
+  };
   const key = stateKey(draft, nextTurn);
   const repetitions = {
     ...draft.repetitions,
@@ -183,6 +194,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
       message: `引き分け — ${reason}`,
       repetitions,
       turnCount: nextCount,
+      playerTurns,
       log: [...draft.log, ...(extraLog ? [extraLog] : []), `引き分け：${reason}`],
     };
   }
@@ -191,6 +203,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     turn: nextTurn,
     phase: "move",
     turnCount: nextCount,
+    playerTurns,
     repetitions,
     selected:
       draft.inventory[nextTurn].small > 0
@@ -203,6 +216,19 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     message: `${playerName(nextTurn)}：探査機を1マス移動`,
     log: [...draft.log, ...(extraLog ? [extraLog] : [])],
   };
+}
+
+export function applyPass(state: GameState): GameState {
+  if (state.phase !== "place" || !(state.passAvailable?.[state.turn] ?? true)) {
+    throw new Error("配置パスは使用できません");
+  }
+  return finishTurn(
+    {
+      ...state,
+      passAvailable: { ...state.passAvailable, [state.turn]: false },
+    },
+    `${playerName(state.turn)}はメテオを配置しませんでした`,
+  );
 }
 
 export function applyMove(state: GameState, target: Pos): GameState {

@@ -6,6 +6,7 @@ import {
   activeObstacles,
   activePlayers,
   applyObstacle,
+  applyPass,
   canPlaceObstacle,
   distance,
   finishTurn,
@@ -177,7 +178,7 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "move" | "meteor" | "obstacle",
+    action: "move" | "meteor" | "obstacle" | "pass",
     target: Pos,
     meteorSize?: MeteorSize,
   ) => {
@@ -498,6 +499,17 @@ function Game() {
     }
   };
 
+  const passPlacement = () => {
+    if (!canControl || game.phase !== "place" || !(game.passAvailable?.[game.turn] ?? true)) return;
+    try {
+      const next = applyPass(game);
+      if (mode === "online") void submitOnlineAction("pass", { r: -1, c: -1 });
+      commit(next);
+    } catch {
+      return;
+    }
+  };
+
   const handleCell = (r: number, c: number) => {
     if (isAnimating) return;
     if (game.phase === "move") moveProbe({ r, c });
@@ -764,7 +776,11 @@ function Game() {
         }
       });
       options.sort((a, b) => b.score - a.score);
-      if (options[0]) placeMeteor(options[0].p, options[0].size);
+      if ((game.passAvailable?.[game.turn] ?? true) && (!options[0] || options[0].score < 2.5)) {
+        passPlacement();
+      } else if (options[0]) {
+        placeMeteor(options[0].p, options[0].size);
+      }
     }, aiSpeed);
     return () => window.clearTimeout(timer);
   }, [game, mode, aiRunning, aiSpeed, isAiTurn, needsNewGame, isAnimating, moves, mid]);
@@ -912,6 +928,13 @@ function Game() {
                     ◆ お邪魔 <b>{obstacleCount(game)}</b>
                   </button>
                 )}
+                <button
+                  className="meteor-choice pass-choice"
+                  disabled={!(game.passAvailable?.[game.turn] ?? true)}
+                  onClick={passPlacement}
+                >
+                  配置しない <b>{game.passAvailable?.[game.turn] ?? true ? 1 : 0}</b>
+                </button>
               </>
             )}
             {game.phase === "move" && moves.length === 0 && (

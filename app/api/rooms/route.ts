@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { applyMeteor, applyMove, applyObstacle, initialGameState, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { applyMeteor, applyMove, applyObstacle, applyPass, initialGameState, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -238,6 +238,8 @@ export async function POST(request: Request) {
     let effect = null;
     if (body.action === "move" && body.target) {
       nextState = applyMove(state, body.target);
+    } else if (body.action === "pass") {
+      nextState = applyPass(state);
     } else if (body.action === "obstacle" && body.target) {
       nextState = applyObstacle(state, body.target);
     } else if (body.action === "meteor" && body.target && body.meteorSize) {
