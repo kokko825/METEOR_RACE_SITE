@@ -416,6 +416,7 @@ export function applyMeteor(
   const mid = Math.floor(state.size / 2);
   if (
     state.phase !== "place" ||
+    state.turnCount === 0 ||
     samePos(target, { r: mid, c: mid }) ||
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||

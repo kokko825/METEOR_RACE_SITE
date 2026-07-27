@@ -50,8 +50,8 @@ button { color: inherit; }
 .blue-card { color: var(--blue); box-shadow: inset 0 2px 0 rgba(41,169,255,.45); }
 .green-card { color: var(--green); box-shadow: inset 0 2px 0 rgba(53,220,139,.45); }
 .yellow-card { color: var(--yellow); box-shadow: inset 0 2px 0 rgba(255,216,61,.45); }
-.variant-team .yellow-card { color:var(--red); box-shadow:inset 0 2px 0 rgba(255,63,55,.45); }
-.variant-team .green-card { color:var(--blue); box-shadow:inset 0 2px 0 rgba(41,169,255,.45); }
+.variant-team .yellow-card { box-shadow:inset 0 2px 0 rgba(255,216,61,.45); }
+.variant-team .green-card { box-shadow:inset 0 2px 0 rgba(53,220,139,.45); }
 .player-card.active.red-card { box-shadow: 0 0 35px rgba(255,63,55,.14), inset 0 2px 0 var(--red); }
 .player-card.active.blue-card { box-shadow: 0 0 35px rgba(41,169,255,.14), inset 0 2px 0 var(--blue); }
 .player-card.active.green-card { box-shadow: 0 0 35px rgba(53,220,139,.14), inset 0 2px 0 var(--green); }
@@ -119,10 +119,14 @@ button { color: inherit; }
 .probe-token.blue { --probe-rotation:180deg; background:linear-gradient(145deg,#8cddff,#0873d3 60%,#032954); filter:drop-shadow(0 0 8px var(--blue)); }
 .probe-token.green { --probe-rotation:90deg; background:linear-gradient(145deg,#9affca,#079b59 60%,#073e27); filter:drop-shadow(0 0 8px var(--green)); }
 .probe-token.yellow { --probe-rotation:-90deg; background:linear-gradient(145deg,#fff6a1,#d99c08 60%,#604202); filter:drop-shadow(0 0 8px var(--yellow)); }
-.probe-token.team-sun { background:linear-gradient(145deg,#ff9d78,#df2f24 58%,#65040a); filter:drop-shadow(0 0 9px var(--red)); }
-.probe-token.team-moon { background:linear-gradient(145deg,#8de8ff,#168edb 58%,#03305f); filter:drop-shadow(0 0 9px var(--blue)); }
-.probe-portrait.team-sun { color:var(--red); }
-.probe-portrait.team-moon { color:var(--blue); }
+.probe-motion.team-sun::before,.probe-motion.team-moon::before { content:""; position:absolute; inset:-18%; border-radius:50%; pointer-events:none; opacity:.9; animation:team-aura 1.5s ease-in-out infinite alternate; }
+.probe-motion.team-sun::before { border:2px solid #ff6b55; box-shadow:0 0 8px #ff473b,inset 0 0 8px rgba(255,71,59,.35); }
+.probe-motion.team-moon::before { border:2px solid #62d6ff; box-shadow:0 0 8px #29a9ff,inset 0 0 8px rgba(41,169,255,.35); }
+.probe-motion.is-self::after { content:"YOU"; position:absolute; left:50%; bottom:-42%; transform:translateX(-50%); padding:1px 4px; border:1px solid #fff; border-radius:3px; color:#fff; background:#06111a; box-shadow:0 0 8px currentColor; font-size:clamp(5px,.75vw,9px); font-weight:900; letter-spacing:.08em; z-index:10; }
+.probe-motion.is-self .probe-token { outline:2px solid #fff; outline-offset:2px; filter:drop-shadow(0 0 10px #fff); }
+.probe-portrait.team-sun::after,.probe-portrait.team-moon::after { content:""; position:absolute; inset:5px 10px 18px; border-radius:50%; pointer-events:none; }
+.probe-portrait.team-sun::after { border:2px solid #ff6b55; box-shadow:0 0 10px #ff473b; }
+.probe-portrait.team-moon::after { border:2px solid #62d6ff; box-shadow:0 0 10px #29a9ff; }
 .probe-token i { font-style:normal; font-size:clamp(9px,2vw,24px); text-shadow:0 1px 2px #000; }
 .probe-effects { position:absolute; inset:0; z-index:8; pointer-events:none; }
 .shield-effect { position:absolute; width:54%; aspect-ratio:1; right:-25%; top:-22%; display:grid; place-items:center; color:#a9f3ff; background:rgba(23,145,213,.38); border:2px solid #65d9ff; clip-path:polygon(25% 7%,75% 7%,98% 50%,75% 93%,25% 93%,2% 50%); filter:drop-shadow(0 0 5px #29bfff); }
@@ -133,6 +137,7 @@ button { color: inherit; }
 .boost-effect i:first-child { top:0; }
 .boost-effect i:nth-child(2) { top:27%; left:22%; opacity:.68; }
 .boost-effect b { color:#ffac55; right:-4px; top:-8px; }
+@keyframes team-aura { from { transform:scale(.94); opacity:.55; } to { transform:scale(1.04); opacity:1; } }
 .meteor-token { position:absolute; width:58%; aspect-ratio:1; display:grid; place-items:center; z-index:3; color:#f5c477; clip-path:polygon(19% 4%,42% 10%,58% 0,76% 13%,95% 24%,88% 45%,100% 61%,82% 78%,66% 96%,46% 87%,27% 100%,15% 79%,0 65%,10% 45%,4% 26%); background:radial-gradient(circle at 30% 29%,#21130f 0 9%,transparent 10%),radial-gradient(circle at 68% 62%,#28150f 0 12%,transparent 13%),radial-gradient(circle at 62% 23%,#e39a50 0 5%,transparent 6%),linear-gradient(145deg,#c9823f,#70401f 43%,#2c1812 76%,#100b09); box-shadow:0 0 11px #e15b28; font-size:clamp(7px,1.4vw,17px); text-shadow:0 1px 2px #000; }
 .meteor-token.large { width:78%; clip-path:polygon(13% 2%,31% 9%,48% 0,61% 10%,79% 5%,93% 21%,88% 39%,100% 53%,91% 72%,76% 78%,64% 98%,45% 89%,28% 100%,18% 82%,2% 71%,9% 51%,0 34%,14% 23%); background:radial-gradient(circle at 27% 31%,#1b100c 0 10%,transparent 11%),radial-gradient(circle at 67% 60%,#21120d 0 14%,transparent 15%),radial-gradient(circle at 72% 25%,#f0a64d 0 7%,transparent 8%),linear-gradient(140deg,#d78a3c,#6a381b 45%,#24130e 75%,#090706); box-shadow:0 0 18px #ff7b2e; }
 .meteor-token.red { color:#fff0ed; background:radial-gradient(circle at 28% 28%,#4e090d 0 10%,transparent 11%),radial-gradient(circle at 69% 64%,#5d0d12 0 12%,transparent 13%),linear-gradient(145deg,#ff7569,#b91521 48%,#43030b); box-shadow:0 0 15px rgba(255,63,55,.95), inset 0 0 18px rgba(255,46,51,.36); outline:2px solid rgba(255,103,95,.92); }

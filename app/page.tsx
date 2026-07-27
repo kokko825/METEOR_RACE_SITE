@@ -426,6 +426,10 @@ function Game() {
 
   const skipBlockedMove = () => {
     if (game.phase !== "move" || moves.length > 0) return;
+    if (game.turnCount === 0) {
+      commit(finishTurn(game, "先攻の初手終了"));
+      return;
+    }
     if (game.bonusMove) {
       if (mode === "online") void submitOnlineAction("skip_move");
       commit(finishTurn({ ...game, bonusMove: false }, "ボーナス移動先なし・手番終了"));
@@ -1701,6 +1705,14 @@ function Game() {
     mode === "online" && online.role
       ? (PLAYER_ORDER.indexOf(online.role) + (game.layoutOffset ?? 0)) % 4
       : 0;
+  const selfPlayer: Player | null =
+    mode === "cpu"
+      ? "red"
+      : mode === "online"
+        ? online.role
+        : mode === "local"
+          ? game.turn
+          : null;
   const turnMemberIndex =
     mode === "online" ? online.memberRoles.indexOf(game.turn) : -1;
   const turnDisplayName =
@@ -1833,6 +1845,7 @@ function Game() {
                     <ProbeToken
                       player={probe}
                       teamMode={game.variant === "team"}
+                      isSelf={probe === selfPlayer}
                       shield={Boolean(game.shield?.[probe])}
                       boost={game.boosterMoves?.[probe] ?? 0}
                       rotation={
@@ -2316,6 +2329,7 @@ function ProbeToken({
   rotation,
   push,
   teamMode = false,
+  isSelf = false,
   shield = false,
   boost = 0,
 }: {
@@ -2323,12 +2337,13 @@ function ProbeToken({
   rotation: number;
   push?: { from: Pos; dr: number; dc: number };
   teamMode?: boolean;
+  isSelf?: boolean;
   shield?: boolean;
   boost?: number;
 }) {
   return (
     <span
-      className={`probe-motion${push ? " blast-lift" : ""}`}
+      className={`probe-motion${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${push ? " blast-lift" : ""}`}
       style={
         push
           ? ({

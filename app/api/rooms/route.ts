@@ -476,7 +476,7 @@ export async function POST(request: Request) {
     } else if (
       body.action === "skip_move" &&
       state.phase === "move" &&
-      state.bonusMove &&
+      (state.bonusMove || state.turnCount === 0) &&
       legalMoves(state).length === 0
     ) {
       nextState = finishTurn(
