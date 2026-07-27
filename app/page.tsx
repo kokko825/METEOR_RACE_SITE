@@ -1269,8 +1269,84 @@ function Game() {
       const turnsUntil = (player: Player) =>
         ((turnOrder.indexOf(player) - meIndex) % turnOrder.length + turnOrder.length) %
         turnOrder.length;
+      const canReachCoreNextTurn = (
+        player: Player,
+        meteors = game.meteors,
+        probes = game.probes,
+      ) => {
+        const start = probes[player];
+        const moveTargets = [
+          { r: start.r - 1, c: start.c },
+          { r: start.r + 1, c: start.c },
+          { r: start.r, c: start.c - 1 },
+          { r: start.r, c: start.c + 1 },
+        ].filter(
+          (candidate) =>
+            candidate.r >= 0 &&
+            candidate.c >= 0 &&
+            candidate.r < game.size &&
+            candidate.c < game.size &&
+            !meteors.some((meteor) => samePos(meteor, candidate)) &&
+            !activeObstacles(game).some((obstacle) => samePos(obstacle, candidate)) &&
+            !activePlayers(game).some(
+              (other) => other !== player && samePos(probes[other], candidate),
+            ),
+        );
+        if (moveTargets.some((candidate) => samePos(candidate, center))) return true;
+        if (game.shield?.[player]) return false;
+        const usableSizes: MeteorSize[] = [];
+        if (game.inventory[player].small > 0 || (game.capsuleMeteors?.[player] ?? 0) > 0) {
+          usableSizes.push("small");
+        }
+        if (game.inventory[player].large > 0) usableSizes.push("large");
+        return moveTargets.some((afterMove) =>
+          usableSizes.some((meteorSize) => {
+            const radius = meteorSize === "small" ? 1 : 2;
+            for (let r = Math.max(0, afterMove.r - radius); r <= Math.min(game.size - 1, afterMove.r + radius); r += 1) {
+              for (let c = Math.max(0, afterMove.c - radius); c <= Math.min(game.size - 1, afterMove.c + radius); c += 1) {
+                const target = { r, c };
+                if (
+                  samePos(target, center) ||
+                  meteors.some((meteor) => samePos(meteor, target)) ||
+                  activeObstacles(game).some((obstacle) => samePos(obstacle, target)) ||
+                  activePlayers(game).some((other) =>
+                    samePos(other === player ? afterMove : probes[other], target),
+                  )
+                ) continue;
+                const d = distance(afterMove, target);
+                const steps =
+                  meteorSize === "small" ? (d === 1 ? 1 : 0) : d === 1 ? 2 : d === 2 ? 1 : 0;
+                if (!steps) continue;
+                let landing = { ...afterMove };
+                for (let step = 0; step < steps; step += 1) {
+                  const next = {
+                    r: landing.r + Math.sign(afterMove.r - target.r),
+                    c: landing.c + Math.sign(afterMove.c - target.c),
+                  };
+                  if (
+                    next.r < 0 ||
+                    next.c < 0 ||
+                    next.r >= game.size ||
+                    next.c >= game.size ||
+                    meteors.some((meteor) => samePos(meteor, next)) ||
+                    activeObstacles(game).some((obstacle) => samePos(obstacle, next)) ||
+                    activePlayers(game).some(
+                      (other) =>
+                        other !== player && samePos(probes[other], next),
+                    ) ||
+                    samePos(target, next)
+                  ) break;
+                  landing = next;
+                  if (samePos(landing, center)) return true;
+                }
+              }
+            }
+            return false;
+          }),
+        );
+      };
       const imminentGoalThreats = opponents.filter((player) =>
-        legalMoves(game, player).some((move) => samePos(move, center)),
+        canReachCoreNextTurn(player),
       );
       const nearestGoalThreatOffset = imminentGoalThreats.length
         ? Math.min(...imminentGoalThreats.map(turnsUntil))
@@ -1631,7 +1707,13 @@ function Game() {
               const bestFutureDistance = Math.min(...futureMoves.map(coreDistance));
               const futureGain = coreDistance(start) - bestFutureDistance;
               score -= futureGain * 2.2 * defenseUrgency;
-              if (bestFutureDistance === 0) {
+              const futureProbes = Object.fromEntries(
+                activePlayers(game).map((other) => [
+                  other,
+                  projectedByPlayer[other] ?? game.probes[other],
+                ]),
+              ) as Record<Player, Pos>;
+              if (canReachCoreNextTurn(player, futureMeteors, futureProbes)) {
                 const threatOffset = turnsUntil(player);
                 const goalPenalty =
                   threatOffset === 1 ? 900 : threatOffset === 2 ? 600 : 300;
