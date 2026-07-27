@@ -1159,6 +1159,33 @@ function Game() {
             const p = { r, c };
             const radius = meteorSize === "small" ? 1 : 2;
             let score = Math.random() * 3;
+            const ownStart = game.probes[me];
+            const ownToMeteor = {
+              r: p.r - ownStart.r,
+              c: p.c - ownStart.c,
+            };
+            const outward = {
+              r: Math.sign(ownStart.r - mid),
+              c: Math.sign(ownStart.c - mid),
+            };
+            const behindOwnShip =
+              (outward.r !== 0 && Math.sign(ownToMeteor.r) === outward.r) ||
+              (outward.c !== 0 && Math.sign(ownToMeteor.c) === outward.c);
+            const ownMeteorDistance = distance(ownStart, p);
+            const backstopValue =
+              behindOwnShip && ownMeteorDistance <= 2
+                ? (3 - ownMeteorDistance) * 5.5 * progressPriority
+                : 0;
+            const futureSetupValue =
+              behindOwnShip &&
+              ownMeteorDistance >= 2 &&
+              ownMeteorDistance <= 4 &&
+              coreDistance(p) >= ownGoalDistance
+                ? (5 - ownMeteorDistance) * 2.2
+                : 0;
+            // A meteor behind the ship can both launch it now and stop a later
+            // enemy blast from carrying it away from the core.
+            score += backstopValue + futureSetupValue;
             game.meteors.forEach((m) => {
               if (distance(m, p) > radius) return;
               if (m.owner === me || allies.includes(m.owner)) {
@@ -1216,6 +1243,15 @@ function Game() {
               ...game.meteors.filter((meteor) => distance(meteor, p) > radius),
               { ...p, owner: me, size: meteorSize, id: game.nextMeteorId },
             ];
+            const routeAnchorValue = futureMeteors.reduce((value, meteor) => {
+              if (meteor.owner !== me || samePos(meteor, p)) return value;
+              const separation = distance(meteor, p);
+              if (separation < 2 || separation > 4) return value;
+              const nearerCore =
+                Math.min(coreDistance(meteor), coreDistance(p)) <= ownGoalDistance;
+              return value + (nearerCore ? 2.4 : 0.9);
+            }, 0);
+            score += routeAnchorValue;
             opponents.forEach((player) => {
               const start = projectedByPlayer[player] ?? game.probes[player];
               const futureMoves = [

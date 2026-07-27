@@ -491,27 +491,52 @@ export function applyMeteor(
     probes[player] = position;
   });
 
+  let fieldItems = state.fieldItems ?? [];
+  const boosterMoves = {
+    ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
+  };
+  const shieldAfterBlast = {
+    ...(state.shield ?? { red: false, blue: false, green: false, yellow: false }),
+    ...Object.fromEntries(
+      activePlayers(state)
+        .filter((player) => {
+          const d = distance(before[player], target);
+          return Boolean(state.shield?.[player]) &&
+            (chosenSize === "small" ? d === 1 : d === 1 || d === 2);
+        })
+        .map((player) => [player, false]),
+    ),
+  };
+  const pickupLogs: string[] = [];
+  activePlayers(state).forEach((player) => {
+    if (samePos(before[player], probes[player])) return;
+    const picked = fieldItems.find((item) => samePos(item, probes[player]));
+    if (!picked) return;
+    fieldItems = fieldItems.filter((item) => item.id !== picked.id);
+    if (picked.kind === "shield") shieldAfterBlast[player] = true;
+    if (picked.kind === "booster") boosterMoves[player] = 3;
+    if (picked.kind === "capsule") capsuleMeteors[player] += 1;
+    const label =
+      picked.kind === "shield"
+        ? "シールド"
+        : picked.kind === "booster"
+          ? "ブースト"
+          : "使い捨てメテオ";
+    pickupLogs.push(`${playerName(player)}が爆風着地で${label}を取得`);
+  });
+
   const placementLog = `${playerName(state.turn)}が${meteorName(chosenSize)}を (${target.r},${target.c}) に配置`;
   const recoveryLog = destroyed.length ? ` — メテオ${destroyed.length}個を破壊・返還` : "";
-  const log = [...state.log, placementLog + recoveryLog];
+  const log = [...state.log, placementLog + recoveryLog, ...pickupLogs];
   const draft: GameState = {
     ...state,
     probes,
+    fieldItems,
     meteors: [...survivors, placed],
     inventory,
     capsuleMeteors,
-    shield: {
-      ...(state.shield ?? { red: false, blue: false, green: false, yellow: false }),
-      ...Object.fromEntries(
-        activePlayers(state)
-          .filter((player) => {
-            const d = distance(before[player], target);
-            return Boolean(state.shield?.[player]) &&
-              (chosenSize === "small" ? d === 1 : d === 1 || d === 2);
-          })
-          .map((player) => [player, false]),
-      ),
-    },
+    boosterMoves,
+    shield: shieldAfterBlast,
     nextMeteorId: state.nextMeteorId + 1,
     log,
   };
