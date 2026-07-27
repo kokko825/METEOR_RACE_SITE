@@ -1344,8 +1344,15 @@ function Game() {
               (outward.r !== 0 && Math.sign(ownToMeteor.r) === outward.r) ||
               (outward.c !== 0 && Math.sign(ownToMeteor.c) === outward.c);
             const ownMeteorDistance = distance(ownStart, p);
+            const ownShieldWouldBreak =
+              Boolean(game.shield?.[me]) &&
+              (meteorSize === "small"
+                ? ownMeteorDistance === 1
+                : ownMeteorDistance === 1 || ownMeteorDistance === 2);
             const blastSteps =
-              meteorSize === "small"
+              ownShieldWouldBreak
+                ? 0
+                : meteorSize === "small"
                 ? ownMeteorDistance === 1
                   ? 1
                   : 0
@@ -1411,6 +1418,19 @@ function Game() {
             // A straight rear meteor is valuable only when it actually moves
             // the ship or leaves useful mobility after the blast.
             score += backstopValue + futureSetupValue * strategy.setup;
+            // A shield blocks the blast instead of moving the ship, so treating
+            // that blast as propulsion both wastes the shield and overvalues the
+            // placement. Preserve it unless stopping an immediate goal threat is
+            // important enough to justify the sacrifice.
+            if (ownShieldWouldBreak) {
+              const emergencyRelief =
+                urgentOpponents.length > 0
+                  ? 18 * defenseUrgency
+                  : closestEnemyGoalDistance <= 4
+                    ? 7 * defenseUrgency
+                    : 0;
+              score -= Math.max(38, 92 - emergencyRelief);
+            }
             game.meteors.forEach((m) => {
               if (distance(m, p) > radius) return;
               if (m.owner === me || allies.includes(m.owner)) {
@@ -1444,6 +1464,10 @@ function Game() {
               const steps =
                 meteorSize === "small" ? (d === 1 ? 1 : 0) : d === 1 ? 2 : d === 2 ? 1 : 0;
               if (!steps) return;
+              if (game.shield?.[player]) {
+                projectedByPlayer[player] = { ...start };
+                return;
+              }
               const projected = {
                 r: Math.max(0, Math.min(game.size - 1, start.r + Math.sign(start.r - p.r) * steps)),
                 c: Math.max(0, Math.min(game.size - 1, start.c + Math.sign(start.c - p.c) * steps)),
@@ -1595,7 +1619,8 @@ function Game() {
       let capsuleTarget: Pos | null = null;
       if (
         game.variant === "item" &&
-        (game.capsuleMeteors?.[me] ?? 0) > 0
+        (game.capsuleMeteors?.[me] ?? 0) > 0 &&
+        !game.shield?.[me]
       ) {
         const own = game.probes[me];
         const candidates: Pos[] = [];
