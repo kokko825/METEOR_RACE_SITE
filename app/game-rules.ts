@@ -358,7 +358,9 @@ export function applyMove(state: GameState, target: Pos): GameState {
       winner: state.turn,
       message:
         state.variant === "team"
-          ? `${teamOf(state.turn) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"} TEAM WIN!`
+          ? `${playerName(state.turn)} / ${
+              teamOf(state.turn) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"
+            } TEAM WIN!`
           : `${playerName(state.turn)} WIN!`,
       log: [...log, `${playerName(state.turn)}が中央へ到達`],
     };
@@ -551,7 +553,9 @@ export function applyMeteor(
         winner === "draw"
           ? "同時到達 — DRAW"
           : state.variant === "team"
-            ? `${teamOf(winner)} TEAM WIN!`
+            ? `${playerName(winner)} / ${
+                teamOf(winner) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"
+              } TEAM WIN!`
             : `${playerName(winner)} WIN!`,
       log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
     };

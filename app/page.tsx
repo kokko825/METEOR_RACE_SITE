@@ -1863,6 +1863,11 @@ function Game() {
     online.role ? online.memberRoles.indexOf(online.role) : -1;
   const ownDisplayName =
     ownMemberIndex >= 0 ? online.memberNames[ownMemberIndex] : nickname.trim();
+  const resultPlayer =
+    game.phase === "over" && game.winner && game.winner !== "draw"
+      ? game.winner
+      : null;
+  const displayAccent = resultPlayer ?? game.turn;
   const displayNameForPlayer = (player: Player, fallbackNumber: number) => {
     if (mode !== "online") return `PLAYER ${String(fallbackNumber).padStart(2, "0")}`;
     const memberIndex = online.memberRoles.indexOf(player);
@@ -1887,7 +1892,7 @@ function Game() {
       </header>
 
       <section className="game-layout">
-        <aside className={`player-card red-card ${game.turn === "red" && game.phase !== "over" ? "active" : ""}`}>
+        <aside className={`player-card red-card ${(game.phase === "over" ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
           <ProbeIcon color="red" teamMode={game.variant === "team"} />
@@ -1895,17 +1900,17 @@ function Game() {
         </aside>
 
         <section className="arena">
-          <div className={`turn-callout ${game.turn}`} aria-live="polite">
-            <span>CURRENT TURN</span>
-            <b>{turnDisplayName}</b>
-            <i>{playerName(game.turn)}</i>
+          <div className={`turn-callout ${displayAccent}`} aria-live="polite">
+            <span>{resultPlayer ? "WINNER" : "CURRENT TURN"}</span>
+            <b>{resultPlayer ? playerName(resultPlayer) : turnDisplayName}</b>
+            <i>{playerName(displayAccent)}</i>
           </div>
           <div className="status" aria-live="polite">
-            <span className={`status-dot ${game.turn}`} />
+            <span className={`status-dot ${displayAccent}`} />
             {game.message}
           </div>
           <div
-            className={`board turn-${game.turn}`}
+            className={`board turn-${displayAccent}`}
             data-perspective={perspectiveSlot}
             style={{
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
@@ -2066,7 +2071,7 @@ function Game() {
           </div>
         </section>
 
-        <aside className={`player-card blue-card ${game.turn === "blue" && game.phase !== "over" ? "active" : ""}`}>
+        <aside className={`player-card blue-card ${(game.phase === "over" ? game.winner === "blue" : game.turn === "blue") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
           <ProbeIcon color="blue" teamMode={game.variant === "team"} />
@@ -2084,7 +2089,7 @@ function Game() {
             <aside
               key={player}
               className={`player-card compact ${player}-card ${
-                game.turn === player && game.phase !== "over" ? "active" : ""
+                (game.phase === "over" ? game.winner === player : game.turn === player) ? "active" : ""
               }`}
             >
               <span className="eyebrow">{displayNameForPlayer(player, index + 3)}</span>
