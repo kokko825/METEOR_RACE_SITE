@@ -5,6 +5,7 @@ import {
   PLAYER_ORDER,
   activeObstacles,
   activePlayers,
+  applyMeteor,
   applyMove,
   applyObstacle,
   applyPass,
@@ -20,8 +21,10 @@ import {
   orthogonallyAdjacent,
   playerName,
   samePos,
+  teamOf,
   viewToBoardPos,
   type GameState,
+  type GameVariant,
   type Inventory,
   type Meteor,
   type MeteorSize,
@@ -67,6 +70,7 @@ type OnlineRoom = {
 function Game() {
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
+  const [variant, setVariant] = useState<GameVariant>("classic");
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [history, setHistory] = useState<GameState[]>([]);
   const [mode, setMode] = useState<Mode>("human");
@@ -119,7 +123,9 @@ function Game() {
           (online.isHost && (game.botPlayers ?? []).includes(game.turn))) &&
         !online.pending));
   const setupPlayerCount =
-    setupMode === "cpu" || setupMode === "lab"
+    variant === "team"
+      ? 4
+      : setupMode === "cpu" || setupMode === "lab"
       ? aiPlayerCount
       : setupMode === "online"
         ? onlinePlayerCount + onlineAiCount
@@ -162,6 +168,7 @@ function Game() {
         nickname,
       });
       setGame(data.state);
+      setVariant(data.state.variant ?? "classic");
       setSize(data.state.size);
       setFirst(data.state.startingPlayer);
       setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
@@ -199,6 +206,7 @@ function Game() {
     try {
       const data = await roomRequest({ action: "join", code, nickname });
       setGame(data.state);
+      setVariant(data.state.variant ?? "classic");
       setSize(data.state.size);
       setFirst(data.state.startingPlayer);
       setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
@@ -236,6 +244,7 @@ function Game() {
     action: "move" | "meteor" | "obstacle" | "pass" | "skip_move",
     target?: Pos,
     meteorSize?: MeteorSize,
+    useCapsule = false,
   ) => {
     if (mode !== "online" || !online.code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
@@ -246,9 +255,11 @@ function Game() {
         version: online.version,
         target,
         meteorSize,
+        useCapsule,
       });
       if ((action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
+        setVariant(data.state.variant ?? "classic");
       }
       setOnline((current) => ({
         ...current,
@@ -331,6 +342,7 @@ function Game() {
     try {
       const data = await roomRequest({ action: "rematch", code: online.code });
       setGame(data.state);
+      setVariant(data.state.variant ?? "classic");
       setHistory([]);
       setBlastFx(null);
       setIsAnimating(false);
@@ -433,9 +445,53 @@ function Game() {
     }
   };
 
-  const placeMeteor = (target: Pos, sizeOverride?: MeteorSize) => {
+  const placeMeteor = (target: Pos, sizeOverride?: MeteorSize, useCapsule = false) => {
     const chosenSize: MeteorSize =
-      sizeOverride ?? (game.selected === "obstacle" ? "small" : game.selected);
+      sizeOverride ??
+      (game.selected === "obstacle" || game.selected === "capsule"
+        ? "small"
+        : game.selected);
+    if (
+      !canControl ||
+      isAnimating ||
+      game.phase !== "place"
+    ) return;
+    try {
+      const capsule = useCapsule || game.selected === "capsule";
+      const resolution = applyMeteor(game, target, chosenSize, capsule);
+      if (mode === "online") {
+        void submitOnlineAction("meteor", target, chosenSize, capsule);
+        return;
+      }
+      const before = game.probes;
+      const probes = resolution.state.probes;
+      setIsAnimating(true);
+      setBlastFx({
+        stage: "probe",
+        target,
+        owner: game.turn,
+        size: chosenSize,
+        destroyedIds: resolution.destroyedIds,
+        pushed: resolution.pushed,
+      });
+      playBoom();
+      const effectScale =
+        mode !== "lab" ? 1 : aiSpeed <= 60 ? 0.08 : aiSpeed <= 240 ? 0.18 : 0.48;
+      window.setTimeout(() => {
+        setGame((current) => ({ ...current, probes }));
+        setBlastFx((effect) => (effect ? { ...effect, stage: "recover" } : effect));
+      }, Math.max(70, Math.round(1100 * effectScale)));
+      window.setTimeout(() => {
+        commit(resolution.state);
+        setBlastFx(null);
+        setIsAnimating(false);
+      }, Math.max(140, Math.round(2020 * effectScale)));
+      void before;
+      return;
+    } catch {
+      return;
+    }
+    /*
     if (
       !canControl ||
       isAnimating ||
@@ -579,6 +635,7 @@ function Game() {
       setBlastFx(null);
       setIsAnimating(false);
     }, Math.max(140, Math.round(2020 * effectScale)));
+    */
   };
 
   const placeObstacle = (target: Pos) => {
@@ -629,8 +686,10 @@ function Game() {
               : obstaclesEnabled,
           humanCount: onlinePlayerCount,
           aiCount: onlineAiCount,
+          variant,
         });
         setGame(data.state);
+        setVariant(data.state.variant ?? "classic");
         setSize(data.state.size);
         setFirst(data.state.startingPlayer);
         setActiveFirst(data.state.startingPlayer);
@@ -665,13 +724,14 @@ function Game() {
     setBlastFx(null);
     setIsAnimating(false);
     setHistory([]);
-    const playerCount =
+    const configuredPlayerCount =
       setupMode === "cpu" || setupMode === "lab"
         ? aiPlayerCount
         : setupMode === "human"
           ? 2 + localAiCount
           : onlinePlayerCount + onlineAiCount;
-    const nextSize = playerCount > 2 && size === 9 ? 11 : size;
+    const playerCount = variant === "team" ? 4 : configuredPlayerCount;
+    const nextSize = variant === "item" ? 15 : variant === "team" ? 11 : playerCount > 2 && size === 9 ? 11 : size;
     const nextObstaclesEnabled =
       playerCount === 2 && nextSize === 9 ? false : obstaclesEnabled;
     const nextPlayers = PLAYER_ORDER.slice(0, playerCount);
@@ -700,6 +760,7 @@ function Game() {
           nextObstaclesEnabled,
           layoutOffset,
           botPlayers,
+          variant,
         ),
       );
     }
@@ -725,6 +786,7 @@ function Game() {
         Boolean(game.obstaclesEnabled),
         nextOffset,
         game.botPlayers ?? [],
+        game.variant ?? "classic",
       ),
     );
   };
@@ -797,6 +859,7 @@ function Game() {
             setGame(data.state);
           }
           setSize(data.state.size);
+          setVariant(data.state.variant ?? "classic");
           setFirst(data.state.startingPlayer);
           setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
           setHistory([]);
@@ -880,6 +943,7 @@ function Game() {
           Boolean(game.obstaclesEnabled),
           nextOffset,
           game.botPlayers ?? players,
+          game.variant ?? "classic",
         ),
       );
     }, Math.max(120, aiSpeed));
@@ -908,6 +972,7 @@ function Game() {
           game.inventory[game.turn].small + game.inventory[game.turn].large === 0;
         const scored = moves
           .map((p) => {
+            const itemBonus = game.fieldItems?.some((item) => samePos(item, p)) ? 10 : 0;
             if (meteorless && !game.bonusMove) {
               const afterFirst = applyMove(game, p);
               const secondMoves = legalMoves(afterFirst);
@@ -916,13 +981,14 @@ function Game() {
                 : coreDistance(p);
               return {
                 p,
-                score: -finalDistance * 20 - coreDistance(p) + Math.random() * 0.2,
+                score: -finalDistance * 20 - coreDistance(p) + itemBonus + Math.random() * 0.2,
               };
             }
             return {
               p,
               score:
                 -(game.bonusMove ? 20 : 2.8) * coreDistance(p) +
+                itemBonus +
                 Math.random() * (game.bonusMove ? 0.2 : 2.4),
             };
           })
@@ -972,7 +1038,17 @@ function Game() {
       const options: { p: Pos; size: MeteorSize; score: number }[] = [];
       const center = { r: mid, c: mid };
       const me = game.turn;
-      const opponents = activePlayers(game).filter((player) => player !== me);
+      const allies =
+        game.variant === "team"
+          ? activePlayers(game).filter(
+              (player) => player !== me && teamOf(player) === teamOf(me),
+            )
+          : [];
+      const opponents = activePlayers(game).filter(
+        (player) =>
+          player !== me &&
+          (game.variant !== "team" || teamOf(player) !== teamOf(me)),
+      );
       const coreDistance = (p: Pos) =>
         Math.abs(p.r - center.r) + Math.abs(p.c - center.c);
       (["small", "large"] as MeteorSize[]).forEach((meteorSize) => {
@@ -985,7 +1061,7 @@ function Game() {
             let score = Math.random() * 3;
             game.meteors.forEach((m) => {
               if (distance(m, p) > radius) return;
-              if (m.owner === me) {
+              if (m.owner === me || allies.includes(m.owner)) {
                 score += 6;
                 return;
               }
@@ -1008,6 +1084,7 @@ function Game() {
             const projectedByPlayer: Partial<Record<Player, Pos>> = {};
             ([
               [me, 1],
+              ...allies.map((player) => [player, 1] as [Player, number]),
               ...opponents.map((player) => [player, -1] as [Player, number]),
             ] as [Player, number][]).forEach(([player, polarity]) => {
               const start = game.probes[player];
@@ -1071,12 +1148,40 @@ function Game() {
         }
       });
       options.sort((a, b) => b.score - a.score);
+      let capsuleTarget: Pos | null = null;
+      if (
+        game.variant === "item" &&
+        (game.capsuleMeteors?.[me] ?? 0) > 0
+      ) {
+        const own = game.probes[me];
+        const candidates: Pos[] = [];
+        for (let r = 0; r < game.size; r += 1) {
+          for (let c = 0; c < game.size; c += 1) {
+            if (validBasePlacement(r, c) && distance({ r, c }, own) === 1) {
+              candidates.push({ r, c });
+            }
+          }
+        }
+        capsuleTarget =
+          candidates.sort((a, b) => {
+            const projectedGain = (target: Pos) => {
+              const projected = {
+                r: own.r + Math.sign(own.r - target.r),
+                c: own.c + Math.sign(own.c - target.c),
+              };
+              return coreDistance(own) - coreDistance(projected);
+            };
+            return projectedGain(b) - projectedGain(a);
+          })[0] ?? null;
+      }
       if (
         bestObstacle &&
         bestObstacle.score >= 6 &&
         (!options[0] || bestObstacle.score > options[0].score)
       ) {
         placeObstacle(bestObstacle.p);
+      } else if (capsuleTarget && (!options[0] || options[0].score < 5)) {
+        placeMeteor(capsuleTarget, "small", true);
       } else if (
         (game.passAvailable?.[game.turn] ?? true) &&
         (!options[0] || options[0].score < 2.5)
@@ -1196,6 +1301,7 @@ function Game() {
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
+              const fieldItem = game.fieldItems?.find((item) => samePos(item, pos));
               const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
               const legal =
                 canControl &&
@@ -1240,6 +1346,15 @@ function Game() {
                     />
                   )}
                   {obstacle && <ObstacleIcon obstacle={obstacle} />}
+                  {fieldItem && (
+                    <span className={`field-item ${fieldItem.kind}`} title={fieldItem.kind}>
+                      {fieldItem.kind === "shield"
+                        ? "⬡"
+                        : fieldItem.kind === "booster"
+                          ? "»"
+                          : "●+"}
+                    </span>
+                  )}
                   {probe && (
                     <ProbeToken
                       player={probe}
@@ -1266,6 +1381,14 @@ function Game() {
           </div>
 
           <div className="action-panel">
+            {game.variant === "item" && (
+              <div className="item-status" aria-label="current item effects">
+                <span>ITEM</span>
+                <b>{game.shield?.[game.turn] ? "SHIELD ×1" : "SHIELD ×0"}</b>
+                <b>BOOST ×{game.boosterMoves?.[game.turn] ?? 0}</b>
+                <b>CAPSULE ×{game.capsuleMeteors?.[game.turn] ?? 0}</b>
+              </div>
+            )}
             {game.phase === "place" && (
               <>
                 <span className="action-label">配置するメテオ</span>
@@ -1283,6 +1406,15 @@ function Game() {
                 >
                   ✦ 大 <b>{game.inventory[game.turn].large}</b>
                 </button>
+                {game.variant === "item" && (
+                  <button
+                    className={`meteor-choice capsule ${game.selected === "capsule" ? "selected" : ""}`}
+                    disabled={(game.capsuleMeteors?.[game.turn] ?? 0) === 0}
+                    onClick={() => setGame((g) => ({ ...g, selected: "capsule" }))}
+                  >
+                    CAPSULE ●+ <b>{game.capsuleMeteors?.[game.turn] ?? 0}</b>
+                  </button>
+                )}
                 <button
                   className="meteor-choice pass-choice"
                   disabled={!(game.passAvailable?.[game.turn] ?? true)}
@@ -1346,6 +1478,31 @@ function Game() {
 
       <section className="control-strip">
         <div className="settings">
+          <label>
+            GAME
+            <select
+              value={variant}
+              disabled={roomSettingsLocked}
+              onChange={(event) => {
+                const nextVariant = event.target.value as GameVariant;
+                setVariant(nextVariant);
+                if (nextVariant === "team") {
+                  setSize(11);
+                  setAiPlayerCount(4);
+                  setLocalAiCount(2);
+                } else if (nextVariant === "item") {
+                  setSize(15);
+                } else if (size === 15) {
+                  setSize(11);
+                }
+                setNeedsNewGame(true);
+              }}
+            >
+              <option value="classic">CLASSIC</option>
+              <option value="team">2 VS 2 TEAM</option>
+              <option value="item">ITEM 15 × 15</option>
+            </select>
+          </label>
           <label>
             MODE
             <select
@@ -1420,8 +1577,9 @@ function Game() {
                 setNeedsNewGame(true);
               }}
             >
-              <option value={9} disabled={setupPlayerCount > 2}>9 × 9</option>
-              <option value={11}>11 × 11</option>
+              <option value={9} disabled={setupPlayerCount > 2 || variant !== "classic"}>9 × 9</option>
+              <option value={11} disabled={variant === "item"}>11 × 11</option>
+              <option value={15} disabled={variant !== "item"}>15 × 15</option>
             </select>
           </label>
           <label>

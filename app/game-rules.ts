@@ -1,17 +1,25 @@
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
+export type GameVariant = "classic" | "team" | "item";
+export type ItemKind = "shield" | "booster" | "capsule";
 export type Pos = { r: number; c: number };
-export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number };
+export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
+export type FieldItem = Pos & { kind: ItemKind; id: number };
 export type ObstacleMeteor = Pos & { owner: Player; id: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
 export type Phase = "move" | "place" | "over";
 
 export type GameState = {
   size: number;
+  variant: GameVariant;
   players: Player[];
   turn: Player;
   phase: Phase;
   bonusMove: boolean;
+  fieldItems: FieldItem[];
+  shield: Record<Player, boolean>;
+  boosterMoves: Record<Player, number>;
+  capsuleMeteors: Record<Player, number>;
   turnCount: number;
   probes: Record<Player, Pos>;
   meteors: Meteor[];
@@ -24,7 +32,7 @@ export type GameState = {
   playerTurns: Record<Player, number>;
   passAvailable: Record<Player, boolean>;
   inventory: Inventory;
-  selected: MeteorSize | "obstacle";
+  selected: MeteorSize | "obstacle" | "capsule";
   winner: Player | "draw" | null;
   message: string;
   log: string[];
@@ -91,12 +99,21 @@ export function initialGameState(
   obstaclesEnabled = false,
   layoutOffset = 0,
   botPlayers: Player[] = [],
+  variant: GameVariant = "classic",
 ): GameState {
+  if (variant === "team") {
+    playerCount = 4;
+    size = 11;
+  }
+  if (variant === "item") size = 15;
   const count = Math.max(2, Math.min(4, playerCount));
-  const players = PLAYER_ORDER.slice(0, count);
+  const players =
+    variant === "team"
+      ? (["red", "blue", "yellow", "green"] as Player[])
+      : PLAYER_ORDER.slice(0, count);
   if (!players.includes(first)) first = players[0];
   if (size === 13) size = 11;
-  if (![9, 11].includes(size)) size = 9;
+  if (![9, 11, 15].includes(size)) size = 9;
   if (count > 2 && size === 9) size = 11;
   const mid = Math.floor(size / 2);
   const inset = count > 2 ? 1 : 0;
@@ -107,8 +124,22 @@ export function initialGameState(
     { r: mid, c: size - 1 - inset },
   ];
   const offset = ((layoutOffset % 4) + 4) % 4;
+  const fieldItems: FieldItem[] =
+    variant === "item"
+      ? [
+          { r: 3, c: 3, kind: "shield", id: 1 },
+          { r: 3, c: mid, kind: "booster", id: 2 },
+          { r: 3, c: size - 4, kind: "capsule", id: 3 },
+          { r: mid, c: 3, kind: "capsule", id: 4 },
+          { r: mid, c: size - 4, kind: "shield", id: 5 },
+          { r: size - 4, c: 3, kind: "booster", id: 6 },
+          { r: size - 4, c: mid, kind: "shield", id: 7 },
+          { r: size - 4, c: size - 4, kind: "capsule", id: 8 },
+        ]
+      : [];
   return {
     size,
+    variant,
     players,
     turn: first,
     startingPlayer: first,
@@ -118,6 +149,10 @@ export function initialGameState(
     layoutOffset: offset,
     phase: "move",
     bonusMove: false,
+    fieldItems,
+    shield: { red: false, blue: false, green: false, yellow: false },
+    boosterMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
+    capsuleMeteors: { red: 0, blue: 0, green: 0, yellow: 0 },
     turnCount: 0,
     probes: {
       red: slots[offset % 4],
@@ -152,24 +187,40 @@ export function initialGameState(
 export function legalMoves(state: GameState, player = state.turn): Pos[] {
   const probe = state.probes[player];
   const players = activePlayers(state);
-  return [
-    { r: probe.r - 1, c: probe.c },
-    { r: probe.r + 1, c: probe.c },
-    { r: probe.r, c: probe.c - 1 },
-    { r: probe.r, c: probe.c + 1 },
-  ].filter(
-    (target) =>
-      target.r >= 0 &&
-      target.c >= 0 &&
-      target.r < state.size &&
-      target.c < state.size &&
-      !players.some(
-        (candidate) => candidate !== player && samePos(target, state.probes[candidate]),
-      ) &&
-      !state.meteors.some((meteor) => samePos(meteor, target)) &&
-      !activeObstacles(state).some((obstacle) => samePos(obstacle, target)),
-  );
+  const directions = [
+    { r: -1, c: 0 },
+    { r: 1, c: 0 },
+    { r: 0, c: -1 },
+    { r: 0, c: 1 },
+  ];
+  const maxSteps =
+    state.variant === "item" && (state.boosterMoves?.[player] ?? 0) > 0 ? 2 : 1;
+  const moves: Pos[] = [];
+  directions.forEach((direction) => {
+    for (let step = 1; step <= maxSteps; step += 1) {
+      const target = {
+        r: probe.r + direction.r * step,
+        c: probe.c + direction.c * step,
+      };
+      const legal =
+        target.r >= 0 &&
+        target.c >= 0 &&
+        target.r < state.size &&
+        target.c < state.size &&
+        !players.some(
+          (candidate) => candidate !== player && samePos(target, state.probes[candidate]),
+        ) &&
+        !state.meteors.some((meteor) => samePos(meteor, target)) &&
+        !activeObstacles(state).some((obstacle) => samePos(obstacle, target));
+      if (!legal) break;
+      moves.push(target);
+    }
+  });
+  return moves;
 }
+
+export const teamOf = (player: Player): "sun" | "moon" =>
+  player === "red" || player === "yellow" ? "sun" : "moon";
 
 function stateKey(state: GameState, nextTurn: Player) {
   const meteors = [...state.meteors]
@@ -189,6 +240,10 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.passAvailable ?? {}),
     JSON.stringify(state.playerTurns ?? {}),
     JSON.stringify(state.inventory),
+    JSON.stringify(state.fieldItems ?? []),
+    JSON.stringify(state.shield ?? {}),
+    JSON.stringify(state.boosterMoves ?? {}),
+    JSON.stringify(state.capsuleMeteors ?? {}),
     state.bonusMove ? "bonus" : "normal",
   ].join("/");
 }
@@ -237,6 +292,8 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
         ? "small"
         : inventory[nextTurn].large > 0
           ? "large"
+          : (draft.capsuleMeteors?.[nextTurn] ?? 0) > 0
+            ? "capsule"
           : canPlaceObstacle(draft, nextTurn)
             ? "obstacle"
             : "small",
@@ -262,6 +319,23 @@ export function applyMove(state: GameState, target: Pos): GameState {
   if (state.phase !== "move" || !legalMoves(state).some((move) => samePos(move, target))) {
     throw new Error("そのマスへは移動できません");
   }
+  const picked = state.fieldItems?.find((item) => samePos(item, target));
+  const shield = { ...(state.shield ?? { red: false, blue: false, green: false, yellow: false }) };
+  const boosterMoves = { ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
+  const capsuleMeteors = { ...(state.capsuleMeteors ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
+  if (picked?.kind === "shield") shield[state.turn] = true;
+  if (picked?.kind === "booster") boosterMoves[state.turn] = 3;
+  else if ((boosterMoves[state.turn] ?? 0) > 0) boosterMoves[state.turn] -= 1;
+  if (picked?.kind === "capsule") capsuleMeteors[state.turn] += 1;
+  state = {
+    ...state,
+    fieldItems: picked
+      ? state.fieldItems.filter((item) => item.id !== picked.id)
+      : state.fieldItems ?? [],
+    shield,
+    boosterMoves,
+    capsuleMeteors,
+  };
   const mid = Math.floor(state.size / 2);
   const probes = { ...state.probes, [state.turn]: target };
   const log = [...state.log, `${playerName(state.turn)}が (${target.r},${target.c}) へ移動`];
@@ -272,7 +346,10 @@ export function applyMove(state: GameState, target: Pos): GameState {
       phase: "over",
       bonusMove: false,
       winner: state.turn,
-      message: `${playerName(state.turn)} WIN!`,
+      message:
+        state.variant === "team"
+          ? `${teamOf(state.turn) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"} TEAM WIN!`
+          : `${playerName(state.turn)} WIN!`,
       log: [...log, `${playerName(state.turn)}が中央へ到達`],
     };
   }
@@ -280,7 +357,10 @@ export function applyMove(state: GameState, target: Pos): GameState {
     return finishTurn({ ...state, probes, log }, "先攻の初手：メテオ配置なし");
   }
   const meteorless =
-    state.inventory[state.turn].small + state.inventory[state.turn].large === 0;
+    state.inventory[state.turn].small +
+      state.inventory[state.turn].large +
+      (state.capsuleMeteors?.[state.turn] ?? 0) ===
+    0;
   if (meteorless && !state.bonusMove) {
     return {
       ...state,
@@ -298,7 +378,10 @@ export function applyMove(state: GameState, target: Pos): GameState {
     );
   }
   const hasPlacement =
-    state.inventory[state.turn].small + state.inventory[state.turn].large > 0 ||
+    state.inventory[state.turn].small +
+      state.inventory[state.turn].large +
+      (state.capsuleMeteors?.[state.turn] ?? 0) >
+      0 ||
     canPlaceObstacle(state);
   if (!hasPlacement) return finishTurn({ ...state, probes, log }, "配置できるメテオなし");
   return {
@@ -314,6 +397,7 @@ export function applyMeteor(
   state: GameState,
   target: Pos,
   chosenSize: MeteorSize,
+  useCapsule = false,
 ): MeteorResolution {
   const mid = Math.floor(state.size / 2);
   if (
@@ -322,7 +406,9 @@ export function applyMeteor(
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||
     activeObstacles(state).some((obstacle) => samePos(obstacle, target)) ||
-    state.inventory[state.turn][chosenSize] <= 0
+    (useCapsule
+      ? chosenSize !== "small" || (state.capsuleMeteors?.[state.turn] ?? 0) <= 0
+      : state.inventory[state.turn][chosenSize] <= 0)
   ) {
     throw new Error("そのマスにはメテオを配置できません");
   }
@@ -335,6 +421,7 @@ export function applyMeteor(
     owner: state.turn,
     size: chosenSize,
     id: state.nextMeteorId,
+    consumable: useCapsule,
   };
   const inventory: Inventory = {
     red: { ...state.inventory.red },
@@ -342,10 +429,14 @@ export function applyMeteor(
     green: { ...state.inventory.green },
     yellow: { ...state.inventory.yellow },
   };
-  inventory[state.turn][chosenSize] -= 1;
+  if (!useCapsule) inventory[state.turn][chosenSize] -= 1;
   destroyed.forEach((meteor) => {
-    inventory[meteor.owner][meteor.size] += 1;
+    if (!meteor.consumable) inventory[meteor.owner][meteor.size] += 1;
   });
+  const capsuleMeteors = {
+    ...(state.capsuleMeteors ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
+  };
+  if (useCapsule) capsuleMeteors[state.turn] -= 1;
 
   // Probe movement is resolved while every old meteor is still on the board.
   const blockingMeteors = [...state.meteors, ...activeObstacles(state), placed];
@@ -361,6 +452,7 @@ export function applyMeteor(
     const steps =
       chosenSize === "small" ? (d === 1 ? 1 : 0) : d === 1 ? 2 : d === 2 ? 1 : 0;
     if (!steps) return;
+    if (state.shield?.[player]) return;
     const dr = Math.sign(start.r - target.r);
     const dc = Math.sign(start.c - target.c);
     let position = { ...start };
@@ -393,6 +485,19 @@ export function applyMeteor(
     probes,
     meteors: [...survivors, placed],
     inventory,
+    capsuleMeteors,
+    shield: {
+      ...(state.shield ?? { red: false, blue: false, green: false, yellow: false }),
+      ...Object.fromEntries(
+        activePlayers(state)
+          .filter((player) => {
+            const d = distance(before[player], target);
+            return Boolean(state.shield?.[player]) &&
+              (chosenSize === "small" ? d === 1 : d === 1 || d === 2);
+          })
+          .map((player) => [player, false]),
+      ),
+    },
     nextMeteorId: state.nextMeteorId + 1,
     log,
   };
@@ -404,7 +509,12 @@ export function applyMeteor(
       ...draft,
       phase: "over",
       winner,
-      message: winner === "draw" ? "同時到達 — DRAW" : `${playerName(winner)} WIN!`,
+      message:
+        winner === "draw"
+          ? "同時到達 — DRAW"
+          : state.variant === "team"
+            ? `${teamOf(winner)} TEAM WIN!`
+            : `${playerName(winner)} WIN!`,
       log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
     };
   } else {

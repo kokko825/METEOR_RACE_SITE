@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyMeteor, applyMove, applyObstacle, applyPass, finishTurn, initialGameState, legalMoves, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyMeteor, applyMove, applyObstacle, applyPass, finishTurn, initialGameState, legalMoves, type GameVariant, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +137,8 @@ export async function POST(request: Request) {
     target?: Pos;
     meteorSize?: MeteorSize;
     nickname?: string;
+    variant?: GameVariant;
+    useCapsule?: boolean;
   };
 
   if (body.action === "create") {
@@ -336,7 +338,12 @@ export async function POST(request: Request) {
     );
     let aiCount = Math.max(0, Math.min(4 - humanCount, Number(body.aiCount ?? 0)));
     if (humanCount + aiCount < 2) aiCount = 1;
-    const players = humanCount + aiCount;
+    const variant: GameVariant =
+      body.variant === "team" || body.variant === "item" ? body.variant : "classic";
+    if (variant === "team") {
+      aiCount = Math.max(0, 4 - humanCount);
+    }
+    const players = variant === "team" ? 4 : humanCount + aiCount;
     const playerList: Player[] = PLAYER_ORDER.slice(0, players);
     const previousSeats = JSON.parse(room.seat_order_json) as Player[];
     const preferredRoles: Array<Player | null> = [
@@ -357,10 +364,17 @@ export async function POST(request: Request) {
       preferredRoles[index] = humanSeats[index];
     }
     const botPlayers = playerList.filter((player) => !humanSeats.includes(player));
-    const requestedSize = body.size === 11 ? 11 : 9;
-    const size = players > 2 && requestedSize === 9 ? 11 : requestedSize;
-    const turnOrder = shuffledPlayers(playerList);
-    const first = turnOrder[0];
+    const requestedSize = body.size === 15 ? 15 : body.size === 11 ? 11 : 9;
+    const size =
+      variant === "item" ? 15 : variant === "team" ? 11 : players > 2 && requestedSize === 9 ? 11 : requestedSize;
+    const turnOrder =
+      variant === "team"
+        ? (["red", "blue", "yellow", "green"] as Player[])
+        : shuffledPlayers(playerList);
+    const first =
+      variant === "team"
+        ? turnOrder[crypto.getRandomValues(new Uint8Array(1))[0] % turnOrder.length]
+        : turnOrder[0];
     const nextOffset =
       players === 3 ? ((previous.layoutOffset ?? 0) + 1) % 4 : 0;
     const nextState = initialGameState(
@@ -370,6 +384,7 @@ export async function POST(request: Request) {
       players === 2 && size === 9 ? false : Boolean(body.obstaclesEnabled),
       nextOffset,
       botPlayers,
+      variant,
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -408,8 +423,14 @@ export async function POST(request: Request) {
     const previous = JSON.parse(room.state_json);
     const players = previous.players?.length ?? room.max_players;
     const playerList = PLAYER_ORDER.slice(0, players);
-    const turnOrder = shuffledPlayers(playerList);
-    const nextFirst = turnOrder[0];
+    const turnOrder =
+      previous.variant === "team"
+        ? (["red", "blue", "yellow", "green"] as Player[])
+        : shuffledPlayers(playerList);
+    const nextFirst =
+      previous.variant === "team"
+        ? turnOrder[crypto.getRandomValues(new Uint8Array(1))[0] % turnOrder.length]
+        : turnOrder[0];
     const nextOffset =
       players === 3 ? ((previous.layoutOffset ?? 0) + 1) % 4 : 0;
     const nextState = initialGameState(
@@ -419,6 +440,7 @@ export async function POST(request: Request) {
       Boolean(previous.obstaclesEnabled),
       nextOffset,
       previous.botPlayers ?? [],
+      previous.variant ?? "classic",
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -466,7 +488,7 @@ export async function POST(request: Request) {
     } else if (body.action === "obstacle" && body.target) {
       nextState = applyObstacle(state, body.target);
     } else if (body.action === "meteor" && body.target && body.meteorSize) {
-      const resolution = applyMeteor(state, body.target, body.meteorSize);
+      const resolution = applyMeteor(state, body.target, body.meteorSize, Boolean(body.useCapsule));
       nextState = resolution.state;
       effect = {
         target: resolution.target,

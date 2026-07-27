@@ -230,3 +230,49 @@ for (const first of ["red", "blue"] as Player[]) {
 }
 
 console.log("game-rules: all checks passed");
+
+{
+  const team = initialGameState(9, "red", 2, false, 0, [], "team");
+  assert.equal(team.size, 11);
+  assert.deepEqual(team.players, ["red", "blue", "yellow", "green"]);
+  assert.equal(finishTurn(team).turn, "blue");
+  const win = {
+    ...team,
+    turnCount: 2,
+    probes: { ...team.probes, red: { r: 6, c: 5 } },
+  };
+  const resolved = applyMove(win, { r: 5, c: 5 });
+  assert.equal(resolved.winner, "red");
+  assert.match(resolved.message, /TEAM WIN/);
+}
+
+{
+  let item = initialGameState(11, "red", 2, false, 0, [], "item");
+  assert.equal(item.size, 15);
+  assert.equal(item.fieldItems.length, 8);
+  item.turnCount = 2;
+  item.probes.red = { r: 4, c: 3 };
+  item.fieldItems = [{ r: 3, c: 3, kind: "booster", id: 1 }];
+  item = applyMove(item, { r: 3, c: 3 });
+  assert.equal(item.boosterMoves.red, 3);
+  item.phase = "move";
+  assert.ok(legalMoves(item).some((move) => samePos(move, { r: 3, c: 5 })));
+}
+
+{
+  let item = initialGameState(15, "red", 2, false, 0, [], "item");
+  item.turnCount = 2;
+  item.phase = "place";
+  item.capsuleMeteors.red = 1;
+  const placed = applyMeteor(item, { r: 10, c: 10 }, "small", true).state;
+  assert.equal(placed.capsuleMeteors.red, 0);
+  const capsule = placed.meteors.find((meteor) => meteor.consumable);
+  assert.ok(capsule);
+  const enemyBlast = {
+    ...placed,
+    turn: "blue" as Player,
+    phase: "place" as const,
+  };
+  const destroyed = applyMeteor(enemyBlast, { r: 9, c: 9 }, "small").state;
+  assert.equal(destroyed.inventory.red.small, placed.inventory.red.small);
+}
