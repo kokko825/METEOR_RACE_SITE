@@ -1298,14 +1298,80 @@ function Game() {
               r: Math.sign(ownStart.r - mid),
               c: Math.sign(ownStart.c - mid),
             };
+            const towardCore =
+              Math.abs(ownStart.r - mid) >= Math.abs(ownStart.c - mid)
+                ? { r: -outward.r, c: 0 }
+                : { r: 0, c: -outward.c };
+            const frontCell = {
+              r: ownStart.r + towardCore.r,
+              c: ownStart.c + towardCore.c,
+            };
+            const frontBlocked =
+              game.meteors.some((meteor) => samePos(meteor, frontCell)) ||
+              activeObstacles(game).some((obstacle) => samePos(obstacle, frontCell)) ||
+              activePlayers(game).some(
+                (player) => player !== me && samePos(game.probes[player], frontCell),
+              );
             const behindOwnShip =
               (outward.r !== 0 && Math.sign(ownToMeteor.r) === outward.r) ||
               (outward.c !== 0 && Math.sign(ownToMeteor.c) === outward.c);
             const ownMeteorDistance = distance(ownStart, p);
-            const backstopValue =
-              behindOwnShip && ownMeteorDistance <= 2
-                ? (3 - ownMeteorDistance) * 5.5 * progressPriority
+            const blastSteps =
+              meteorSize === "small"
+                ? ownMeteorDistance === 1
+                  ? 1
+                  : 0
+                : ownMeteorDistance === 1
+                  ? 2
+                  : ownMeteorDistance === 2
+                    ? 1
+                    : 0;
+            const blastDirection = {
+              r: Math.sign(ownStart.r - p.r),
+              c: Math.sign(ownStart.c - p.c),
+            };
+            let escapeLanding = { ...ownStart };
+            for (let step = 0; step < blastSteps; step += 1) {
+              const next = {
+                r: escapeLanding.r + blastDirection.r,
+                c: escapeLanding.c + blastDirection.c,
+              };
+              const blocked =
+                next.r < 0 ||
+                next.c < 0 ||
+                next.r >= game.size ||
+                next.c >= game.size ||
+                game.meteors.some((meteor) => samePos(meteor, next)) ||
+                activeObstacles(game).some((obstacle) => samePos(obstacle, next)) ||
+                activePlayers(game).some(
+                  (player) => player !== me && samePos(game.probes[player], next),
+                ) ||
+                samePos(p, next);
+              if (blocked) break;
+              escapeLanding = next;
+            }
+            const escaped = !samePos(escapeLanding, ownStart);
+            const diagonalEscape =
+              escaped && blastDirection.r !== 0 && blastDirection.c !== 0;
+            const escapeState = {
+              ...game,
+              probes: { ...game.probes, [me]: escapeLanding },
+            };
+            const escapeMobility = legalMoves(escapeState, me).length;
+            const escapeCoreGain = coreDistance(ownStart) - coreDistance(escapeLanding);
+            let backstopValue =
+              behindOwnShip && escaped
+                ? escapeCoreGain * 11 * progressPriority + escapeMobility * 1.4
                 : 0;
+            if (frontBlocked) {
+              if (diagonalEscape && coreDistance(escapeLanding) <= ownGoalDistance) {
+                backstopValue += 18 + escapeMobility * 2.2;
+              } else if (!escaped || !diagonalEscape) {
+                backstopValue -= 16;
+              }
+            } else if (diagonalEscape) {
+              backstopValue += escapeMobility * 0.8;
+            }
             const futureSetupValue =
               behindOwnShip &&
               ownMeteorDistance >= 2 &&
@@ -1313,8 +1379,9 @@ function Game() {
               coreDistance(p) >= ownGoalDistance
                 ? (5 - ownMeteorDistance) * 2.2
                 : 0;
-            // A meteor behind the ship can both launch it now and stop a later
-            // enemy blast from carrying it away from the core.
+            // Prefer a diagonal rear launch when the direct route is blocked.
+            // A straight rear meteor is valuable only when it actually moves
+            // the ship or leaves useful mobility after the blast.
             score += backstopValue + futureSetupValue;
             game.meteors.forEach((m) => {
               if (distance(m, p) > radius) return;
@@ -1379,6 +1446,44 @@ function Game() {
             ).length;
             if (samePos(ownProjected, center) && opponentsAtCore) {
               score += opponentsAtCore * 1000;
+            }
+            const resourcesBefore =
+              game.inventory[me].small +
+              game.inventory[me].large +
+              (game.capsuleMeteors?.[me] ?? 0);
+            const resourcesAfter = resourcesBefore - 1;
+            const immediateOwnGain =
+              coreDistance(game.probes[me]) - coreDistance(ownProjected);
+            const centralRecoveryLane =
+              coreDistance(p) <= 3 &&
+              opponents.some((player) => {
+                const enemy = game.probes[player];
+                const enemyDistance = coreDistance(enemy);
+                const sameLane =
+                  (Math.abs(enemy.r - mid) >= Math.abs(enemy.c - mid) &&
+                    p.c === mid &&
+                    Math.sign(p.r - mid) === Math.sign(enemy.r - mid)) ||
+                  (Math.abs(enemy.c - mid) > Math.abs(enemy.r - mid) &&
+                    p.r === mid &&
+                    Math.sign(p.c - mid) === Math.sign(enemy.c - mid));
+                return sameLane && enemyDistance <= 5;
+              });
+            const exposedToEnemyBlast = opponents.some(
+              (player) =>
+                distance(game.probes[player], p) <=
+                (game.inventory[player].large > 0 ? 2 : game.inventory[player].small > 0 ? 1 : 0),
+            );
+            const likelyRecovery = centralRecoveryLane || exposedToEnemyBlast;
+            if (resourcesAfter <= 0 && !samePos(ownProjected, center)) {
+              if (likelyRecovery) {
+                score -= immediateOwnGain > 0 ? 3 : 8;
+              } else if (immediateOwnGain >= 2) {
+                score -= 13;
+              } else {
+                score -= 32;
+              }
+            } else if (resourcesAfter === 1 && immediateOwnGain <= 0 && !likelyRecovery) {
+              score -= 7;
             }
 
             const futureMeteors = [
