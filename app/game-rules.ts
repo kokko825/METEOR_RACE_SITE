@@ -327,6 +327,14 @@ export function applyMove(state: GameState, target: Pos): GameState {
   if (picked?.kind === "booster") boosterMoves[state.turn] = 3;
   else if ((boosterMoves[state.turn] ?? 0) > 0) boosterMoves[state.turn] -= 1;
   if (picked?.kind === "capsule") capsuleMeteors[state.turn] += 1;
+  const pickedLabel =
+    picked?.kind === "shield"
+      ? "シールド"
+      : picked?.kind === "booster"
+        ? "ブースト"
+        : picked?.kind === "capsule"
+          ? "使い捨てメテオ"
+          : null;
   state = {
     ...state,
     fieldItems: picked
@@ -338,7 +346,11 @@ export function applyMove(state: GameState, target: Pos): GameState {
   };
   const mid = Math.floor(state.size / 2);
   const probes = { ...state.probes, [state.turn]: target };
-  const log = [...state.log, `${playerName(state.turn)}が (${target.r},${target.c}) へ移動`];
+  const pickupMessage = pickedLabel ? `・${pickedLabel}を取得` : "";
+  const log = [
+    ...state.log,
+    `${playerName(state.turn)}が (${target.r},${target.c}) へ移動${pickupMessage}`,
+  ];
   if (target.r === mid && target.c === mid) {
     return {
       ...state,
@@ -388,7 +400,9 @@ export function applyMove(state: GameState, target: Pos): GameState {
     ...state,
     probes,
     phase: "place",
-    message: `${playerName(state.turn)}：メテオを配置`,
+    message: pickedLabel
+      ? `${playerName(state.turn)}：${pickedLabel}を取得・メテオを配置`
+      : `${playerName(state.turn)}：メテオを配置`,
     log,
   };
 }

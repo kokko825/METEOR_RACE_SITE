@@ -416,6 +416,8 @@ function Game() {
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
     if (mode === "online") {
+      // Reflect movement and item pickup immediately while the server confirms the action.
+      setGame(applyMove(game, target));
       void submitOnlineAction("move", target);
       return;
     }
@@ -1074,29 +1076,51 @@ function Game() {
           }
         }
         const ownProbe = game.probes[game.turn];
+        const ownGoalDistance = Math.abs(ownProbe.r - mid) + Math.abs(ownProbe.c - mid);
+        const obstacleOpponents = activePlayers(game).filter(
+          (player) =>
+            player !== game.turn &&
+            (game.variant !== "team" || teamOf(player) !== teamOf(game.turn)),
+        );
+        const closestEnemyGoalDistance = Math.min(
+          ...obstacleOpponents.map(
+            (player) =>
+              Math.abs(game.probes[player].r - mid) +
+              Math.abs(game.probes[player].c - mid),
+          ),
+        );
+        const defenseUrgency =
+          closestEnemyGoalDistance <= 2 ? 3 : closestEnemyGoalDistance <= 4 ? 1.6 : 0.35;
+        const progressPriority = ownGoalDistance >= 6 ? 2.4 : ownGoalDistance >= 4 ? 1.45 : 0.8;
         const scoreObstacle = (target: Pos) => {
           const coreDistance = Math.abs(target.r - mid) + Math.abs(target.c - mid);
-          let score = 1.5 - coreDistance * 0.35 + Math.random() * 1.5;
-          if (distance(target, ownProbe) === 1) score += 3;
+          let score = 0.4 - coreDistance * 0.18 + Math.random() * 0.55;
+          if (distance(target, ownProbe) === 1) score += 2.5 * progressPriority;
           game.meteors.forEach((meteor) => {
             if (meteor.owner === game.turn || distance(meteor, ownProbe) > 2) return;
             const dr = Math.sign(ownProbe.r - meteor.r);
             const dc = Math.sign(ownProbe.c - meteor.c);
-            if (samePos(target, { r: ownProbe.r + dr, c: ownProbe.c + dc })) score += 34;
-            if (samePos(target, { r: ownProbe.r + dr * 2, c: ownProbe.c + dc * 2 })) score += 20;
+            if (samePos(target, { r: ownProbe.r + dr, c: ownProbe.c + dc })) {
+              score += 18 * progressPriority;
+            }
+            if (samePos(target, { r: ownProbe.r + dr * 2, c: ownProbe.c + dc * 2 })) {
+              score += 10 * progressPriority;
+            }
           });
-          activePlayers(game)
-            .filter((player) => player !== game.turn)
-            .forEach((player) => {
+          obstacleOpponents.forEach((player) => {
               const probe = game.probes[player];
-              if (distance(target, probe) === 1) score += 3;
+              const enemyGoalDistance =
+                Math.abs(probe.r - mid) + Math.abs(probe.c - mid);
+              const localThreat =
+                enemyGoalDistance <= 2 ? 4 : enemyGoalDistance <= 4 ? 2 : 0.35;
+              if (distance(target, probe) === 1) score += 3 * localThreat;
               if (
                 Math.abs(probe.r - mid) > Math.abs(probe.c - mid)
                   ? target.c === mid
                   : target.r === mid
-              ) score += 1.5;
+              ) score += localThreat;
             });
-          return score;
+          return score * (defenseUrgency + progressPriority) * 0.5;
         };
         bestObstacle = obstacleTargets
           .map((p) => ({ p, score: scoreObstacle(p) }))
@@ -1119,6 +1143,14 @@ function Game() {
       );
       const coreDistance = (p: Pos) =>
         Math.abs(p.r - center.r) + Math.abs(p.c - center.c);
+      const ownGoalDistance = coreDistance(game.probes[me]);
+      const closestEnemyGoalDistance = Math.min(
+        ...opponents.map((player) => coreDistance(game.probes[player])),
+      );
+      const defenseUrgency =
+        closestEnemyGoalDistance <= 2 ? 3.4 : closestEnemyGoalDistance <= 4 ? 1.75 : 0.3;
+      const progressPriority =
+        ownGoalDistance >= 7 ? 3.1 : ownGoalDistance >= 5 ? 2.2 : ownGoalDistance >= 3 ? 1.3 : 0.85;
       (["small", "large"] as MeteorSize[]).forEach((meteorSize) => {
         if (!game.inventory[me][meteorSize]) return;
         for (let r = 0; r < game.size; r += 1) {
@@ -1166,7 +1198,10 @@ function Game() {
               };
               projectedByPlayer[player] = projected;
               const gain = coreDistance(start) - coreDistance(projected);
-              score += polarity * gain * 9;
+              score +=
+                polarity > 0
+                  ? gain * 12 * progressPriority
+                  : gain * 8 * defenseUrgency;
               if (samePos(projected, center)) score += polarity * 1000;
             });
             const ownProjected = projectedByPlayer[me] ?? game.probes[me];
@@ -1208,9 +1243,13 @@ function Game() {
               if (!futureMoves.length) return;
               const bestFutureDistance = Math.min(...futureMoves.map(coreDistance));
               const futureGain = coreDistance(start) - bestFutureDistance;
-              score -= futureGain * 2.5;
-              if (bestFutureDistance === 0) score -= 120;
+              score -= futureGain * 2.2 * defenseUrgency;
+              if (bestFutureDistance === 0) score -= 150 * defenseUrgency;
             });
+            // Far from the goal, avoid spending turns on low-impact harassment.
+            if (ownGoalDistance >= 5 && !projectedByPlayer[me]) {
+              score -= 8 * progressPriority;
+            }
             options.push({ p, size: meteorSize, score });
           }
         }
@@ -1244,7 +1283,7 @@ function Game() {
       }
       if (
         bestObstacle &&
-        bestObstacle.score >= 6 &&
+        bestObstacle.score >= (closestEnemyGoalDistance <= 3 ? 5 : 11) &&
         (!options[0] || bestObstacle.score > options[0].score)
       ) {
         placeObstacle(bestObstacle.p);
