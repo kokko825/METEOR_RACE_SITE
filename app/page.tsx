@@ -1259,16 +1259,31 @@ function Game() {
       const closestEnemyGoalDistance = Math.min(
         ...opponents.map((player) => coreDistance(game.probes[player])),
       );
+      const turnOrder = activePlayers(game);
+      const meIndex = turnOrder.indexOf(me);
+      const turnsUntil = (player: Player) =>
+        ((turnOrder.indexOf(player) - meIndex) % turnOrder.length + turnOrder.length) %
+        turnOrder.length;
+      const imminentGoalThreats = opponents.filter((player) =>
+        legalMoves(game, player).some((move) => samePos(move, center)),
+      );
+      const nearestGoalThreatOffset = imminentGoalThreats.length
+        ? Math.min(...imminentGoalThreats.map(turnsUntil))
+        : Number.POSITIVE_INFINITY;
       const rawDefenseUrgency =
-        closestEnemyGoalDistance <= 2
+        nearestGoalThreatOffset === 1
+          ? 9
+          : nearestGoalThreatOffset === 2
+            ? 7
+            : imminentGoalThreats.length
+              ? 5.5
+              : closestEnemyGoalDistance <= 2
           ? 4.4
           : closestEnemyGoalDistance <= 4
             ? 2.5
             : closestEnemyGoalDistance <= 6
               ? 1.35
               : 0.7;
-      const turnOrder = activePlayers(game);
-      const meIndex = turnOrder.indexOf(me);
       const urgentOpponents = opponents.filter(
         (player) => coreDistance(game.probes[player]) <= 3,
       );
@@ -1294,7 +1309,9 @@ function Game() {
         return canShareDefense && remainingResources(player) > 0;
       }).length;
       const delegationFactor =
-        urgentOpponents.length >= 2
+        nearestGoalThreatOffset === 1
+          ? 1.45
+          : urgentOpponents.length >= 2
           ? 1.25
           : closestEnemyGoalDistance <= 1
             ? 1
@@ -1481,7 +1498,7 @@ function Game() {
               score +=
                 polarity > 0
                   ? gain * 12 * progressPriority
-                  : gain * 8 * defenseUrgency;
+                  : -gain * 8 * defenseUrgency;
               if (samePos(projected, center)) score += polarity * 1000;
               const landedItem = game.fieldItems?.find((item) => samePos(item, projected));
               if (game.variant === "item" && landedItem) {
@@ -1609,7 +1626,12 @@ function Game() {
               const bestFutureDistance = Math.min(...futureMoves.map(coreDistance));
               const futureGain = coreDistance(start) - bestFutureDistance;
               score -= futureGain * 2.2 * defenseUrgency;
-              if (bestFutureDistance === 0) score -= 150 * defenseUrgency;
+              if (bestFutureDistance === 0) {
+                const threatOffset = turnsUntil(player);
+                const goalPenalty =
+                  threatOffset === 1 ? 900 : threatOffset === 2 ? 600 : 300;
+                score -= goalPenalty * defenseUrgency;
+              }
             });
             // Far from the goal, avoid spending turns on low-impact harassment.
             if (ownGoalDistance >= 5 && !projectedByPlayer[me]) {
