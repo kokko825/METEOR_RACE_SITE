@@ -962,6 +962,12 @@ function Game() {
       game.phase === "over"
     ) return;
     const timer = window.setTimeout(() => {
+      const strategy = {
+        red: { progress: 1.28, defense: 0.82, items: 0.82, mobility: 0.9, setup: 0.72, conserve: 0.9, retreat: 1.35 },
+        blue: { progress: 0.94, defense: 1.38, items: 0.86, mobility: 1.15, setup: 1, conserve: 1.15, retreat: 1.1 },
+        green: { progress: 0.98, defense: 0.92, items: 1.5, mobility: 1.28, setup: 0.82, conserve: 0.92, retreat: 0.88 },
+        yellow: { progress: 0.92, defense: 1.05, items: 0.95, mobility: 1.02, setup: 1.55, conserve: 1.45, retreat: 1.05 },
+      }[game.turn];
       if (game.phase === "move") {
         if (!moves.length) {
           skipBlockedMove();
@@ -1084,6 +1090,8 @@ function Game() {
                 ? Math.max(-2, nearestItemPotential(p) - currentItemPotential) * 2.1
                 : 0;
             const distanceGain = coreDistance(game.probes[me]) - coreDistance(p);
+            const safetyGain =
+              nearbyMeteorRisk(game.probes[me]) - nearbyMeteorRisk(p);
             const allyLaneBonus =
               game.variant === "team"
                 ? teammates.reduce(
@@ -1100,6 +1108,17 @@ function Game() {
                   : 0),
               0,
             );
+            const backwardJustification =
+              itemBonus * strategy.items +
+              Math.max(0, itemRouteGain) +
+              Math.max(0, safetyGain) * 4 +
+              Math.max(0, futureMobility(p) - futureMobility(game.probes[me])) * 2;
+            const backwardPenalty =
+              distanceGain < 0
+                ? Math.abs(distanceGain) *
+                  Math.max(5, 18 - backwardJustification * 0.45) *
+                  strategy.retreat
+                : 0;
             if (meteorless && !game.bonusMove) {
               const afterFirst = applyMove(game, p);
               const secondMoves = legalMoves(afterFirst);
@@ -1110,12 +1129,12 @@ function Game() {
                 p,
                 score:
                   -finalDistance * 22 +
-                  distanceGain * 5 +
-                  itemBonus +
-                  itemRouteGain +
-                  futureMobility(p) * 0.7 -
-                  nearbyMeteorRisk(p) * 2 +
-                  multiPlyOutlook(p) * 0.8 +
+                  distanceGain * 5 * strategy.progress +
+                  (itemBonus + itemRouteGain) * strategy.items +
+                  futureMobility(p) * 0.7 * strategy.mobility -
+                  nearbyMeteorRisk(p) * 2 * strategy.defense +
+                  multiPlyOutlook(p) * 0.8 * strategy.defense -
+                  backwardPenalty +
                   allyLaneBonus -
                   rivalPressure +
                   Math.random() * 0.15,
@@ -1126,12 +1145,12 @@ function Game() {
               score:
                 -(game.bonusMove ? 22 : game.variant === "item" ? 3.4 : 3) *
                   coreDistance(p) +
-                distanceGain * (game.bonusMove ? 8 : 3) +
-                itemBonus +
-                itemRouteGain +
-                futureMobility(p) * 0.8 -
-                nearbyMeteorRisk(p) * 1.8 +
-                multiPlyOutlook(p) +
+                distanceGain * (game.bonusMove ? 8 : 3) * strategy.progress +
+                (itemBonus + itemRouteGain) * strategy.items +
+                futureMobility(p) * 0.8 * strategy.mobility -
+                nearbyMeteorRisk(p) * 1.8 * strategy.defense +
+                multiPlyOutlook(p) * strategy.defense -
+                backwardPenalty +
                 allyLaneBonus -
                 rivalPressure +
                 Math.random() * (mode === "lab" ? 0.3 : game.variant === "classic" ? 1.2 : 0.7),
@@ -1165,14 +1184,16 @@ function Game() {
           ),
         );
         const defenseUrgency =
-          closestEnemyGoalDistance <= 2
+          (closestEnemyGoalDistance <= 2
             ? 4
             : closestEnemyGoalDistance <= 4
               ? 2.25
               : closestEnemyGoalDistance <= 6
                 ? 1.15
-                : 0.65;
-        const progressPriority = ownGoalDistance >= 6 ? 2.4 : ownGoalDistance >= 4 ? 1.45 : 0.8;
+                : 0.65) * strategy.defense;
+        const progressPriority =
+          (ownGoalDistance >= 6 ? 2.4 : ownGoalDistance >= 4 ? 1.45 : 0.8) *
+          strategy.progress;
         const scoreObstacle = (target: Pos) => {
           const coreDistance = Math.abs(target.r - mid) + Math.abs(target.c - mid);
           let score = 0.4 - coreDistance * 0.18 + Math.random() * 0.55;
@@ -1278,9 +1299,16 @@ function Game() {
               : interveningDefenders === 1
                 ? 0.76
                 : 1;
-      const defenseUrgency = rawDefenseUrgency * delegationFactor;
+      const defenseUrgency =
+        rawDefenseUrgency * delegationFactor * strategy.defense;
       const progressPriority =
-        ownGoalDistance >= 7 ? 3.1 : ownGoalDistance >= 5 ? 2.2 : ownGoalDistance >= 3 ? 1.3 : 0.85;
+        (ownGoalDistance >= 7
+          ? 3.1
+          : ownGoalDistance >= 5
+            ? 2.2
+            : ownGoalDistance >= 3
+              ? 1.3
+              : 0.85) * strategy.progress;
       (["small", "large"] as MeteorSize[]).forEach((meteorSize) => {
         if (!game.inventory[me][meteorSize]) return;
         for (let r = 0; r < game.size; r += 1) {
@@ -1382,7 +1410,7 @@ function Game() {
             // Prefer a diagonal rear launch when the direct route is blocked.
             // A straight rear meteor is valuable only when it actually moves
             // the ship or leaves useful mobility after the blast.
-            score += backstopValue + futureSetupValue;
+            score += backstopValue + futureSetupValue * strategy.setup;
             game.meteors.forEach((m) => {
               if (distance(m, p) > radius) return;
               if (m.owner === me || allies.includes(m.owner)) {
@@ -1476,14 +1504,14 @@ function Game() {
             const likelyRecovery = centralRecoveryLane || exposedToEnemyBlast;
             if (resourcesAfter <= 0 && !samePos(ownProjected, center)) {
               if (likelyRecovery) {
-                score -= immediateOwnGain > 0 ? 3 : 8;
+                score -= (immediateOwnGain > 0 ? 3 : 8) * strategy.conserve;
               } else if (immediateOwnGain >= 2) {
-                score -= 13;
+                score -= 13 * strategy.conserve;
               } else {
-                score -= 32;
+                score -= 32 * strategy.conserve;
               }
             } else if (resourcesAfter === 1 && immediateOwnGain <= 0 && !likelyRecovery) {
-              score -= 7;
+              score -= 7 * strategy.conserve;
             }
 
             const futureMeteors = [
@@ -1515,7 +1543,7 @@ function Game() {
                 sentinelValue += 2.5;
               }
             }
-            score += sentinelValue;
+            score += sentinelValue * strategy.setup;
             const routeAnchorValue = futureMeteors.reduce((value, meteor) => {
               if (meteor.owner !== me || samePos(meteor, p)) return value;
               const separation = distance(meteor, p);
@@ -1524,7 +1552,7 @@ function Game() {
                 Math.min(coreDistance(meteor), coreDistance(p)) <= ownGoalDistance;
               return value + (nearerCore ? 2.4 : 0.9);
             }, 0);
-            score += routeAnchorValue;
+            score += routeAnchorValue * strategy.setup;
             opponents.forEach((player) => {
               const start = projectedByPlayer[player] ?? game.probes[player];
               const futureMoves = [
