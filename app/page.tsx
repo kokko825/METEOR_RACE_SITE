@@ -969,10 +969,64 @@ function Game() {
         const coreDistance = (p: Pos) =>
           Math.abs(p.r - center.r) + Math.abs(p.c - center.c);
         const meteorless =
-          game.inventory[game.turn].small + game.inventory[game.turn].large === 0;
+          game.inventory[game.turn].small +
+            game.inventory[game.turn].large +
+            (game.capsuleMeteors?.[game.turn] ?? 0) ===
+          0;
+        const me = game.turn;
+        const teammates =
+          game.variant === "team"
+            ? activePlayers(game).filter(
+                (player) => player !== me && teamOf(player) === teamOf(me),
+              )
+            : [];
+        const rivals = activePlayers(game).filter(
+          (player) =>
+            player !== me &&
+            (game.variant !== "team" || teamOf(player) !== teamOf(me)),
+        );
+        const nearbyMeteorRisk = (p: Pos) =>
+          game.meteors.reduce((risk, meteor) => {
+            const d = distance(p, meteor);
+            if (d > 2) return risk;
+            const friendly =
+              meteor.owner === me || teammates.includes(meteor.owner);
+            return risk + (friendly ? -0.7 : meteor.size === "large" ? 2.6 : 1.5) * (3 - d);
+          }, 0);
+        const futureMobility = (p: Pos) => {
+          const simulated = { ...game, probes: { ...game.probes, [me]: p } };
+          return legalMoves(simulated, me).length;
+        };
         const scored = moves
           .map((p) => {
-            const itemBonus = game.fieldItems?.some((item) => samePos(item, p)) ? 10 : 0;
+            const item = game.fieldItems?.find((candidate) => samePos(candidate, p));
+            const itemBonus =
+              item?.kind === "shield"
+                ? game.shield?.[me]
+                  ? 2
+                  : 13
+                : item?.kind === "booster"
+                  ? 16
+                  : item?.kind === "capsule"
+                    ? 12
+                    : 0;
+            const distanceGain = coreDistance(game.probes[me]) - coreDistance(p);
+            const allyLaneBonus =
+              game.variant === "team"
+                ? teammates.reduce(
+                    (bonus, ally) =>
+                      bonus + (distance(p, game.probes[ally]) <= 2 ? 1.2 : 0),
+                    0,
+                  )
+                : 0;
+            const rivalPressure = rivals.reduce(
+              (pressure, rival) =>
+                pressure +
+                (coreDistance(game.probes[rival]) <= 3 && distance(p, game.probes[rival]) <= 2
+                  ? 1.5
+                  : 0),
+              0,
+            );
             if (meteorless && !game.bonusMove) {
               const afterFirst = applyMove(game, p);
               const secondMoves = legalMoves(afterFirst);
@@ -981,15 +1035,29 @@ function Game() {
                 : coreDistance(p);
               return {
                 p,
-                score: -finalDistance * 20 - coreDistance(p) + itemBonus + Math.random() * 0.2,
+                score:
+                  -finalDistance * 22 +
+                  distanceGain * 5 +
+                  itemBonus +
+                  futureMobility(p) * 0.7 -
+                  nearbyMeteorRisk(p) * 2 +
+                  allyLaneBonus -
+                  rivalPressure +
+                  Math.random() * 0.15,
               };
             }
             return {
               p,
               score:
-                -(game.bonusMove ? 20 : 2.8) * coreDistance(p) +
+                -(game.bonusMove ? 22 : game.variant === "item" ? 3.4 : 3) *
+                  coreDistance(p) +
+                distanceGain * (game.bonusMove ? 8 : 3) +
                 itemBonus +
-                Math.random() * (game.bonusMove ? 0.2 : 2.4),
+                futureMobility(p) * 0.8 -
+                nearbyMeteorRisk(p) * 1.8 +
+                allyLaneBonus -
+                rivalPressure +
+                Math.random() * (mode === "lab" ? 0.3 : game.variant === "classic" ? 1.2 : 0.7),
             };
           })
           .sort((a, b) => b.score - a.score);
@@ -1248,7 +1316,7 @@ function Game() {
   };
 
   return (
-    <main className="shell">
+    <main className={`shell variant-${game.variant}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">✦</span>
@@ -1266,7 +1334,7 @@ function Game() {
         <aside className={`player-card red-card ${game.turn === "red" && game.phase !== "over" ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
-          <ProbeIcon color="red" />
+          <ProbeIcon color="red" teamMode={game.variant === "team"} />
           <InventoryPanel inventory={game.inventory.red} color="red" />
         </aside>
 
@@ -1358,6 +1426,9 @@ function Game() {
                   {probe && (
                     <ProbeToken
                       player={probe}
+                      teamMode={game.variant === "team"}
+                      shield={Boolean(game.shield?.[probe])}
+                      boost={game.boosterMoves?.[probe] ?? 0}
                       rotation={
                         viewR === mid && viewC === mid
                           ? 0
@@ -1381,14 +1452,6 @@ function Game() {
           </div>
 
           <div className="action-panel">
-            {game.variant === "item" && (
-              <div className="item-status" aria-label="current item effects">
-                <span>ITEM</span>
-                <b>{game.shield?.[game.turn] ? "SHIELD ×1" : "SHIELD ×0"}</b>
-                <b>BOOST ×{game.boosterMoves?.[game.turn] ?? 0}</b>
-                <b>CAPSULE ×{game.capsuleMeteors?.[game.turn] ?? 0}</b>
-              </div>
-            )}
             {game.phase === "place" && (
               <>
                 <span className="action-label">配置するメテオ</span>
@@ -1412,7 +1475,7 @@ function Game() {
                     disabled={(game.capsuleMeteors?.[game.turn] ?? 0) === 0}
                     onClick={() => setGame((g) => ({ ...g, selected: "capsule" }))}
                   >
-                    CAPSULE ●+ <b>{game.capsuleMeteors?.[game.turn] ?? 0}</b>
+                    ●+ 使い捨て <b>{game.capsuleMeteors?.[game.turn] ?? 0}</b>
                   </button>
                 )}
                 <button
@@ -1449,7 +1512,7 @@ function Game() {
         <aside className={`player-card blue-card ${game.turn === "blue" && game.phase !== "over" ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
-          <ProbeIcon color="blue" />
+          <ProbeIcon color="blue" teamMode={game.variant === "team"} />
           <InventoryPanel inventory={game.inventory.blue} color="blue" />
         </aside>
       </section>
@@ -1469,7 +1532,7 @@ function Game() {
             >
               <span className="eyebrow">{displayNameForPlayer(player, index + 3)}</span>
               <h2>{playerName(player)}</h2>
-              <ProbeIcon color={player} />
+              <ProbeIcon color={player} teamMode={game.variant === "team"} />
               <InventoryPanel inventory={game.inventory[player]} color={player} />
             </aside>
           ))}
@@ -1837,18 +1900,25 @@ function Game() {
   );
 }
 
-function ProbeIcon({ color }: { color: Player }) {
-  return <div className={`probe-portrait ${color}`}><span>▲</span><i /><b /></div>;
+function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {
+  const teamClass = teamMode ? ` team-${teamOf(color)}` : "";
+  return <div className={`probe-portrait ${color}${teamClass}`}><span>▲</span><i /><b /></div>;
 }
 
 function ProbeToken({
   player,
   rotation,
   push,
+  teamMode = false,
+  shield = false,
+  boost = 0,
 }: {
   player: Player;
   rotation: number;
   push?: { from: Pos; dr: number; dc: number };
+  teamMode?: boolean;
+  shield?: boolean;
+  boost?: number;
 }) {
   return (
     <span
@@ -1862,8 +1932,14 @@ function ProbeToken({
           : undefined
       }
     >
+      {(shield || boost > 0) && (
+        <span className="probe-effects" aria-label={`${shield ? "シールド1 " : ""}${boost > 0 ? `ブースト${boost}` : ""}`}>
+          {shield && <span className="shield-effect"><b>1</b></span>}
+          {boost > 0 && <span className="boost-effect"><i /><i /><b>{boost}</b></span>}
+        </span>
+      )}
       <span
-        className={`probe-token ${player}`}
+        className={`probe-token ${player}${teamMode ? ` team-${teamOf(player)}` : ""}`}
         style={{ "--probe-rotation": `${rotation}deg` } as React.CSSProperties}
       >
         <i>▲</i>
