@@ -999,19 +999,33 @@ function Game() {
           const simulated = { ...game, probes: { ...game.probes, [me]: p } };
           return legalMoves(simulated, me).length;
         };
+        const itemValue = (kind: "shield" | "booster" | "capsule") =>
+          kind === "shield"
+            ? game.shield?.[me]
+              ? 2
+              : 15
+            : kind === "booster"
+              ? coreDistance(game.probes[me]) >= 5
+                ? 19
+                : 13
+              : 14;
+        const nearestItemPotential = (from: Pos) =>
+          game.variant !== "item" || !game.fieldItems?.length
+            ? 0
+            : Math.max(
+                ...game.fieldItems.map(
+                  (item) => itemValue(item.kind) - distance(from, item) * 3.2,
+                ),
+              );
+        const currentItemPotential = nearestItemPotential(game.probes[me]);
         const scored = moves
           .map((p) => {
             const item = game.fieldItems?.find((candidate) => samePos(candidate, p));
-            const itemBonus =
-              item?.kind === "shield"
-                ? game.shield?.[me]
-                  ? 2
-                  : 13
-                : item?.kind === "booster"
-                  ? 16
-                  : item?.kind === "capsule"
-                    ? 12
-                    : 0;
+            const itemBonus = item ? itemValue(item.kind) : 0;
+            const itemRouteGain =
+              game.variant === "item"
+                ? Math.max(-2, nearestItemPotential(p) - currentItemPotential) * 2.1
+                : 0;
             const distanceGain = coreDistance(game.probes[me]) - coreDistance(p);
             const allyLaneBonus =
               game.variant === "team"
@@ -1041,6 +1055,7 @@ function Game() {
                   -finalDistance * 22 +
                   distanceGain * 5 +
                   itemBonus +
+                  itemRouteGain +
                   futureMobility(p) * 0.7 -
                   nearbyMeteorRisk(p) * 2 +
                   allyLaneBonus -
@@ -1055,6 +1070,7 @@ function Game() {
                   coreDistance(p) +
                 distanceGain * (game.bonusMove ? 8 : 3) +
                 itemBonus +
+                itemRouteGain +
                 futureMobility(p) * 0.8 -
                 nearbyMeteorRisk(p) * 1.8 +
                 allyLaneBonus -
@@ -1090,7 +1106,13 @@ function Game() {
           ),
         );
         const defenseUrgency =
-          closestEnemyGoalDistance <= 2 ? 3 : closestEnemyGoalDistance <= 4 ? 1.6 : 0.35;
+          closestEnemyGoalDistance <= 2
+            ? 4
+            : closestEnemyGoalDistance <= 4
+              ? 2.25
+              : closestEnemyGoalDistance <= 6
+                ? 1.15
+                : 0.65;
         const progressPriority = ownGoalDistance >= 6 ? 2.4 : ownGoalDistance >= 4 ? 1.45 : 0.8;
         const scoreObstacle = (target: Pos) => {
           const coreDistance = Math.abs(target.r - mid) + Math.abs(target.c - mid);
@@ -1112,7 +1134,13 @@ function Game() {
               const enemyGoalDistance =
                 Math.abs(probe.r - mid) + Math.abs(probe.c - mid);
               const localThreat =
-                enemyGoalDistance <= 2 ? 4 : enemyGoalDistance <= 4 ? 2 : 0.35;
+                enemyGoalDistance <= 2
+                  ? 4.5
+                  : enemyGoalDistance <= 4
+                    ? 2.4
+                    : enemyGoalDistance <= 6
+                      ? 1.05
+                      : 0.5;
               if (distance(target, probe) === 1) score += 3 * localThreat;
               if (
                 Math.abs(probe.r - mid) > Math.abs(probe.c - mid)
@@ -1148,7 +1176,13 @@ function Game() {
         ...opponents.map((player) => coreDistance(game.probes[player])),
       );
       const defenseUrgency =
-        closestEnemyGoalDistance <= 2 ? 3.4 : closestEnemyGoalDistance <= 4 ? 1.75 : 0.3;
+        closestEnemyGoalDistance <= 2
+          ? 4.4
+          : closestEnemyGoalDistance <= 4
+            ? 2.5
+            : closestEnemyGoalDistance <= 6
+              ? 1.35
+              : 0.7;
       const progressPriority =
         ownGoalDistance >= 7 ? 3.1 : ownGoalDistance >= 5 ? 2.2 : ownGoalDistance >= 3 ? 1.3 : 0.85;
       (["small", "large"] as MeteorSize[]).forEach((meteorSize) => {
@@ -1230,6 +1264,18 @@ function Game() {
                   ? gain * 12 * progressPriority
                   : gain * 8 * defenseUrgency;
               if (samePos(projected, center)) score += polarity * 1000;
+              const landedItem = game.fieldItems?.find((item) => samePos(item, projected));
+              if (game.variant === "item" && landedItem) {
+                const pickupValue =
+                  landedItem.kind === "booster"
+                    ? 20
+                    : landedItem.kind === "shield"
+                      ? game.shield?.[player]
+                        ? 3
+                        : 16
+                      : 14;
+                score += polarity * pickupValue * (polarity > 0 ? 1.5 : defenseUrgency);
+              }
             });
             const ownProjected = projectedByPlayer[me] ?? game.probes[me];
             const opponentsAtCore = opponents.filter((player) =>
@@ -1319,7 +1365,12 @@ function Game() {
       }
       if (
         bestObstacle &&
-        bestObstacle.score >= (closestEnemyGoalDistance <= 3 ? 5 : 11) &&
+        bestObstacle.score >=
+          (closestEnemyGoalDistance <= 3
+            ? 4.5
+            : closestEnemyGoalDistance <= 6
+              ? 7
+              : 11) &&
         (!options[0] || bestObstacle.score > options[0].score)
       ) {
         placeObstacle(bestObstacle.p);
