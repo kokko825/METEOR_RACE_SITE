@@ -261,6 +261,21 @@ function Game() {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
       }
+      if (action === "meteor" && data.state) {
+        const confirmedEffect = data.state.onlineEffect as OnlineEffect | undefined;
+        if (confirmedEffect) playedOnlineEffect.current = confirmedEffect.version;
+        window.setTimeout(() => {
+          setGame(data.state);
+          setBlastFx((effect) =>
+            effect ? { ...effect, stage: "recover" } : effect,
+          );
+        }, 520);
+        window.setTimeout(() => {
+          setGame(data.state);
+          setBlastFx(null);
+          setIsAnimating(false);
+        }, 980);
+      }
       setOnline((current) => ({
         ...current,
         status: data.status,
@@ -275,6 +290,10 @@ function Game() {
     } catch (error) {
       const room = (error as Error & { data?: { room?: { state: GameState; version: number; status: OnlineRoom["status"] } } }).data?.room;
       if (room) setGame(room.state);
+      if (action === "meteor") {
+        setBlastFx(null);
+        setIsAnimating(false);
+      }
       setOnline((current) => ({
         ...current,
         version: room?.version ?? current.version,
@@ -466,6 +485,16 @@ function Game() {
       const capsule = useCapsule || game.selected === "capsule";
       const resolution = applyMeteor(game, target, chosenSize, capsule);
       if (mode === "online") {
+        setIsAnimating(true);
+        setBlastFx({
+          stage: "probe",
+          target,
+          owner: game.turn,
+          size: chosenSize,
+          destroyedIds: resolution.destroyedIds,
+          pushed: resolution.pushed,
+        });
+        playBoom();
         void submitOnlineAction("meteor", target, chosenSize, capsule);
         return;
       }
@@ -860,12 +889,12 @@ function Game() {
               setBlastFx((effect) =>
                 effect ? { ...effect, stage: "recover" } : effect,
               );
-            }, 1100);
+            }, 520);
             window.setTimeout(() => {
               setGame(data.state);
               setBlastFx(null);
               setIsAnimating(false);
-            }, 2020);
+            }, 980);
           } else {
             setGame(data.state);
           }
@@ -901,7 +930,7 @@ function Game() {
           error: error instanceof Error ? error.message : "同期できませんでした",
         }));
       }
-    }, 1200);
+    }, 500);
     return () => window.clearInterval(poll);
   }, [mode, online.code, online.version, online.pending, isAnimating]);
 
