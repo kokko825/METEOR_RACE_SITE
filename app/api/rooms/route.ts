@@ -364,9 +364,14 @@ export async function POST(request: Request) {
       preferredRoles[index] = humanSeats[index];
     }
     const botPlayers = playerList.filter((player) => !humanSeats.includes(player));
-    const requestedSize = body.size === 15 ? 15 : body.size === 11 ? 11 : 9;
+    const requestedSize =
+      body.size === 15 ? 15 : body.size === 13 ? 13 : body.size === 11 ? 11 : 9;
     const size =
-      variant === "item" ? 15 : variant === "team" ? 11 : players > 2 && requestedSize === 9 ? 11 : requestedSize;
+      variant === "item"
+        ? 15
+        : players > 2 && requestedSize === 9
+          ? 11
+          : requestedSize;
     const turnOrder =
       variant === "team"
         ? (["red", "blue", "yellow", "green"] as Player[])

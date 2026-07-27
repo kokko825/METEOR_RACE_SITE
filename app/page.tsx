@@ -737,7 +737,12 @@ function Game() {
           ? 2 + localAiCount
           : onlinePlayerCount + onlineAiCount;
     const playerCount = variant === "team" ? 4 : configuredPlayerCount;
-    const nextSize = variant === "item" ? 15 : variant === "team" ? 11 : playerCount > 2 && size === 9 ? 11 : size;
+    const nextSize =
+      variant === "item"
+        ? 15
+        : playerCount > 2 && size === 9
+          ? 11
+          : size;
     const nextObstaclesEnabled =
       playerCount === 2 && nextSize === 9 ? false : obstaclesEnabled;
     const nextPlayers = PLAYER_ORDER.slice(0, playerCount);
@@ -2083,7 +2088,8 @@ function Game() {
             >
               <option value={9} disabled={setupPlayerCount > 2 || variant !== "classic"}>9 × 9</option>
               <option value={11} disabled={variant === "item"}>11 × 11</option>
-              <option value={15} disabled={variant !== "item"}>15 × 15</option>
+              <option value={13} disabled={variant !== "team"}>13 × 13</option>
+              <option value={15} disabled={variant !== "item" && variant !== "team"}>15 × 15</option>
             </select>
           </label>
           <label>

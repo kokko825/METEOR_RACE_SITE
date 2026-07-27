@@ -103,7 +103,6 @@ export function initialGameState(
 ): GameState {
   if (variant === "team") {
     playerCount = 4;
-    size = 11;
   }
   if (variant === "item") size = 15;
   const count = Math.max(2, Math.min(4, playerCount));
@@ -112,8 +111,7 @@ export function initialGameState(
       ? (["red", "blue", "yellow", "green"] as Player[])
       : PLAYER_ORDER.slice(0, count);
   if (!players.includes(first)) first = players[0];
-  if (size === 13) size = 11;
-  if (![9, 11, 15].includes(size)) size = 9;
+  if (![9, 11, 13, 15].includes(size)) size = 9;
   if (count > 2 && size === 9) size = 11;
   const mid = Math.floor(size / 2);
   const inset = count > 2 ? 1 : 0;
