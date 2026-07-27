@@ -999,6 +999,63 @@ function Game() {
           const simulated = { ...game, probes: { ...game.probes, [me]: p } };
           return legalMoves(simulated, me).length;
         };
+        const remainingResources = (player: Player) =>
+          game.inventory[player].small +
+          game.inventory[player].large +
+          (game.capsuleMeteors?.[player] ?? 0) +
+          (game.passAvailable?.[player] ? 0.35 : 0);
+        const isOpponentOf = (left: Player, right: Player) =>
+          left !== right &&
+          (game.variant !== "team" || teamOf(left) !== teamOf(right));
+        const turnOrder = activePlayers(game);
+        const myTurnIndex = turnOrder.indexOf(me);
+        const multiPlyOutlook = (firstMove: Pos) => {
+          const projected = { ...game.probes, [me]: firstMove };
+          let outlook = 0;
+          const plies = Math.min(3, Math.max(2, turnOrder.length));
+          for (let depth = 1; depth <= plies; depth += 1) {
+            const actor = turnOrder[(myTurnIndex + depth) % turnOrder.length];
+            const simulated = { ...game, turn: actor, probes: projected };
+            const actorMoves = legalMoves(simulated, actor);
+            if (!actorMoves.length) continue;
+            const actorItems = game.fieldItems ?? [];
+            const bestReply = actorMoves
+              .map((candidate) => {
+                const item = actorItems.find((entry) => samePos(entry, candidate));
+                const itemPull =
+                  item?.kind === "booster" ? 5 : item?.kind === "shield" ? 4 : item ? 3.5 : 0;
+                return {
+                  candidate,
+                  value:
+                    -coreDistance(candidate) * 6 +
+                    itemPull +
+                    legalMoves({ ...simulated, probes: { ...projected, [actor]: candidate } }, actor)
+                      .length *
+                      0.45,
+                };
+              })
+              .sort((a, b) => b.value - a.value)[0].candidate;
+            projected[actor] = bestReply;
+            const actorGoalDistance = coreDistance(bestReply);
+            const actorResources = remainingResources(actor);
+            if (isOpponentOf(me, actor)) {
+              const threat =
+                actorGoalDistance <= 1
+                  ? 24
+                  : actorGoalDistance <= 2
+                    ? 13
+                    : actorGoalDistance <= 4
+                      ? 5.5
+                      : 1.5;
+              outlook -= threat * (1 + actorResources * 0.08) / depth;
+            } else {
+              outlook +=
+                (coreDistance(game.probes[actor]) - actorGoalDistance) *
+                (game.variant === "team" ? 2.4 : 0.4);
+            }
+          }
+          return outlook;
+        };
         const itemValue = (kind: "shield" | "booster" | "capsule") =>
           kind === "shield"
             ? game.shield?.[me]
@@ -1058,6 +1115,7 @@ function Game() {
                   itemRouteGain +
                   futureMobility(p) * 0.7 -
                   nearbyMeteorRisk(p) * 2 +
+                  multiPlyOutlook(p) * 0.8 +
                   allyLaneBonus -
                   rivalPressure +
                   Math.random() * 0.15,
@@ -1073,6 +1131,7 @@ function Game() {
                 itemRouteGain +
                 futureMobility(p) * 0.8 -
                 nearbyMeteorRisk(p) * 1.8 +
+                multiPlyOutlook(p) +
                 allyLaneBonus -
                 rivalPressure +
                 Math.random() * (mode === "lab" ? 0.3 : game.variant === "classic" ? 1.2 : 0.7),
@@ -1175,7 +1234,7 @@ function Game() {
       const closestEnemyGoalDistance = Math.min(
         ...opponents.map((player) => coreDistance(game.probes[player])),
       );
-      const defenseUrgency =
+      const rawDefenseUrgency =
         closestEnemyGoalDistance <= 2
           ? 4.4
           : closestEnemyGoalDistance <= 4
@@ -1183,6 +1242,43 @@ function Game() {
             : closestEnemyGoalDistance <= 6
               ? 1.35
               : 0.7;
+      const turnOrder = activePlayers(game);
+      const meIndex = turnOrder.indexOf(me);
+      const urgentOpponents = opponents.filter(
+        (player) => coreDistance(game.probes[player]) <= 3,
+      );
+      const leadThreat =
+        [...opponents].sort(
+          (left, right) =>
+            coreDistance(game.probes[left]) - coreDistance(game.probes[right]),
+        )[0] ?? opponents[0];
+      const leadThreatOffset =
+        ((turnOrder.indexOf(leadThreat) - meIndex) % turnOrder.length + turnOrder.length) %
+        turnOrder.length;
+      const remainingResources = (player: Player) =>
+        game.inventory[player].small +
+        game.inventory[player].large +
+        (game.capsuleMeteors?.[player] ?? 0);
+      const interveningDefenders = turnOrder.filter((player, index) => {
+        const offset = ((index - meIndex) % turnOrder.length + turnOrder.length) % turnOrder.length;
+        if (offset <= 0 || offset >= leadThreatOffset || player === leadThreat) return false;
+        const canShareDefense =
+          game.variant === "team"
+            ? teamOf(player) === teamOf(me)
+            : player !== leadThreat;
+        return canShareDefense && remainingResources(player) > 0;
+      }).length;
+      const delegationFactor =
+        urgentOpponents.length >= 2
+          ? 1.25
+          : closestEnemyGoalDistance <= 1
+            ? 1
+            : interveningDefenders >= 2
+              ? 0.58
+              : interveningDefenders === 1
+                ? 0.76
+                : 1;
+      const defenseUrgency = rawDefenseUrgency * delegationFactor;
       const progressPriority =
         ownGoalDistance >= 7 ? 3.1 : ownGoalDistance >= 5 ? 2.2 : ownGoalDistance >= 3 ? 1.3 : 0.85;
       (["small", "large"] as MeteorSize[]).forEach((meteorSize) => {
@@ -1289,6 +1385,32 @@ function Game() {
               ...game.meteors.filter((meteor) => distance(meteor, p) > radius),
               { ...p, owner: me, size: meteorSize, id: game.nextMeteorId },
             ];
+            const immediateBlast = Object.keys(projectedByPlayer).length > 0;
+            const guardDistance = coreDistance(p);
+            let sentinelValue = 0;
+            if (guardDistance >= 1 && guardDistance <= 3) {
+              opponents.forEach((player) => {
+                const enemy = game.probes[player];
+                const enemyDistance = coreDistance(enemy);
+                const sameApproachLane =
+                  (Math.abs(enemy.r - mid) >= Math.abs(enemy.c - mid) &&
+                    p.c === mid &&
+                    Math.sign(p.r - mid) === Math.sign(enemy.r - mid)) ||
+                  (Math.abs(enemy.c - mid) > Math.abs(enemy.r - mid) &&
+                    p.r === mid &&
+                    Math.sign(p.c - mid) === Math.sign(enemy.c - mid));
+                if (!sameApproachLane || guardDistance >= enemyDistance) return;
+                sentinelValue +=
+                  (4 - guardDistance) *
+                  (enemyDistance <= 3 ? 8 : enemyDistance <= 5 ? 4.5 : 2) *
+                  defenseUrgency;
+              });
+              if (!immediateBlast && sentinelValue > 0) sentinelValue *= 1.2;
+              if (game.inventory[me][meteorSize] <= 1 && sentinelValue > 0) {
+                sentinelValue += 2.5;
+              }
+            }
+            score += sentinelValue;
             const routeAnchorValue = futureMeteors.reduce((value, meteor) => {
               if (meteor.owner !== me || samePos(meteor, p)) return value;
               const separation = distance(meteor, p);
