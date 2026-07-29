@@ -465,13 +465,8 @@ export function applyMeteor(
   activePlayers(state).forEach((player) => {
     const start = before[player];
     const d = distance(start, target);
-    const baseSteps =
-      chosenSize === "small" ? (d === 1 ? 1 : 0) : d === 1 ? 2 : d === 2 ? 1 : 0;
-    // BOOSTER中は敵の爆風に弱い。ただし自分の爆風を倍化して加速には使えない。
     const steps =
-      (state.boosterMoves?.[player] ?? 0) > 0 && player !== state.turn
-        ? baseSteps * 2
-        : baseSteps;
+      chosenSize === "small" ? (d === 1 ? 1 : 0) : d === 1 ? 2 : d === 2 ? 1 : 0;
     if (!steps) return;
     if (state.shield?.[player]) return;
     const dr = Math.sign(start.r - target.r);

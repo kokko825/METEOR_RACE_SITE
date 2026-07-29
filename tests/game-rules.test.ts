@@ -285,27 +285,12 @@ console.log("game-rules: all checks passed");
   const item = initialGameState(15, "red", 2, false, 0, [], "item");
   item.turnCount = 2;
   item.phase = "place";
-  item.turn = "blue";
-  item.probes.red = { r: 8, c: 6 };
-  item.boosterMoves.red = 2;
-  const blast = applyMeteor(item, { r: 9, c: 6 }, "small").state;
-  assert.deepEqual(
-    blast.probes.red,
-    { r: 6, c: 6 },
-    "BOOSTER中は小メテオの爆風を2マス受ける",
-  );
-}
-
-{
-  const item = initialGameState(15, "red", 2, false, 0, [], "item");
-  item.turnCount = 2;
-  item.phase = "place";
   item.probes.red = { r: 8, c: 6 };
   item.boosterMoves.red = 2;
   const blast = applyMeteor(item, { r: 9, c: 6 }, "small").state;
   assert.deepEqual(
     blast.probes.red,
     { r: 7, c: 6 },
-    "自分の爆風はBOOSTER中でも通常距離",
+    "BOOSTER中も爆風で押される距離は通常どおり",
   );
 }
