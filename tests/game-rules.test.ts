@@ -45,24 +45,28 @@ assert.deepEqual(threePlayerInset.probes.green, { r: 5, c: 1 });
 const fourPlayerInset = initialGameState(11, "red", 4);
 assert.deepEqual(fourPlayerInset.probes.yellow, { r: 5, c: 9 });
 
-const twoPlayerEdges = initialGameState(11, "red", 2);
-assert.deepEqual(twoPlayerEdges.probes.red, { r: 10, c: 5 });
-assert.deepEqual(twoPlayerEdges.probes.blue, { r: 0, c: 5 });
+const twoPlayerInset = initialGameState(11, "red", 2);
+assert.deepEqual(twoPlayerInset.probes.red, { r: 9, c: 5 });
+assert.deepEqual(twoPlayerInset.probes.blue, { r: 1, c: 5 });
+
+const nineByNineEdges = initialGameState(9, "red", 2);
+assert.deepEqual(nineByNineEdges.probes.red, { r: 8, c: 4 });
+assert.deepEqual(nineByNineEdges.probes.blue, { r: 0, c: 4 });
 
 {
   const state = initialGameState(11, "red", 2);
   state.turnCount = 2;
   state.inventory.red = { small: 0, large: 0 };
-  const firstMove = applyMove(state, { r: 9, c: 5 });
+  const firstMove = applyMove(state, { r: 8, c: 5 });
   assert.equal(firstMove.turn, "red", "メテオ0なら1回目の移動後も同じ手番");
   assert.equal(firstMove.phase, "move");
   assert.equal(firstMove.bonusMove, true);
-  assert.deepEqual(firstMove.probes.red, { r: 9, c: 5 });
-  const secondMove = applyMove(firstMove, { r: 8, c: 5 });
+  assert.deepEqual(firstMove.probes.red, { r: 8, c: 5 });
+  const secondMove = applyMove(firstMove, { r: 7, c: 5 });
   assert.equal(secondMove.turn, "blue", "2回目の移動後に手番を終了");
   assert.equal(secondMove.phase, "move");
   assert.equal(secondMove.bonusMove, false);
-  assert.deepEqual(secondMove.probes.red, { r: 8, c: 5 });
+  assert.deepEqual(secondMove.probes.red, { r: 7, c: 5 });
 }
 
 {
@@ -210,10 +214,10 @@ for (const first of ["red", "blue"] as Player[]) {
 }
 
 {
-  const state = initialGameState(13, "yellow", 4);
-  assert.equal(state.size, 11, "廃止された13×13は11×11へ変換される");
+  const state = initialGameState(13, "yellow", 4, false, 0, [], "team");
+  assert.equal(state.size, 13, "チーム戦では13×13を使用できる");
   assert.equal(state.turn, "yellow", "4色すべてを先攻に選択できる");
-  assert.deepEqual(state.probes.yellow, { r: 5, c: 9 });
+  assert.deepEqual(state.probes.yellow, { r: 6, c: 11 });
 }
 
 {
@@ -254,7 +258,7 @@ console.log("game-rules: all checks passed");
   item.probes.red = { r: 4, c: 3 };
   item.fieldItems = [{ r: 3, c: 3, kind: "booster", id: 1 }];
   item = applyMove(item, { r: 3, c: 3 });
-  assert.equal(item.boosterMoves.red, 3);
+  assert.equal(item.boosterMoves.red, 2);
   item.phase = "move";
   assert.ok(legalMoves(item).some((move) => samePos(move, { r: 3, c: 5 })));
 }
@@ -275,4 +279,33 @@ console.log("game-rules: all checks passed");
   };
   const destroyed = applyMeteor(enemyBlast, { r: 9, c: 9 }, "small").state;
   assert.equal(destroyed.inventory.red.small, placed.inventory.red.small);
+}
+
+{
+  const item = initialGameState(15, "red", 2, false, 0, [], "item");
+  item.turnCount = 2;
+  item.phase = "place";
+  item.turn = "blue";
+  item.probes.red = { r: 8, c: 6 };
+  item.boosterMoves.red = 2;
+  const blast = applyMeteor(item, { r: 9, c: 6 }, "small").state;
+  assert.deepEqual(
+    blast.probes.red,
+    { r: 6, c: 6 },
+    "BOOSTER中は小メテオの爆風を2マス受ける",
+  );
+}
+
+{
+  const item = initialGameState(15, "red", 2, false, 0, [], "item");
+  item.turnCount = 2;
+  item.phase = "place";
+  item.probes.red = { r: 8, c: 6 };
+  item.boosterMoves.red = 2;
+  const blast = applyMeteor(item, { r: 9, c: 6 }, "small").state;
+  assert.deepEqual(
+    blast.probes.red,
+    { r: 7, c: 6 },
+    "自分の爆風はBOOSTER中でも通常距離",
+  );
 }

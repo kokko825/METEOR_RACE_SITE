@@ -114,7 +114,8 @@ export function initialGameState(
   if (![9, 11, 13, 15].includes(size)) size = 9;
   if (count > 2 && size === 9) size = 11;
   const mid = Math.floor(size / 2);
-  const inset = count > 2 ? 1 : 0;
+  // 9×9だけは外周スタート。それより大きい盤面は人数に関係なく1周内側。
+  const inset = size === 9 ? 0 : 1;
   const slots = [
     { r: size - 1 - inset, c: mid },
     { r: inset, c: mid },
@@ -322,7 +323,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
   const boosterMoves = { ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
   const capsuleMeteors = { ...(state.capsuleMeteors ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
   if (picked?.kind === "shield") shield[state.turn] = true;
-  if (picked?.kind === "booster") boosterMoves[state.turn] = 3;
+  if (picked?.kind === "booster") boosterMoves[state.turn] = 2;
   else if ((boosterMoves[state.turn] ?? 0) > 0) boosterMoves[state.turn] -= 1;
   if (picked?.kind === "capsule") capsuleMeteors[state.turn] += 1;
   const pickedLabel =
@@ -464,8 +465,13 @@ export function applyMeteor(
   activePlayers(state).forEach((player) => {
     const start = before[player];
     const d = distance(start, target);
-    const steps =
+    const baseSteps =
       chosenSize === "small" ? (d === 1 ? 1 : 0) : d === 1 ? 2 : d === 2 ? 1 : 0;
+    // BOOSTER中は敵の爆風に弱い。ただし自分の爆風を倍化して加速には使えない。
+    const steps =
+      (state.boosterMoves?.[player] ?? 0) > 0 && player !== state.turn
+        ? baseSteps * 2
+        : baseSteps;
     if (!steps) return;
     if (state.shield?.[player]) return;
     const dr = Math.sign(start.r - target.r);
@@ -515,7 +521,7 @@ export function applyMeteor(
     if (!picked) return;
     fieldItems = fieldItems.filter((item) => item.id !== picked.id);
     if (picked.kind === "shield") shieldAfterBlast[player] = true;
-    if (picked.kind === "booster") boosterMoves[player] = 3;
+    if (picked.kind === "booster") boosterMoves[player] = 2;
     if (picked.kind === "capsule") capsuleMeteors[player] += 1;
     const label =
       picked.kind === "shield"
