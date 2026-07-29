@@ -10,10 +10,14 @@ import {
   type Player,
 } from "../app/game-rules.js";
 
-function play(state: GameState, difficulty: AiDifficulty) {
+function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
+  const random = () => {
+    seed = (Math.imul(seed >>> 0, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
   while (state.phase !== "over" && guard < 260) {
-    const decision = chooseAiDecision(state, difficulty, () => 0.431);
+    const decision = chooseAiDecision(state, difficulty, random);
     if (decision.type === "move") state = applyMove(state, decision.target);
     else if (decision.type === "meteor") {
       state = applyMeteor(state, decision.target, decision.size, decision.useCapsule).state;
@@ -32,11 +36,16 @@ const scenarios: Array<{ variant: GameVariant; size: number; count: number }> = 
   { variant: "item", size: 15, count: 4 },
 ];
 
-for (const difficulty of ["easy", "normal", "hard"] as const) {
+const requestedDifficulty = process.argv[2] as AiDifficulty | undefined;
+const difficulties: AiDifficulty[] = requestedDifficulty
+  ? [requestedDifficulty]
+  : ["easy", "normal", "hard"];
+
+for (const difficulty of difficulties) {
   for (const scenario of scenarios) {
     const wins: Record<string, number> = { red: 0, blue: 0, green: 0, yellow: 0, draw: 0 };
     let turns = 0;
-    const games = difficulty === "hard" ? 2 : 4;
+    const games = 4;
     for (let index = 0; index < games; index += 1) {
       const players = (["red", "blue", "green", "yellow"] as Player[]).slice(0, scenario.count);
       const first = players[index % players.length];
@@ -51,6 +60,7 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
           scenario.variant,
         ),
         difficulty,
+        1009 + index * 7919 + scenario.size * 101,
       );
       wins[final.winner ?? "draw"] += 1;
       turns += final.turnCount;

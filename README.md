@@ -9,7 +9,7 @@
 
 - CLASSIC: 2～4人の個人戦
 - 2 VS 2 TEAM: RED＋YELLOW 対 BLUE＋GREEN
-- ITEM 15×15: SHIELD、BOOSTER、使い捨てメテオを使用
+- ITEM 15×15: SHIELD、BOOSTER、使い捨てメテオをランダム配置・ランダム再出現
 - ローカル対戦、VS AI、AI LAB、ONLINE ROOM
 
 ## 盤面

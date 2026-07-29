@@ -37,6 +37,8 @@ export type GameState = {
   message: string;
   log: string[];
   nextMeteorId: number;
+  nextItemId: number;
+  itemSeed: number;
   repetitions: Record<string, number>;
 };
 
@@ -81,6 +83,90 @@ export const boardToViewDelta = (delta: Pos, perspectiveSlot: number): Pos => {
 export const playerName = (player: Player) => player.toUpperCase();
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 
+function nextItemRandom(seed: number) {
+  const nextSeed = (Math.imul(seed >>> 0, 1664525) + 1013904223) >>> 0;
+  return { seed: nextSeed, value: nextSeed / 4294967296 };
+}
+
+function randomItemLayout(
+  size: number,
+  probes: Record<Player, Pos>,
+  seed: number,
+): { items: FieldItem[]; seed: number } {
+  const mid = Math.floor(size / 2);
+  const cells: Pos[] = [];
+  for (let r = 0; r < size; r += 1) {
+    for (let c = 0; c < size; c += 1) {
+      const p = { r, c };
+      if (
+        samePos(p, { r: mid, c: mid }) ||
+        PLAYER_ORDER.some((player) => samePos(p, probes[player])) ||
+        PLAYER_ORDER.some((player) => distance(p, probes[player]) < 3)
+      ) continue;
+      cells.push(p);
+    }
+  }
+  const kinds: ItemKind[] = [
+    "shield",
+    "shield",
+    "shield",
+    "booster",
+    "booster",
+    "capsule",
+    "capsule",
+    "capsule",
+  ];
+  const items: FieldItem[] = [];
+  let currentSeed = seed;
+  kinds.forEach((kind, index) => {
+    const random = nextItemRandom(currentSeed);
+    currentSeed = random.seed;
+    const cellIndex = Math.floor(random.value * cells.length);
+    const [cell] = cells.splice(cellIndex, 1);
+    items.push({ ...cell, kind, id: index + 1 });
+  });
+  return { items, seed: currentSeed };
+}
+
+function respawnItem(
+  state: GameState,
+  fieldItems: FieldItem[],
+  probes: Record<Player, Pos>,
+): { fieldItems: FieldItem[]; itemSeed: number; nextItemId: number } {
+  const mid = Math.floor(state.size / 2);
+  const cells: Pos[] = [];
+  for (let r = 0; r < state.size; r += 1) {
+    for (let c = 0; c < state.size; c += 1) {
+      const p = { r, c };
+      if (
+        samePos(p, { r: mid, c: mid }) ||
+        activePlayers(state).some((player) => samePos(p, probes[player])) ||
+        state.meteors.some((meteor) => samePos(p, meteor)) ||
+        fieldItems.some((item) => samePos(p, item))
+      ) continue;
+      cells.push(p);
+    }
+  }
+  if (!cells.length) {
+    return {
+      fieldItems,
+      itemSeed: state.itemSeed ?? 1,
+      nextItemId: state.nextItemId ?? 1,
+    };
+  }
+  const kindRandom = nextItemRandom(state.itemSeed ?? 1);
+  const cellRandom = nextItemRandom(kindRandom.seed);
+  const kinds: ItemKind[] = ["shield", "booster", "capsule"];
+  const kind = kinds[Math.floor(kindRandom.value * kinds.length)];
+  const cell = cells[Math.floor(cellRandom.value * cells.length)];
+  const nextItemId = state.nextItemId ?? 9;
+  return {
+    fieldItems: [...fieldItems, { ...cell, kind, id: nextItemId }],
+    itemSeed: cellRandom.seed,
+    nextItemId: nextItemId + 1,
+  };
+}
+
 export function coreWinner(state: GameState, reached: Player[]): Player {
   if (reached.includes(state.turn)) return state.turn;
   const players = activePlayers(state);
@@ -123,19 +209,17 @@ export function initialGameState(
     { r: mid, c: size - 1 - inset },
   ];
   const offset = ((layoutOffset % 4) + 4) % 4;
-  const fieldItems: FieldItem[] =
+  const probes = {
+    red: slots[offset % 4],
+    blue: slots[(offset + 1) % 4],
+    green: slots[(offset + 2) % 4],
+    yellow: slots[(offset + 3) % 4],
+  };
+  const initialItemSeed = Math.floor(Math.random() * 0xffffffff) || 1;
+  const itemLayout =
     variant === "item"
-      ? [
-          { r: 3, c: 3, kind: "shield", id: 1 },
-          { r: 3, c: mid, kind: "booster", id: 2 },
-          { r: 3, c: size - 4, kind: "capsule", id: 3 },
-          { r: mid, c: 3, kind: "capsule", id: 4 },
-          { r: mid, c: size - 4, kind: "shield", id: 5 },
-          { r: size - 4, c: 3, kind: "booster", id: 6 },
-          { r: size - 4, c: mid, kind: "shield", id: 7 },
-          { r: size - 4, c: size - 4, kind: "capsule", id: 8 },
-        ]
-      : [];
+      ? randomItemLayout(size, probes, initialItemSeed)
+      : { items: [] as FieldItem[], seed: initialItemSeed };
   return {
     size,
     variant,
@@ -148,17 +232,12 @@ export function initialGameState(
     layoutOffset: offset,
     phase: "move",
     bonusMove: false,
-    fieldItems,
+    fieldItems: itemLayout.items,
     shield: { red: false, blue: false, green: false, yellow: false },
     boosterMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
     capsuleMeteors: { red: 0, blue: 0, green: 0, yellow: 0 },
     turnCount: 0,
-    probes: {
-      red: slots[offset % 4],
-      blue: slots[(offset + 1) % 4],
-      green: slots[(offset + 2) % 4],
-      yellow: slots[(offset + 3) % 4],
-    },
+    probes,
     meteors: [],
     obstaclesEnabled: false,
     obstacles: [],
@@ -179,6 +258,8 @@ export function initialGameState(
     message: `${playerName(first)}：探査機を1マス移動`,
     log: [`ゲーム開始 — ${playerName(first)}が先攻`],
     nextMeteorId: 1,
+    nextItemId: 9,
+    itemSeed: itemLayout.seed,
     repetitions: {},
   };
 }
@@ -240,6 +321,8 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.playerTurns ?? {}),
     JSON.stringify(state.inventory),
     JSON.stringify(state.fieldItems ?? []),
+    state.itemSeed ?? 0,
+    state.nextItemId ?? 0,
     JSON.stringify(state.shield ?? {}),
     JSON.stringify(state.boosterMoves ?? {}),
     JSON.stringify(state.capsuleMeteors ?? {}),
@@ -334,17 +417,28 @@ export function applyMove(state: GameState, target: Pos): GameState {
         : picked?.kind === "capsule"
           ? "使い捨てメテオ"
           : null;
+  const mid = Math.floor(state.size / 2);
+  const probes = { ...state.probes, [state.turn]: target };
+  const remainingItems = picked
+    ? state.fieldItems.filter((item) => item.id !== picked.id)
+    : state.fieldItems ?? [];
+  const respawned =
+    picked && state.variant === "item"
+      ? respawnItem(state, remainingItems, probes)
+      : {
+          fieldItems: remainingItems,
+          itemSeed: state.itemSeed,
+          nextItemId: state.nextItemId,
+        };
   state = {
     ...state,
-    fieldItems: picked
-      ? state.fieldItems.filter((item) => item.id !== picked.id)
-      : state.fieldItems ?? [],
+    fieldItems: respawned.fieldItems,
+    itemSeed: respawned.itemSeed,
+    nextItemId: respawned.nextItemId,
     shield,
     boosterMoves,
     capsuleMeteors,
   };
-  const mid = Math.floor(state.size / 2);
-  const probes = { ...state.probes, [state.turn]: target };
   const pickupMessage = pickedLabel ? `・${pickedLabel}を取得` : "";
   const log = [
     ...state.log,
@@ -494,6 +588,8 @@ export function applyMeteor(
   });
 
   let fieldItems = state.fieldItems ?? [];
+  let itemSeed = state.itemSeed;
+  let nextItemId = state.nextItemId;
   const boosterMoves = {
     ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
   };
@@ -518,6 +614,19 @@ export function applyMeteor(
     if (picked.kind === "shield") shieldAfterBlast[player] = true;
     if (picked.kind === "booster") boosterMoves[player] = 2;
     if (picked.kind === "capsule") capsuleMeteors[player] += 1;
+    const respawned = respawnItem(
+      {
+        ...state,
+        meteors: [...state.meteors, placed],
+        itemSeed,
+        nextItemId,
+      },
+      fieldItems,
+      probes,
+    );
+    fieldItems = respawned.fieldItems;
+    itemSeed = respawned.itemSeed;
+    nextItemId = respawned.nextItemId;
     const label =
       picked.kind === "shield"
         ? "シールド"
@@ -534,6 +643,8 @@ export function applyMeteor(
     ...state,
     probes,
     fieldItems,
+    itemSeed,
+    nextItemId,
     meteors: [...survivors, placed],
     inventory,
     capsuleMeteors,

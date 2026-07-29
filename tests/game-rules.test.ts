@@ -254,17 +254,24 @@ console.log("game-rules: all checks passed");
   let item = initialGameState(11, "red", 2, false, 0, [], "item");
   assert.equal(item.size, 15);
   assert.equal(item.fieldItems.length, 8);
+  assert.equal(
+    new Set(item.fieldItems.map((entry) => `${entry.r},${entry.c}`)).size,
+    8,
+    "初期アイテムは重ならない",
+  );
   item.turnCount = 2;
   item.probes.red = { r: 4, c: 3 };
   item.fieldItems = [{ r: 3, c: 3, kind: "booster", id: 1 }];
   item = applyMove(item, { r: 3, c: 3 });
   assert.equal(item.boosterMoves.red, 2);
+  assert.equal(item.fieldItems.length, 1, "取得後も別の場所へアイテムが再出現する");
+  assert.ok(!samePos(item.fieldItems[0], { r: 3, c: 3 }), "取得マスには再出現しない");
   item.phase = "move";
   assert.ok(legalMoves(item).some((move) => samePos(move, { r: 3, c: 5 })));
 }
 
 {
-  let item = initialGameState(15, "red", 2, false, 0, [], "item");
+  const item = initialGameState(15, "red", 2, false, 0, [], "item");
   item.turnCount = 2;
   item.phase = "place";
   item.capsuleMeteors.red = 1;

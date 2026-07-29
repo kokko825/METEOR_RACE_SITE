@@ -53,7 +53,7 @@ function play(variant: GameVariant, seed: number) {
         continue;
       }
       const mid = Math.floor(state.size / 2);
-      const beforeItems = state.fieldItems.length;
+      const beforeItemIds = new Set(state.fieldItems.map((item) => item.id));
       moves.sort((a, b) => {
         const score = (p: Pos) =>
           Math.abs(p.r - mid) +
@@ -62,7 +62,7 @@ function play(variant: GameVariant, seed: number) {
         return score(a) - score(b);
       });
       state = applyMove(state, moves[(seed + action) % Math.min(2, moves.length)]);
-      if (state.fieldItems.length < beforeItems) pickups += 1;
+      if (state.fieldItems.some((item) => !beforeItemIds.has(item.id))) pickups += 1;
       continue;
     }
 

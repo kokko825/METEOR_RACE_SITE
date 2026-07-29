@@ -56,8 +56,11 @@ function personality(player: Player) {
 function positionValue(state: GameState, player: Player) {
   const terminal = terminalValue(state, player);
   if (terminal !== null) return terminal;
-  const style = personality(player);
   const players = activePlayers(state);
+  const style =
+    players.length === 2
+      ? { progress: 1, denial: 1, items: 1, resources: 1 }
+      : personality(player);
   const friends = players.filter((p) => allied(state, p, player));
   const rivals = players.filter((p) => !allied(state, p, player));
   const span = Math.max(1, state.size - 1);
@@ -125,6 +128,7 @@ function placements(state: GameState): Placement[] {
     center,
     ...activePlayers(state).map((player) => state.probes[player]),
     ...state.meteors,
+    ...state.fieldItems,
   ];
   for (const anchor of anchors) {
     for (let dr = -2; dr <= 2; dr += 1) {
@@ -145,6 +149,15 @@ function placements(state: GameState): Placement[] {
       candidateKeys.add(`${probe.r + dr * step + dc},${probe.c + dc * step + dr}`);
       candidateKeys.add(`${probe.r + dr * step - dc},${probe.c + dc * step - dr}`);
     }
+  }
+  // A few deterministic quiet squares preserve surprising long-term setups on 15×15.
+  let quietSeed = ((state.itemSeed ?? 1) + state.turnCount * 97 + state.nextMeteorId * 31) >>> 0;
+  for (let index = 0; index < 12; index += 1) {
+    quietSeed = (Math.imul(quietSeed, 1664525) + 1013904223) >>> 0;
+    const r = quietSeed % state.size;
+    quietSeed = (Math.imul(quietSeed, 1664525) + 1013904223) >>> 0;
+    const c = quietSeed % state.size;
+    candidateKeys.add(`${r},${c}`);
   }
   for (const key of candidateKeys) {
     const [r, c] = key.split(",").map(Number);
@@ -191,21 +204,41 @@ function isImmediateWinAvailable(state: GameState, player: Player): boolean {
   return false;
 }
 
-function threatPenalty(state: GameState, player: Player) {
+function threatPenalty(state: GameState, player: Player, difficulty: AiDifficulty) {
   if (state.phase === "over") return 0;
   const rivals = activePlayers(state).filter((p) => !allied(state, p, player));
   let penalty = 0;
   for (const rival of rivals) {
-    const close = coreDistance(state, rival) <= 2;
-    if (close && isImmediateWinAvailable(state, rival)) penalty += 180_000;
+    const rivalDistance = coreDistance(state, rival);
+    if (rivalDistance <= 2 && isImmediateWinAvailable(state, rival)) {
+      penalty += 180_000;
+      continue;
+    }
+    if (difficulty === "hard" && rivalDistance === 3) {
+      const probe: GameState = { ...state, turn: rival, phase: "move", bonusMove: false };
+      const resources =
+        state.inventory[rival].small +
+        state.inventory[rival].large +
+        (state.capsuleMeteors?.[rival] ?? 0);
+      const canEnterAttackRange = legalMoves(probe, rival).some((move) => {
+        const next = applyMove(probe, move);
+        return wonBy(next, rival) || coreDistance(next, rival) <= 2;
+      });
+      if (canEnterAttackRange) penalty += resources > 0 ? 4_500 : 1_800;
+    }
   }
   return penalty;
 }
 
-function scoreResult(state: GameState, player: Player, previous?: GameState) {
+function scoreResult(
+  state: GameState,
+  player: Player,
+  difficulty: AiDifficulty,
+  previous?: GameState,
+) {
   const terminal = terminalValue(state, player);
   if (terminal !== null) return terminal;
-  let score = positionValue(state, player) - threatPenalty(state, player);
+  let score = positionValue(state, player) - threatPenalty(state, player, difficulty);
   if (previous) {
     for (const candidate of activePlayers(state)) {
       if (
@@ -223,31 +256,32 @@ function scoreResult(state: GameState, player: Player, previous?: GameState) {
 function bestPlacement(
   state: GameState,
   player: Player,
+  difficulty: AiDifficulty,
 ): Scored<Placement | "pass"> {
   const options: Array<Scored<Placement | "pass">> = [];
   for (const placement of placements(state)) {
     const next = applyPlacement(state, placement);
-    options.push({ choice: placement, value: scoreResult(next, player, state) });
+    options.push({ choice: placement, value: scoreResult(next, player, difficulty, state) });
   }
   if (state.passAvailable?.[state.turn] ?? true) {
     const next = applyPass(state);
-    options.push({ choice: "pass", value: scoreResult(next, player, state) + 5 });
+    options.push({ choice: "pass", value: scoreResult(next, player, difficulty, state) + 5 });
   }
   return options.sort((a, b) => b.value - a.value)[0] ?? { choice: "pass", value: -1_000_000 };
 }
 
-function scoreMove(state: GameState, move: Pos, player: Player) {
+function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDifficulty) {
   let next = applyMove(state, move);
   if (next.phase === "place" && next.turn === player) {
-    const placed = bestPlacement(next, player);
+    const placed = bestPlacement(next, player, difficulty);
     next = placed.choice === "pass" ? applyPass(next) : applyPlacement(next, placed.choice);
     return placed.value;
   }
-  let score = scoreResult(next, player);
+  let score = scoreResult(next, player, difficulty);
   // A bonus move is deliberately valued as part of the same turn, not as a generic reward.
   if (next.phase === "move" && next.turn === player && next.bonusMove) {
     const continuation = legalMoves(next, player)
-      .map((second) => scoreResult(applyMove(next, second), player))
+      .map((second) => scoreResult(applyMove(next, second), player, difficulty))
       .sort((a, b) => b - a)[0];
     if (continuation !== undefined) score = continuation;
   }
@@ -279,7 +313,7 @@ export function chooseAiDecision(
     if (!moves.length) return { type: "skip" };
     const ranked = moves.map((move) => ({
       choice: move,
-      value: scoreMove(state, move, player),
+      value: scoreMove(state, move, player, difficulty),
     }));
     const selected = selectWithDifficulty(ranked, difficulty, random);
     return { type: "move", target: selected.choice };
@@ -288,11 +322,14 @@ export function chooseAiDecision(
   for (const placement of placements(state)) {
     ranked.push({
       choice: placement,
-      value: scoreResult(applyPlacement(state, placement), player, state),
+      value: scoreResult(applyPlacement(state, placement), player, difficulty, state),
     });
   }
   if (state.passAvailable?.[player] ?? true) {
-    ranked.push({ choice: "pass", value: scoreResult(applyPass(state), player, state) + 5 });
+    ranked.push({
+      choice: "pass",
+      value: scoreResult(applyPass(state), player, difficulty, state) + 5,
+    });
   }
   const selected = selectWithDifficulty(ranked, difficulty, random);
   if (!selected || selected.choice === "pass") return { type: "pass" };
