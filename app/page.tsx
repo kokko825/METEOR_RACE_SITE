@@ -32,6 +32,7 @@ import {
   type Player,
   type Pos,
 } from "./game-rules";
+import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
 
 type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
@@ -83,6 +84,7 @@ function Game() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [obstaclesEnabled, setObstaclesEnabled] = useState(false);
   const [aiSpeed, setAiSpeed] = useState(420);
+  const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("normal");
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
@@ -1000,6 +1002,18 @@ function Game() {
       game.phase === "over"
     ) return;
     const timer = window.setTimeout(() => {
+      const decision = chooseAiDecision(game, aiDifficulty);
+      if (decision.type === "move") {
+        moveProbe(decision.target);
+      } else if (decision.type === "meteor") {
+        placeMeteor(decision.target, decision.size, decision.useCapsule);
+      } else if (decision.type === "pass") {
+        passPlacement();
+      } else if (game.phase === "move") {
+        skipBlockedMove();
+      }
+      return;
+
       const strategy = {
         red: { progress: 1.28, defense: 0.82, items: 0.82, mobility: 0.9, setup: 0.72, conserve: 0.9, retreat: 1.35 },
         blue: { progress: 0.94, defense: 1.38, items: 0.86, mobility: 1.15, setup: 1, conserve: 1.15, retreat: 1.1 },
@@ -1815,6 +1829,7 @@ function Game() {
     mode,
     aiRunning,
     aiSpeed,
+    aiDifficulty,
     isAiTurn,
     canControl,
     needsNewGame,
@@ -2229,6 +2244,22 @@ function Game() {
               </select>
             )}
           </label>
+          {(setupMode === "cpu" ||
+            setupMode === "lab" ||
+            (setupMode === "human" && localAiCount > 0) ||
+            (setupMode === "online" && onlineAiCount > 0)) && (
+            <label>
+              AI LEVEL
+              <select
+                value={aiDifficulty}
+                onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}
+              >
+                <option value="easy">EASY</option>
+                <option value="normal">NORMAL</option>
+                <option value="hard">HARD</option>
+              </select>
+            </label>
+          )}
           <button
             type="button"
             className={soundEnabled ? "setting-toggle selected" : "setting-toggle"}

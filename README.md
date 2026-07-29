@@ -1,14 +1,47 @@
-# vinext-starter
+# METEOR RACE
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+爆風を利用して盤面中央のCOREを目指す、2～4人用ターン制戦略ボードゲームです。
 
-## Prerequisites
+公開版: Version 53  
+公開URL: https://meteor-race-game.kou4desu.chatgpt.site/
 
-- Node.js `>=22.13.0`
+## ゲームモード
 
-## Quick Start
+- CLASSIC: 2～4人の個人戦
+- 2 VS 2 TEAM: RED＋YELLOW 対 BLUE＋GREEN
+- ITEM 15×15: SHIELD、BOOSTER、使い捨てメテオを使用
+- ローカル対戦、VS AI、AI LAB、ONLINE ROOM
+
+## 盤面
+
+- CLASSIC 2人: 9×9、11×11
+- CLASSIC 3～4人: 11×11
+- TEAM: 11×11、13×13、15×15
+- ITEM: 15×15
+
+## 基本ルール
+
+1. 探査機を上下左右へ1マス移動
+2. 小・大・使い捨てメテオを配置
+3. 爆風移動、アイテム取得、メテオ破壊・回収を解決
+4. 探査機がCOREへ到達すると勝利
+
+先攻の初手は移動のみで、メテオを配置できません。
+
+## 主な実装
+
+- 2～4人対戦と2対2チーム戦
+- 15×15アイテム戦
+- 4色で異なる戦略を持つAI
+- 通常移動と爆風到達を含む勝利脅威の先読み
+- メテオ在庫、回収、布石、アイテムを考慮するAI
+- オンラインルーム、観戦、途中参加、退出時AI引き継ぎ
+- メテオ落下、爆風、吹き飛び、破壊・回収のオンライン同期
+- チーム光輪、自機の「YOU」表示
+- SHIELDとBOOSTERの機体上エフェクト
+- 実際にCOREへ到達した勝者の色を使う終了表示
+
+## 開発
 
 ```bash
 npm install
@@ -16,83 +49,10 @@ npm run dev
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+主要ファイル:
 
-## Included Shape
+- `app/page.tsx`: 画面、入力、AI、オンライン同期
+- `app/game-rules.ts`: ゲーム状態とルール解決
+- `app/api/rooms/route.ts`: オンラインルームAPI
+- `app/globals.css`: 表示と演出
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
