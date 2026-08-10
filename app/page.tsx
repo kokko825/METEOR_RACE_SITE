@@ -943,7 +943,8 @@ function Game() {
     game.phase === "setup"
       ? canControl && !(r === mid && c === mid) &&
         !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
-        !(game.setupPlacements?.[game.turn] ?? []).some((item) => samePos(item, { r, c }))
+        !(game.setupPlacements?.[game.turn] ?? []).some((item) => samePos(item, { r, c })) &&
+        !(game.setupRejected?.[game.turn] ?? []).some((cell) => samePos(cell, { r, c }))
       : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
       : game.selected === "obstacle"

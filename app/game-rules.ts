@@ -48,6 +48,7 @@ export type GameState = {
   setupPlacements?: Partial<Record<Player, FieldItem[]>>;
   setupPending?: Partial<Record<Player, ItemKind[]>>;
   setupReady?: Player[];
+  setupRejected?: Partial<Record<Player, Pos[]>>;
 };
 
 export type MeteorResolution = {
@@ -293,6 +294,7 @@ export function initialGameState(
     setupPlacements: {},
     setupPending: {},
     setupReady: [],
+    setupRejected: {},
   };
 }
 
@@ -311,7 +313,8 @@ export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind):
     target.r < 0 || target.c < 0 || target.r >= state.size || target.c >= state.size ||
     samePos(target, { r: mid, c: mid }) ||
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
-    own.some((item) => samePos(target, item));
+    own.some((item) => samePos(target, item)) ||
+    (state.setupRejected?.[state.turn] ?? []).some((cell) => samePos(target, cell));
   if (occupied) throw new Error("そのマスにはスイッチを配置できません");
 
   const nextOwn = [...own, { ...target, kind, id: state.nextItemId }];
@@ -338,16 +341,23 @@ export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind):
     }
     const retryPending: Partial<Record<Player, ItemKind[]>> = {};
     const retryPlacements: Partial<Record<Player, FieldItem[]>> = {};
+    const retryRejected: Partial<Record<Player, Pos[]>> = { ...(state.setupRejected ?? {}) };
     players.forEach((player) => {
       const entries = setupPlacements[player] ?? [];
-      retryPending[player] = entries.filter((item) => conflictKeys.has(`${item.r},${item.c}`)).map((item) => item.kind);
+      const conflicts = entries.filter((item) => conflictKeys.has(`${item.r},${item.c}`));
+      retryPending[player] = conflicts.map((item) => item.kind);
       retryPlacements[player] = entries.filter((item) => !conflictKeys.has(`${item.r},${item.c}`));
+      retryRejected[player] = [
+        ...(retryRejected[player] ?? []),
+        ...conflicts.filter((item) => !(retryRejected[player] ?? []).some((cell) => samePos(cell, item))),
+      ];
     });
     const retryReady = players.filter((player) => !(retryPending[player]?.length));
     nextTurn = players.find((player) => !retryReady.includes(player)) ?? state.startingPlayer;
     return {
       ...state, setupPlacements: retryPlacements, setupPending: retryPending,
-      setupReady: retryReady, nextItemId: state.nextItemId + 1, turn: nextTurn,
+      setupReady: retryReady, setupRejected: retryRejected,
+      nextItemId: state.nextItemId + 1, turn: nextTurn,
       message: `${playerName(nextTurn)}：重なったスイッチだけ再配置`,
       log: [...state.log, `${kind.toUpperCase()}を秘密配置`, "配置が重複 — 該当スイッチを再配置"],
     };

@@ -271,6 +271,11 @@ console.log("game-rules: all checks passed");
   assert.equal(item.turn, "red");
   assert.deepEqual(item.setupPending?.red, ["shield"]);
   assert.deepEqual(item.setupPending?.blue, ["booster"]);
+  assert.throws(
+    () => applySetupSwitch(item, { r: 3, c: 3 }, "shield"),
+    /配置できません/,
+    "衝突したマスは同じプレイヤーの再配置候補から除外する",
+  );
   item = applySetupSwitch(item, { r: 8, c: 8 }, "shield");
   assert.equal(item.turn, "blue", "重複した相手にも再配置ターンを渡す");
   item = applySetupSwitch(item, { r: 9, c: 9 }, "booster");
