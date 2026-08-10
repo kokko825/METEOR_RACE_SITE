@@ -767,8 +767,10 @@ function Game() {
         const next = applySetupSwitch(game, { r, c }, setupKind);
         if (mode === "online") void submitOnlineAction("setup_switch", { r, c }, undefined, false, undefined, undefined, setupKind);
         commit(next);
-        const remaining = (["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[])
-          .find((kind) => !(next.setupKinds ?? []).includes(kind));
+        const nextPending = next.setupPending?.[next.turn] ?? [];
+        const nextOwn = next.setupPlacements?.[next.turn] ?? [];
+        const remaining = nextPending[0] ?? (["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[])
+          .find((kind) => !nextOwn.some((item) => item.kind === kind));
         if (remaining) setSetupKind(remaining);
       } catch { return; }
       return;
@@ -941,7 +943,7 @@ function Game() {
     game.phase === "setup"
       ? canControl && !(r === mid && c === mid) &&
         !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
-        !game.fieldItems.some((item) => samePos(item, { r, c }))
+        !(game.setupPlacements?.[game.turn] ?? []).some((item) => samePos(item, { r, c }))
       : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
       : game.selected === "obstacle"
@@ -1092,8 +1094,12 @@ function Game() {
     ) return;
     const timer = window.setTimeout(() => {
       if (game.phase === "setup") {
-        const kinds = (["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[])
-          .filter((kind) => !(game.setupKinds ?? []).includes(kind));
+        const pending = game.setupPending?.[game.turn] ?? [];
+        const own = game.setupPlacements?.[game.turn] ?? [];
+        const kinds = pending.length
+          ? pending
+          : (["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[])
+              .filter((kind) => !own.some((item) => item.kind === kind));
         const cells = Array.from({ length: game.size * game.size }, (_, index) => ({
           r: Math.floor(index / game.size), c: index % game.size,
         })).filter((cell) => validPlacement(cell.r, cell.c));
@@ -1121,7 +1127,7 @@ function Game() {
         skipBlockedMove();
       }
       return;
-    }, game.bonusMove ? Math.max(420, aiSpeed) : aiSpeed);
+    }, game.phase === "setup" ? 30 : game.bonusMove ? Math.max(420, aiSpeed) : aiSpeed);
     return () => window.clearTimeout(timer);
   }, [
     game,
@@ -1259,7 +1265,10 @@ function Game() {
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
-              const fieldItem = game.fieldItems?.find((item) => samePos(item, pos));
+              const visibleItems = game.phase === "setup"
+                ? (game.setupPlacements?.[game.turn] ?? [])
+                : game.fieldItems;
+              const fieldItem = visibleItems.find((item) => samePos(item, pos));
               const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
               const legal =
                 canControl &&
@@ -1350,13 +1359,21 @@ function Game() {
                   <button
                     key={kind}
                     className={`meteor-choice ${setupKind === kind ? "selected" : ""}`}
-                    disabled={(game.setupKinds ?? []).includes(kind)}
+                    disabled={
+                      (game.setupPending?.[game.turn]?.length ?? 0) > 0
+                        ? !(game.setupPending?.[game.turn] ?? []).includes(kind)
+                        : (game.setupPlacements?.[game.turn] ?? []).some((item) => item.kind === kind)
+                    }
                     onClick={() => setSetupKind(kind)}
                   >
                     {kind.toUpperCase()}
                   </button>
                 ))}
-                <b>{game.setupKinds?.length ?? 0} / 3 配置済み</b>
+                <b>
+                  {(game.setupPending?.[game.turn]?.length ?? 0) > 0
+                    ? `重複 ${game.setupPending?.[game.turn]?.length ?? 0}個を再配置`
+                    : `${game.setupPlacements?.[game.turn]?.length ?? 0} / 3 配置済み`}
+                </b>
               </div>
             )}
             {game.phase === "place" && (

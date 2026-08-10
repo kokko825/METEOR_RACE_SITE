@@ -45,7 +45,9 @@ export type GameState = {
   repetitions: Record<string, number>;
   pendingSwitches?: PendingSwitch[];
   switchResume?: "place" | "finish";
-  setupKinds?: ItemKind[];
+  setupPlacements?: Partial<Record<Player, FieldItem[]>>;
+  setupPending?: Partial<Record<Player, ItemKind[]>>;
+  setupReady?: Player[];
 };
 
 export type MeteorResolution = {
@@ -288,7 +290,9 @@ export function initialGameState(
     nextItemId: 1,
     itemSeed: itemLayout.seed,
     repetitions: {},
-    setupKinds: [],
+    setupPlacements: {},
+    setupPending: {},
+    setupReady: [],
   };
 }
 
@@ -296,8 +300,10 @@ export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind):
   if (state.variant !== "item" || state.phase !== "setup") {
     throw new Error("スイッチ配置フェーズではありません");
   }
-  const selected = state.setupKinds ?? [];
-  if (selected.length >= 3 || selected.includes(kind)) {
+  const placements = state.setupPlacements ?? {};
+  const own = placements[state.turn] ?? [];
+  const pending = state.setupPending?.[state.turn] ?? [];
+  if (pending.length ? !pending.includes(kind) : own.length >= 3 || own.some((item) => item.kind === kind)) {
     throw new Error("異なる3種類のスイッチを選んでください");
   }
   const mid = Math.floor(state.size / 2);
@@ -305,26 +311,57 @@ export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind):
     target.r < 0 || target.c < 0 || target.r >= state.size || target.c >= state.size ||
     samePos(target, { r: mid, c: mid }) ||
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
-    state.fieldItems.some((item) => samePos(target, item));
+    own.some((item) => samePos(target, item));
   if (occupied) throw new Error("そのマスにはスイッチを配置できません");
 
-  const setupKinds = [...selected, kind];
-  const fieldItems = [...state.fieldItems, { ...target, kind, id: state.nextItemId }];
-  const complete = setupKinds.length === 3;
+  const nextOwn = [...own, { ...target, kind, id: state.nextItemId }];
+  const nextPending = pending.length ? pending.filter((entry, index) => entry !== kind || index !== pending.indexOf(kind)) : [];
+  const playerComplete = pending.length ? nextPending.length === 0 : nextOwn.length === 3;
+  const setupPlacements = { ...placements, [state.turn]: nextOwn };
+  const setupPending = { ...(state.setupPending ?? {}), [state.turn]: nextPending };
+  const setupReady = playerComplete
+    ? [...new Set([...(state.setupReady ?? []), state.turn])]
+    : (state.setupReady ?? []);
+  const players = activePlayers(state);
+  let nextTurn = players.find((player) => !setupReady.includes(player)) ?? state.turn;
+
+  if (setupReady.length === players.length) {
+    const all = players.flatMap((player) => setupPlacements[player] ?? []);
+    const conflictKeys = new Set(all.filter((item, index) => all.some((other, otherIndex) => index !== otherIndex && samePos(item, other))).map((item) => `${item.r},${item.c}`));
+    if (!conflictKeys.size) {
+      return {
+        ...state, setupPlacements, setupPending, setupReady, fieldItems: all,
+        nextItemId: state.nextItemId + 1, turn: state.startingPlayer, phase: "move",
+        message: `${playerName(state.startingPlayer)}：探査機を1マス移動`,
+        log: [...state.log, `${kind.toUpperCase()}を秘密配置`, "全員の配置完了 — ゲームスタート"],
+      };
+    }
+    const retryPending: Partial<Record<Player, ItemKind[]>> = {};
+    const retryPlacements: Partial<Record<Player, FieldItem[]>> = {};
+    players.forEach((player) => {
+      const entries = setupPlacements[player] ?? [];
+      retryPending[player] = entries.filter((item) => conflictKeys.has(`${item.r},${item.c}`)).map((item) => item.kind);
+      retryPlacements[player] = entries.filter((item) => !conflictKeys.has(`${item.r},${item.c}`));
+    });
+    const retryReady = players.filter((player) => !(retryPending[player]?.length));
+    nextTurn = players.find((player) => !retryReady.includes(player)) ?? state.startingPlayer;
+    return {
+      ...state, setupPlacements: retryPlacements, setupPending: retryPending,
+      setupReady: retryReady, nextItemId: state.nextItemId + 1, turn: nextTurn,
+      message: `${playerName(nextTurn)}：重なったスイッチだけ再配置`,
+      log: [...state.log, `${kind.toUpperCase()}を秘密配置`, "配置が重複 — 該当スイッチを再配置"],
+    };
+  }
+
   return {
-    ...state,
-    fieldItems,
-    setupKinds,
-    nextItemId: state.nextItemId + 1,
-    phase: complete ? "move" : "setup",
-    message: complete
-      ? `${playerName(state.turn)}：探査機を1マス移動`
-      : `スイッチをあと${3 - setupKinds.length}個配置`,
-    log: [
-      ...state.log,
-      `${kind.toUpperCase()}を (${target.r},${target.c}) に初期配置`,
-      ...(complete ? ["スイッチ3個の配置完了 — ゲームスタート"] : []),
-    ],
+    ...state, setupPlacements, setupPending, setupReady,
+    nextItemId: state.nextItemId + 1, turn: playerComplete ? nextTurn : state.turn,
+    message: playerComplete
+      ? `${playerName(nextTurn)}：スイッチを3個配置`
+      : pending.length
+        ? `重なったスイッチをあと${nextPending.length}個再配置`
+        : `スイッチをあと${3 - nextOwn.length}個配置`,
+    log: [...state.log, `${kind.toUpperCase()}を秘密配置`],
   };
 }
 
