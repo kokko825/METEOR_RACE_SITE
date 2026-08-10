@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { chooseAiDecision, type AiDifficulty } from "../app/ai-engine.js";
 import {
   applyMeteor,
@@ -10,28 +11,165 @@ import {
   type Player,
 } from "../app/game-rules.js";
 
+{
+  for (const difficulty of ["easy", "normal", "hard"] as const) {
+    const state = initialGameState(9, "red", 2, false, 0, [], "classic");
+    state.turnCount = 3;
+    state.probes.red = { r: 7, c: 4 };
+    state.probes.blue = { r: 1, c: 4 };
+    const beforeDistance = 3;
+    const decision = chooseAiDecision(state, difficulty, () => 0.99);
+    assert.equal(decision.type, "move");
+    if (decision.type === "move") {
+      const afterDistance =
+        Math.abs(decision.target.r - 4) + Math.abs(decision.target.c - 4);
+      assert.ok(
+        afterDistance <= beforeDistance,
+        `${difficulty} AI must not retreat in a neutral non-item position`,
+      );
+    }
+  }
+}
+
+{
+  for (const difficulty of ["easy", "normal", "hard"] as const) {
+    const state = initialGameState(9, "red", 2, false, 0, [], "classic");
+    state.turnCount = 4;
+    state.probes.red = { r: 5, c: 4 };
+    state.probes.blue = { r: 0, c: 4 };
+    const decision = chooseAiDecision(state, difficulty, () => 0.99);
+    assert.equal(decision.type, "move");
+    let after = applyMove(state, decision.type === "move" ? decision.target : state.probes.red);
+    if (after.phase !== "over") {
+      const placement = chooseAiDecision(after, difficulty, () => 0.99);
+      assert.equal(placement.type, "meteor");
+      if (placement.type === "meteor") {
+        after = applyMeteor(after, placement.target, placement.size, placement.useCapsule).state;
+      }
+    }
+    assert.equal(after.winner, "red", `${difficulty} AI must convert a win available this turn`);
+  }
+}
+
+{
+  const state = initialGameState(9, "red", 2, false, 0, [], "classic");
+  state.turnCount = 4;
+  state.probes.red = { r: 6, c: 4 };
+  state.probes.blue = { r: 0, c: 4 };
+  const move = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(
+    move,
+    { type: "move", target: { r: 5, c: 4 } },
+    "hard AI must see a move-plus-meteor blast win",
+  );
+  const afterMove = applyMove(state, move.type === "move" ? move.target : state.probes.red);
+  const placement = chooseAiDecision(afterMove, "hard", () => 0);
+  assert.equal(placement.type, "meteor", "hard AI must complete the blast win");
+  if (placement.type === "meteor") {
+    const final = applyMeteor(
+      afterMove,
+      placement.target,
+      placement.size,
+      placement.useCapsule,
+    ).state;
+    assert.equal(final.winner, "red", "selected meteor placement must actually win");
+  }
+}
+
+{
+  const state = initialGameState(9, "red", 2, false, 0, [], "classic");
+  state.turnCount = 4;
+  state.phase = "place";
+  state.probes.red = { r: 8, c: 4 };
+  state.probes.blue = { r: 0, c: 4 };
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.equal(decision.type, "meteor");
+  if (decision.type === "meteor") {
+    const after = applyMeteor(
+      state,
+      decision.target,
+      decision.size,
+      decision.useCapsule,
+    ).state;
+    const beforeDistance = 4;
+    const afterDistance =
+      Math.abs(after.probes.blue.r - 4) + Math.abs(after.probes.blue.c - 4);
+    assert.ok(
+      afterDistance > beforeDistance,
+      "a meteor spent early must create concrete denial instead of being a quiet waste",
+    );
+  }
+}
+
+{
+  const state = initialGameState(9, "red", 2, false, 0, [], "classic");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.probes.red = { r: 8, c: 4 };
+  state.probes.blue = { r: 3, c: 4 };
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.equal(decision.type, "meteor", "hard AI must answer the next player's core threat");
+  if (decision.type === "meteor") {
+    const after = applyMeteor(
+      state,
+      decision.target,
+      decision.size,
+      decision.useCapsule,
+    ).state;
+    const afterDistance =
+      Math.abs(after.probes.blue.r - 4) + Math.abs(after.probes.blue.c - 4);
+    assert.ok(afterDistance >= 3, "the defensive blast must push the threat out of attack range");
+  }
+}
+
+{
+  const state = initialGameState(15, "red", 2, false, 0, [], "item");
+  state.turnCount = 2;
+  state.probes.red = { r: 10, c: 7 };
+  state.probes.blue = { r: 1, c: 7 };
+  state.inventory.red = { small: 0, large: 0 };
+  state.fieldItems = [{ r: 10, c: 6, kind: "shield", id: 1 }];
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(
+    decision,
+    { type: "move", target: { r: 10, c: 6 } },
+    "an unprotected AI should take a useful adjacent item instead of blindly moving inward",
+  );
+}
+
 function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
+  let moves = 0;
+  let retreats = 0;
   const random = () => {
     seed = (Math.imul(seed >>> 0, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
   while (state.phase !== "over" && guard < 260) {
     const decision = chooseAiDecision(state, difficulty, random);
-    if (decision.type === "move") state = applyMove(state, decision.target);
+    if (decision.type === "move") {
+      const mid = Math.floor(state.size / 2);
+      const before = state.probes[state.turn];
+      const beforeDistance = Math.abs(before.r - mid) + Math.abs(before.c - mid);
+      const afterDistance =
+        Math.abs(decision.target.r - mid) + Math.abs(decision.target.c - mid);
+      moves += 1;
+      if (state.variant !== "item" && afterDistance > beforeDistance) retreats += 1;
+      state = applyMove(state, decision.target);
+    }
     else if (decision.type === "meteor") {
       state = applyMeteor(state, decision.target, decision.size, decision.useCapsule).state;
     } else if (decision.type === "pass") state = applyPass(state);
     else state = finishTurn(state, "AI skip");
     guard += 1;
   }
-  return state;
+  return { state, moves, retreats };
 }
 
 const scenarios: Array<{ variant: GameVariant; size: number; count: number }> = [
   { variant: "classic", size: 9, count: 2 },
   { variant: "classic", size: 11, count: 4 },
-  { variant: "team", size: 11, count: 4 },
+  { variant: "team", size: 13, count: 4 },
   { variant: "team", size: 15, count: 4 },
   { variant: "item", size: 15, count: 4 },
 ];
@@ -45,11 +183,13 @@ for (const difficulty of difficulties) {
   for (const scenario of scenarios) {
     const wins: Record<string, number> = { red: 0, blue: 0, green: 0, yellow: 0, draw: 0 };
     let turns = 0;
+    let moves = 0;
+    let retreats = 0;
     const games = 4;
     for (let index = 0; index < games; index += 1) {
       const players = (["red", "blue", "green", "yellow"] as Player[]).slice(0, scenario.count);
       const first = players[index % players.length];
-      const final = play(
+      const result = play(
         initialGameState(
           scenario.size,
           first,
@@ -62,8 +202,11 @@ for (const difficulty of difficulties) {
         difficulty,
         1009 + index * 7919 + scenario.size * 101,
       );
+      const final = result.state;
       wins[final.winner ?? "draw"] += 1;
       turns += final.turnCount;
+      moves += result.moves;
+      retreats += result.retreats;
     }
     console.log(
       JSON.stringify({
@@ -72,6 +215,10 @@ for (const difficulty of difficulties) {
         games,
         wins,
         averageTurns: Math.round((turns / games) * 10) / 10,
+        retreatRate:
+          scenario.variant === "item" || moves === 0
+            ? null
+            : Math.round((retreats / moves) * 1000) / 10,
       }),
     );
   }

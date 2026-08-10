@@ -6,6 +6,9 @@ import {
   activeObstacles,
   activePlayers,
   applyMeteor,
+  applyHoloSwitch,
+  applyOrbitSwitch,
+  applyPulseSwitch,
   applyMove,
   applyObstacle,
   applyPass,
@@ -119,7 +122,20 @@ function Game() {
       (online.status === "playing" &&
         (online.role === game.turn ||
           (online.isHost && (game.botPlayers ?? []).includes(game.turn))) &&
-        !online.pending));
+      !online.pending));
+
+  useEffect(() => {
+    setStats({
+      games: 0,
+      red: 0,
+      blue: 0,
+      green: 0,
+      yellow: 0,
+      draw: 0,
+      turns: 0,
+    });
+    recordedOutcome.current = "";
+  }, [variant, size, aiPlayerCount, aiDifficulty]);
   const setupPlayerCount =
     variant === "team"
       ? 4
@@ -142,6 +158,10 @@ function Game() {
   useEffect(() => {
     if (competitiveNine && obstaclesEnabled) setObstaclesEnabled(false);
   }, [competitiveNine, obstaclesEnabled]);
+
+  useEffect(() => {
+    if (variant === "team" && size !== 13 && size !== 15) setSize(13);
+  }, [variant, size]);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/rooms", {
@@ -700,6 +720,13 @@ function Game() {
       if (game.selected === "obstacle") placeObstacle({ r, c });
       else placeMeteor({ r, c });
     }
+    if (game.phase === "switch") {
+      const kind = game.pendingSwitches?.[0]?.kind;
+      try {
+        if (kind === "holo") commit(applyHoloSwitch(game, { r, c }));
+        if (kind === "pulse") commit(applyPulseSwitch(game, { r, c }));
+      } catch { return; }
+    }
   };
 
   const applyNewGameSettings = async () => {
@@ -767,6 +794,8 @@ function Game() {
     const nextSize =
       variant === "item"
         ? 15
+        : variant === "team" && (size === 9 || size === 11)
+          ? 13
         : playerCount > 2 && size === 9
           ? 11
           : size;
@@ -851,7 +880,9 @@ function Game() {
     );
 
   const validPlacement = (r: number, c: number) =>
-    game.selected === "obstacle"
+    game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
+      ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
+      : game.selected === "obstacle"
       ? validObstaclePlacement(r, c)
       : validBasePlacement(r, c);
 
@@ -1005,6 +1036,12 @@ function Game() {
         placeMeteor(decision.target, decision.size, decision.useCapsule);
       } else if (decision.type === "pass") {
         passPlacement();
+      } else if (decision.type === "holo") {
+        commit(applyHoloSwitch(game, decision.target));
+      } else if (decision.type === "pulse") {
+        commit(applyPulseSwitch(game, decision.target));
+      } else if (decision.type === "orbit") {
+        commit(applyOrbitSwitch(game, decision.ring, decision.clockwise));
       } else if (game.phase === "move") {
         skipBlockedMove();
       }
@@ -1032,12 +1069,20 @@ function Game() {
     ]),
   ) as Record<Player, number>;
   const averageTurns = stats.games ? (stats.turns / stats.games).toFixed(1) : "—";
+  const teamWinRates = {
+    sun: stats.games ? Math.round(((stats.red + stats.yellow) / stats.games) * 100) : 0,
+    moon: stats.games ? Math.round(((stats.blue + stats.green) / stats.games) * 100) : 0,
+  };
   const labLeaders = activePlayers(game)
     .map((player) => ({ player, rate: winRates[player] }))
     .sort((a, b) => b.rate - a.rate);
   const strategicRead =
     stats.games < 10
       ? "10戦以上で傾向を判定します"
+      : game.variant === "team"
+        ? Math.abs(teamWinRates.sun - teamWinRates.moon) <= 10
+          ? "現時点では大きなチーム差なし"
+          : `${teamWinRates.sun > teamWinRates.moon ? "SUN" : "MOON"} TEAM優勢。先攻・初期方向の影響を要観察`
       : labLeaders.length < 2 || labLeaders[0].rate - labLeaders[1].rate <= 10
         ? "現時点では大きな陣営差なし"
         : `${playerName(labLeaders[0].player)}側優勢。先攻・初期方向の影響を要観察`;
@@ -1251,6 +1296,17 @@ function Game() {
                 </button>
               </>
             )}
+            {game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "orbit" && (
+              <div className="orbit-controls">
+                <span className="action-label">ORBIT: リングと方向を選択</span>
+                {Array.from({ length: Math.floor(game.size / 2) }, (_, i) => i + 1).map((ring) => (
+                  <span key={ring}>
+                    <button onClick={() => commit(applyOrbitSwitch(game, ring, true))}>R{ring} ↻</button>
+                    <button onClick={() => commit(applyOrbitSwitch(game, ring, false))}>R{ring} ↺</button>
+                  </span>
+                ))}
+              </div>
+            )}
             {game.phase === "move" && moves.length === 0 && (
               <button className="primary-action" onClick={skipBlockedMove}>
                 移動不能 — メテオ配置へ
@@ -1314,7 +1370,7 @@ function Game() {
                 const nextVariant = event.target.value as GameVariant;
                 setVariant(nextVariant);
                 if (nextVariant === "team") {
-                  setSize(11);
+                  setSize(13);
                   setAiPlayerCount(4);
                   setLocalAiCount(2);
                 } else if (nextVariant === "item") {
@@ -1327,7 +1383,7 @@ function Game() {
             >
               <option value="classic">CLASSIC</option>
               <option value="team">2 VS 2 TEAM</option>
-              <option value="item">ITEM 15 × 15</option>
+              <option value="item">SWITCH 15 × 15</option>
             </select>
           </label>
           <label>
@@ -1405,7 +1461,7 @@ function Game() {
               }}
             >
               <option value={9} disabled={setupPlayerCount > 2 || variant !== "classic"}>9 × 9</option>
-              <option value={11} disabled={variant === "item"}>11 × 11</option>
+              <option value={11} disabled={variant === "item" || variant === "team"}>11 × 11</option>
               <option value={13} disabled={variant !== "team"}>13 × 13</option>
               <option value={15} disabled={variant !== "item" && variant !== "team"}>15 × 15</option>
             </select>
@@ -1634,12 +1690,23 @@ function Game() {
             <strong>{strategicRead}</strong>
           </div>
           <div className="lab-stat"><b>{stats.games}</b><span>対戦数</span></div>
-          {activePlayers(game).map((player) => (
-            <div key={player} className={`lab-stat ${player}`}>
-              <b>{winRates[player]}%</b>
-              <span>{playerName(player)}勝率</span>
-            </div>
-          ))}
+          {game.variant === "team" ? (
+            <>
+              <div className="lab-stat red">
+                <b>{teamWinRates.sun}%</b>
+                <span>SUN TEAM勝率</span>
+              </div>
+              <div className="lab-stat blue">
+                <b>{teamWinRates.moon}%</b>
+                <span>MOON TEAM勝率</span>
+              </div>
+            </>
+          ) : activePlayers(game).map((player) => (
+              <div key={player} className={`lab-stat ${player}`}>
+                <b>{winRates[player]}%</b>
+                <span>{playerName(player)}勝率</span>
+              </div>
+            ))}
           <div className="lab-stat"><b>{averageTurns}</b><span>平均手数</span></div>
           <div className="strategy-note">
             <b>AIの基本戦略</b>
@@ -1667,9 +1734,14 @@ function Game() {
           <summary>HOW TO PLAY</summary>
           <div className="rule-grid">
             <p><b>MOVE</b> 縦横へ必ず1マス。移動不能時だけ省略できます。</p>
-            <p><b>PLACE</b> 先攻初手を除き、移動後にメテオを1個配置します。</p>
+            <p><b>PLACE</b> 先攻初手を除き、移動後にメテオを1個配置。配置パスは各色1回です。</p>
             <p><b>BLAST</b> 小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。</p>
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
+            <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
+            <p><b>SWITCH</b> 6種類。踏んだ瞬間に発動し、取得後2〜4ターンで別の場所へ再出現します。</p>
+            <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / SUPPLY。選択式は発動したプレイヤーが対象を決めます。</p>
+            <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
+            <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
           </div>
         </details>
         <details className="history-panel">

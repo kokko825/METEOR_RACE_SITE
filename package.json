@@ -12,6 +12,8 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "test:ai": "node tests/run-ai-lab.mjs",
     "test:rules": "node tests/run-game-rules.mjs",
+    "test:switch": "node tests/run-switch-battle.mjs",
+    "test:switch-ai": "node tests/run-switch-ai.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

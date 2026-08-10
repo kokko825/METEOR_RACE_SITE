@@ -369,6 +369,8 @@ export async function POST(request: Request) {
     const size =
       variant === "item"
         ? 15
+        : variant === "team" && (requestedSize === 9 || requestedSize === 11)
+          ? 13
         : players > 2 && requestedSize === 9
           ? 11
           : requestedSize;

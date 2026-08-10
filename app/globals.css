@@ -105,6 +105,18 @@ button { color: inherit; }
 .field-item.shield { color:#77e9ff; border:1px solid currentColor; background:rgba(28,126,164,.5); }
 .field-item.booster { color:#ffe35e; border:1px solid currentColor; background:rgba(178,112,0,.5); }
 .field-item.capsule { color:#ff8ae8; border:1px solid currentColor; background:rgba(128,33,115,.55); }
+.field-item.holo,.field-item.orbit,.field-item.pulse,.field-item.supply { font-size:0; border:1px solid currentColor; }
+.field-item.holo { color:#d77cff; background:rgba(104,35,139,.58); }
+.field-item.orbit { color:#69ffb0; background:rgba(18,112,76,.55); }
+.field-item.pulse { color:#ff7979; background:rgba(145,36,36,.55); }
+.field-item.supply { color:#fff; background:rgba(58,103,135,.65); }
+.field-item.holo::after { content:"H"; font-size:clamp(8px,1.4vw,17px); }
+.field-item.orbit::after { content:"↻"; font-size:clamp(8px,1.4vw,17px); }
+.field-item.pulse::after { content:"✦"; font-size:clamp(8px,1.4vw,17px); }
+.field-item.supply::after { content:"+"; font-size:clamp(8px,1.4vw,17px); }
+.orbit-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.orbit-controls span { display:flex; gap:3px; }
+.orbit-controls button { border:1px solid #69ffb0; background:#0a2630; color:#caffdf; padding:6px; cursor:pointer; }
 .item-status { display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#9fb5c0; font-size:10px; letter-spacing:.08em; }
 .item-status b { color:#fff; border:1px solid rgba(255,255,255,.15); padding:6px 9px; }
 @keyframes item-float { 50% { transform:translateY(-8%); filter:brightness(1.25); } }
