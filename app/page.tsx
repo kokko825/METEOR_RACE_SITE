@@ -1266,6 +1266,16 @@ function Game() {
                 perspectiveSlot,
               );
               const pos = { r, c };
+              const setupSlot = game.phase === "setup" && isSwitchSetupCell(pos);
+              const setupRejected = setupSlot &&
+                (game.setupRejected?.[game.turn] ?? []).some((cell) => samePos(cell, pos));
+              const setupZone = setupSlot
+                ? ((r === 5 || r === 9) && (c === 5 || c === 9)
+                    ? "inner"
+                    : (r === 2 || r === 12) && (c === 2 || c === 12)
+                      ? "outer"
+                      : "middle")
+                : null;
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
@@ -1287,12 +1297,20 @@ function Game() {
                     r === mid && c === mid ? "core" : "",
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",
+                    setupSlot ? `setup-slot setup-${setupZone}` : "",
+                    setupRejected ? "setup-rejected" : "",
                   ].join(" ")}
                   onClick={() => handleCell(r, c)}
                   disabled={game.phase === "over" || (!legal && !placeable)}
                   aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}`}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
+                  {setupSlot && (
+                    <span className="setup-slot-label" aria-hidden="true">
+                      <b>{r + 1},{c + 1}</b>
+                      <i>{setupRejected ? "×" : setupZone === "inner" ? "内" : setupZone === "middle" ? "中" : "外"}</i>
+                    </span>
+                  )}
                   {blastFx && samePos(pos, blastFx.target) && (
                     <>
                       {blastFx.stage === "probe" && (
@@ -1359,6 +1377,9 @@ function Game() {
             {game.phase === "setup" && (
               <div className="switch-setup-controls">
                 <span className="action-label">6種類から3つ選び、好きなマスへ配置</span>
+                <span className="setup-zone-legend" aria-label="配置エリアの色分け">
+                  <i className="inner">内側</i><i className="middle">中間</i><i className="outer">外側</i>
+                </span>
                 {(["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
