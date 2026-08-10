@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {
-  activeObstacles, applyHoloSwitch, applyMove, applyOrbitSwitch, applyPulseSwitch,
+  activeObstacles, applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPulseSwitch,
   finishTurn, initialGameState, samePos,
 } from "../app/game-rules";
 
@@ -34,5 +34,22 @@ game.fieldItems = [{ r: 11, c: 7, kind: "pulse", id: 1 }];
 game = applyMove(game, { r: 11, c: 7 });
 game = applyPulseSwitch(game, { r: 7, c: 7 });
 assert.ok(samePos(game.probes.blue, { r: 5, c: 7 }), "PULSE applies a small blast without leaving a meteor");
+
+game = initialGameState(15, "red", 2, false, 0, [], "item");
+game.turnCount = 2;
+game.phase = "place";
+game.probes.blue = { r: 6, c: 6 };
+game.fieldItems = [{ r: 5, c: 6, kind: "holo", id: 1 }];
+game = applyMeteor(game, { r: 7, c: 6 }, "small").state;
+assert.equal(game.phase, "switch", "blast landing must activate a target switch");
+assert.equal(game.pendingSwitches?.[0]?.kind, "holo");
+
+game = initialGameState(15, "red", 2, false, 0, [], "item");
+game.turnCount = 2;
+game.phase = "place";
+game.probes.blue = { r: 6, c: 6 };
+game.fieldItems = [{ r: 5, c: 6, kind: "shield", id: 1 }];
+game = applyMeteor(game, { r: 7, c: 6 }, "small").state;
+assert.equal(game.shieldTurns?.blue, 4, "blast pickup keeps a full two-round shield after turn advance");
 
 console.log("switch-battle: all checks passed");

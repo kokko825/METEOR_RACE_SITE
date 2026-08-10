@@ -263,7 +263,7 @@ console.log("game-rules: all checks passed");
   item.probes.red = { r: 4, c: 3 };
   item.fieldItems = [{ r: 3, c: 3, kind: "booster", id: 1 }];
   item = applyMove(item, { r: 3, c: 3 });
-  assert.equal(item.boosterMoves.red, 2);
+  assert.equal(item.boosterMoves.red, 1);
   assert.equal(item.fieldItems.length, 0, "取得直後は盤上から消える");
   assert.equal(item.pendingItemDrops?.length, 1, "2〜4ターン後の再出現を予約する");
   item.phase = "move";
@@ -280,12 +280,12 @@ console.log("game-rules: all checks passed");
   item.boosterMoves.red = 2;
   item.fieldItems = [
     { r: 4, c: 4, kind: "shield", id: 1 },
-    { r: 4, c: 5, kind: "capsule", id: 2 },
+    { r: 4, c: 5, kind: "booster", id: 2 },
   ];
   item = applyMove(item, { r: 4, c: 5 });
   assert.equal(item.shield.red, true, "2マス移動の途中でシールドを取得する");
-  assert.equal(item.capsuleMeteors.red, 1, "着地点の使い捨てメテオも同時取得する");
-  assert.equal(item.boosterMoves.red, 1, "両アイテムの取得後も残りブーストを維持する");
+  assert.equal(item.boosterMoves.red, 3, "着地点のブースターも連続取得する");
+  assert.equal(item.boosterMoves.red, 3, "連続取得したブースターをすべて保持する");
   assert.equal(item.fieldItems.length, 0, "2個とも取得直後は盤上から消える");
   assert.equal(item.pendingItemDrops?.length, 2, "2個とも独立して再出現を予約する");
   for (let turn = 0; turn < 5; turn += 1) item = finishTurn(item);

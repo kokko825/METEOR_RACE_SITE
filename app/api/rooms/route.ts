@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyMeteor, applyMove, applyObstacle, applyPass, finishTurn, initialGameState, legalMoves, type GameVariant, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, finishTurn, initialGameState, legalMoves, type GameVariant, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -503,6 +503,12 @@ export async function POST(request: Request) {
         destroyedIds: resolution.destroyedIds,
         pushed: resolution.pushed,
       };
+    } else if (body.action === "switch_holo" && body.target) {
+      nextState = applyHoloSwitch(state, body.target);
+    } else if (body.action === "switch_pulse" && body.target) {
+      nextState = applyPulseSwitch(state, body.target);
+    } else if (body.action === "switch_orbit") {
+      nextState = applyOrbitSwitch(state, Number(body.ring), Boolean(body.clockwise));
     } else {
       return json({ error: "操作が正しくありません" }, 400);
     }

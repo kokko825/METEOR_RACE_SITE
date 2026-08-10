@@ -96,6 +96,14 @@ export const boardToViewDelta = (delta: Pos, perspectiveSlot: number): Pos => {
   return delta;
 };
 export const playerName = (player: Player) => player.toUpperCase();
+function startCells(state: GameState): Pos[] {
+  const mid = Math.floor(state.size / 2);
+  const inset = state.size === 9 ? 0 : 1;
+  return [
+    { r: state.size - 1 - inset, c: mid }, { r: inset, c: mid },
+    { r: mid, c: inset }, { r: mid, c: state.size - 1 - inset },
+  ];
+}
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 
 function nextItemRandom(seed: number) {
@@ -498,7 +506,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
   pickedItems.forEach((item) => {
     if (item.kind === "shield") {
       shield[state.turn] = true;
-      shieldTurns[state.turn] += activePlayers(state).length * 2;
+      shieldTurns[state.turn] += activePlayers(state).length * 2 + 1;
     }
   });
   if (pickedBooster) boosterMoves[state.turn] += pickedItems.filter((item) => item.kind === "booster").length;
@@ -623,6 +631,7 @@ export function applyHoloSwitch(state: GameState, target: Pos): GameState {
   if (state.phase !== "switch" || current?.kind !== "holo" ||
       target.r < 0 || target.c < 0 || target.r >= state.size || target.c >= state.size ||
       samePos(target, { r: mid, c: mid }) ||
+      startCells(state).some((cell) => samePos(cell, target)) ||
       activePlayers(state).some((p) => samePos(state.probes[p], target)) ||
       state.meteors.some((m) => samePos(m, target)) || activeObstacles(state).some((m) => samePos(m, target)) ||
       state.fieldItems.some((item) => samePos(item, target))) throw new Error("お邪魔を置けないマスです");
@@ -780,15 +789,23 @@ export function applyMeteor(
     ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
   };
   const shieldAfterBlast = { ...(state.shield ?? { red: false, blue: false, green: false, yellow: false }) };
+  const shieldTurnsAfterBlast = { ...(state.shieldTurns ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
+  const blastSwitches: PendingSwitch[] = [];
   const pickupLogs: string[] = [];
   activePlayers(state).forEach((player) => {
     if (samePos(before[player], probes[player])) return;
     const picked = fieldItems.find((item) => samePos(item, probes[player]));
     if (!picked) return;
     fieldItems = fieldItems.filter((item) => item.id !== picked.id);
-    if (picked.kind === "shield") shieldAfterBlast[player] = true;
-    if (picked.kind === "booster") boosterMoves[player] = 2;
+    if (picked.kind === "shield") {
+      shieldAfterBlast[player] = true;
+      shieldTurnsAfterBlast[player] += activePlayers(state).length * 2 + 1;
+    }
+    if (picked.kind === "booster") boosterMoves[player] += 1;
     if (picked.kind === "supply") pendingItemDrops.push({ turns: activePlayers(state).length });
+    if (picked.kind === "holo" || picked.kind === "orbit" || picked.kind === "pulse") {
+      blastSwitches.push({ kind: picked.kind, player });
+    }
     const scheduled = scheduleItemDrops(
       { ...state, pendingItemDrops, itemSeed, nextItemId },
       1,
@@ -819,6 +836,7 @@ export function applyMeteor(
     capsuleMeteors,
     boosterMoves,
     shield: shieldAfterBlast,
+    shieldTurns: shieldTurnsAfterBlast,
     nextMeteorId: state.nextMeteorId + 1,
     log,
   };
@@ -839,6 +857,14 @@ export function applyMeteor(
               } TEAM WIN!`
             : `${playerName(winner)} WIN!`,
       log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
+    };
+  } else if (blastSwitches.length) {
+    next = {
+      ...draft,
+      phase: "switch",
+      pendingSwitches: blastSwitches,
+      switchResume: "finish",
+      message: `${playerName(blastSwitches[0].player)}: ${blastSwitches[0].kind.toUpperCase()} SWITCH`,
     };
   } else {
     next = finishTurn(draft);

@@ -25,6 +25,7 @@ import {
   viewToBoardPos,
   type GameState,
   type GameVariant,
+  type ItemKind,
   type Meteor,
   type MeteorSize,
   type ObstacleMeteor,
@@ -44,6 +45,7 @@ type BlastFx = {
 };
 
 type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
+type SwitchFx = { kind: ItemKind; player: Player; nonce: number };
 
 function pushForPerspective(
   push: { from: Pos; dr: number; dc: number },
@@ -85,6 +87,7 @@ function Game() {
   const [aiSpeed, setAiSpeed] = useState(420);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("normal");
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
+  const [switchFx, setSwitchFx] = useState<SwitchFx | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [nickname, setNickname] = useState("");
@@ -259,10 +262,12 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "move" | "meteor" | "obstacle" | "pass" | "skip_move",
+    action: "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit",
     target?: Pos,
     meteorSize?: MeteorSize,
     useCapsule = false,
+    ring?: number,
+    clockwise?: boolean,
   ) => {
     if (mode !== "online" || !online.code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
@@ -274,11 +279,14 @@ function Game() {
         target,
         meteorSize,
         useCapsule,
+        ring,
+        clockwise,
       });
       if ((action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
       }
+      if (action.startsWith("switch_") && data.state) setGame(data.state);
       if (action === "meteor" && data.state) {
         const confirmedEffect = data.state.onlineEffect as OnlineEffect | undefined;
         if (confirmedEffect) playedOnlineEffect.current = confirmedEffect.version;
@@ -450,8 +458,20 @@ function Game() {
     }
   };
 
+  const showSwitchFx = (kind: ItemKind, player: Player) => {
+    setSwitchFx({ kind, player, nonce: Date.now() });
+    window.setTimeout(() => setSwitchFx((current) => current?.kind === kind && current.player === player ? null : current), 1050);
+  };
+
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
+    const start = game.probes[game.turn];
+    const steps = Math.max(Math.abs(target.r - start.r), Math.abs(target.c - start.c));
+    const dr = Math.sign(target.r - start.r), dc = Math.sign(target.c - start.c);
+    const picked = Array.from({ length: steps }, (_, i) => ({ r: start.r + dr * (i + 1), c: start.c + dc * (i + 1) }))
+      .map((cell) => game.fieldItems.find((item) => samePos(item, cell)))
+      .filter((item): item is GameState["fieldItems"][number] => Boolean(item)).at(-1);
+    if (picked) showSwitchFx(picked.kind, game.turn);
     if (mode === "online") {
       // Reflect movement and item pickup immediately while the server confirms the action.
       setGame(applyMove(game, target));
@@ -502,6 +522,10 @@ function Game() {
     try {
       const capsule = useCapsule || game.selected === "capsule";
       const resolution = applyMeteor(game, target, chosenSize, capsule);
+      const blastPickup = activePlayers(game)
+        .map((player) => ({ player, item: game.fieldItems.find((item) => samePos(item, resolution.state.probes[player])) }))
+        .find(({ player, item }) => Boolean(item) && !samePos(game.probes[player], resolution.state.probes[player]));
+      if (blastPickup?.item) showSwitchFx(blastPickup.item.kind, blastPickup.player);
       if (mode === "online") {
         setIsAnimating(true);
         setBlastFx({
@@ -713,6 +737,25 @@ function Game() {
     }
   };
 
+  const resolveHolo = (target: Pos) => {
+    const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    showSwitchFx("holo", player);
+    if (mode === "online") void submitOnlineAction("switch_holo", target);
+    commit(applyHoloSwitch(game, target));
+  };
+  const resolvePulse = (target: Pos) => {
+    const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    showSwitchFx("pulse", player);
+    if (mode === "online") void submitOnlineAction("switch_pulse", target);
+    commit(applyPulseSwitch(game, target));
+  };
+  const resolveOrbit = (ring: number, clockwise: boolean) => {
+    const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    showSwitchFx("orbit", player);
+    if (mode === "online") void submitOnlineAction("switch_orbit", undefined, undefined, false, ring, clockwise);
+    commit(applyOrbitSwitch(game, ring, clockwise));
+  };
+
   const handleCell = (r: number, c: number) => {
     if (isAnimating) return;
     if (game.phase === "move") moveProbe({ r, c });
@@ -723,8 +766,8 @@ function Game() {
     if (game.phase === "switch") {
       const kind = game.pendingSwitches?.[0]?.kind;
       try {
-        if (kind === "holo") commit(applyHoloSwitch(game, { r, c }));
-        if (kind === "pulse") commit(applyPulseSwitch(game, { r, c }));
+        if (kind === "holo") resolveHolo({ r, c });
+        if (kind === "pulse") resolvePulse({ r, c });
       } catch { return; }
     }
   };
@@ -1037,11 +1080,11 @@ function Game() {
       } else if (decision.type === "pass") {
         passPlacement();
       } else if (decision.type === "holo") {
-        commit(applyHoloSwitch(game, decision.target));
+        resolveHolo(decision.target);
       } else if (decision.type === "pulse") {
-        commit(applyPulseSwitch(game, decision.target));
+        resolvePulse(decision.target);
       } else if (decision.type === "orbit") {
-        commit(applyOrbitSwitch(game, decision.ring, decision.clockwise));
+        resolveOrbit(decision.ring, decision.clockwise);
       } else if (game.phase === "move") {
         skipBlockedMove();
       }
@@ -1147,6 +1190,13 @@ function Game() {
         </aside>
 
         <section className="arena">
+          {switchFx && (
+            <div key={switchFx.nonce} className={`switch-activation ${switchFx.kind} ${switchFx.player}`} role="status">
+              <span className="switch-burst" />
+              <b>{switchFx.kind.toUpperCase()}</b>
+              <small>SWITCH ACTIVATED</small>
+            </div>
+          )}
           <div className={`turn-callout ${displayAccent}`} aria-live="polite">
             <span>{resultPlayer ? "WINNER" : "CURRENT TURN"}</span>
             <b>{resultPlayer ? playerName(resultPlayer) : turnDisplayName}</b>
@@ -1301,8 +1351,8 @@ function Game() {
                 <span className="action-label">ORBIT: リングと方向を選択</span>
                 {Array.from({ length: Math.floor(game.size / 2) }, (_, i) => i + 1).map((ring) => (
                   <span key={ring}>
-                    <button onClick={() => commit(applyOrbitSwitch(game, ring, true))}>R{ring} ↻</button>
-                    <button onClick={() => commit(applyOrbitSwitch(game, ring, false))}>R{ring} ↺</button>
+                    <button onClick={() => resolveOrbit(ring, true)}>R{ring} ↻</button>
+                    <button onClick={() => resolveOrbit(ring, false)}>R{ring} ↺</button>
                   </span>
                 ))}
               </div>
