@@ -17,6 +17,7 @@ import {
   canPlaceObstacle,
   finishTurn,
   initialGameState as initialState,
+  isSwitchSetupCell,
   legalMoves,
   meteorName,
   orthogonallyAdjacent,
@@ -941,7 +942,7 @@ function Game() {
 
   const validPlacement = (r: number, c: number) =>
     game.phase === "setup"
-      ? canControl && !(r === mid && c === mid) &&
+      ? canControl && isSwitchSetupCell({ r, c }) && !(r === mid && c === mid) &&
         !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
         !(game.setupPlacements?.[game.turn] ?? []).some((item) => samePos(item, { r, c })) &&
         !(game.setupRejected?.[game.turn] ?? []).some((cell) => samePos(cell, { r, c }))

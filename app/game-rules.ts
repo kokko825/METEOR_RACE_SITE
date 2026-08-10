@@ -80,6 +80,14 @@ export const nextPlayer = (state: GameState, player = state.turn): Player => {
   return players[(players.indexOf(player) + 1) % players.length];
 };
 export const samePos = (a: Pos, b: Pos) => a.r === b.r && a.c === b.c;
+export const SWITCH_SETUP_CELLS_15: Pos[] = [
+  { r: 5, c: 5 }, { r: 5, c: 9 }, { r: 9, c: 5 }, { r: 9, c: 9 },
+  { r: 3, c: 7 }, { r: 7, c: 3 }, { r: 7, c: 11 }, { r: 11, c: 7 },
+  { r: 3, c: 3 }, { r: 3, c: 11 }, { r: 11, c: 3 }, { r: 11, c: 11 },
+  { r: 2, c: 2 }, { r: 2, c: 12 }, { r: 12, c: 2 }, { r: 12, c: 12 },
+];
+export const isSwitchSetupCell = (target: Pos) =>
+  SWITCH_SETUP_CELLS_15.some((cell) => samePos(cell, target));
 export const distance = (a: Pos, b: Pos) =>
   Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
 export const orthogonallyAdjacent = (a: Pos, b: Pos) =>
@@ -311,6 +319,7 @@ export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind):
   const mid = Math.floor(state.size / 2);
   const occupied =
     target.r < 0 || target.c < 0 || target.r >= state.size || target.c >= state.size ||
+    !isSwitchSetupCell(target) ||
     samePos(target, { r: mid, c: mid }) ||
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     own.some((item) => samePos(target, item)) ||
