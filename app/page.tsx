@@ -1105,8 +1105,10 @@ function Game() {
           r: Math.floor(index / game.size), c: index % game.size,
         })).filter((cell) => validPlacement(cell.r, cell.c));
         if (kinds[0] && cells[0]) {
-          const next = applySetupSwitch(game, cells[Math.floor(cells.length / 2)], kinds[0]);
-          if (mode === "online") void submitOnlineAction("setup_switch", cells[Math.floor(cells.length / 2)], undefined, false, undefined, undefined, kinds[0]);
+          const kind = kinds[Math.floor(Math.random() * kinds.length)];
+          const target = cells[Math.floor(Math.random() * cells.length)];
+          const next = applySetupSwitch(game, target, kind);
+          if (mode === "online") void submitOnlineAction("setup_switch", target, undefined, false, undefined, undefined, kind);
           commit(next);
         }
         return;
