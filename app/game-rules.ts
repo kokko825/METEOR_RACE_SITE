@@ -7,7 +7,7 @@ export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consum
 export type FieldItem = Pos & { kind: ItemKind; id: number };
 export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
-export type Phase = "move" | "place" | "switch" | "over";
+export type Phase = "setup" | "move" | "place" | "switch" | "over";
 export type PendingSwitch = { kind: "holo" | "orbit" | "pulse"; player: Player };
 
 export type GameState = {
@@ -45,6 +45,7 @@ export type GameState = {
   repetitions: Record<string, number>;
   pendingSwitches?: PendingSwitch[];
   switchResume?: "place" | "finish";
+  setupKinds?: ItemKind[];
 };
 
 export type MeteorResolution = {
@@ -243,10 +244,7 @@ export function initialGameState(
     yellow: slots[(offset + 3) % 4],
   };
   const initialItemSeed = Math.floor(Math.random() * 0xffffffff) || 1;
-  const itemLayout =
-    variant === "item"
-      ? randomItemLayout(size, probes, initialItemSeed)
-      : { items: [] as FieldItem[], seed: initialItemSeed };
+  const itemLayout = { items: [] as FieldItem[], seed: initialItemSeed };
   return {
     size,
     variant,
@@ -257,7 +255,7 @@ export function initialGameState(
     playerTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     passAvailable: { red: true, blue: true, green: true, yellow: true },
     layoutOffset: offset,
-    phase: "move",
+    phase: variant === "item" ? "setup" : "move",
     bonusMove: false,
     fieldItems: itemLayout.items,
     pendingItemDrops: [],
@@ -287,9 +285,46 @@ export function initialGameState(
     message: `${playerName(first)}：探査機を1マス移動`,
     log: [`ゲーム開始 — ${playerName(first)}が先攻`],
     nextMeteorId: 1,
-    nextItemId: 7,
+    nextItemId: 1,
     itemSeed: itemLayout.seed,
     repetitions: {},
+    setupKinds: [],
+  };
+}
+
+export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind): GameState {
+  if (state.variant !== "item" || state.phase !== "setup") {
+    throw new Error("スイッチ配置フェーズではありません");
+  }
+  const selected = state.setupKinds ?? [];
+  if (selected.length >= 3 || selected.includes(kind)) {
+    throw new Error("異なる3種類のスイッチを選んでください");
+  }
+  const mid = Math.floor(state.size / 2);
+  const occupied =
+    target.r < 0 || target.c < 0 || target.r >= state.size || target.c >= state.size ||
+    samePos(target, { r: mid, c: mid }) ||
+    activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
+    state.fieldItems.some((item) => samePos(target, item));
+  if (occupied) throw new Error("そのマスにはスイッチを配置できません");
+
+  const setupKinds = [...selected, kind];
+  const fieldItems = [...state.fieldItems, { ...target, kind, id: state.nextItemId }];
+  const complete = setupKinds.length === 3;
+  return {
+    ...state,
+    fieldItems,
+    setupKinds,
+    nextItemId: state.nextItemId + 1,
+    phase: complete ? "move" : "setup",
+    message: complete
+      ? `${playerName(state.turn)}：探査機を1マス移動`
+      : `スイッチをあと${3 - setupKinds.length}個配置`,
+    log: [
+      ...state.log,
+      `${kind.toUpperCase()}を (${target.r},${target.c}) に初期配置`,
+      ...(complete ? ["スイッチ3個の配置完了 — ゲームスタート"] : []),
+    ],
   };
 }
 

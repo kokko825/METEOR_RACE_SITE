@@ -6,6 +6,7 @@ import {
 
 let game = initialGameState(15, "red", 4, false, 0, [], "item");
 game.turnCount = 2;
+game.phase = "move";
 game.probes.red = { r: 12, c: 7 };
 game.fieldItems = [{ r: 11, c: 7, kind: "holo", id: 1 }];
 game = applyMove(game, { r: 11, c: 7 });
@@ -19,6 +20,7 @@ assert.equal(activeObstacles(game).length, 0, "HOLO lasts exactly two four-playe
 
 game = initialGameState(15, "red", 4, false, 0, [], "item");
 game.turnCount = 2;
+game.phase = "move";
 game.probes.red = { r: 12, c: 7 };
 game.fieldItems = [{ r: 11, c: 7, kind: "orbit", id: 1 }];
 game.meteors = [{ r: 1, c: 7, owner: "blue", size: "small", id: 9 }];
@@ -28,6 +30,7 @@ assert.ok(samePos(game.meteors[0], { r: 7, c: 13 }), "ORBIT rotates ring objects
 
 game = initialGameState(15, "red", 2, false, 0, [], "item");
 game.turnCount = 2;
+game.phase = "move";
 game.probes.red = { r: 12, c: 7 };
 game.probes.blue = { r: 6, c: 7 };
 game.fieldItems = [{ r: 11, c: 7, kind: "pulse", id: 1 }];
@@ -37,6 +40,7 @@ assert.ok(samePos(game.probes.blue, { r: 5, c: 7 }), "PULSE applies a small blas
 
 game = initialGameState(15, "red", 2, false, 0, [], "item");
 game.turnCount = 2;
+game.phase = "move";
 game.phase = "place";
 game.probes.blue = { r: 6, c: 6 };
 game.fieldItems = [{ r: 5, c: 6, kind: "holo", id: 1 }];
@@ -46,6 +50,7 @@ assert.equal(game.pendingSwitches?.[0]?.kind, "holo");
 
 game = initialGameState(15, "red", 2, false, 0, [], "item");
 game.turnCount = 2;
+game.phase = "move";
 game.phase = "place";
 game.probes.blue = { r: 6, c: 6 };
 game.fieldItems = [{ r: 5, c: 6, kind: "shield", id: 1 }];

@@ -5,6 +5,7 @@ import {
   PLAYER_ORDER,
   activeObstacles,
   activePlayers,
+  applySetupSwitch,
   applyMeteor,
   applyHoloSwitch,
   applyOrbitSwitch,
@@ -88,6 +89,7 @@ function Game() {
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("normal");
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [switchFx, setSwitchFx] = useState<SwitchFx | null>(null);
+  const [setupKind, setSetupKind] = useState<ItemKind>("shield");
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [nickname, setNickname] = useState("");
@@ -262,12 +264,13 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit",
+    action: "setup_switch" | "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit",
     target?: Pos,
     meteorSize?: MeteorSize,
     useCapsule = false,
     ring?: number,
     clockwise?: boolean,
+    itemKind?: ItemKind,
   ) => {
     if (mode !== "online" || !online.code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
@@ -281,8 +284,9 @@ function Game() {
         useCapsule,
         ring,
         clockwise,
+        itemKind,
       });
-      if ((action === "move" || action === "skip_move") && data.state) {
+      if ((action === "setup_switch" || action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
       }
@@ -758,6 +762,17 @@ function Game() {
 
   const handleCell = (r: number, c: number) => {
     if (isAnimating) return;
+    if (game.phase === "setup") {
+      try {
+        const next = applySetupSwitch(game, { r, c }, setupKind);
+        if (mode === "online") void submitOnlineAction("setup_switch", { r, c }, undefined, false, undefined, undefined, setupKind);
+        commit(next);
+        const remaining = (["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[])
+          .find((kind) => !(next.setupKinds ?? []).includes(kind));
+        if (remaining) setSetupKind(remaining);
+      } catch { return; }
+      return;
+    }
     if (game.phase === "move") moveProbe({ r, c });
     if (game.phase === "place") {
       if (game.selected === "obstacle") placeObstacle({ r, c });
@@ -923,7 +938,11 @@ function Game() {
     );
 
   const validPlacement = (r: number, c: number) =>
-    game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
+    game.phase === "setup"
+      ? canControl && !(r === mid && c === mid) &&
+        !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
+        !game.fieldItems.some((item) => samePos(item, { r, c }))
+      : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
       : game.selected === "obstacle"
       ? validObstaclePlacement(r, c)
@@ -1072,6 +1091,19 @@ function Game() {
       game.phase === "over"
     ) return;
     const timer = window.setTimeout(() => {
+      if (game.phase === "setup") {
+        const kinds = (["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[])
+          .filter((kind) => !(game.setupKinds ?? []).includes(kind));
+        const cells = Array.from({ length: game.size * game.size }, (_, index) => ({
+          r: Math.floor(index / game.size), c: index % game.size,
+        })).filter((cell) => validPlacement(cell.r, cell.c));
+        if (kinds[0] && cells[0]) {
+          const next = applySetupSwitch(game, cells[Math.floor(cells.length / 2)], kinds[0]);
+          if (mode === "online") void submitOnlineAction("setup_switch", cells[Math.floor(cells.length / 2)], undefined, false, undefined, undefined, kinds[0]);
+          commit(next);
+        }
+        return;
+      }
       const decision = chooseAiDecision(game, aiDifficulty);
       if (decision.type === "move") {
         moveProbe(decision.target);
@@ -1311,6 +1343,22 @@ function Game() {
           </div>
 
           <div className="action-panel">
+            {game.phase === "setup" && (
+              <div className="switch-setup-controls">
+                <span className="action-label">6種類から3つ選び、好きなマスへ配置</span>
+                {(["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[]).map((kind) => (
+                  <button
+                    key={kind}
+                    className={`meteor-choice ${setupKind === kind ? "selected" : ""}`}
+                    disabled={(game.setupKinds ?? []).includes(kind)}
+                    onClick={() => setSetupKind(kind)}
+                  >
+                    {kind.toUpperCase()}
+                  </button>
+                ))}
+                <b>{game.setupKinds?.length ?? 0} / 3 配置済み</b>
+              </div>
+            )}
             {game.phase === "place" && (
               <>
                 <span className="action-label">配置するメテオ</span>

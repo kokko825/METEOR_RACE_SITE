@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, finishTurn, initialGameState, legalMoves, type GameVariant, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applySetupSwitch, finishTurn, initialGameState, legalMoves, type GameVariant, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -478,7 +478,9 @@ export async function POST(request: Request) {
   try {
     let nextState;
     let effect = null;
-    if (body.action === "move" && body.target) {
+    if (body.action === "setup_switch" && body.target && body.itemKind) {
+      nextState = applySetupSwitch(state, body.target, body.itemKind);
+    } else if (body.action === "move" && body.target) {
       nextState = applyMove(state, body.target);
     } else if (
       body.action === "skip_move" &&

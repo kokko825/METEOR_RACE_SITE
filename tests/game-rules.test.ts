@@ -4,6 +4,7 @@ import {
   applyMove,
   applyObstacle,
   applyPass,
+  applySetupSwitch,
   activePlayers,
   boardToViewDelta,
   coreWinner,
@@ -253,12 +254,15 @@ console.log("game-rules: all checks passed");
 {
   let item = initialGameState(11, "red", 2, false, 0, [], "item");
   assert.equal(item.size, 15);
-  assert.equal(item.fieldItems.length, 6);
-  assert.equal(
-    new Set(item.fieldItems.map((entry) => `${entry.r},${entry.c}`)).size,
-    6,
-    "初期アイテムは重ならない",
-  );
+  assert.equal(item.phase, "setup");
+  assert.equal(item.fieldItems.length, 0, "開始前はスイッチを自動配置しない");
+  item = applySetupSwitch(item, { r: 3, c: 3 }, "shield");
+  item = applySetupSwitch(item, { r: 4, c: 4 }, "orbit");
+  assert.equal(item.phase, "setup", "3個を置くまではゲームを開始しない");
+  assert.throws(() => applySetupSwitch(item, { r: 5, c: 5 }, "shield"), /異なる3種類/);
+  item = applySetupSwitch(item, { r: 5, c: 5 }, "pulse");
+  assert.equal(item.phase, "move", "異なる3種類の配置後にゲームを開始する");
+  assert.equal(item.fieldItems.length, 3);
   item.turnCount = 2;
   item.probes.red = { r: 4, c: 3 };
   item.fieldItems = [{ r: 3, c: 3, kind: "booster", id: 1 }];
@@ -276,6 +280,7 @@ console.log("game-rules: all checks passed");
 {
   let item = initialGameState(15, "red", 2, false, 0, [], "item");
   item.turnCount = 2;
+  item.phase = "move";
   item.probes.red = { r: 4, c: 3 };
   item.boosterMoves.red = 2;
   item.fieldItems = [
