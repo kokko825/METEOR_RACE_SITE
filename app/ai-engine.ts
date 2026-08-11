@@ -264,6 +264,33 @@ function earlyItemDevelopment(state: GameState, player: Player) {
     .every((rival) => coreDistance(state, rival) > 5);
 }
 
+function earlyPlacementStrategyBonus(state: GameState, placement: Placement, next: GameState) {
+  const player = state.turn;
+  if (!earlyItemDevelopment(state, player)) return 0;
+
+  const center = centerOf(state);
+  const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
+  const ownAdvance = coreDistance(state, player) - coreDistance(next, player);
+  const rivalSetback = rivals.reduce(
+    (sum, rival) => sum + Math.max(0, coreDistance(next, rival) - coreDistance(state, rival)),
+    0,
+  );
+  const isFutureGate = rivals.some((rival) => {
+    const probe = state.probes[rival];
+    return samePos(placement.target, {
+      r: center.r + Math.sign(probe.r - center.r),
+      c: center.c + Math.sign(probe.c - center.c),
+    });
+  });
+  const survivesAsObstacle = next.meteors.some((meteor) =>
+    meteor.owner === player && samePos(meteor, placement.target),
+  );
+
+  // 序盤は目先の押し戻しより、自分を進める爆風かCORE手前の布石を優先する。
+  // これにより広い盤面で互いを端へ戻し続ける展開を避ける。
+  return ownAdvance * 70 + (isFutureGate && survivesAsObstacle ? 46 : 0) - rivalSetback * 42;
+}
+
 function isImmediateWinAvailable(state: GameState, player: Player): boolean {
   if (state.phase === "over") return wonBy(state, player);
   const probe: GameState = { ...state, turn: player, phase: "move", bonusMove: false };
@@ -356,7 +383,10 @@ function bestPlacement(
     const next = applyPlacement(state, placement);
     options.push({
       choice: placement,
-      value: scoreResult(next, player, difficulty, state) + plannedRecallBonus(state, placement, next),
+      value:
+        scoreResult(next, player, difficulty, state) +
+        plannedRecallBonus(state, placement, next) +
+        earlyPlacementStrategyBonus(state, placement, next),
     });
   }
   if (state.passAvailable?.[state.turn] ?? true) {
@@ -559,7 +589,10 @@ export function chooseAiDecision(
     const next = applyPlacement(state, placement);
     ranked.push({
       choice: placement,
-      value: scoreResult(next, player, difficulty, state) + plannedRecallBonus(state, placement, next),
+      value:
+        scoreResult(next, player, difficulty, state) +
+        plannedRecallBonus(state, placement, next) +
+        earlyPlacementStrategyBonus(state, placement, next),
     });
   }
   if (state.passAvailable?.[player] ?? true) {
