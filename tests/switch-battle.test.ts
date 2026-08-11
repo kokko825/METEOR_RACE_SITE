@@ -1,55 +1,67 @@
 import assert from "node:assert/strict";
 import {
-  activeObstacles, applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPulseSwitch,
-  finishTurn, initialGameState, samePos,
+  applyMeteor,
+  applyPulseSwitch,
+  applyRecallItem,
+  applySetupItem,
+  applyUseItem,
+  initialGameState,
+  samePos,
+  type GameState,
+  type ItemKind,
 } from "../app/game-rules";
 
-let game = initialGameState(15, "red", 4, false, 0, [], "item");
-game.turnCount = 2;
-game.probes.red = { r: 12, c: 7 };
-game.fieldItems = [{ r: 11, c: 7, kind: "holo", id: 1 }];
-game = applyMove(game, { r: 11, c: 7 });
-assert.equal(game.phase, "switch");
-game = applyHoloSwitch(game, { r: 8, c: 7 });
-assert.equal(activeObstacles(game).length, 1);
-for (let i = 0; i < 7; i += 1) game = finishTurn(game);
-assert.equal(activeObstacles(game).length, 1);
-game = finishTurn(game);
-assert.equal(activeObstacles(game).length, 0, "HOLO lasts exactly two four-player rounds");
+const select = (state: GameState, kinds: ItemKind[]) =>
+  kinds.reduce((current, kind) => applySetupItem(current, kind), state);
 
-game = initialGameState(15, "red", 4, false, 0, [], "item");
-game.turnCount = 2;
-game.probes.red = { r: 12, c: 7 };
-game.fieldItems = [{ r: 11, c: 7, kind: "orbit", id: 1 }];
-game.meteors = [{ r: 1, c: 7, owner: "blue", size: "small", id: 9 }];
-game = applyMove(game, { r: 11, c: 7 });
-game = applyOrbitSwitch(game, 6, true);
-assert.ok(samePos(game.meteors[0], { r: 7, c: 13 }), "ORBIT rotates ring objects 90 degrees");
+let setup = initialGameState(15, "red", 2, false, 0, [], "item");
+setup = select(setup, ["shield", "shield", "pulse"]);
+assert.deepEqual(setup.itemHands?.red, ["shield", "shield", "pulse"]);
+assert.equal(setup.turn, "blue");
+assert.throws(() => applySetupItem({ ...setup, turn: "blue", itemHands: { ...setup.itemHands, blue: ["pulse", "pulse"] } }, "pulse"));
+setup = select(setup, ["booster", "recall", "orbit"]);
+assert.equal(setup.phase, "move");
 
-game = initialGameState(15, "red", 2, false, 0, [], "item");
-game.turnCount = 2;
-game.probes.red = { r: 12, c: 7 };
-game.probes.blue = { r: 6, c: 7 };
-game.fieldItems = [{ r: 11, c: 7, kind: "pulse", id: 1 }];
-game = applyMove(game, { r: 11, c: 7 });
-game = applyPulseSwitch(game, { r: 7, c: 7 });
-assert.ok(samePos(game.probes.blue, { r: 5, c: 7 }), "PULSE applies a small blast without leaving a meteor");
+let shieldGame = initialGameState(15, "red", 2, false, 0, [], "item");
+shieldGame = {
+  ...shieldGame,
+  phase: "place",
+  turnCount: 2,
+  probes: { ...shieldGame.probes, red: { r: 7, c: 6 }, blue: { r: 2, c: 7 } },
+  itemHands: { red: ["shield"], blue: [] },
+};
+shieldGame = applyUseItem(shieldGame, "shield");
+assert.equal(shieldGame.turn, "blue");
+assert.equal(shieldGame.shieldTurns?.red, 1, "shield lasts through every opponent in one round");
+const shielded = applyMeteor({ ...shieldGame, phase: "place" }, { r: 7, c: 5 }, "small").state;
+assert.ok(samePos(shielded.probes.red, { r: 7, c: 6 }), "shield cancels one square of blast movement");
 
-game = initialGameState(15, "red", 2, false, 0, [], "item");
-game.turnCount = 2;
-game.phase = "place";
-game.probes.blue = { r: 6, c: 6 };
-game.fieldItems = [{ r: 5, c: 6, kind: "holo", id: 1 }];
-game = applyMeteor(game, { r: 7, c: 6 }, "small").state;
-assert.equal(game.phase, "switch", "blast landing must activate a target switch");
-assert.equal(game.pendingSwitches?.[0]?.kind, "holo");
+let pulseGame = initialGameState(15, "red", 2, false, 0, [], "item");
+pulseGame = {
+  ...pulseGame,
+  phase: "place",
+  turnCount: 2,
+  probes: { ...pulseGame.probes, red: { r: 10, c: 7 }, blue: { r: 6, c: 7 } },
+  meteors: [{ r: 5, c: 6, owner: "blue", size: "small", id: 10 }],
+  itemHands: { red: ["pulse"], blue: [] },
+};
+pulseGame = applyUseItem(pulseGame, "pulse");
+pulseGame = applyPulseSwitch(pulseGame, { r: 7, c: 7 });
+assert.ok(samePos(pulseGame.probes.blue, { r: 5, c: 7 }), "PULSE pushes a probe by one square");
+assert.equal(pulseGame.meteors.length, 1, "PULSE never destroys or recovers meteors");
 
-game = initialGameState(15, "red", 2, false, 0, [], "item");
-game.turnCount = 2;
-game.phase = "place";
-game.probes.blue = { r: 6, c: 6 };
-game.fieldItems = [{ r: 5, c: 6, kind: "shield", id: 1 }];
-game = applyMeteor(game, { r: 7, c: 6 }, "small").state;
-assert.equal(game.shieldTurns?.blue, 4, "blast pickup keeps a full two-round shield after turn advance");
+let recallGame = initialGameState(15, "red", 2, false, 0, [], "item");
+recallGame = {
+  ...recallGame,
+  phase: "place",
+  turnCount: 2,
+  inventory: { ...recallGame.inventory, red: { small: 1, large: 1 } },
+  meteors: [{ r: 9, c: 7, owner: "red", size: "small", id: 20 }],
+  itemHands: { red: ["recall"], blue: [] },
+};
+recallGame = applyUseItem(recallGame, "recall");
+recallGame = applyRecallItem(recallGame, 20);
+assert.equal(recallGame.meteors.length, 0);
+assert.equal(recallGame.inventory.red.small, 2, "RECALL returns only the selected own meteor");
 
-console.log("switch-battle: all checks passed");
+console.log("item-battle: all checks passed");

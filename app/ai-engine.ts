@@ -1,16 +1,21 @@
 import {
   activePlayers,
+  activeObstacles,
   applyMeteor,
   applyMove,
   applyHoloSwitch,
   applyOrbitSwitch,
   applyPulseSwitch,
+  applyRecallItem,
+  applyUseItem,
+  canUseItem,
   applyPass,
   distance,
   legalMoves,
   samePos,
   teamOf,
   type GameState,
+  type ItemKind,
   type MeteorSize,
   type Player,
   type Pos,
@@ -18,12 +23,15 @@ import {
 
 export type AiDifficulty = "easy" | "normal" | "hard";
 export type AiDecision =
+  | { type: "setup"; target: Pos; kind: ItemKind }
   | { type: "move"; target: Pos }
   | { type: "meteor"; target: Pos; size: MeteorSize; useCapsule: boolean }
+  | { type: "item"; kind: ItemKind }
   | { type: "pass" }
   | { type: "holo"; target: Pos }
   | { type: "pulse"; target: Pos }
   | { type: "orbit"; ring: number; clockwise: boolean }
+  | { type: "recall"; meteorId: number }
   | { type: "skip" };
 
 type Scored<T> = { value: number; choice: T };
@@ -150,7 +158,8 @@ function placements(state: GameState): Placement[] {
   const occupied = (p: Pos) =>
     samePos(p, center) ||
     activePlayers(state).some((player) => samePos(state.probes[player], p)) ||
-    state.meteors.some((meteor) => samePos(meteor, p));
+    state.meteors.some((meteor) => samePos(meteor, p)) ||
+    activeObstacles(state).some((obstacle) => samePos(obstacle, p));
   const kinds: Array<{ size: MeteorSize; useCapsule: boolean }> = [];
   if (state.inventory[state.turn].small > 0) kinds.push({ size: "small", useCapsule: false });
   if (state.inventory[state.turn].large > 0) kinds.push({ size: "large", useCapsule: false });
@@ -373,6 +382,24 @@ export function chooseAiDecision(
 ): AiDecision {
   if (state.phase === "over") return { type: "skip" };
   const player = state.turn;
+  if (state.phase === "setup") {
+    const own = state.itemHands?.[player] ?? [];
+    const plans: Record<Player, ItemKind[]> = {
+      red: ["booster", "pulse", "shield"],
+      blue: ["holo", "orbit", "shield"],
+      green: ["pulse", "booster", "recall"],
+      yellow: ["orbit", "holo", "booster"],
+    };
+    const planned = plans[player][own.length];
+    const kinds = ([planned, "pulse", "shield", "booster", "orbit", "holo", "recall"] as ItemKind[])
+      .filter((kind) => kind && own.filter((entry) => entry === kind).length < 2);
+    if (!kinds.length) return { type: "skip" };
+    return {
+      type: "setup",
+      kind: kinds[0],
+      target: { r: -1, c: -1 },
+    };
+  }
   if (state.phase === "switch") {
     const pending = state.pendingSwitches?.[0];
     if (!pending) return { type: "skip" };
@@ -408,13 +435,21 @@ export function chooseAiDecision(
           applyPulseSwitch(state, target);
           const rivals = activePlayers(state).filter((p) => !allied(state, p, pending.player));
           const pushes = rivals.filter((p) => distance(state.probes[p], target) === 1).length * 120;
-          const recovery = state.meteors.filter((m) => allied(state, m.owner, pending.player) && distance(m, target) <= 1).length * 35;
-          return [{ choice: target, value: pushes + recovery }];
+          return [{ choice: target, value: pushes }];
         }
         catch { return []; }
       });
       const selected = selectWithDifficulty(ranked, difficulty, random);
       return selected ? { type: "pulse", target: selected.choice } : { type: "skip" };
+    }
+    if (pending.kind === "recall") {
+      const owned = state.meteors.filter((meteor) => meteor.owner === pending.player && !meteor.consumable);
+      const ranked = owned.map((meteor) => ({
+        choice: meteor.id,
+        value: distance(meteor, centerOf(state)) * 8 + (meteor.size === "large" ? 12 : 0),
+      }));
+      const selected = selectWithDifficulty(ranked, difficulty, random);
+      return selected ? { type: "recall", meteorId: selected.choice } : { type: "skip" };
     }
     const options: Array<Scored<{ ring: number; clockwise: boolean }>> = [];
     for (let ring = 1; ring <= Math.floor(state.size / 2); ring += 1) for (const clockwise of [true, false]) {
@@ -447,7 +482,24 @@ export function chooseAiDecision(
       value: scoreResult(applyPass(state), player, difficulty, state) + 5,
     });
   }
+  const itemScores: Partial<Record<ItemKind, number>> = {
+    shield: coreDistance(state, player) <= 3 ? 150 : 65,
+    booster: coreDistance(state, player) <= 5 ? 125 : 72,
+    pulse: 105,
+    orbit: 92,
+    holo: 82,
+    recall: state.inventory[player].small + state.inventory[player].large === 0 ? 18 : 48,
+  };
+  const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
+  for (const kind of usableItems) {
+    const next = applyUseItem(state, kind);
+    ranked.push({
+      choice: { target: { r: -1, c: -1 }, size: "small", useCapsule: false, itemKind: kind } as Placement & { itemKind: ItemKind },
+      value: (itemScores[kind] ?? 50) + (next.phase === "over" ? 100000 : 0),
+    });
+  }
   const selected = selectWithDifficulty(ranked, difficulty, random);
   if (!selected || selected.choice === "pass") return { type: "pass" };
+  if ("itemKind" in selected.choice) return { type: "item", kind: selected.choice.itemKind as ItemKind };
   return { type: "meteor", ...selected.choice };
 }

@@ -5,15 +5,19 @@ import {
   PLAYER_ORDER,
   activeObstacles,
   activePlayers,
+  applySetupItem,
   applyMeteor,
   applyHoloSwitch,
   applyOrbitSwitch,
   applyPulseSwitch,
+  applyRecallItem,
+  applyUseItem,
   applyMove,
   applyObstacle,
   applyPass,
   boardToViewDelta,
   canPlaceObstacle,
+  canUseItem,
   finishTurn,
   initialGameState as initialState,
   legalMoves,
@@ -262,12 +266,14 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit",
+    action: "setup_item" | "use_item" | "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit" | "switch_recall",
     target?: Pos,
     meteorSize?: MeteorSize,
     useCapsule = false,
     ring?: number,
     clockwise?: boolean,
+    itemKind?: ItemKind,
+    meteorId?: number,
   ) => {
     if (mode !== "online" || !online.code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
@@ -281,8 +287,10 @@ function Game() {
         useCapsule,
         ring,
         clockwise,
+        itemKind,
+        meteorId,
       });
-      if ((action === "move" || action === "skip_move") && data.state) {
+      if ((action === "setup_item" || action === "use_item" || action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
       }
@@ -755,9 +763,24 @@ function Game() {
     if (mode === "online") void submitOnlineAction("switch_orbit", undefined, undefined, false, ring, clockwise);
     commit(applyOrbitSwitch(game, ring, clockwise));
   };
+  const resolveRecall = (meteorId: number) => {
+    const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    showSwitchFx("recall", player);
+    if (mode === "online") void submitOnlineAction("switch_recall", undefined, undefined, false, undefined, undefined, undefined, meteorId);
+    commit(applyRecallItem(game, meteorId));
+  };
+  const useItem = (kind: ItemKind) => {
+    if (!canControl || !canUseItem(game, kind)) return;
+    try {
+      showSwitchFx(kind, game.turn);
+      if (mode === "online") void submitOnlineAction("use_item", undefined, undefined, false, undefined, undefined, kind);
+      commit(applyUseItem(game, kind));
+    } catch { return; }
+  };
 
   const handleCell = (r: number, c: number) => {
     if (isAnimating) return;
+    if (game.phase === "setup") return;
     if (game.phase === "move") moveProbe({ r, c });
     if (game.phase === "place") {
       if (game.selected === "obstacle") placeObstacle({ r, c });
@@ -768,6 +791,10 @@ function Game() {
       try {
         if (kind === "holo") resolveHolo({ r, c });
         if (kind === "pulse") resolvePulse({ r, c });
+        if (kind === "recall") {
+          const meteor = game.meteors.find((entry) => entry.r === r && entry.c === c);
+          if (meteor) resolveRecall(meteor.id);
+        }
       } catch { return; }
     }
   };
@@ -923,8 +950,12 @@ function Game() {
     );
 
   const validPlacement = (r: number, c: number) =>
-    game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
+    game.phase === "setup"
+      ? false
+      : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
+      : game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "recall"
+      ? game.meteors.some((meteor) => meteor.r === r && meteor.c === c && meteor.owner === game.turn && !meteor.consumable)
       : game.selected === "obstacle"
       ? validObstaclePlacement(r, c)
       : validBasePlacement(r, c);
@@ -1072,11 +1103,29 @@ function Game() {
       game.phase === "over"
     ) return;
     const timer = window.setTimeout(() => {
+      if (game.phase === "setup") {
+        const hand = game.itemHands?.[game.turn] ?? [];
+        const plans: Record<Player, ItemKind[]> = {
+          red: ["booster", "pulse", "shield"],
+          blue: ["holo", "orbit", "shield"],
+          green: ["pulse", "booster", "recall"],
+          yellow: ["orbit", "holo", "booster"],
+        };
+        const kind = plans[game.turn][hand.length];
+        if (kind) {
+          const next = applySetupItem(game, kind);
+          if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, kind);
+          commit(next);
+        }
+        return;
+      }
       const decision = chooseAiDecision(game, aiDifficulty);
       if (decision.type === "move") {
         moveProbe(decision.target);
       } else if (decision.type === "meteor") {
         placeMeteor(decision.target, decision.size, decision.useCapsule);
+      } else if (decision.type === "item") {
+        useItem(decision.kind);
       } else if (decision.type === "pass") {
         passPlacement();
       } else if (decision.type === "holo") {
@@ -1085,11 +1134,13 @@ function Game() {
         resolvePulse(decision.target);
       } else if (decision.type === "orbit") {
         resolveOrbit(decision.ring, decision.clockwise);
+      } else if (decision.type === "recall") {
+        resolveRecall(decision.meteorId);
       } else if (game.phase === "move") {
         skipBlockedMove();
       }
       return;
-    }, game.bonusMove ? Math.max(420, aiSpeed) : aiSpeed);
+    }, game.phase === "setup" ? 30 : game.bonusMove ? Math.max(420, aiSpeed) : aiSpeed);
     return () => window.clearTimeout(timer);
   }, [
     game,
@@ -1224,10 +1275,23 @@ function Game() {
                 perspectiveSlot,
               );
               const pos = { r, c };
+              const setupSlot = false;
+              const setupRejected = setupSlot &&
+                (game.setupRejected?.[game.turn] ?? []).some((cell) => samePos(cell, pos));
+              const setupZone = setupSlot
+                ? ((r === 5 || r === 9) && (c === 5 || c === 9)
+                    ? "inner"
+                    : (r === 2 || r === 12) && (c === 2 || c === 12)
+                      ? "outer"
+                      : "middle")
+                : null;
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
-              const fieldItem = game.fieldItems?.find((item) => samePos(item, pos));
+              const visibleItems = game.phase === "setup"
+                ? (game.setupPlacements?.[game.turn] ?? [])
+                : game.fieldItems;
+              const fieldItem = visibleItems.find((item) => samePos(item, pos));
               const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
               const legal =
                 canControl &&
@@ -1242,12 +1306,20 @@ function Game() {
                     r === mid && c === mid ? "core" : "",
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",
+                    setupSlot ? `setup-slot setup-${setupZone}` : "",
+                    setupRejected ? "setup-rejected" : "",
                   ].join(" ")}
                   onClick={() => handleCell(r, c)}
                   disabled={game.phase === "over" || (!legal && !placeable)}
                   aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}`}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
+                  {setupSlot && (
+                    <span className="setup-slot-label" aria-hidden="true">
+                      <b>{r + 1},{c + 1}</b>
+                      <i>{setupRejected ? "×" : setupZone === "inner" ? "内" : setupZone === "middle" ? "中" : "外"}</i>
+                    </span>
+                  )}
                   {blastFx && samePos(pos, blastFx.target) && (
                     <>
                       {blastFx.stage === "probe" && (
@@ -1311,6 +1383,35 @@ function Game() {
           </div>
 
           <div className="action-panel">
+            {game.phase === "setup" && (
+              <div className="switch-setup-controls">
+                <span className="action-label">6種類から3つ選び、好きなマスへ配置</span>
+                <span className="setup-zone-legend" aria-label="配置エリアの色分け">
+                  <i className="inner">内側</i><i className="middle">中間</i><i className="outer">外側</i>
+                </span>
+                {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
+                  <button
+                    key={kind}
+                    className={`meteor-choice ${(game.itemHands?.[game.turn] ?? []).includes(kind) ? "selected" : ""}`}
+                    disabled={!canControl || (game.itemHands?.[game.turn] ?? []).filter((entry) => entry === kind).length >= 2}
+                    onClick={() => {
+                      try {
+                        const next = applySetupItem(game, kind);
+                        if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, kind);
+                        commit(next);
+                      } catch { return; }
+                    }}
+                  >
+                    {kind.toUpperCase()}
+                  </button>
+                ))}
+                <b>
+                  {(game.setupPending?.[game.turn]?.length ?? 0) > 0
+                    ? `重複 ${game.setupPending?.[game.turn]?.length ?? 0}個を再配置`
+                    : `${game.setupPlacements?.[game.turn]?.length ?? 0} / 3 配置済み`}
+                </b>
+              </div>
+            )}
             {game.phase === "place" && (
               <>
                 <span className="action-label">配置するメテオ</span>
@@ -1344,6 +1445,17 @@ function Game() {
                 >
                   配置しない <b>{game.passAvailable?.[game.turn] ?? true ? 1 : 0}</b>
                 </button>
+                {game.variant === "item" && (game.itemHands?.[game.turn] ?? []).map((kind, index) => (
+                  <button
+                    key={`${kind}-${index}`}
+                    className={`meteor-choice item-choice ${kind}`}
+                    disabled={!canUseItem(game, kind)}
+                    onClick={() => useItem(kind)}
+                    title="使用すると、この手番はメテオを配置できません"
+                  >
+                    {kind.toUpperCase()}
+                  </button>
+                ))}
               </>
             )}
             {game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "orbit" && (
@@ -1789,7 +1901,7 @@ function Game() {
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
             <p><b>SWITCH</b> 6種類。踏んだ瞬間に発動し、取得後2〜4ターンで別の場所へ再出現します。</p>
-            <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / SUPPLY。選択式は発動したプレイヤーが対象を決めます。</p>
+            <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / RECALL。対戦前に3個選び、メテオ配置の代わりに1個使用します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
           </div>

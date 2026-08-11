@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, finishTurn, initialGameState, legalMoves, type GameVariant, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, finishTurn, initialGameState, legalMoves, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +139,10 @@ export async function POST(request: Request) {
     nickname?: string;
     variant?: GameVariant;
     useCapsule?: boolean;
+    itemKind?: ItemKind;
+    ring?: number;
+    clockwise?: boolean;
+    meteorId?: number;
   };
 
   if (body.action === "create") {
@@ -478,7 +482,11 @@ export async function POST(request: Request) {
   try {
     let nextState;
     let effect = null;
-    if (body.action === "move" && body.target) {
+    if (body.action === "setup_item" && body.itemKind) {
+      nextState = applySetupItem(state, body.itemKind);
+    } else if (body.action === "use_item" && body.itemKind) {
+      nextState = applyUseItem(state, body.itemKind);
+    } else if (body.action === "move" && body.target) {
       nextState = applyMove(state, body.target);
     } else if (
       body.action === "skip_move" &&
@@ -509,6 +517,8 @@ export async function POST(request: Request) {
       nextState = applyPulseSwitch(state, body.target);
     } else if (body.action === "switch_orbit") {
       nextState = applyOrbitSwitch(state, Number(body.ring), Boolean(body.clockwise));
+    } else if (body.action === "switch_recall") {
+      nextState = applyRecallItem(state, Number(body.meteorId));
     } else {
       return json({ error: "操作が正しくありません" }, 400);
     }
