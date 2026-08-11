@@ -97,7 +97,7 @@ function positionValue(state: GameState, player: Player) {
   if (terminal !== null) return terminal;
   const players = activePlayers(state);
   const style =
-    players.length === 2 || isItemVariant(state.variant)
+    players.length === 2 || isItemVariant(state.variant) || isTeamVariant(state.variant)
       ? { progress: 1, denial: 1, items: 1, resources: 1 }
       : personality(player);
   const friends = players.filter((p) => allied(state, p, player));
@@ -284,15 +284,13 @@ function earlyPlacementStrategyBonus(state: GameState, placement: Placement, nex
       c: center.c + Math.sign(probe.c - center.c),
     });
   });
-  const survivesAsObstacle = next.meteors.some((meteor) =>
-    meteor.owner === player && samePos(meteor, placement.target),
+  const survivesAsObstacle = next.meteors.some(
+    (meteor) => meteor.owner === player && samePos(meteor, placement.target),
   );
   const openingCycle = state.turnCount < activePlayers(state).length;
   const openingHarassmentPenalty =
     openingCycle && rivalSetback > 0 && ownAdvance <= 0 ? 2_500 : 0;
 
-  // 序盤は目先の押し戻しより、自分を進める爆風かCORE手前の布石を優先する。
-  // これにより広い盤面で互いを端へ戻し続ける展開を避ける。
   return (
     ownAdvance * 90 +
     (isFutureGate && survivesAsObstacle ? 46 : 0) -
@@ -354,7 +352,16 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
         const next = applyMove(probe, move);
         return wonBy(next, rival) || coreDistance(next, rival) <= 2;
       });
-      if (canEnterAttackRange) penalty += resources > 0 ? 4_500 : 1_800;
+      if (canEnterAttackRange) {
+        // In a four-probe race, treating every distance-three approach as an
+        // emergency makes all AIs defend at once and stretches matches without
+        // adding meaningful choices. Keep the warning strong in a duel, but
+        // let multiplayer AIs continue racing until a real one-turn threat.
+        const multiplayer = activePlayers(state).length >= 4;
+        penalty += resources > 0
+          ? (multiplayer ? 1_350 : 4_500)
+          : (multiplayer ? 550 : 1_800);
+      }
     }
   }
   return penalty;
@@ -369,6 +376,15 @@ function scoreResult(
   const terminal = terminalValue(state, player);
   if (terminal !== null) return terminal;
   let score = positionValue(state, player) - threatPenalty(state, player, difficulty);
+  if (difficulty === "hard" && activePlayers(state).length >= 4) {
+    // HARD still needs to close the race. Once a match has had enough time to
+    // develop, steadily increase the value of the AI's own forward progress so
+    // perfect-looking defensive exchanges do not repeat indefinitely.
+    const overtime = Math.max(0, state.turnCount - activePlayers(state).length * 4);
+    const span = Math.max(1, state.size - 1);
+    const ownProgress = (span * 2 - coreDistance(state, player)) / (span * 2);
+    score += overtime * ownProgress * 14;
+  }
   if (previous) {
     for (const candidate of activePlayers(state)) {
       if (
@@ -528,8 +544,12 @@ function selectWithDifficulty<T>(
     const alternatives = ranked.slice(1, 5).filter((entry) => ranked[0].value - entry.value <= 18);
     return alternatives[Math.floor(random() * alternatives.length)] ?? ranked[0];
   }
-  const width = difficulty === "easy" ? Math.min(5, ranked.length) : Math.min(2, ranked.length);
-  const tolerance = difficulty === "easy" ? 70 : 12;
+  const width = difficulty === "easy"
+    ? Math.min(5, ranked.length)
+    : creative
+      ? Math.min(3, ranked.length)
+      : Math.min(2, ranked.length);
+  const tolerance = difficulty === "easy" ? 70 : creative ? 24 : 12;
   const safe = ranked.slice(0, width).filter((x) => ranked[0].value - x.value <= tolerance);
   return safe[Math.floor(random() * safe.length)] ?? ranked[0];
 }

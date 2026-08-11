@@ -262,7 +262,7 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   return { state, moves, retreats };
 }
 
-const scenarios: Array<{ variant: GameVariant; size: number; count: number }> = [
+const allScenarios: Array<{ variant: GameVariant; size: number; count: number }> = [
   { variant: "classic", size: 9, count: 2 },
   { variant: "classic", size: 11, count: 4 },
   { variant: "team", size: 13, count: 4 },
@@ -270,6 +270,10 @@ const scenarios: Array<{ variant: GameVariant; size: number; count: number }> = 
   { variant: "item", size: 15, count: 4 },
   { variant: "team-item", size: 15, count: 4 },
 ];
+const scenarioFilter = process.env.AI_LAB_SCENARIO;
+const scenarios = scenarioFilter
+  ? allScenarios.filter(({ variant, size }) => `${variant}-${size}` === scenarioFilter)
+  : allScenarios;
 
 const requestedDifficulty = process.argv[2] as AiDifficulty | undefined;
 const difficulties: AiDifficulty[] = requestedDifficulty
@@ -282,20 +286,25 @@ for (const difficulty of difficulties) {
     let turns = 0;
     let moves = 0;
     let retreats = 0;
-    const games = 4;
+    const games = Math.max(1, Number(process.env.AI_LAB_GAMES ?? 4));
     for (let index = 0; index < games; index += 1) {
       const players = (["red", "blue", "green", "yellow"] as Player[]).slice(0, scenario.count);
       const first = players[index % players.length];
+      // Starting player and board rotation must vary independently. Coupling the
+      // two makes a colour look stronger when the real cause is one favourable
+      // first-player/starting-side combination.
+      const layoutOffset = Math.floor(index / players.length) % 4;
+      const initial = initialGameState(
+        scenario.size,
+        first,
+        scenario.count,
+        false,
+        layoutOffset,
+        players,
+        scenario.variant,
+      );
       const result = play(
-        initialGameState(
-          scenario.size,
-          first,
-          scenario.count,
-          false,
-          index % 4,
-          players,
-          scenario.variant,
-        ),
+        { ...initial, itemSeed: 4001 + index * 104729 + scenario.size * 101 },
         difficulty,
         1009 + index * 7919 + scenario.size * 101,
       );
