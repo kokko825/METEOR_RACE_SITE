@@ -146,6 +146,31 @@ import {
 }
 
 {
+  for (const difficulty of ["easy", "normal", "hard"] as const) {
+    const state = initialGameState(15, "red", 2, false, 0, [], "item");
+    state.turn = "blue";
+    state.turnCount = 1;
+    state.phase = "place";
+    const decision = chooseAiDecision(state, difficulty, () => 0.99);
+    if (decision.type !== "meteor") continue;
+    const beforeOwn = Math.abs(state.probes.blue.r - 7) + Math.abs(state.probes.blue.c - 7);
+    const beforeRival = Math.abs(state.probes.red.r - 7) + Math.abs(state.probes.red.c - 7);
+    const after = applyMeteor(
+      state,
+      decision.target,
+      decision.size,
+      decision.useCapsule,
+    ).state;
+    const afterOwn = Math.abs(after.probes.blue.r - 7) + Math.abs(after.probes.blue.c - 7);
+    const afterRival = Math.abs(after.probes.red.r - 7) + Math.abs(after.probes.red.c - 7);
+    assert.ok(
+      afterRival <= beforeRival || afterOwn < beforeOwn,
+      `${difficulty} AI must not spend its opening meteor only to blast a distant rival`,
+    );
+  }
+}
+
+{
   let state = initialGameState(15, "red", 4, false, 0, [], "item");
   state.turnCount = 8;
   state.phase = "place";

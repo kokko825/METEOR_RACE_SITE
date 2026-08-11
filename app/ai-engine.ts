@@ -258,10 +258,10 @@ function plannedRecallBonus(state: GameState, placement: Placement, next: GameSt
 }
 
 function earlyItemDevelopment(state: GameState, player: Player) {
-  if (state.variant !== "item" || coreDistance(state, player) <= 6) return false;
+  if (state.variant !== "item" || coreDistance(state, player) <= 4) return false;
   return activePlayers(state)
     .filter((candidate) => !allied(state, candidate, player))
-    .every((rival) => coreDistance(state, rival) > 5);
+    .every((rival) => coreDistance(state, rival) > 4);
 }
 
 function earlyPlacementStrategyBonus(state: GameState, placement: Placement, next: GameState) {
@@ -285,10 +285,18 @@ function earlyPlacementStrategyBonus(state: GameState, placement: Placement, nex
   const survivesAsObstacle = next.meteors.some((meteor) =>
     meteor.owner === player && samePos(meteor, placement.target),
   );
+  const openingCycle = state.turnCount < activePlayers(state).length;
+  const openingHarassmentPenalty =
+    openingCycle && rivalSetback > 0 && ownAdvance <= 0 ? 2_500 : 0;
 
   // 序盤は目先の押し戻しより、自分を進める爆風かCORE手前の布石を優先する。
   // これにより広い盤面で互いを端へ戻し続ける展開を避ける。
-  return ownAdvance * 70 + (isFutureGate && survivesAsObstacle ? 46 : 0) - rivalSetback * 42;
+  return (
+    ownAdvance * 90 +
+    (isFutureGate && survivesAsObstacle ? 46 : 0) -
+    rivalSetback * 70 -
+    openingHarassmentPenalty
+  );
 }
 
 function isImmediateWinAvailable(state: GameState, player: Player): boolean {
