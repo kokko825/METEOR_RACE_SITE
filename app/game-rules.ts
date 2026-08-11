@@ -462,6 +462,8 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
         !state.meteors.some((meteor) => samePos(meteor, target)) &&
         !activeObstacles(state).some((obstacle) => samePos(obstacle, target));
       if (!legal) break;
+      const mid = Math.floor(state.size / 2);
+      if (step > 1 && target.r === mid && target.c === mid) break;
       moves.push(target);
     }
   });

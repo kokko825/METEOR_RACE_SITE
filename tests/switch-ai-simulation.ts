@@ -22,7 +22,7 @@ const wins = { red: 0, blue: 0, green: 0, yellow: 0, draw: 0 };
 let totalTurns = 0;
 const games = 20;
 for (let gameIndex = 0; gameIndex < games; gameIndex += 1) {
-  let state = initialGameState(15, ["red", "blue", "green", "yellow"][gameIndex % 4] as GameState["turn"], 4, false, 0, ["red", "blue", "green", "yellow"], "item");
+  let state = initialGameState(15, ["red", "blue", "green", "yellow"][gameIndex % 4] as GameState["turn"], 4, false, gameIndex % 4, ["red", "blue", "green", "yellow"], "item");
   let actions = 0;
   while (state.phase !== "over" && actions < 600) { state = step(state); actions += 1; }
   assert.equal(state.phase, "over", `game ${gameIndex + 1} must finish`);

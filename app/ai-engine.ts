@@ -61,10 +61,10 @@ function terminalValue(state: GameState, player: Player) {
 }
 
 function personality(player: Player) {
-  if (player === "red") return { progress: 1.06, denial: 0.99, items: 0.98, resources: 0.99 };
-  if (player === "blue") return { progress: 0.99, denial: 1.06, items: 0.99, resources: 1.01 };
-  if (player === "green") return { progress: 1, denial: 0.99, items: 1.08, resources: 0.99 };
-  return { progress: 0.99, denial: 1.01, items: 0.99, resources: 1.08 };
+  if (player === "red") return { progress: 1.04, denial: 1, items: 1, resources: 1 };
+  if (player === "blue") return { progress: 1.02, denial: 1.04, items: 1, resources: 1.01 };
+  if (player === "green") return { progress: 1.02, denial: 1, items: 1.05, resources: 1 };
+  return { progress: 1.02, denial: 1.02, items: 1, resources: 1.05 };
 }
 
 function itemValue(state: GameState, player: Player, kind: GameState["fieldItems"][number]["kind"]) {
@@ -341,7 +341,7 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
   // Outside ITEM mode, voluntarily moving away from the CORE is almost never
   // worth a tempo. A large penalty removes routine retreating while still
   // allowing a forced defensive retreat or a move-plus-blast win to outweigh it.
-  const retreatPenalty = state.variant === "item" ? 0 : backwardSteps * 260;
+  const retreatPenalty = state.variant === "item" ? backwardSteps * 95 : backwardSteps * 260;
   let next = applyMove(state, move);
   if (next.phase === "place" && next.turn === player) {
     const placed = bestPlacement(next, player, difficulty);
@@ -386,9 +386,9 @@ export function chooseAiDecision(
     const own = state.itemHands?.[player] ?? [];
     const plans: Record<Player, ItemKind[]> = {
       red: ["booster", "pulse", "shield"],
-      blue: ["holo", "orbit", "shield"],
-      green: ["pulse", "booster", "recall"],
-      yellow: ["orbit", "holo", "booster"],
+      blue: ["holo", "shield", "pulse"],
+      green: ["recall", "booster", "orbit"],
+      yellow: ["orbit", "holo", "pulse"],
     };
     const planned = plans[player][own.length];
     const kinds = ([planned, "pulse", "shield", "booster", "orbit", "holo", "recall"] as ItemKind[])
@@ -432,10 +432,10 @@ export function chooseAiDecision(
     if (pending.kind === "pulse") {
       const ranked = cells.flatMap((target) => {
         try {
-          applyPulseSwitch(state, target);
+          const next = applyPulseSwitch(state, target);
           const rivals = activePlayers(state).filter((p) => !allied(state, p, pending.player));
           const pushes = rivals.filter((p) => distance(state.probes[p], target) === 1).length * 120;
-          return [{ choice: target, value: pushes }];
+          return [{ choice: target, value: scoreResult(next, pending.player, difficulty, state) + pushes * 0.15 }];
         }
         catch { return []; }
       });
@@ -482,13 +482,17 @@ export function chooseAiDecision(
       value: scoreResult(applyPass(state), player, difficulty, state) + 5,
     });
   }
+  const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
+  const nearestRivalCore = Math.min(...rivals.map((candidate) => coreDistance(state, candidate)));
+  const ownedMeteors = state.meteors.filter((meteor) => meteor.owner === player && !meteor.consumable);
+  const staleMeteor = ownedMeteors.some((meteor) => distance(meteor, centerOf(state)) >= 5);
   const itemScores: Partial<Record<ItemKind, number>> = {
-    shield: coreDistance(state, player) <= 3 ? 150 : 65,
-    booster: coreDistance(state, player) <= 5 ? 125 : 72,
-    pulse: 105,
-    orbit: 92,
-    holo: 82,
-    recall: state.inventory[player].small + state.inventory[player].large === 0 ? 18 : 48,
+    shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 132 : 58,
+    booster: coreDistance(state, player) <= 5 ? 108 : 68,
+    pulse: nearestRivalCore <= 3 ? 126 : 88,
+    orbit: nearestRivalCore <= 4 ? 116 : 82,
+    holo: nearestRivalCore <= 4 ? 122 : 70,
+    recall: staleMeteor ? 96 : state.inventory[player].small + state.inventory[player].large === 0 ? 22 : 62,
   };
   const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
   for (const kind of usableItems) {

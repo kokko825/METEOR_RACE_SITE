@@ -1107,9 +1107,9 @@ function Game() {
         const hand = game.itemHands?.[game.turn] ?? [];
         const plans: Record<Player, ItemKind[]> = {
           red: ["booster", "pulse", "shield"],
-          blue: ["holo", "orbit", "shield"],
-          green: ["pulse", "booster", "recall"],
-          yellow: ["orbit", "holo", "booster"],
+          blue: ["holo", "shield", "pulse"],
+          green: ["recall", "booster", "orbit"],
+          yellow: ["orbit", "holo", "pulse"],
         };
         const kind = plans[game.turn][hand.length];
         if (kind) {
@@ -1385,14 +1385,11 @@ function Game() {
           <div className="action-panel">
             {game.phase === "setup" && (
               <div className="switch-setup-controls">
-                <span className="action-label">6種類から3つ選び、好きなマスへ配置</span>
-                <span className="setup-zone-legend" aria-label="配置エリアの色分け">
-                  <i className="inner">内側</i><i className="middle">中間</i><i className="outer">外側</i>
-                </span>
+                <span className="action-label">持ち込むアイテムを3個選択（同じ種類は2個まで）</span>
                 {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
-                    className={`meteor-choice ${(game.itemHands?.[game.turn] ?? []).includes(kind) ? "selected" : ""}`}
+                    className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[game.turn] ?? []).includes(kind) ? "selected" : ""}`}
                     disabled={!canControl || (game.itemHands?.[game.turn] ?? []).filter((entry) => entry === kind).length >= 2}
                     onClick={() => {
                       try {
@@ -1402,13 +1399,13 @@ function Game() {
                       } catch { return; }
                     }}
                   >
-                    {kind.toUpperCase()}
+                    <ItemIcon kind={kind} />
+                    <span>{kind.toUpperCase()}</span>
+                    <b>{(game.itemHands?.[game.turn] ?? []).filter((entry) => entry === kind).length}</b>
                   </button>
                 ))}
                 <b>
-                  {(game.setupPending?.[game.turn]?.length ?? 0) > 0
-                    ? `重複 ${game.setupPending?.[game.turn]?.length ?? 0}個を再配置`
-                    : `${game.setupPlacements?.[game.turn]?.length ?? 0} / 3 配置済み`}
+                  {`${game.itemHands?.[game.turn]?.length ?? 0} / 3 選択済み`}
                 </b>
               </div>
             )}
@@ -1429,15 +1426,6 @@ function Game() {
                 >
                   ✦ 大 <b>{game.inventory[game.turn].large}</b>
                 </button>
-                {game.variant === "item" && (
-                  <button
-                    className={`meteor-choice capsule ${game.selected === "capsule" ? "selected" : ""}`}
-                    disabled={(game.capsuleMeteors?.[game.turn] ?? 0) === 0}
-                    onClick={() => setGame((g) => ({ ...g, selected: "capsule" }))}
-                  >
-                    ●+ 使い捨て <b>{game.capsuleMeteors?.[game.turn] ?? 0}</b>
-                  </button>
-                )}
                 <button
                   className="meteor-choice pass-choice"
                   disabled={!(game.passAvailable?.[game.turn] ?? true)}
@@ -1453,7 +1441,8 @@ function Game() {
                     onClick={() => useItem(kind)}
                     title="使用すると、この手番はメテオを配置できません"
                   >
-                    {kind.toUpperCase()}
+                    <ItemIcon kind={kind} />
+                    <span>{kind.toUpperCase()}</span>
                   </button>
                 ))}
               </>
@@ -1900,8 +1889,8 @@ function Game() {
             <p><b>BLAST</b> 小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。</p>
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
-            <p><b>SWITCH</b> 6種類。踏んだ瞬間に発動し、取得後2〜4ターンで別の場所へ再出現します。</p>
-            <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / RECALL。対戦前に3個選び、メテオ配置の代わりに1個使用します。</p>
+            <p><b>ITEM</b> 対戦前に3個を選択。同じ種類は2個まで持ち込めます。</p>
+            <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
           </div>
@@ -1913,6 +1902,19 @@ function Game() {
       </section>
     </main>
   );
+}
+
+const ITEM_ICONS: Record<ItemKind, string> = {
+  shield: "⬡",
+  booster: "▲",
+  holo: "▣",
+  orbit: "↻",
+  pulse: "✦",
+  recall: "↩",
+};
+
+function ItemIcon({ kind }: { kind: ItemKind }) {
+  return <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>;
 }
 
 function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {
