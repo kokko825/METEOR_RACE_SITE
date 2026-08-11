@@ -105,7 +105,6 @@ function positionValue(state: GameState, player: Player) {
   const friendProgress = Math.max(...friends.map(progress));
   const rivalProgress = Math.max(...rivals.map(progress));
   const rivalPressure = rivals.reduce((sum, p) => sum + progress(p), 0) / Math.max(1, rivals.length);
-
   let score =
     friendProgress * 620 * style.progress -
     rivalProgress * 510 * style.denial -
@@ -258,6 +257,13 @@ function plannedRecallBonus(state: GameState, placement: Placement, next: GameSt
   return 22 + (placement.size === "large" ? 10 : 0) + (nearRival ? 8 : 0) + (routeSetup ? 6 : 0);
 }
 
+function earlyItemDevelopment(state: GameState, player: Player) {
+  if (state.variant !== "item" || coreDistance(state, player) <= 6) return false;
+  return activePlayers(state)
+    .filter((candidate) => !allied(state, candidate, player))
+    .every((rival) => coreDistance(state, rival) > 5);
+}
+
 function isImmediateWinAvailable(state: GameState, player: Player): boolean {
   if (state.phase === "over") return wonBy(state, player);
   const probe: GameState = { ...state, turn: player, phase: "move", bonusMove: false };
@@ -355,7 +361,10 @@ function bestPlacement(
   }
   if (state.passAvailable?.[state.turn] ?? true) {
     const next = applyPass(state);
-    options.push({ choice: "pass", value: scoreResult(next, player, difficulty, state) + 5 });
+    options.push({
+      choice: "pass",
+      value: scoreResult(next, player, difficulty, state) + (earlyItemDevelopment(state, player) ? 18 : 5),
+    });
   }
   return options.sort((a, b) => b.value - a.value)[0] ?? { choice: "pass", value: -1_000_000 };
 }
@@ -375,22 +384,28 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
   // worth a tempo. A large penalty removes routine retreating while still
   // allowing a forced defensive retreat or a move-plus-blast win to outweigh it.
   const retreatPenalty = state.variant === "item" ? backwardSteps * 95 : backwardSteps * 260;
+  const inwardSteps = Math.max(
+    0,
+    coreDistance(state, player) -
+      coreDistance({ ...state, probes: { ...state.probes, [player]: move } }, player),
+  );
+  const developmentBonus = earlyItemDevelopment(state, player) ? inwardSteps * 34 : 0;
   let next = applyMove(state, move);
   if (next.phase === "place" && next.turn === player) {
     const placed = bestPlacement(next, player, difficulty);
     next = placed.choice === "pass" ? applyPass(next) : applyPlacement(next, placed.choice);
-    return placed.value + pickupScore - retreatPenalty;
+    return placed.value + pickupScore + developmentBonus - retreatPenalty;
   }
   let score = scoreResult(next, player, difficulty);
   // The item disappears and respawns after a delay, so retain the pickup reward
   // explicitly instead of relying only on the resulting board position.
-  score += pickupScore - retreatPenalty;
+  score += pickupScore + developmentBonus - retreatPenalty;
   // A bonus move is deliberately valued as part of the same turn, not as a generic reward.
   if (next.phase === "move" && next.turn === player && next.bonusMove) {
     const continuation = legalMoves(next, player)
       .map((second) => scoreResult(applyMove(next, second), player, difficulty))
       .sort((a, b) => b - a)[0];
-    if (continuation !== undefined) score = continuation + pickupScore - retreatPenalty;
+    if (continuation !== undefined) score = continuation + pickupScore + developmentBonus - retreatPenalty;
   }
   return score;
 }
@@ -550,7 +565,9 @@ export function chooseAiDecision(
   if (state.passAvailable?.[player] ?? true) {
     ranked.push({
       choice: "pass",
-      value: scoreResult(applyPass(state), player, difficulty, state) + 5,
+      value:
+        scoreResult(applyPass(state), player, difficulty, state) +
+        (earlyItemDevelopment(state, player) ? 18 : 5),
     });
   }
   const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
