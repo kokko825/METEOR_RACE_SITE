@@ -255,7 +255,7 @@ console.log("game-rules: all checks passed");
   let item = initialGameState(11, "red", 2, false, 0, [], "item");
   assert.equal(item.size, 15);
   assert.equal(item.phase, "setup");
-  assert.equal(item.fieldItems.length, 0, "開始前はスイッチを自動配置しない");
+  assert.equal(item.fieldItems.length, 0, "開始前はアイテムを自動配置しない");
   assert.throws(() => applySetupSwitch(item, { r: 4, c: 4 }, "shield"), /配置できません/);
   item = applySetupSwitch(item, { r: 3, c: 3 }, "shield");
   item = applySetupSwitch(item, { r: 5, c: 5 }, "orbit");

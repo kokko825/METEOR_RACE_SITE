@@ -1245,7 +1245,7 @@ function Game() {
             <div key={switchFx.nonce} className={`switch-activation ${switchFx.kind} ${switchFx.player}`} role="status">
               <span className="switch-burst" />
               <b>{switchFx.kind.toUpperCase()}</b>
-              <small>SWITCH ACTIVATED</small>
+              <small>ITEM ACTIVATED</small>
             </div>
           )}
           <div className={`turn-callout ${displayAccent}`} aria-live="polite">
@@ -1534,7 +1534,7 @@ function Game() {
             >
               <option value="classic">CLASSIC</option>
               <option value="team">2 VS 2 TEAM</option>
-              <option value="item">SWITCH 15 × 15</option>
+              <option value="item">アイテム戦 15 × 15</option>
             </select>
           </label>
           <label>

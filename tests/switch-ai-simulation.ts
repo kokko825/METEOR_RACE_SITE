@@ -3,8 +3,8 @@ import { chooseAiDecision } from "../app/ai-engine";
 import { applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, finishTurn, initialGameState, legalMoves, type GameState } from "../app/game-rules";
 
 const itemUses: Record<string, number> = {};
-function step(state: GameState): GameState {
-  const d = chooseAiDecision(state, "hard", () => 0.73);
+function step(state: GameState, random: () => number): GameState {
+  const d = chooseAiDecision(state, "hard", random);
   if (d.type === "setup") return applySetupItem(state, d.kind);
   if (d.type === "move") return applyMove(state, d.target);
   if (d.type === "meteor") return applyMeteor(state, d.target, d.size, d.useCapsule).state;
@@ -20,11 +20,21 @@ function step(state: GameState): GameState {
 
 const wins = { red: 0, blue: 0, green: 0, yellow: 0, draw: 0 };
 let totalTurns = 0;
-const games = 20;
+const games = Number(process.env.SIM_GAMES ?? 20);
+const offset = Number(process.env.SIM_OFFSET ?? 0);
 for (let gameIndex = 0; gameIndex < games; gameIndex += 1) {
-  let state = initialGameState(15, ["red", "blue", "green", "yellow"][gameIndex % 4] as GameState["turn"], 4, false, gameIndex % 4, ["red", "blue", "green", "yellow"], "item");
+  const gameNumber = offset + gameIndex;
+  let seed = (gameNumber + 1) * 0x9e3779b1;
+  const random = () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let value = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+  let state = initialGameState(15, ["red", "blue", "green", "yellow"][gameNumber % 4] as GameState["turn"], 4, false, gameNumber % 4, ["red", "blue", "green", "yellow"], "item");
   let actions = 0;
-  while (state.phase !== "over" && actions < 600) { state = step(state); actions += 1; }
+  while (state.phase !== "over" && actions < 600) { state = step(state, random); actions += 1; }
   assert.equal(state.phase, "over", `game ${gameIndex + 1} must finish`);
   assert.ok(!state.pendingSwitches?.length, `game ${gameIndex + 1} must resolve every switch`);
   wins[state.winner ?? "draw"] += 1;
