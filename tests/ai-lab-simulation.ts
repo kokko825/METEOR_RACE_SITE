@@ -184,6 +184,46 @@ import {
   assert.deepEqual(target, { type: "recall", meteorId: 99 }, "RECALL should select the most valuable recoverable meteor");
 }
 
+{
+  const state = initialGameState(15, "red", 2, false, 0, [], "item");
+  state.turnCount = 5;
+  state.phase = "place";
+  state.itemHands.red = ["orbit"];
+  state.inventory.red = { small: 0, large: 0 };
+  state.fieldItems = [];
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.notDeepEqual(
+    decision,
+    { type: "item", kind: "orbit" },
+    "AI must preserve ORBIT when every rotation is tactically neutral",
+  );
+}
+
+{
+  let state = initialGameState(15, "red", 2, false, 0, [], "item");
+  state.turnCount = 5;
+  state.phase = "place";
+  state.itemHands.red = ["orbit"];
+  state.inventory.red = { small: 0, large: 0 };
+  state.probes.red = { r: 13, c: 7 };
+  state.probes.blue = { r: 1, c: 7 };
+  state.fieldItems = [{ r: 7, c: 2, kind: "shield", id: 77 }];
+  const use = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(use, { type: "item", kind: "orbit" }, "AI should use ORBIT for a large item-access swing");
+  state = applyUseItem(state, "orbit");
+  const target = chooseAiDecision(state, "hard", () => 0);
+  assert.equal(target.type, "orbit");
+  if (target.type === "orbit") {
+    const after = applyOrbitSwitch(state, target.ring, target.clockwise);
+    assert.ok(
+      Math.abs(after.probes.red.r - after.fieldItems[0].r) +
+        Math.abs(after.probes.red.c - after.fieldItems[0].c) <=
+        1,
+      "ORBIT should rotate either the probe or item into immediate pickup range",
+    );
+  }
+}
+
 function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
   let moves = 0;

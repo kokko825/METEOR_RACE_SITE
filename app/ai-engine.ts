@@ -381,6 +381,71 @@ function scoreResult(
   return score;
 }
 
+function probeMobility(state: GameState, player: Player) {
+  if (state.phase === "over") return 0;
+  const probe: GameState = { ...state, turn: player, phase: "move", bonusMove: false };
+  return legalMoves(probe, player).length;
+}
+
+function meteorPressure(state: GameState, player: Player) {
+  const friends = activePlayers(state).filter((candidate) => allied(state, candidate, player));
+  const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
+  return state.meteors.reduce((sum, meteor) => {
+    const targets = allied(state, meteor.owner, player) ? rivals : friends;
+    const nearest = Math.min(...targets.map((candidate) => distance(state.probes[candidate], meteor)));
+    const pressure = Math.max(0, (meteor.size === "large" ? 4 : 3) - nearest);
+    return sum + (allied(state, meteor.owner, player) ? pressure : -pressure) * 9;
+  }, 0);
+}
+
+function routeBlockPressure(state: GameState, player: Player) {
+  const center = centerOf(state);
+  const blockers = [...state.meteors, ...activeObstacles(state)];
+  return activePlayers(state).reduce((sum, candidate) => {
+    const probe = state.probes[candidate];
+    const blocked = blockers.reduce((count, blocker) => {
+      const onRowRoute =
+        blocker.r === probe.r &&
+        (blocker.c - probe.c) * (center.c - blocker.c) >= 0;
+      const onColumnRoute =
+        blocker.c === probe.c &&
+        (blocker.r - probe.r) * (center.r - blocker.r) >= 0;
+      if (!onRowRoute && !onColumnRoute) return count;
+      return count + Math.max(0, 5 - distance(probe, blocker));
+    }, 0);
+    return sum + (allied(state, candidate, player) ? -blocked : blocked) * 10;
+  }, 0);
+}
+
+function orbitTacticalValue(before: GameState, after: GameState, player: Player, difficulty: AiDifficulty) {
+  const players = activePlayers(before);
+  const mobilitySwing = players.reduce((sum, candidate) => {
+    const sign = allied(before, candidate, player) ? 1 : -1;
+    return sum + sign * (probeMobility(after, candidate) - probeMobility(before, candidate)) * 7;
+  }, 0);
+  return (
+    scoreResult(after, player, difficulty) -
+    scoreResult(before, player, difficulty) +
+    mobilitySwing +
+    meteorPressure(after, player) -
+    meteorPressure(before, player) +
+    routeBlockPressure(after, player) -
+    routeBlockPressure(before, player)
+  );
+}
+
+function orbitOptions(state: GameState, player: Player, difficulty: AiDifficulty) {
+  const options: Array<Scored<{ ring: number; clockwise: boolean; next: GameState; gain: number }>> = [];
+  for (let ring = 1; ring <= Math.floor(state.size / 2); ring += 1) {
+    for (const clockwise of [true, false]) {
+      const next = applyOrbitSwitch(state, ring, clockwise);
+      const gain = orbitTacticalValue(state, next, player, difficulty);
+      options.push({ choice: { ring, clockwise, next, gain }, value: gain });
+    }
+  }
+  return options.sort((a, b) => b.value - a.value);
+}
+
 function bestPlacement(
   state: GameState,
   player: Player,
@@ -563,13 +628,11 @@ export function chooseAiDecision(
       const selected = selectWithDifficulty(ranked, difficulty, random, true);
       return selected ? { type: "recall", meteorId: selected.choice } : { type: "skip" };
     }
-    const options: Array<Scored<{ ring: number; clockwise: boolean }>> = [];
-    for (let ring = 1; ring <= Math.floor(state.size / 2); ring += 1) for (const clockwise of [true, false]) {
-      const next = applyOrbitSwitch(state, ring, clockwise);
-      options.push({ choice: { ring, clockwise }, value: scoreResult(next, pending.player, difficulty) });
-    }
-    const selected = selectWithDifficulty(options, difficulty, random, true);
-    return { type: "orbit", ...selected.choice };
+    const options = orbitOptions(state, pending.player, difficulty);
+    const tolerance = difficulty === "easy" ? 10 : difficulty === "normal" ? 5 : 0;
+    const viable = options.filter((entry) => options[0].value - entry.value <= tolerance);
+    const selected = viable[Math.floor(random() * viable.length)] ?? options[0];
+    return { type: "orbit", ring: selected.choice.ring, clockwise: selected.choice.clockwise };
   }
   if (state.phase === "move") {
     const moves = legalMoves(state, player);
@@ -621,13 +684,22 @@ export function chooseAiDecision(
     shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 42 : 8,
     booster: coreDistance(state, player) <= 5 ? 34 : 10,
     pulse: nearestRivalCore <= 3 ? 40 : 15,
-    orbit: nearestRivalCore <= 4 ? 36 : 12,
     holo: nearestRivalCore <= 4 ? 38 : 9,
     recall: recallOpportunity + 18,
   };
   const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
   for (const kind of usableItems) {
     const next = applyUseItem(state, kind);
+    if (kind === "orbit") {
+      const best = orbitOptions(next, player, difficulty)[0];
+      // ORBIT is scarce: preserve it unless the best ring produces a clear tactical swing.
+      if (!best || best.choice.gain < 4) continue;
+      ranked.push({
+        choice: { target: { r: -1, c: -1 }, size: "small", useCapsule: false, itemKind: kind } as Placement & { itemKind: ItemKind },
+        value: scoreResult(best.choice.next, player, difficulty, state) - 4,
+      });
+      continue;
+    }
     ranked.push({
       choice: { target: { r: -1, c: -1 }, size: "small", useCapsule: false, itemKind: kind } as Placement & { itemKind: ItemKind },
       value: scoreResult(next, player, difficulty, state) + (itemBonuses[kind] ?? 0),
