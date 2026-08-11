@@ -23,6 +23,8 @@ import {
   finishTurn,
   initialGameState as initialState,
   legalMoves,
+  isItemVariant,
+  isTeamVariant,
   meteorName,
   orthogonallyAdjacent,
   playerName,
@@ -151,7 +153,7 @@ function Game() {
     recordedOutcome.current = "";
   }, [variant, size, aiPlayerCount, aiDifficulty]);
   const setupPlayerCount =
-    variant === "team"
+    isTeamVariant(variant)
       ? 4
       : setupMode === "cpu" || setupMode === "lab"
       ? aiPlayerCount
@@ -175,6 +177,7 @@ function Game() {
 
   useEffect(() => {
     if (variant === "team" && size !== 13 && size !== 15) setSize(13);
+    if (variant === "team-item" && size !== 15) setSize(15);
   }, [variant, size]);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
@@ -903,11 +906,11 @@ function Game() {
         : setupMode === "human"
           ? 2 + localAiCount
           : onlinePlayerCount + onlineAiCount;
-    const playerCount = variant === "team" ? 4 : configuredPlayerCount;
+    const playerCount = isTeamVariant(variant) ? 4 : configuredPlayerCount;
     const nextSize =
-      variant === "item"
+      isItemVariant(variant)
         ? 15
-        : variant === "team" && (size === 9 || size === 11)
+        : isTeamVariant(variant) && (size === 9 || size === 11)
           ? 13
         : playerCount > 2 && size === 9
           ? 11
@@ -1218,7 +1221,7 @@ function Game() {
   const strategicRead =
     stats.games < 10
       ? "10戦以上で傾向を判定します"
-      : game.variant === "team"
+      : isTeamVariant(game.variant)
         ? Math.abs(teamWinRates.sun - teamWinRates.moon) <= 10
           ? "現時点では大きなチーム差なし"
           : `${teamWinRates.sun > teamWinRates.moon ? "SUN" : "MOON"} TEAM優勢。先攻・初期方向の影響を要観察`
@@ -1281,7 +1284,7 @@ function Game() {
         <aside className={`player-card red-card ${(game.phase === "over" ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
-          <ProbeIcon color="red" teamMode={game.variant === "team"} />
+          <ProbeIcon color="red" teamMode={isTeamVariant(game.variant)} />
           <InventoryPanel inventory={game.inventory.red} color="red" items={game.itemHands?.red ?? []} />
         </aside>
 
@@ -1408,7 +1411,12 @@ function Game() {
                       }
                     />
                   )}
-                  {obstacle && <ObstacleIcon obstacle={obstacle} />}
+                  {obstacle && (
+                    <ObstacleIcon
+                      obstacle={obstacle}
+                      roundsLeft={Math.max(1, Math.ceil((obstacle.turns ?? 1) / activePlayers(game).length))}
+                    />
+                  )}
                   {fieldItem && (
                     <span className={`field-item ${fieldItem.kind}`} title={fieldItem.kind}>
                       {fieldItem.kind === "shield"
@@ -1421,7 +1429,7 @@ function Game() {
                   {probe && (
                     <ProbeToken
                       player={probe}
-                      teamMode={game.variant === "team"}
+                      teamMode={isTeamVariant(game.variant)}
                       isSelf={probe === selfPlayer}
                       shield={Boolean(game.shield?.[probe])}
                       boost={game.boosterMoves?.[probe] ?? 0}
@@ -1514,7 +1522,7 @@ function Game() {
                 >
                   配置しない <b>{game.passAvailable?.[game.turn] ?? true ? 1 : 0}</b>
                 </button>
-                {game.variant === "item" && (game.itemHands?.[game.turn] ?? []).map((kind, index) => (
+                {isItemVariant(game.variant) && (game.itemHands?.[game.turn] ?? []).map((kind, index) => (
                   <button
                     key={`${kind}-${index}`}
                     className={`meteor-choice item-choice ${kind}`}
@@ -1578,7 +1586,7 @@ function Game() {
         <aside className={`player-card blue-card ${(game.phase === "over" ? game.winner === "blue" : game.turn === "blue") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
-          <ProbeIcon color="blue" teamMode={game.variant === "team"} />
+          <ProbeIcon color="blue" teamMode={isTeamVariant(game.variant)} />
           <InventoryPanel inventory={game.inventory.blue} color="blue" items={game.itemHands?.blue ?? []} />
         </aside>
       </section>
@@ -1598,7 +1606,7 @@ function Game() {
             >
               <span className="eyebrow">{displayNameForPlayer(player, index + 3)}</span>
               <h2>{playerName(player)}</h2>
-              <ProbeIcon color={player} teamMode={game.variant === "team"} />
+              <ProbeIcon color={player} teamMode={isTeamVariant(game.variant)} />
               <InventoryPanel inventory={game.inventory[player]} color={player} items={game.itemHands?.[player] ?? []} />
             </aside>
           ))}
@@ -1619,8 +1627,12 @@ function Game() {
                   setSize(13);
                   setAiPlayerCount(4);
                   setLocalAiCount(2);
-                } else if (nextVariant === "item") {
+                } else if (nextVariant === "item" || nextVariant === "team-item") {
                   setSize(15);
+                  if (nextVariant === "team-item") {
+                    setAiPlayerCount(4);
+                    setLocalAiCount(2);
+                  }
                 } else if (size === 15) {
                   setSize(11);
                 }
@@ -1630,6 +1642,7 @@ function Game() {
               <option value="classic">CLASSIC</option>
               <option value="team">2 VS 2 TEAM</option>
               <option value="item">アイテム戦 15 × 15</option>
+              <option value="team-item">2 VS 2 チームアイテム戦</option>
             </select>
           </label>
           <label>
@@ -1707,9 +1720,9 @@ function Game() {
               }}
             >
               <option value={9} disabled={setupPlayerCount > 2 || variant !== "classic"}>9 × 9</option>
-              <option value={11} disabled={variant === "item" || variant === "team"}>11 × 11</option>
+              <option value={11} disabled={isItemVariant(variant) || isTeamVariant(variant)}>11 × 11</option>
               <option value={13} disabled={variant !== "team"}>13 × 13</option>
-              <option value={15} disabled={variant !== "item" && variant !== "team"}>15 × 15</option>
+              <option value={15} disabled={!isItemVariant(variant) && !isTeamVariant(variant)}>15 × 15</option>
             </select>
           </label>
           <label>
@@ -1936,7 +1949,7 @@ function Game() {
             <strong>{strategicRead}</strong>
           </div>
           <div className="lab-stat"><b>{stats.games}</b><span>対戦数</span></div>
-          {game.variant === "team" ? (
+          {isTeamVariant(game.variant) ? (
             <>
               <div className="lab-stat red">
                 <b>{teamWinRates.sun}%</b>
@@ -2089,11 +2102,12 @@ function MeteorIcon({
   );
 }
 
-function ObstacleIcon({ obstacle }: { obstacle: ObstacleMeteor }) {
+function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roundsLeft: number }) {
   return (
-    <span className={`obstacle-token ${obstacle.owner}`} title="破壊不能のお邪魔メテオ">
+    <span className={`obstacle-token ${obstacle.owner}`} title={`破壊不能のお邪魔メテオ・残り${roundsLeft}巡`}>
       <i />
-      <b>◆</b>
+      <b>{roundsLeft}</b>
+      <small>巡</small>
     </span>
   );
 }

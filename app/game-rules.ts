@@ -1,6 +1,6 @@
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
-export type GameVariant = "classic" | "team" | "item";
+export type GameVariant = "classic" | "team" | "item" | "team-item";
 export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "pulse" | "recall";
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
@@ -62,6 +62,8 @@ export type MeteorResolution = {
 };
 
 export const PLAYER_ORDER: Player[] = ["red", "blue", "green", "yellow"];
+export const isTeamVariant = (variant: GameVariant) => variant === "team" || variant === "team-item";
+export const isItemVariant = (variant: GameVariant) => variant === "item" || variant === "team-item";
 export const activePlayers = (state: GameState): Player[] =>
   state.players?.length ? state.players : ["red", "blue"];
 export const activeObstacles = (state: GameState): ObstacleMeteor[] => {
@@ -227,14 +229,14 @@ export function initialGameState(
   variant: GameVariant = "classic",
 ): GameState {
   void obstaclesEnabled;
-  if (variant === "team") {
+  if (isTeamVariant(variant)) {
     playerCount = 4;
     if (size === 9 || size === 11) size = 13;
   }
-  if (variant === "item") size = 15;
+  if (isItemVariant(variant)) size = 15;
   const count = Math.max(2, Math.min(4, playerCount));
   const players =
-    variant === "team"
+    isTeamVariant(variant)
       ? (["red", "blue", "yellow", "green"] as Player[])
       : PLAYER_ORDER.slice(0, count);
   if (!players.includes(first)) first = players[0];
@@ -268,7 +270,7 @@ export function initialGameState(
     playerTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     passAvailable: { red: true, blue: true, green: true, yellow: true },
     layoutOffset: offset,
-    phase: variant === "item" ? "setup" : "move",
+    phase: isItemVariant(variant) ? "setup" : "move",
     bonusMove: false,
     fieldItems: itemLayout.items,
     pendingItemDrops: [],
@@ -311,7 +313,7 @@ export function initialGameState(
 }
 
 export function applySetupItem(state: GameState, kind: ItemKind): GameState {
-  if (state.variant !== "item" || state.phase !== "setup") {
+  if (!isItemVariant(state.variant) || state.phase !== "setup") {
     throw new Error("アイテム選択フェーズではありません");
   }
   const hand = state.itemHands?.[state.turn] ?? [];
@@ -338,7 +340,7 @@ export function applySetupItem(state: GameState, kind: ItemKind): GameState {
 }
 
 export function resetSetupItems(state: GameState): GameState {
-  if (state.variant !== "item" || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
+  if (!isItemVariant(state.variant) || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
   return {
     ...state,
     itemHands: { ...(state.itemHands ?? {}), [state.turn]: [] },
@@ -350,7 +352,7 @@ export function resetSetupItems(state: GameState): GameState {
 }
 
 export function confirmSetupItems(state: GameState): GameState {
-  if (state.variant !== "item" || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
+  if (!isItemVariant(state.variant) || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
   if ((state.itemHands?.[state.turn]?.length ?? 0) !== 3) throw new Error("アイテムを3個選んでください");
   const players = activePlayers(state);
   const setupConfirmed = { ...(state.setupConfirmed ?? {}), [state.turn]: true };
@@ -375,7 +377,7 @@ export function confirmSetupItems(state: GameState): GameState {
 }
 
 export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind): GameState {
-  if (state.variant !== "item" || state.phase !== "setup") {
+  if (!isItemVariant(state.variant) || state.phase !== "setup") {
     throw new Error("スイッチ配置フェーズではありません");
   }
   const placements = state.setupPlacements ?? {};
@@ -462,7 +464,7 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
     { r: 0, c: 1 },
   ];
   const maxSteps =
-    state.variant === "item" && (state.boosterMoves?.[player] ?? 0) > 0 ? 2 : 1;
+    isItemVariant(state.variant) && (state.boosterMoves?.[player] ?? 0) > 0 ? 2 : 1;
   const moves: Pos[] = [];
   directions.forEach((direction) => {
     for (let step = 1; step <= maxSteps; step += 1) {
@@ -534,7 +536,7 @@ function scheduleItemDrops(state: GameState, count: number) {
 }
 
 function advanceItemDrops(draft: GameState): GameState {
-  if (draft.variant !== "item" || !(draft.pendingItemDrops?.length)) return draft;
+  if (!isItemVariant(draft.variant) || !(draft.pendingItemDrops?.length)) return draft;
   const waiting: { turns: number }[] = [];
   const due: { turns: number }[] = [];
   draft.pendingItemDrops.forEach((drop) => {
@@ -686,7 +688,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
   const pickedIds = new Set(pickedItems.map((item) => item.id));
   const fieldItems = (state.fieldItems ?? []).filter((item) => !pickedIds.has(item.id));
   const scheduled =
-    state.variant === "item"
+    isItemVariant(state.variant)
       ? scheduleItemDrops(state, pickedItems.length)
       : { pendingItemDrops: state.pendingItemDrops ?? [], itemSeed: state.itemSeed };
   state = {
@@ -712,7 +714,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
       bonusMove: false,
       winner: state.turn,
       message:
-        state.variant === "team"
+        isTeamVariant(state.variant)
           ? `${playerName(state.turn)} / ${
               teamOf(state.turn) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"
             } TEAM WIN!`
@@ -788,7 +790,7 @@ function finishSwitch(state: GameState): GameState {
 }
 
 export function canUseItem(state: GameState, kind: ItemKind, player = state.turn) {
-  if (state.variant !== "item" || state.phase !== "place") return false;
+  if (!isItemVariant(state.variant) || state.phase !== "place") return false;
   if (!(state.itemHands?.[player] ?? []).includes(kind)) return false;
   if (kind === "shield" && (state.shieldTurns?.[player] ?? 0) > 0) return false;
   if (kind === "booster" && (state.boosterMoves?.[player] ?? 0) > 0) return false;
@@ -1104,7 +1106,7 @@ export function applyMeteor(
       message:
         winner === "draw"
           ? "同時到達 — DRAW"
-          : state.variant === "team"
+          : isTeamVariant(state.variant)
             ? `${playerName(winner)} / ${
                 teamOf(winner) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"
               } TEAM WIN!`

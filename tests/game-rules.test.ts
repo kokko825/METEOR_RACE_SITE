@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   applyMeteor,
+  applyHoloSwitch,
   applyMove,
   applyObstacle,
   applyPass,
@@ -294,6 +295,28 @@ console.log("game-rules: all checks passed");
   for (let turn = 0; turn < 5; turn += 1) item = finishTurn(item);
   assert.equal(item.fieldItems.length, 1, "予約したアイテムが別の場所へ再出現する");
   assert.ok(!samePos(item.fieldItems[0], { r: 3, c: 3 }), "取得マスには固定再出現しない");
+}
+
+{
+  const combined = initialGameState(13, "red", 2, false, 0, [], "team-item");
+  assert.equal(combined.size, 15, "team-item uses the 15x15 item board");
+  assert.deepEqual(combined.players, ["red", "blue", "yellow", "green"]);
+  assert.equal(combined.phase, "setup", "all four players choose items before play");
+
+  combined.phase = "switch";
+  combined.pendingSwitches = [{ kind: "holo", player: "red" }];
+  combined.switchResume = "finish";
+  const withObstacle = applyHoloSwitch(combined, { r: 6, c: 6 });
+  assert.equal(withObstacle.obstacles.length, 1);
+  assert.ok((withObstacle.obstacles[0].turns ?? 0) > 0, "obstacle retains countdown data");
+
+  const winning = initialGameState(15, "red", 4, false, 0, [], "team-item");
+  winning.phase = "move";
+  winning.turnCount = 2;
+  winning.probes.red = { r: 8, c: 7 };
+  const result = applyMove(winning, { r: 7, c: 7 });
+  assert.equal(result.winner, "red");
+  assert.match(result.message, /TEAM WIN/);
 }
 
 {

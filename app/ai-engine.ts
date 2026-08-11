@@ -12,6 +12,8 @@ import {
   applyPass,
   distance,
   legalMoves,
+  isItemVariant,
+  isTeamVariant,
   samePos,
   teamOf,
   type GameState,
@@ -48,12 +50,12 @@ const coreDistance = (state: GameState, player: Player) => {
   return Math.abs(p.r - center.r) + Math.abs(p.c - center.c);
 };
 const allied = (state: GameState, a: Player, b: Player) =>
-  a === b || (state.variant === "team" && teamOf(a) === teamOf(b));
+  a === b || (isTeamVariant(state.variant) && teamOf(a) === teamOf(b));
 const wonBy = (state: GameState, player: Player) =>
   state.winner !== null &&
   state.winner !== "draw" &&
   (state.winner === player ||
-    (state.variant === "team" && teamOf(state.winner) === teamOf(player)));
+    (isTeamVariant(state.variant) && teamOf(state.winner) === teamOf(player)));
 
 function terminalValue(state: GameState, player: Player) {
   if (state.phase !== "over") return null;
@@ -95,7 +97,7 @@ function positionValue(state: GameState, player: Player) {
   if (terminal !== null) return terminal;
   const players = activePlayers(state);
   const style =
-    players.length === 2 || state.variant === "item"
+    players.length === 2 || isItemVariant(state.variant)
       ? { progress: 1, denial: 1, items: 1, resources: 1 }
       : personality(player);
   const friends = players.filter((p) => allied(state, p, player));
@@ -126,7 +128,7 @@ function positionValue(state: GameState, player: Player) {
     }
   }
 
-  if (state.variant === "item") {
+  if (isItemVariant(state.variant)) {
     for (const item of state.fieldItems) {
       const friendReach = Math.min(...friends.map((p) => distance(state.probes[p], item)));
       const rivalReach = Math.min(...rivals.map((p) => distance(state.probes[p], item)));
@@ -246,7 +248,7 @@ function recallMeteorValue(state: GameState, player: Player, meteor: GameState["
 }
 
 function plannedRecallBonus(state: GameState, placement: Placement, next: GameState) {
-  if (state.variant !== "item" || !(state.itemHands?.[state.turn] ?? []).includes("recall")) return 0;
+  if (!isItemVariant(state.variant) || !(state.itemHands?.[state.turn] ?? []).includes("recall")) return 0;
   const survives = next.meteors.some((meteor) =>
     meteor.owner === state.turn && samePos(meteor, placement.target) && !meteor.consumable,
   );
@@ -258,7 +260,7 @@ function plannedRecallBonus(state: GameState, placement: Placement, next: GameSt
 }
 
 function earlyItemDevelopment(state: GameState, player: Player) {
-  if (state.variant !== "item" || coreDistance(state, player) <= 4) return false;
+  if (!isItemVariant(state.variant) || coreDistance(state, player) <= 4) return false;
   return activePlayers(state)
     .filter((candidate) => !allied(state, candidate, player))
     .every((rival) => coreDistance(state, rival) > 4);
@@ -486,7 +488,7 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
   // Outside ITEM mode, voluntarily moving away from the CORE is almost never
   // worth a tempo. A large penalty removes routine retreating while still
   // allowing a forced defensive retreat or a move-plus-blast win to outweigh it.
-  const retreatPenalty = state.variant === "item" ? backwardSteps * 95 : backwardSteps * 260;
+  const retreatPenalty = isItemVariant(state.variant) ? backwardSteps * 95 : backwardSteps * 260;
   const inwardSteps = Math.max(
     0,
     coreDistance(state, player) -
@@ -647,12 +649,12 @@ export function chooseAiDecision(
     );
     const itemMove = usefulItemMoves[0];
     const selected =
-      state.variant === "item" &&
+      isItemVariant(state.variant) &&
       Math.abs(ranked[0].value) < 900_000 &&
       itemMove &&
       ranked[0].value - itemMove.value <= 120
         ? itemMove
-        : selectWithDifficulty(ranked, difficulty, random, state.variant === "item");
+        : selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant));
     return { type: "move", target: selected.choice };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
@@ -705,7 +707,7 @@ export function chooseAiDecision(
       value: scoreResult(next, player, difficulty, state) + (itemBonuses[kind] ?? 0),
     });
   }
-  const selected = selectWithDifficulty(ranked, difficulty, random, state.variant === "item");
+  const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant));
   if (!selected || selected.choice === "pass") return { type: "pass" };
   if ("itemKind" in selected.choice) return { type: "item", kind: selected.choice.itemKind as ItemKind };
   return { type: "meteor", ...selected.choice };

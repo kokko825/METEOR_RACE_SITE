@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -343,11 +343,13 @@ export async function POST(request: Request) {
     let aiCount = Math.max(0, Math.min(4 - humanCount, Number(body.aiCount ?? 0)));
     if (humanCount + aiCount < 2) aiCount = 1;
     const variant: GameVariant =
-      body.variant === "team" || body.variant === "item" ? body.variant : "classic";
-    if (variant === "team") {
+      body.variant === "team" || body.variant === "item" || body.variant === "team-item"
+        ? body.variant
+        : "classic";
+    if (isTeamVariant(variant)) {
       aiCount = Math.max(0, 4 - humanCount);
     }
-    const players = variant === "team" ? 4 : humanCount + aiCount;
+    const players = isTeamVariant(variant) ? 4 : humanCount + aiCount;
     const playerList: Player[] = PLAYER_ORDER.slice(0, players);
     const previousSeats = JSON.parse(room.seat_order_json) as Player[];
     const preferredRoles: Array<Player | null> = [
@@ -371,19 +373,19 @@ export async function POST(request: Request) {
     const requestedSize =
       body.size === 15 ? 15 : body.size === 13 ? 13 : body.size === 11 ? 11 : 9;
     const size =
-      variant === "item"
+      isItemVariant(variant)
         ? 15
-        : variant === "team" && (requestedSize === 9 || requestedSize === 11)
+        : isTeamVariant(variant) && (requestedSize === 9 || requestedSize === 11)
           ? 13
         : players > 2 && requestedSize === 9
           ? 11
           : requestedSize;
     const turnOrder =
-      variant === "team"
+      isTeamVariant(variant)
         ? (["red", "blue", "yellow", "green"] as Player[])
         : shuffledPlayers(playerList);
     const first =
-      variant === "team"
+      isTeamVariant(variant)
         ? turnOrder[crypto.getRandomValues(new Uint8Array(1))[0] % turnOrder.length]
         : turnOrder[0];
     const nextOffset =
@@ -435,11 +437,11 @@ export async function POST(request: Request) {
     const players = previous.players?.length ?? room.max_players;
     const playerList = PLAYER_ORDER.slice(0, players);
     const turnOrder =
-      previous.variant === "team"
+      isTeamVariant(previous.variant ?? "classic")
         ? (["red", "blue", "yellow", "green"] as Player[])
         : shuffledPlayers(playerList);
     const nextFirst =
-      previous.variant === "team"
+      isTeamVariant(previous.variant ?? "classic")
         ? turnOrder[crypto.getRandomValues(new Uint8Array(1))[0] % turnOrder.length]
         : turnOrder[0];
     const nextOffset =

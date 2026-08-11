@@ -268,6 +268,7 @@ const scenarios: Array<{ variant: GameVariant; size: number; count: number }> = 
   { variant: "team", size: 13, count: 4 },
   { variant: "team", size: 15, count: 4 },
   { variant: "item", size: 15, count: 4 },
+  { variant: "team-item", size: 15, count: 4 },
 ];
 
 const requestedDifficulty = process.argv[2] as AiDifficulty | undefined;
