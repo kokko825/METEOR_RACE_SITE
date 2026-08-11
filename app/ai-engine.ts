@@ -1,16 +1,19 @@
 import {
   activePlayers,
+  activeObstacles,
   applyMeteor,
   applyMove,
   applyHoloSwitch,
   applyOrbitSwitch,
   applyPulseSwitch,
   applyPass,
+  SWITCH_SETUP_CELLS_15,
   distance,
   legalMoves,
   samePos,
   teamOf,
   type GameState,
+  type ItemKind,
   type MeteorSize,
   type Player,
   type Pos,
@@ -18,6 +21,7 @@ import {
 
 export type AiDifficulty = "easy" | "normal" | "hard";
 export type AiDecision =
+  | { type: "setup"; target: Pos; kind: ItemKind }
   | { type: "move"; target: Pos }
   | { type: "meteor"; target: Pos; size: MeteorSize; useCapsule: boolean }
   | { type: "pass" }
@@ -150,7 +154,8 @@ function placements(state: GameState): Placement[] {
   const occupied = (p: Pos) =>
     samePos(p, center) ||
     activePlayers(state).some((player) => samePos(state.probes[player], p)) ||
-    state.meteors.some((meteor) => samePos(meteor, p));
+    state.meteors.some((meteor) => samePos(meteor, p)) ||
+    activeObstacles(state).some((obstacle) => samePos(obstacle, p));
   const kinds: Array<{ size: MeteorSize; useCapsule: boolean }> = [];
   if (state.inventory[state.turn].small > 0) kinds.push({ size: "small", useCapsule: false });
   if (state.inventory[state.turn].large > 0) kinds.push({ size: "large", useCapsule: false });
@@ -373,6 +378,25 @@ export function chooseAiDecision(
 ): AiDecision {
   if (state.phase === "over") return { type: "skip" };
   const player = state.turn;
+  if (state.phase === "setup") {
+    const pending = state.setupPending?.[player] ?? [];
+    const own = state.setupPlacements?.[player] ?? [];
+    const kinds = pending.length
+      ? pending
+      : (["shield", "booster", "holo", "orbit", "pulse", "supply"] as ItemKind[])
+          .filter((kind) => !own.some((item) => item.kind === kind));
+    const cells = SWITCH_SETUP_CELLS_15.filter((target) =>
+      !activePlayers(state).some((candidate) => samePos(target, state.probes[candidate])) &&
+      !own.some((item) => samePos(target, item)) &&
+      !(state.setupRejected?.[player] ?? []).some((cell) => samePos(target, cell))
+    );
+    if (!kinds.length || !cells.length) return { type: "skip" };
+    return {
+      type: "setup",
+      kind: kinds[Math.floor(random() * kinds.length)],
+      target: cells[Math.floor(random() * cells.length)],
+    };
+  }
   if (state.phase === "switch") {
     const pending = state.pendingSwitches?.[0];
     if (!pending) return { type: "skip" };

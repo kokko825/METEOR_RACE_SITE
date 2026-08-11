@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { chooseAiDecision, type AiDifficulty } from "../app/ai-engine.js";
 import {
+  applyHoloSwitch,
   applyMeteor,
   applyMove,
+  applyOrbitSwitch,
   applyPass,
+  applyPulseSwitch,
+  applySetupSwitch,
   finishTurn,
   initialGameState,
   type GameState,
@@ -125,6 +129,7 @@ import {
 {
   const state = initialGameState(15, "red", 2, false, 0, [], "item");
   state.turnCount = 2;
+  state.phase = "move";
   state.probes.red = { r: 10, c: 7 };
   state.probes.blue = { r: 1, c: 7 };
   state.inventory.red = { small: 0, large: 0 };
@@ -147,7 +152,9 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   };
   while (state.phase !== "over" && guard < 260) {
     const decision = chooseAiDecision(state, difficulty, random);
-    if (decision.type === "move") {
+    if (decision.type === "setup") {
+      state = applySetupSwitch(state, decision.target, decision.kind);
+    } else if (decision.type === "move") {
       const mid = Math.floor(state.size / 2);
       const before = state.probes[state.turn];
       const beforeDistance = Math.abs(before.r - mid) + Math.abs(before.c - mid);
@@ -160,6 +167,9 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     else if (decision.type === "meteor") {
       state = applyMeteor(state, decision.target, decision.size, decision.useCapsule).state;
     } else if (decision.type === "pass") state = applyPass(state);
+    else if (decision.type === "holo") state = applyHoloSwitch(state, decision.target);
+    else if (decision.type === "pulse") state = applyPulseSwitch(state, decision.target);
+    else if (decision.type === "orbit") state = applyOrbitSwitch(state, decision.ring, decision.clockwise);
     else state = finishTurn(state, "AI skip");
     guard += 1;
   }
@@ -203,6 +213,7 @@ for (const difficulty of difficulties) {
         1009 + index * 7919 + scenario.size * 101,
       );
       const final = result.state;
+      assert.equal(final.phase, "over", `${difficulty} ${scenario.variant} AI match must finish`);
       wins[final.winner ?? "draw"] += 1;
       turns += final.turnCount;
       moves += result.moves;
