@@ -5,6 +5,8 @@ import {
   applyRecallItem,
   applySetupItem,
   applyUseItem,
+  confirmSetupItems,
+  resetSetupItems,
   initialGameState,
   samePos,
   type GameState,
@@ -17,9 +19,15 @@ const select = (state: GameState, kinds: ItemKind[]) =>
 let setup = initialGameState(15, "red", 2, false, 0, [], "item");
 setup = select(setup, ["shield", "shield", "pulse"]);
 assert.deepEqual(setup.itemHands?.red, ["shield", "shield", "pulse"]);
+assert.equal(setup.turn, "red");
+setup = resetSetupItems(setup);
+assert.deepEqual(setup.itemHands?.red, []);
+setup = select(setup, ["shield", "shield", "pulse"]);
+setup = confirmSetupItems(setup);
 assert.equal(setup.turn, "blue");
 assert.throws(() => applySetupItem({ ...setup, turn: "blue", itemHands: { ...setup.itemHands, blue: ["pulse", "pulse"] } }, "pulse"));
 setup = select(setup, ["booster", "recall", "orbit"]);
+setup = confirmSetupItems(setup);
 assert.equal(setup.phase, "move");
 
 let shieldGame = initialGameState(15, "red", 2, false, 0, [], "item");

@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, finishTurn, initialGameState, legalMoves, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -484,8 +484,14 @@ export async function POST(request: Request) {
     let effect = null;
     if (body.action === "setup_item" && body.itemKind) {
       nextState = applySetupItem(state, body.itemKind);
+    } else if (body.action === "setup_confirm") {
+      nextState = confirmSetupItems(state);
+    } else if (body.action === "setup_cancel") {
+      nextState = resetSetupItems(state);
     } else if (body.action === "use_item" && body.itemKind) {
       nextState = applyUseItem(state, body.itemKind);
+    } else if (body.action === "cancel_item") {
+      nextState = cancelPendingItem(state);
     } else if (body.action === "move" && body.target) {
       nextState = applyMove(state, body.target);
     } else if (

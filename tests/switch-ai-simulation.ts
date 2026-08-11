@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { chooseAiDecision } from "../app/ai-engine";
-import { applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, finishTurn, initialGameState, legalMoves, type GameState } from "../app/game-rules";
+import { applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, confirmSetupItems, finishTurn, initialGameState, legalMoves, type GameState } from "../app/game-rules";
 
 const itemUses: Record<string, number> = {};
 const itemUsesByPlayer: Record<string, Record<string, number>> = {};
@@ -12,6 +12,7 @@ function step(state: GameState, random: () => number): GameState {
     setupChoices[state.turn][d.kind] = (setupChoices[state.turn][d.kind] ?? 0) + 1;
     return applySetupItem(state, d.kind);
   }
+  if (d.type === "confirm_setup") return confirmSetupItems(state);
   if (d.type === "move") return applyMove(state, d.target);
   if (d.type === "meteor") return applyMeteor(state, d.target, d.size, d.useCapsule).state;
   if (d.type === "item") {

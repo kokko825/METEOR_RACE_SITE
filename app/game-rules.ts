@@ -50,6 +50,7 @@ export type GameState = {
   setupReady?: Player[];
   setupRejected?: Partial<Record<Player, Pos[]>>;
   itemHands?: Partial<Record<Player, ItemKind[]>>;
+  setupConfirmed?: Partial<Record<Player, boolean>>;
 };
 
 export type MeteorResolution = {
@@ -305,6 +306,7 @@ export function initialGameState(
     setupReady: [],
     setupRejected: {},
     itemHands: {},
+    setupConfirmed: {},
   };
 }
 
@@ -323,22 +325,40 @@ export function applySetupItem(state: GameState, kind: ItemKind): GameState {
     ...(state.setupPlacements ?? {}),
     [state.turn]: nextHand.map((entry, index) => ({ r: -1, c: -1 - index, kind: entry, id: index + 1 })),
   };
-  if (nextHand.length < 3) {
-    return {
-      ...state,
-      itemHands,
-      setupPlacements,
-      message: `${playerName(state.turn)}：アイテムをあと${3 - nextHand.length}個選択`,
-      log: [...state.log, `${playerName(state.turn)} selected ${kind.toUpperCase()}`],
-    };
-  }
+  return {
+    ...state,
+    itemHands,
+    setupPlacements,
+    setupConfirmed: { ...(state.setupConfirmed ?? {}), [state.turn]: false },
+    message: nextHand.length === 3
+      ? `${playerName(state.turn)}：持ち込みを確認して決定`
+      : `${playerName(state.turn)}：アイテムをあと${3 - nextHand.length}個選択`,
+    log: [...state.log, `${playerName(state.turn)} selected ${kind.toUpperCase()}`],
+  };
+}
+
+export function resetSetupItems(state: GameState): GameState {
+  if (state.variant !== "item" || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
+  return {
+    ...state,
+    itemHands: { ...(state.itemHands ?? {}), [state.turn]: [] },
+    setupPlacements: { ...(state.setupPlacements ?? {}), [state.turn]: [] },
+    setupConfirmed: { ...(state.setupConfirmed ?? {}), [state.turn]: false },
+    message: `${playerName(state.turn)}：アイテムを3個選択`,
+    log: [...state.log, `${playerName(state.turn)} reset item loadout`],
+  };
+}
+
+export function confirmSetupItems(state: GameState): GameState {
+  if (state.variant !== "item" || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
+  if ((state.itemHands?.[state.turn]?.length ?? 0) !== 3) throw new Error("アイテムを3個選んでください");
   const players = activePlayers(state);
-  const nextTurn = players.find((player) => (itemHands[player]?.length ?? 0) < 3);
+  const setupConfirmed = { ...(state.setupConfirmed ?? {}), [state.turn]: true };
+  const nextTurn = players.find((player) => !setupConfirmed[player]);
   if (nextTurn) {
     return {
       ...state,
-      itemHands,
-      setupPlacements,
+      setupConfirmed,
       turn: nextTurn,
       message: `${playerName(nextTurn)}：アイテムを3個選択`,
       log: [...state.log, `${playerName(state.turn)} completed item loadout`],
@@ -346,8 +366,7 @@ export function applySetupItem(state: GameState, kind: ItemKind): GameState {
   }
   return {
     ...state,
-    itemHands,
-    setupPlacements,
+    setupConfirmed,
     turn: state.startingPlayer,
     phase: "move",
     message: `${playerName(state.startingPlayer)}：探査機を1マス移動`,
@@ -822,6 +841,23 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
     switchResume: "finish",
     message: `${playerName(player)}：${kind.toUpperCase()}の対象を選択`,
     log,
+  };
+}
+
+export function cancelPendingItem(state: GameState): GameState {
+  const current = state.pendingSwitches?.[0];
+  if (state.phase !== "switch" || !current) throw new Error("戻れるアイテム選択ではありません");
+  return {
+    ...state,
+    phase: "place",
+    itemHands: {
+      ...(state.itemHands ?? {}),
+      [current.player]: [...(state.itemHands?.[current.player] ?? []), current.kind],
+    },
+    pendingSwitches: [],
+    switchResume: undefined,
+    message: `${playerName(current.player)}：アイテムかメテオを選択`,
+    log: state.log.slice(0, -1),
   };
 }
 

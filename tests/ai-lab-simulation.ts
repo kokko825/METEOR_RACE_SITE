@@ -10,6 +10,7 @@ import {
   applyRecallItem,
   applySetupItem,
   applyUseItem,
+  confirmSetupItems,
   finishTurn,
   initialGameState,
   type GameState,
@@ -144,6 +145,20 @@ import {
   );
 }
 
+{
+  let state = initialGameState(15, "red", 4, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.itemHands.red = ["recall"];
+  state.inventory.red = { small: 0, large: 0 };
+  state.meteors = [{ r: 13, c: 1, owner: "red", size: "large", id: 99 }];
+  const use = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(use, { type: "item", kind: "recall" }, "AI should recover an exhausted, valuable meteor");
+  state = applyUseItem(state, "recall");
+  const target = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(target, { type: "recall", meteorId: 99 }, "RECALL should select the most valuable recoverable meteor");
+}
+
 function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
   let moves = 0;
@@ -156,6 +171,8 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     const decision = chooseAiDecision(state, difficulty, random);
     if (decision.type === "setup") {
       state = applySetupItem(state, decision.kind);
+    } else if (decision.type === "confirm_setup") {
+      state = confirmSetupItems(state);
     } else if (decision.type === "move") {
       const mid = Math.floor(state.size / 2);
       const before = state.probes[state.turn];

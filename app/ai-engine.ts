@@ -32,6 +32,7 @@ export type AiDecision =
   | { type: "pulse"; target: Pos }
   | { type: "orbit"; ring: number; clockwise: boolean }
   | { type: "recall"; meteorId: number }
+  | { type: "confirm_setup" }
   | { type: "skip" };
 
 type Scored<T> = { value: number; choice: T };
@@ -228,6 +229,35 @@ function applyPlacement(state: GameState, placement: Placement) {
   return applyMeteor(state, placement.target, placement.size, placement.useCapsule).state;
 }
 
+function recallMeteorValue(state: GameState, player: Player, meteor: GameState["meteors"][number]) {
+  const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
+  const rivalDistance = Math.min(...rivals.map((candidate) => distance(state.probes[candidate], meteor)));
+  const ownDistance = distance(state.probes[player], meteor);
+  const centerDistance = distance(meteor, centerOf(state));
+  const inventory = state.inventory[player].small + state.inventory[player].large;
+  return (
+    (meteor.size === "large" ? 34 : 18) +
+    (inventory === 0 ? 25 : 0) +
+    (rivalDistance >= 4 ? 16 : 0) +
+    (ownDistance >= 4 ? 8 : 0) +
+    (centerDistance >= 5 ? 6 : 0) -
+    (rivalDistance <= 2 ? 22 : 0) -
+    (centerDistance <= 3 ? 16 : 0)
+  );
+}
+
+function plannedRecallBonus(state: GameState, placement: Placement, next: GameState) {
+  if (state.variant !== "item" || !(state.itemHands?.[state.turn] ?? []).includes("recall")) return 0;
+  const survives = next.meteors.some((meteor) =>
+    meteor.owner === state.turn && samePos(meteor, placement.target) && !meteor.consumable,
+  );
+  if (!survives) return 0;
+  const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, state.turn));
+  const nearRival = Math.min(...rivals.map((candidate) => distance(state.probes[candidate], placement.target))) <= 4;
+  const routeSetup = distance(placement.target, centerOf(state)) <= Math.floor(state.size / 3);
+  return 22 + (placement.size === "large" ? 10 : 0) + (nearRival ? 8 : 0) + (routeSetup ? 6 : 0);
+}
+
 function isImmediateWinAvailable(state: GameState, player: Player): boolean {
   if (state.phase === "over") return wonBy(state, player);
   const probe: GameState = { ...state, turn: player, phase: "move", bonusMove: false };
@@ -318,7 +348,10 @@ function bestPlacement(
   const options: Array<Scored<Placement | "pass">> = [];
   for (const placement of placements(state)) {
     const next = applyPlacement(state, placement);
-    options.push({ choice: placement, value: scoreResult(next, player, difficulty, state) });
+    options.push({
+      choice: placement,
+      value: scoreResult(next, player, difficulty, state) + plannedRecallBonus(state, placement, next),
+    });
   }
   if (state.passAvailable?.[state.turn] ?? true) {
     const next = applyPass(state);
@@ -390,6 +423,7 @@ export function chooseAiDecision(
   const player = state.turn;
   if (state.phase === "setup") {
     const own = state.itemHands?.[player] ?? [];
+    if (own.length === 3) return { type: "confirm_setup" };
     const base: Record<ItemKind, number> = {
       booster: 94,
       shield: 91,
@@ -471,7 +505,7 @@ export function chooseAiDecision(
       const owned = state.meteors.filter((meteor) => meteor.owner === pending.player && !meteor.consumable);
       const ranked = owned.map((meteor) => ({
         choice: meteor.id,
-        value: distance(meteor, centerOf(state)) * 8 + (meteor.size === "large" ? 12 : 0),
+        value: recallMeteorValue(state, pending.player, meteor),
       }));
       const selected = selectWithDifficulty(ranked, difficulty, random, true);
       return selected ? { type: "recall", meteorId: selected.choice } : { type: "skip" };
@@ -507,9 +541,10 @@ export function chooseAiDecision(
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
   for (const placement of placements(state)) {
+    const next = applyPlacement(state, placement);
     ranked.push({
       choice: placement,
-      value: scoreResult(applyPlacement(state, placement), player, difficulty, state),
+      value: scoreResult(next, player, difficulty, state) + plannedRecallBonus(state, placement, next),
     });
   }
   if (state.passAvailable?.[player] ?? true) {
@@ -521,14 +556,16 @@ export function chooseAiDecision(
   const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
   const nearestRivalCore = Math.min(...rivals.map((candidate) => coreDistance(state, candidate)));
   const ownedMeteors = state.meteors.filter((meteor) => meteor.owner === player && !meteor.consumable);
-  const staleMeteor = ownedMeteors.some((meteor) => distance(meteor, centerOf(state)) >= 5);
+  const recallOpportunity = ownedMeteors.length
+    ? Math.max(...ownedMeteors.map((meteor) => recallMeteorValue(state, player, meteor)))
+    : -100;
   const itemBonuses: Partial<Record<ItemKind, number>> = {
     shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 42 : 8,
     booster: coreDistance(state, player) <= 5 ? 34 : 10,
     pulse: nearestRivalCore <= 3 ? 40 : 15,
     orbit: nearestRivalCore <= 4 ? 36 : 12,
     holo: nearestRivalCore <= 4 ? 38 : 9,
-    recall: staleMeteor ? 30 : state.inventory[player].small + state.inventory[player].large === 0 ? -18 : 8,
+    recall: recallOpportunity + 18,
   };
   const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
   for (const kind of usableItems) {

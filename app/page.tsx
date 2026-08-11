@@ -18,12 +18,15 @@ import {
   boardToViewDelta,
   canPlaceObstacle,
   canUseItem,
+  cancelPendingItem,
+  confirmSetupItems,
   finishTurn,
   initialGameState as initialState,
   legalMoves,
   meteorName,
   orthogonallyAdjacent,
   playerName,
+  resetSetupItems,
   samePos,
   teamOf,
   viewToBoardPos,
@@ -50,6 +53,7 @@ type BlastFx = {
 
 type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
 type SwitchFx = { kind: ItemKind; player: Player; nonce: number };
+type OrbitFx = { ring: number; clockwise: boolean; nonce: number };
 
 function pushForPerspective(
   push: { from: Pos; dr: number; dc: number },
@@ -92,6 +96,9 @@ function Game() {
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("normal");
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [switchFx, setSwitchFx] = useState<SwitchFx | null>(null);
+  const [orbitFx, setOrbitFx] = useState<OrbitFx | null>(null);
+  const [hoveredOrbitRing, setHoveredOrbitRing] = useState<number | null>(null);
+  const [selectedOrbitRing, setSelectedOrbitRing] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [nickname, setNickname] = useState("");
@@ -266,7 +273,7 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "setup_item" | "use_item" | "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit" | "switch_recall",
+    action: "setup_item" | "setup_confirm" | "setup_cancel" | "use_item" | "cancel_item" | "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit" | "switch_recall",
     target?: Pos,
     meteorSize?: MeteorSize,
     useCapsule = false,
@@ -290,7 +297,7 @@ function Game() {
         itemKind,
         meteorId,
       });
-      if ((action === "setup_item" || action === "use_item" || action === "move" || action === "skip_move") && data.state) {
+      if ((action === "setup_item" || action === "setup_confirm" || action === "setup_cancel" || action === "use_item" || action === "cancel_item" || action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
       }
@@ -747,35 +754,67 @@ function Game() {
 
   const resolveHolo = (target: Pos) => {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    const next = applyHoloSwitch(game, target);
     showSwitchFx("holo", player);
     if (mode === "online") void submitOnlineAction("switch_holo", target);
-    commit(applyHoloSwitch(game, target));
+    commit(next);
   };
   const resolvePulse = (target: Pos) => {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    const next = applyPulseSwitch(game, target);
     showSwitchFx("pulse", player);
     if (mode === "online") void submitOnlineAction("switch_pulse", target);
-    commit(applyPulseSwitch(game, target));
+    commit(next);
   };
   const resolveOrbit = (ring: number, clockwise: boolean) => {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    const next = applyOrbitSwitch(game, ring, clockwise);
     showSwitchFx("orbit", player);
     if (mode === "online") void submitOnlineAction("switch_orbit", undefined, undefined, false, ring, clockwise);
-    commit(applyOrbitSwitch(game, ring, clockwise));
+    setSelectedOrbitRing(null);
+    setHoveredOrbitRing(null);
+    setOrbitFx({ ring, clockwise, nonce: Date.now() });
+    setIsAnimating(true);
+    commit(next);
+    window.setTimeout(() => {
+      setOrbitFx(null);
+      setIsAnimating(false);
+    }, 760);
   };
   const resolveRecall = (meteorId: number) => {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    const next = applyRecallItem(game, meteorId);
     showSwitchFx("recall", player);
     if (mode === "online") void submitOnlineAction("switch_recall", undefined, undefined, false, undefined, undefined, undefined, meteorId);
-    commit(applyRecallItem(game, meteorId));
+    commit(next);
   };
   const useItem = (kind: ItemKind) => {
     if (!canControl || !canUseItem(game, kind)) return;
     try {
-      showSwitchFx(kind, game.turn);
+      if (kind === "shield" || kind === "booster") showSwitchFx(kind, game.turn);
       if (mode === "online") void submitOnlineAction("use_item", undefined, undefined, false, undefined, undefined, kind);
       commit(applyUseItem(game, kind));
     } catch { return; }
+  };
+
+  const cancelItemTarget = () => {
+    if (!canControl || game.phase !== "switch" || !game.pendingSwitches?.length) return;
+    setSelectedOrbitRing(null);
+    setHoveredOrbitRing(null);
+    if (mode === "online") void submitOnlineAction("cancel_item");
+    commit(cancelPendingItem(game));
+  };
+
+  const confirmItemLoadout = () => {
+    if (!canControl || game.phase !== "setup" || (game.itemHands?.[game.turn]?.length ?? 0) !== 3) return;
+    if (mode === "online") void submitOnlineAction("setup_confirm");
+    commit(confirmSetupItems(game));
+  };
+
+  const cancelItemLoadout = () => {
+    if (!canControl || game.phase !== "setup" || !(game.itemHands?.[game.turn]?.length ?? 0)) return;
+    if (mode === "online") void submitOnlineAction("setup_cancel");
+    commit(resetSetupItems(game));
   };
 
   const handleCell = (r: number, c: number) => {
@@ -789,6 +828,10 @@ function Game() {
     if (game.phase === "switch") {
       const kind = game.pendingSwitches?.[0]?.kind;
       try {
+        if (kind === "orbit") {
+          const ring = Math.max(Math.abs(r - mid), Math.abs(c - mid));
+          if (ring > 0) setSelectedOrbitRing(ring);
+        }
         if (kind === "holo") resolveHolo({ r, c });
         if (kind === "pulse") resolvePulse({ r, c });
         if (kind === "recall") {
@@ -949,9 +992,15 @@ function Game() {
       orthogonallyAdjacent(obstacle, { r, c }),
     );
 
+  const orbitSelecting = game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "orbit";
+  const orbitRingAt = (r: number, c: number) => Math.max(Math.abs(r - mid), Math.abs(c - mid));
+  const activeOrbitRing = selectedOrbitRing ?? hoveredOrbitRing;
+
   const validPlacement = (r: number, c: number) =>
     game.phase === "setup"
       ? false
+      : orbitSelecting
+      ? orbitRingAt(r, c) > 0
       : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
       : game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "recall"
@@ -1109,6 +1158,9 @@ function Game() {
           const next = applySetupItem(game, setupDecision.kind);
           if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, setupDecision.kind);
           commit(next);
+        } else if (setupDecision.type === "confirm_setup") {
+          if (mode === "online") void submitOnlineAction("setup_confirm");
+          commit(confirmSetupItems(game));
         }
         return;
       }
@@ -1230,7 +1282,7 @@ function Game() {
           <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
           <ProbeIcon color="red" teamMode={game.variant === "team"} />
-          <InventoryPanel inventory={game.inventory.red} color="red" />
+          <InventoryPanel inventory={game.inventory.red} color="red" items={game.itemHands?.red ?? []} />
         </aside>
 
         <section className="arena">
@@ -1268,6 +1320,14 @@ function Game() {
                 perspectiveSlot,
               );
               const pos = { r, c };
+              const orbitShift = orbitFx && orbitRingAt(r, c) === orbitFx.ring
+                ? (() => {
+                    const from = orbitFx.clockwise
+                      ? { r: game.size - 1 - c, c: r }
+                      : { r: c, c: game.size - 1 - r };
+                    return boardToViewDelta({ r: from.r - r, c: from.c - c }, perspectiveSlot);
+                  })()
+                : null;
               const setupSlot = false;
               const setupRejected = setupSlot &&
                 (game.setupRejected?.[game.turn] ?? []).some((cell) => samePos(cell, pos));
@@ -1299,10 +1359,22 @@ function Game() {
                     r === mid && c === mid ? "core" : "",
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",
+                    orbitSelecting && activeOrbitRing === orbitRingAt(r, c) ? "orbit-preview" : "",
+                    orbitShift ? `orbit-shift ${orbitFx?.clockwise ? "clockwise" : "counterclockwise"}` : "",
                     setupSlot ? `setup-slot setup-${setupZone}` : "",
                     setupRejected ? "setup-rejected" : "",
                   ].join(" ")}
                   onClick={() => handleCell(r, c)}
+                  style={orbitShift ? ({
+                    "--orbit-from-x": `${orbitShift.c * 100}%`,
+                    "--orbit-from-y": `${orbitShift.r * 100}%`,
+                  } as React.CSSProperties) : undefined}
+                  onMouseEnter={() => {
+                    if (orbitSelecting && !selectedOrbitRing) setHoveredOrbitRing(orbitRingAt(r, c) || null);
+                  }}
+                  onMouseLeave={() => {
+                    if (orbitSelecting && !selectedOrbitRing) setHoveredOrbitRing(null);
+                  }}
                   disabled={game.phase === "over" || (!legal && !placeable)}
                   aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}`}
                 >
@@ -1400,6 +1472,22 @@ function Game() {
                 <b>
                   {`${game.itemHands?.[game.turn]?.length ?? 0} / 3 選択済み`}
                 </b>
+                <span className="setup-confirm-actions">
+                  <button
+                    className="primary-action compact-action"
+                    disabled={(game.itemHands?.[game.turn]?.length ?? 0) !== 3}
+                    onClick={confirmItemLoadout}
+                  >
+                    決定
+                  </button>
+                  <button
+                    className="secondary-action compact-action"
+                    disabled={(game.itemHands?.[game.turn]?.length ?? 0) === 0}
+                    onClick={cancelItemLoadout}
+                  >
+                    選択をキャンセル
+                  </button>
+                </span>
               </div>
             )}
             {game.phase === "place" && (
@@ -1442,13 +1530,27 @@ function Game() {
             )}
             {game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "orbit" && (
               <div className="orbit-controls">
-                <span className="action-label">ORBIT: リングと方向を選択</span>
-                {Array.from({ length: Math.floor(game.size / 2) }, (_, i) => i + 1).map((ring) => (
-                  <span key={ring}>
-                    <button onClick={() => resolveOrbit(ring, true)}>R{ring} ↻</button>
-                    <button onClick={() => resolveOrbit(ring, false)}>R{ring} ↺</button>
+                <span className="action-label">
+                  {selectedOrbitRing
+                    ? `R${selectedOrbitRing}：回転方向を選択`
+                    : "ORBIT：盤上の回転させたいリングを選択"}
+                </span>
+                {selectedOrbitRing && (
+                  <span className="orbit-direction-actions">
+                    <button onClick={() => resolveOrbit(selectedOrbitRing, true)}>時計回り ↻</button>
+                    <button onClick={() => resolveOrbit(selectedOrbitRing, false)}>反時計回り ↺</button>
+                    <button className="secondary" onClick={() => setSelectedOrbitRing(null)}>リングを選び直す</button>
                   </span>
-                ))}
+                )}
+                <button className="secondary" onClick={cancelItemTarget}>戻る</button>
+              </div>
+            )}
+            {game.phase === "switch" && game.pendingSwitches?.[0]?.kind !== "orbit" && (
+              <div className="switch-target-controls">
+                <span className="action-label">
+                  {`${game.pendingSwitches?.[0]?.kind.toUpperCase()}：盤上から対象を選択`}
+                </span>
+                <button className="secondary" onClick={cancelItemTarget}>戻る</button>
               </div>
             )}
             {game.phase === "move" && moves.length === 0 && (
@@ -1477,7 +1579,7 @@ function Game() {
           <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
           <ProbeIcon color="blue" teamMode={game.variant === "team"} />
-          <InventoryPanel inventory={game.inventory.blue} color="blue" />
+          <InventoryPanel inventory={game.inventory.blue} color="blue" items={game.itemHands?.blue ?? []} />
         </aside>
       </section>
       {activePlayers(game).length > 2 && (
@@ -1497,7 +1599,7 @@ function Game() {
               <span className="eyebrow">{displayNameForPlayer(player, index + 3)}</span>
               <h2>{playerName(player)}</h2>
               <ProbeIcon color={player} teamMode={game.variant === "team"} />
-              <InventoryPanel inventory={game.inventory[player]} color={player} />
+              <InventoryPanel inventory={game.inventory[player]} color={player} items={game.itemHands?.[player] ?? []} />
             </aside>
           ))}
         </section>
@@ -1999,10 +2101,15 @@ function ObstacleIcon({ obstacle }: { obstacle: ObstacleMeteor }) {
 function InventoryPanel({
   inventory,
   color,
+  items,
 }: {
   inventory: Record<MeteorSize, number>;
   color: Player;
+  items: ItemKind[];
 }) {
+  const itemCounts = (["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[])
+    .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
+    .filter(({ count }) => count > 0);
   return (
     <div className="inventory">
       <span>ARSENAL</span>
@@ -2016,6 +2123,13 @@ function InventoryPanel({
         <small>LARGE</small>
         <b>×{inventory.large}</b>
       </div>
+      {itemCounts.map(({ kind, count }) => (
+        <div key={kind} className={`inventory-item ${kind}`}>
+          <ItemIcon kind={kind} />
+          <small>{kind.toUpperCase()}</small>
+          <b>×{count}</b>
+        </div>
+      ))}
     </div>
   );
 }
