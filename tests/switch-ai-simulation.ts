@@ -3,12 +3,23 @@ import { chooseAiDecision } from "../app/ai-engine";
 import { applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, finishTurn, initialGameState, legalMoves, type GameState } from "../app/game-rules";
 
 const itemUses: Record<string, number> = {};
+const itemUsesByPlayer: Record<string, Record<string, number>> = {};
+const setupChoices: Record<string, Record<string, number>> = {};
 function step(state: GameState, random: () => number): GameState {
   const d = chooseAiDecision(state, "hard", random);
-  if (d.type === "setup") return applySetupItem(state, d.kind);
+  if (d.type === "setup") {
+    setupChoices[state.turn] ??= {};
+    setupChoices[state.turn][d.kind] = (setupChoices[state.turn][d.kind] ?? 0) + 1;
+    return applySetupItem(state, d.kind);
+  }
   if (d.type === "move") return applyMove(state, d.target);
   if (d.type === "meteor") return applyMeteor(state, d.target, d.size, d.useCapsule).state;
-  if (d.type === "item") { itemUses[d.kind] = (itemUses[d.kind] ?? 0) + 1; return applyUseItem(state, d.kind); }
+  if (d.type === "item") {
+    itemUses[d.kind] = (itemUses[d.kind] ?? 0) + 1;
+    itemUsesByPlayer[state.turn] ??= {};
+    itemUsesByPlayer[state.turn][d.kind] = (itemUsesByPlayer[state.turn][d.kind] ?? 0) + 1;
+    return applyUseItem(state, d.kind);
+  }
   if (d.type === "pass") return applyPass(state);
   if (d.type === "holo") return applyHoloSwitch(state, d.target);
   if (d.type === "pulse") return applyPulseSwitch(state, d.target);
@@ -19,6 +30,7 @@ function step(state: GameState, random: () => number): GameState {
 }
 
 const wins = { red: 0, blue: 0, green: 0, yellow: 0, draw: 0 };
+const winsByFirst = { red: 0, blue: 0, green: 0, yellow: 0 };
 let totalTurns = 0;
 const games = Number(process.env.SIM_GAMES ?? 20);
 const offset = Number(process.env.SIM_OFFSET ?? 0);
@@ -38,6 +50,7 @@ for (let gameIndex = 0; gameIndex < games; gameIndex += 1) {
   assert.equal(state.phase, "over", `game ${gameIndex + 1} must finish`);
   assert.ok(!state.pendingSwitches?.length, `game ${gameIndex + 1} must resolve every switch`);
   wins[state.winner ?? "draw"] += 1;
+  if (state.winner !== "draw") winsByFirst[state.startingPlayer] += state.winner === state.startingPlayer ? 1 : 0;
   totalTurns += state.turnCount;
 }
-console.log(JSON.stringify({ mode: "item", difficulty: "hard", games, wins, averageTurns: Number((totalTurns / games).toFixed(1)), itemUses }));
+console.log(JSON.stringify({ mode: "item", difficulty: "hard", games, wins, winsByFirst, averageTurns: Number((totalTurns / games).toFixed(1)), itemUses, itemUsesByPlayer, setupChoices }));

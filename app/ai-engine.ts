@@ -94,7 +94,7 @@ function positionValue(state: GameState, player: Player) {
   if (terminal !== null) return terminal;
   const players = activePlayers(state);
   const style =
-    players.length === 2
+    players.length === 2 || state.variant === "item"
       ? { progress: 1, denial: 1, items: 1, resources: 1 }
       : personality(player);
   const friends = players.filter((p) => allied(state, p, player));
@@ -366,9 +366,15 @@ function selectWithDifficulty<T>(
   ranked: Scored<T>[],
   difficulty: AiDifficulty,
   random: () => number,
+  creative = false,
 ) {
   ranked.sort((a, b) => b.value - a.value);
-  if (difficulty === "hard" || ranked.length === 1) return ranked[0];
+  if (ranked.length === 1) return ranked[0];
+  if (difficulty === "hard") {
+    if (!creative || Math.abs(ranked[0].value) >= 900_000 || random() < 0.78) return ranked[0];
+    const alternatives = ranked.slice(1, 5).filter((entry) => ranked[0].value - entry.value <= 18);
+    return alternatives[Math.floor(random() * alternatives.length)] ?? ranked[0];
+  }
   const width = difficulty === "easy" ? Math.min(5, ranked.length) : Math.min(2, ranked.length);
   const tolerance = difficulty === "easy" ? 70 : 12;
   const safe = ranked.slice(0, width).filter((x) => ranked[0].value - x.value <= tolerance);
@@ -384,19 +390,38 @@ export function chooseAiDecision(
   const player = state.turn;
   if (state.phase === "setup") {
     const own = state.itemHands?.[player] ?? [];
-    const plans: Record<Player, ItemKind[]> = {
-      red: ["booster", "pulse", "shield"],
-      blue: ["holo", "shield", "pulse"],
-      green: ["recall", "booster", "orbit"],
-      yellow: ["orbit", "holo", "pulse"],
+    const base: Record<ItemKind, number> = {
+      booster: 94,
+      shield: 91,
+      pulse: 90,
+      holo: 87,
+      orbit: 87,
+      recall: 80,
     };
-    const planned = plans[player][own.length];
-    const kinds = ([planned, "pulse", "shield", "booster", "orbit", "holo", "recall"] as ItemKind[])
-      .filter((kind) => kind && own.filter((entry) => entry === kind).length < 2);
-    if (!kinds.length) return { type: "skip" };
+    const controls: ItemKind[] = ["pulse", "holo", "orbit"];
+    const ranked = (["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[])
+      .filter((kind) => own.filter((entry) => entry === kind).length < 2)
+      .map((kind) => {
+        const duplicatePenalty = own.includes(kind) ? 24 : 0;
+        const controlCount = own.filter((entry) => controls.includes(entry)).length;
+        const roleBalance = controls.includes(kind) && controlCount >= 2 ? -18 : 0;
+        const synergy =
+          ((kind === "shield" && own.includes("booster")) ||
+          (kind === "booster" && own.includes("shield"))) ? 5 : 0;
+        return {
+          choice: kind,
+          value: base[kind] - duplicatePenalty + roleBalance + synergy,
+        };
+      })
+      .sort((a, b) => b.value - a.value);
+    if (!ranked.length) return { type: "skip" };
+    const nearBest = ranked.filter((entry) => ranked[0].value - entry.value <= 12).slice(0, 4);
+    const selected = random() < 0.55
+      ? nearBest[0]
+      : nearBest[1 + Math.floor(random() * Math.max(1, nearBest.length - 1))] ?? nearBest[0];
     return {
       type: "setup",
-      kind: kinds[0],
+      kind: selected.choice,
       target: { r: -1, c: -1 },
     };
   }
@@ -426,7 +451,7 @@ export function chooseAiDecision(
           return [{ choice: target, value: routeBlock }];
         } catch { return []; }
       });
-      const selected = selectWithDifficulty(ranked, difficulty, random);
+      const selected = selectWithDifficulty(ranked, difficulty, random, true);
       return selected ? { type: "holo", target: selected.choice } : { type: "skip" };
     }
     if (pending.kind === "pulse") {
@@ -439,7 +464,7 @@ export function chooseAiDecision(
         }
         catch { return []; }
       });
-      const selected = selectWithDifficulty(ranked, difficulty, random);
+      const selected = selectWithDifficulty(ranked, difficulty, random, true);
       return selected ? { type: "pulse", target: selected.choice } : { type: "skip" };
     }
     if (pending.kind === "recall") {
@@ -448,7 +473,7 @@ export function chooseAiDecision(
         choice: meteor.id,
         value: distance(meteor, centerOf(state)) * 8 + (meteor.size === "large" ? 12 : 0),
       }));
-      const selected = selectWithDifficulty(ranked, difficulty, random);
+      const selected = selectWithDifficulty(ranked, difficulty, random, true);
       return selected ? { type: "recall", meteorId: selected.choice } : { type: "skip" };
     }
     const options: Array<Scored<{ ring: number; clockwise: boolean }>> = [];
@@ -456,7 +481,7 @@ export function chooseAiDecision(
       const next = applyOrbitSwitch(state, ring, clockwise);
       options.push({ choice: { ring, clockwise }, value: scoreResult(next, pending.player, difficulty) });
     }
-    const selected = selectWithDifficulty(options, difficulty, random);
+    const selected = selectWithDifficulty(options, difficulty, random, true);
     return { type: "orbit", ...selected.choice };
   }
   if (state.phase === "move") {
@@ -466,7 +491,18 @@ export function chooseAiDecision(
       choice: move,
       value: scoreMove(state, move, player, difficulty),
     }));
-    const selected = selectWithDifficulty(ranked, difficulty, random);
+    ranked.sort((a, b) => b.value - a.value);
+    const usefulItemMoves = ranked.filter((entry) =>
+      itemsOnMove(state, entry.choice).some((item) => itemValue(state, player, item.kind) >= 70),
+    );
+    const itemMove = usefulItemMoves[0];
+    const selected =
+      state.variant === "item" &&
+      Math.abs(ranked[0].value) < 900_000 &&
+      itemMove &&
+      ranked[0].value - itemMove.value <= 120
+        ? itemMove
+        : selectWithDifficulty(ranked, difficulty, random, state.variant === "item");
     return { type: "move", target: selected.choice };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
@@ -486,23 +522,23 @@ export function chooseAiDecision(
   const nearestRivalCore = Math.min(...rivals.map((candidate) => coreDistance(state, candidate)));
   const ownedMeteors = state.meteors.filter((meteor) => meteor.owner === player && !meteor.consumable);
   const staleMeteor = ownedMeteors.some((meteor) => distance(meteor, centerOf(state)) >= 5);
-  const itemScores: Partial<Record<ItemKind, number>> = {
-    shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 132 : 58,
-    booster: coreDistance(state, player) <= 5 ? 108 : 68,
-    pulse: nearestRivalCore <= 3 ? 126 : 88,
-    orbit: nearestRivalCore <= 4 ? 116 : 82,
-    holo: nearestRivalCore <= 4 ? 122 : 70,
-    recall: staleMeteor ? 96 : state.inventory[player].small + state.inventory[player].large === 0 ? 22 : 62,
+  const itemBonuses: Partial<Record<ItemKind, number>> = {
+    shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 42 : 8,
+    booster: coreDistance(state, player) <= 5 ? 34 : 10,
+    pulse: nearestRivalCore <= 3 ? 40 : 15,
+    orbit: nearestRivalCore <= 4 ? 36 : 12,
+    holo: nearestRivalCore <= 4 ? 38 : 9,
+    recall: staleMeteor ? 30 : state.inventory[player].small + state.inventory[player].large === 0 ? -18 : 8,
   };
   const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
   for (const kind of usableItems) {
     const next = applyUseItem(state, kind);
     ranked.push({
       choice: { target: { r: -1, c: -1 }, size: "small", useCapsule: false, itemKind: kind } as Placement & { itemKind: ItemKind },
-      value: (itemScores[kind] ?? 50) + (next.phase === "over" ? 100000 : 0),
+      value: scoreResult(next, player, difficulty, state) + (itemBonuses[kind] ?? 0),
     });
   }
-  const selected = selectWithDifficulty(ranked, difficulty, random);
+  const selected = selectWithDifficulty(ranked, difficulty, random, state.variant === "item");
   if (!selected || selected.choice === "pass") return { type: "pass" };
   if ("itemKind" in selected.choice) return { type: "item", kind: selected.choice.itemKind as ItemKind };
   return { type: "meteor", ...selected.choice };

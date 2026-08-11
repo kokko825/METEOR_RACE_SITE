@@ -1104,17 +1104,10 @@ function Game() {
     ) return;
     const timer = window.setTimeout(() => {
       if (game.phase === "setup") {
-        const hand = game.itemHands?.[game.turn] ?? [];
-        const plans: Record<Player, ItemKind[]> = {
-          red: ["booster", "pulse", "shield"],
-          blue: ["holo", "shield", "pulse"],
-          green: ["recall", "booster", "orbit"],
-          yellow: ["orbit", "holo", "pulse"],
-        };
-        const kind = plans[game.turn][hand.length];
-        if (kind) {
-          const next = applySetupItem(game, kind);
-          if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, kind);
+        const setupDecision = chooseAiDecision(game, aiDifficulty);
+        if (setupDecision.type === "setup") {
+          const next = applySetupItem(game, setupDecision.kind);
+          if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, setupDecision.kind);
           commit(next);
         }
         return;
