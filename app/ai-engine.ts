@@ -260,7 +260,7 @@ function plannedRecallBonus(state: GameState, placement: Placement, next: GameSt
 }
 
 function earlyItemDevelopment(state: GameState, player: Player) {
-  if (!isItemVariant(state.variant) || coreDistance(state, player) <= 4) return false;
+  if (coreDistance(state, player) <= 4) return false;
   return activePlayers(state)
     .filter((candidate) => !allied(state, candidate, player))
     .every((rival) => coreDistance(state, rival) > 4);
@@ -291,11 +291,20 @@ function earlyPlacementStrategyBonus(state: GameState, placement: Placement, nex
   const openingHarassmentPenalty =
     openingCycle && rivalSetback > 0 && ownAdvance <= 0 ? 2_500 : 0;
 
+  // Until somebody enters the four-cell CORE zone, direct blast harassment is
+  // usually less interesting than racing or building a future gate. A surviving
+  // route blocker is exempt because it creates a readable strategic problem
+  // without immediately sending a distant rival backwards.
+  const remoteHarassmentPenalty = rivalSetback > 0 && ownAdvance <= 0 ? rivalSetback * 620 : 0;
+  const quietGateBonus = isFutureGate && survivesAsObstacle && rivalSetback === 0 ? 120 : 0;
+
   return (
     ownAdvance * 90 +
-    (isFutureGate && survivesAsObstacle ? 46 : 0) -
+    (isFutureGate && survivesAsObstacle ? 46 : 0) +
+    quietGateBonus -
     rivalSetback * 70 -
-    openingHarassmentPenalty
+    openingHarassmentPenalty -
+    remoteHarassmentPenalty
   );
 }
 
