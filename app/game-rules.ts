@@ -571,8 +571,10 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
         break;
       }
       const mid = Math.floor(state.size / 2);
-      if (step > 1 && target.r === mid && target.c === mid) break;
       moves.push(target);
+      // BOOSTER may enter CORE on either of its two movement steps. CORE ends
+      // movement immediately, so cells beyond it are never offered.
+      if (target.r === mid && target.c === mid) break;
     }
   });
   return moves;

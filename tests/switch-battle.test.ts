@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   applyMeteor,
+  applyMove,
   applyBlastSwitch,
   applyHoloSwitch,
   applyOrbitSwitch,
@@ -109,6 +110,19 @@ boosterJump = {
   boosterMoves: { ...boosterJump.boosterMoves, red: 1 },
 };
 assert.ok(legalMoves(boosterJump).some((move) => samePos(move, { r: 8, c: 7 })), "BOOSTER can jump over a meteor to an empty landing cell");
+
+let boosterCore = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterCore = {
+  ...boosterCore,
+  phase: "move",
+  probes: { ...boosterCore.probes, red: { r: 9, c: 7 }, blue: { r: 2, c: 2 } },
+  boosterMoves: { ...boosterCore.boosterMoves, red: 1 },
+};
+const boosterCoreMoves = legalMoves(boosterCore);
+assert.ok(boosterCoreMoves.some((move) => samePos(move, { r: 7, c: 7 })), "BOOSTER can enter CORE on its second movement step");
+assert.ok(!boosterCoreMoves.some((move) => samePos(move, { r: 6, c: 7 })), "BOOSTER movement stops at CORE");
+boosterCore = applyMove(boosterCore, { r: 7, c: 7 });
+assert.equal(boosterCore.winner, "red", "entering CORE with BOOSTER wins the game");
 
 let pulseHolo = initialGameState(15, "red", 2, false, 0, [], "item");
 pulseHolo = {
