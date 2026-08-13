@@ -695,7 +695,11 @@ function Game() {
       const effectScale =
         mode !== "lab" ? 1 : aiSpeed <= 60 ? 0.08 : aiSpeed <= 240 ? 0.18 : 0.48;
       window.setTimeout(() => {
-        setGame((current) => ({ ...current, probes }));
+        setGame((current) => ({
+          ...current,
+          probes,
+          obstacles: resolution.state.obstacles,
+        }));
         setBlastFx((effect) => (effect ? { ...effect, stage: "recover" } : effect));
       }, Math.max(70, Math.round(1100 * effectScale)));
       window.setTimeout(() => {
