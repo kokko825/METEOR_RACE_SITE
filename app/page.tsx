@@ -20,6 +20,7 @@ import {
   canUseItem,
   cancelPendingItem,
   confirmSetupItems,
+  distance,
   finishTurn,
   initialGameState as initialState,
   legalMoves,
@@ -35,6 +36,7 @@ import {
   type GameState,
   type GameVariant,
   type ItemKind,
+  type ItemSystem,
   type Meteor,
   type MeteorSize,
   type ObstacleMeteor,
@@ -94,6 +96,7 @@ function Game() {
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
+  const [itemSystem, setItemSystem] = useState<ItemSystem>("stock");
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [history, setHistory] = useState<GameState[]>([]);
@@ -175,6 +178,8 @@ function Game() {
     mode === "online" && game.phase === "setup" && online.role
       ? online.role
       : game.turn;
+  const setupItemLimit = game.itemSystem === "cooldown" ? 3 : balance.itemHandTotal;
+  const setupSameLimit = game.itemSystem === "cooldown" ? 1 : balance.itemSameMax;
   const canControl =
     (mode === "online" || !needsNewGame) &&
     (mode !== "online" ||
@@ -358,6 +363,7 @@ function Game() {
       if ((action === "setup_item" || action === "setup_confirm" || action === "setup_cancel" || action === "use_item" || action === "cancel_item" || action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
+        setItemSystem(data.state.itemSystem ?? "stock");
       }
       if (action.startsWith("switch_") && data.state) setGame(data.state);
       const confirmedItemEffect = data.state?.onlineItemEffect as OnlineItemEffect | undefined;
@@ -533,7 +539,56 @@ function Game() {
     }
   };
 
+  const playItemSound = (kind: ItemKind) => {
+    if (!soundEnabled) return;
+    try {
+      const AudioContextClass = window.AudioContext ??
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = new AudioContextClass();
+      const now = context.currentTime;
+      const gain = context.createGain();
+      const oscillator = context.createOscillator();
+      const second = context.createOscillator();
+      const duration = kind === "shield" ? 0.58 : kind === "pulse" ? 0.48 : 0.42;
+      const settings: Record<ItemKind, { start: number; end: number; type: OscillatorType; second: number }> = {
+        shield: { start: 72, end: 210, type: "sine", second: 108 },
+        booster: { start: 95, end: 720, type: "sawtooth", second: 142 },
+        holo: { start: 820, end: 260, type: "triangle", second: 1240 },
+        orbit: { start: 180, end: 980, type: "sine", second: 270 },
+        pulse: { start: 1350, end: 190, type: "square", second: 1920 },
+        recall: { start: 940, end: 110, type: "triangle", second: 1410 },
+      };
+      const setting = settings[kind];
+      oscillator.type = setting.type;
+      second.type = kind === "pulse" ? "square" : "sine";
+      oscillator.frequency.setValueAtTime(setting.start, now);
+      oscillator.frequency.exponentialRampToValueAtTime(setting.end, now + duration);
+      second.frequency.setValueAtTime(setting.second, now);
+      second.frequency.exponentialRampToValueAtTime(Math.max(55, setting.end * 1.35), now + duration);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(kind === "pulse" ? 0.18 : 0.24, now + 0.018);
+      if (kind === "pulse") {
+        for (let step = 1; step <= 6; step += 1) {
+          gain.gain.setValueAtTime(step % 2 ? 0.035 : 0.2, now + step * 0.055);
+        }
+      }
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      oscillator.connect(gain);
+      second.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(now);
+      second.start(now);
+      oscillator.stop(now + duration);
+      second.stop(now + duration);
+      window.setTimeout(() => void context.close(), (duration + 0.2) * 1000);
+    } catch {
+      // Audio may remain blocked until a user gesture on some mobile browsers.
+    }
+  };
+
   const showSwitchFx = (kind: ItemKind, player: Player) => {
+    playItemSound(kind);
     setSwitchFx({ kind, player, nonce: Date.now() });
     window.setTimeout(() => setSwitchFx((current) => current?.kind === kind && current.player === player ? null : current), 1050);
   };
@@ -868,7 +923,7 @@ function Game() {
   };
 
   const confirmItemLoadout = () => {
-    if (!canControl || game.phase !== "setup" || (game.itemHands?.[setupPlayer]?.length ?? 0) !== balance.itemHandTotal) return;
+    if (!canControl || game.phase !== "setup" || (game.itemHands?.[setupPlayer]?.length ?? 0) !== setupItemLimit) return;
     if (mode === "online") void submitOnlineAction("setup_confirm");
     commit(confirmSetupItems(game, setupPlayer));
   };
@@ -923,9 +978,11 @@ function Game() {
           humanCount: onlinePlayerCount,
           aiCount: onlineAiCount,
           variant,
+          itemSystem,
         });
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
+        setItemSystem(data.state.itemSystem ?? itemSystem);
         setSize(data.state.size);
         setFirst(data.state.startingPlayer);
         setActiveFirst(data.state.startingPlayer);
@@ -1003,6 +1060,7 @@ function Game() {
           botPlayers,
           variant,
           activeBalance,
+          itemSystem,
         ),
       );
     }
@@ -1030,6 +1088,7 @@ function Game() {
         game.botPlayers ?? [],
         game.variant ?? "classic",
         game.balance ?? activeBalance,
+        game.itemSystem ?? "stock",
       ),
     );
   };
@@ -1125,6 +1184,7 @@ function Game() {
           }
           if (remoteItemEffect && remoteItemEffect.version > playedOnlineItemEffect.current) {
             playedOnlineItemEffect.current = remoteItemEffect.version;
+            playItemSound(remoteItemEffect.kind);
             setSwitchFx({
               kind: remoteItemEffect.kind,
               player: remoteItemEffect.player,
@@ -1571,12 +1631,16 @@ function Game() {
           <div className="action-panel">
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
-                <span className="action-label">持ち込むアイテムを{balance.itemHandTotal}個選択（同じ種類は{balance.itemSameMax}個まで）</span>
+                <span className="action-label">
+                  {game.itemSystem === "cooldown"
+                    ? "クールタイム版：異なるアイテムを3種類選択（使用後に再使用待ち）"
+                    : `個数制限版：アイテムを${balance.itemHandTotal}個選択（同じ種類は${balance.itemSameMax}個まで）`}
+                </span>
                 {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
                     className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}
-                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= balance.itemSameMax}
+                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= setupSameLimit}
                     onClick={() => {
                       try {
                         const next = applySetupItem(game, kind, setupPlayer);
@@ -1591,12 +1655,12 @@ function Game() {
                   </button>
                 ))}
                 <b>
-                  {`${game.itemHands?.[setupPlayer]?.length ?? 0} / ${balance.itemHandTotal} 選択済み`}
+                  {`${game.itemHands?.[setupPlayer]?.length ?? 0} / ${setupItemLimit} 選択済み`}
                 </b>
                 <span className="setup-confirm-actions">
                   <button
                     className="primary-action compact-action"
-                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) !== balance.itemHandTotal}
+                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) !== setupItemLimit}
                     onClick={confirmItemLoadout}
                   >
                     決定
@@ -1645,6 +1709,9 @@ function Game() {
                   >
                     <ItemIcon kind={kind} />
                     <span>{kind.toUpperCase()}</span>
+                    {game.itemSystem === "cooldown" && (game.itemCooldowns?.[game.turn]?.[kind] ?? 0) > 0 && (
+                      <b>CT {game.itemCooldowns?.[game.turn]?.[kind]}</b>
+                    )}
                   </button>
                 ))}
               </>
@@ -1760,6 +1827,29 @@ function Game() {
               <option value="team-item">2 VS 2 チームアイテム戦</option>
             </select>
           </label>
+          {isItemVariant(variant) && (
+            <div className="vs-ai-count item-rule-toggle" aria-label="アイテムルール">
+              <span>ITEM RULE</span>
+              <button
+                type="button"
+                disabled={roomSettingsLocked}
+                className={itemSystem === "stock" ? "selected" : ""}
+                aria-pressed={itemSystem === "stock"}
+                onClick={() => { setItemSystem("stock"); setNeedsNewGame(true); }}
+              >
+                個数制限版
+              </button>
+              <button
+                type="button"
+                disabled={roomSettingsLocked}
+                className={itemSystem === "cooldown" ? "selected" : ""}
+                aria-pressed={itemSystem === "cooldown"}
+                onClick={() => { setItemSystem("cooldown"); setNeedsNewGame(true); }}
+              >
+                クールタイム版
+              </button>
+            </div>
+          )}
           <label>
             MODE
             <select
@@ -2112,7 +2202,8 @@ function Game() {
             <p><b>BLAST</b> 小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。</p>
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
-            <p><b>ITEM</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
+            <p><b>ITEM・個数制限版</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
+            <p><b>ITEM・クールタイム版</b> 異なる3種類を選択。アイテムは消費されず、種類別の待ち時間後に再使用できます。</p>
             <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>

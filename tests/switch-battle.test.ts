@@ -118,4 +118,20 @@ recallHolo = applyRecallItem(recallHolo, 92);
 assert.equal(recallHolo.obstacles.length, 0, "RECALL removes the selected own holo meteor");
 assert.deepEqual(recallHolo.itemHands?.red, ["holo"], "RECALL returns the holo meteor to the item hand");
 
+let cooldownGame = initialGameState(15, "red", 2, false, 0, [], "item", undefined, "cooldown");
+cooldownGame = applySetupItem(cooldownGame, "pulse");
+cooldownGame = applySetupItem(cooldownGame, "shield");
+cooldownGame = applySetupItem(cooldownGame, "holo");
+assert.throws(() => applySetupItem(cooldownGame, "pulse"), /3個まで|1個まで/);
+cooldownGame = confirmSetupItems(cooldownGame);
+cooldownGame = applySetupItem(cooldownGame, "booster");
+cooldownGame = applySetupItem(cooldownGame, "orbit");
+cooldownGame = applySetupItem(cooldownGame, "recall");
+cooldownGame = confirmSetupItems(cooldownGame);
+cooldownGame = { ...cooldownGame, phase: "place", turnCount: 2 };
+cooldownGame = applyUseItem(cooldownGame, "pulse");
+assert.deepEqual(cooldownGame.itemHands?.red, ["pulse", "shield", "holo"], "cooldown items are not consumed");
+assert.ok((cooldownGame.itemCooldowns?.red?.pulse ?? 0) > 0, "using an item starts its individual cooldown");
+assert.throws(() => applyUseItem({ ...cooldownGame, phase: "place", turn: "red" }, "pulse"), /使用できません/);
+
 console.log("item-battle: all checks passed");
