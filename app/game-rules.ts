@@ -1103,7 +1103,7 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
       ...target,
       owner: current.player,
       id: state.nextPulseDeviceId ?? 1,
-      turns: 2,
+      turns: activePlayers(state).length * 2,
       createdTurnCount: state.turnCount,
     }],
     nextPulseDeviceId: (state.nextPulseDeviceId ?? 1) + 1,

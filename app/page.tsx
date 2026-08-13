@@ -1624,7 +1624,7 @@ function Game() {
                       roundsLeft={obstacle.turns === -1 ? -1 : Math.max(1, Math.ceil((obstacle.turns ?? 1) / activePlayers(game).length))}
                     />
                   )}
-                  {pulseDevice && <PulseDeviceIcon device={pulseDevice} />}
+                  {pulseDevice && <PulseDeviceIcon device={pulseDevice} roundsLeft={Math.max(1, Math.ceil(pulseDevice.turns / activePlayers(game).length))} />}
                   {fieldItem && (
                     <span className={`field-item ${fieldItem.kind}`} title={fieldItem.kind}>
                       {fieldItem.kind === "shield"
@@ -2335,10 +2335,10 @@ function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roun
   );
 }
 
-function PulseDeviceIcon({ device }: { device: PulseDevice }) {
+function PulseDeviceIcon({ device, roundsLeft }: { device: PulseDevice; roundsLeft: number }) {
   return (
-    <span className={`pulse-device ${device.owner}`} title={`PULSE発生装置・残り${device.turns}ターン`}>
-      <i /><b>PULSE</b><small>{device.turns}</small>
+    <span className={`pulse-device ${device.owner}`} title={`PULSE発生装置・残り${roundsLeft}巡`}>
+      <i /><b>PULSE</b><small>{roundsLeft}</small>
     </span>
   );
 }

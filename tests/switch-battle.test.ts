@@ -86,7 +86,7 @@ deviceGame = applyPulseSwitch(deviceGame, { r: 7, c: 8 });
 assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 7, c: 8 }), "PULSE leaves its fired EMP generator on the board");
 assert.deepEqual(legalMoves({ ...deviceGame, phase: "move", turn: "blue" }, "blue"), [], "PULSE field prevents voluntary movement while inside its range");
 assert.ok(samePos(deviceGame.probes.blue, { r: 7, c: 9 }), "PULSE does not apply BLAST knockback");
-assert.equal(deviceGame.pulseDevices?.[0]?.turns, 2, "PULSE remains deployed for two turns after activation");
+assert.equal(deviceGame.pulseDevices?.[0]?.turns, 4, "PULSE remains deployed for two rounds after activation");
 deviceGame = {
   ...deviceGame,
   phase: "switch",
@@ -97,8 +97,8 @@ deviceGame = applyOrbitSwitch(deviceGame, 1, true);
 assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 8, c: 7 }), "ORBIT rotates a fired EMP generator with its ring");
 assert.equal(deviceGame.pulseDevices?.length, 1, "ORBIT does not reactivate or consume an EMP generator");
 assert.ok(legalMoves({ ...deviceGame, phase: "move", turn: "blue" }, "blue").length > 0, "moving PULSE away with ORBIT immediately unlocks a probe outside the field");
-deviceGame = finishTurn(deviceGame);
-assert.equal(deviceGame.pulseDevices?.length, 0, "PULSE generator disappears after its two active turns");
+deviceGame = finishTurn(finishTurn(finishTurn(finishTurn(deviceGame))));
+assert.equal(deviceGame.pulseDevices?.length, 0, "PULSE generator disappears after its two active rounds");
 
 let boosterJump = initialGameState(15, "red", 2, false, 0, [], "item");
 boosterJump = {
@@ -191,11 +191,11 @@ pulseDuration = {
   switchResume: "finish",
 };
 pulseDuration = applyPulseSwitch(pulseDuration, { r: 7, c: 8 });
-assert.equal(pulseDuration.pulseDevices?.[0]?.turns, 2, "PULSE starts at two turns immediately when placed");
+assert.equal(pulseDuration.pulseDevices?.[0]?.turns, 8, "PULSE starts at two rounds immediately when placed in four-player play");
 pulseDuration = finishTurn(pulseDuration);
-assert.equal(pulseDuration.pulseDevices?.[0]?.turns, 1, "PULSE consumes one count per completed turn, not per player round");
-pulseDuration = finishTurn(pulseDuration);
-assert.equal(pulseDuration.pulseDevices?.length, 0, "PULSE expires after exactly two subsequent turns in four-player play too");
+assert.equal(pulseDuration.pulseDevices?.[0]?.turns, 7, "PULSE consumes one internal count per completed player turn");
+for (let turn = 0; turn < 7; turn += 1) pulseDuration = finishTurn(pulseDuration);
+assert.equal(pulseDuration.pulseDevices?.length, 0, "PULSE expires after exactly two full rounds in four-player play");
 
 let holoDuration = initialGameState(15, "red", 4, false, 0, [], "item");
 holoDuration = { ...holoDuration, phase: "switch", turnCount: 4, pendingSwitches: [{ kind: "holo", player: "red" }] };
