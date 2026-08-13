@@ -39,7 +39,7 @@ export const BALANCE_FIELDS = [
   { key: "boosterUses", externalKey: "item.booster.uses", label: "ブースター使用回数", min: 1, max: 99, unit: "回" },
   { key: "holoRounds", externalKey: "item.holo.rounds", label: "お邪魔継続", min: 1, max: 99, unit: "巡" },
   { key: "holoUnlimited", externalKey: "item.holo.unlimited", label: "ホロメテオ無制限", min: 0, max: 1, unit: "0=OFF / 1=ON" },
-  { key: "pulseRadius", externalKey: "item.pulse.radius", label: "パルス攻撃範囲", min: 1, max: 4, unit: "マス" },
+  { key: "pulseRadius", externalKey: "item.pulse.radius", label: "BLAST効果範囲", min: 1, max: 4, unit: "マス" },
   { key: "emptyMeteorBonusMoves", externalKey: "meteor.empty.bonus_moves", label: "全消費ボーナス移動", min: 0, max: 1, unit: "回" },
 ] as const;
 

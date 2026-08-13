@@ -377,3 +377,21 @@ for (const boardSize of [11, 13, 15]) {
     "BOOSTER中も爆風で押される距離は通常どおり",
   );
 }
+
+{
+  let ranked = initialGameState(11, "red", 3, false, 0, [], "classic");
+  ranked.turnCount = 2;
+  ranked.phase = "move";
+  ranked.probes.red = { r: 6, c: 5 };
+  ranked = applyMove(ranked, { r: 5, c: 5 });
+  assert.equal(ranked.phase, "move", "3人戦は最初のゴールで終了しない");
+  assert.deepEqual(ranked.finishOrder, ["red"]);
+  assert.ok(!ranked.players.includes("red"), "ゴール済みプレイヤーは以後の手番から外れる");
+
+  const second = ranked.turn;
+  ranked.probes[second] = { r: 6, c: 5 };
+  ranked = applyMove(ranked, { r: 5, c: 5 });
+  assert.equal(ranked.phase, "over", "残り1人になった時点で全順位が確定する");
+  assert.deepEqual(ranked.finishOrder, ["red", second, ranked.players[0]]);
+  assert.equal(ranked.winner, "red");
+}

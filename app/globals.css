@@ -304,6 +304,11 @@ button { color: inherit; }
 .item-icon.booster { clip-path:polygon(50% 0,100% 100%,50% 78%,0 100%); border:0; background:var(--item-color); color:#261306; text-shadow:none; }
 .item-icon.orbit { border-radius:50%; }
 .primary-action { border-color:#6ccde8; color:#bcefff; letter-spacing:.08em; }
+.finish-ranking { display:grid; gap:5px; margin:8px 0 12px; padding:0; list-style:none; min-width:190px; }
+.finish-ranking li { display:flex; justify-content:space-between; gap:20px; padding:7px 10px; border:1px solid rgba(139,188,205,.25); background:rgba(5,18,27,.82); }
+.finish-ranking li:first-child { border-color:#ffd66b; box-shadow:0 0 14px rgba(255,214,107,.16); }
+.finish-ranking .red { color:#ff8585; } .finish-ranking .blue { color:#83d8ff; }
+.finish-ranking .green { color:#82e6a6; } .finish-ranking .yellow { color:#ffe070; }
 
 .control-strip { width:min(1060px,100%); margin:22px auto 0; border-top:1px solid var(--line); padding-top:15px; }
 .settings { display:flex; gap:9px; align-items:end; flex-wrap:wrap; }

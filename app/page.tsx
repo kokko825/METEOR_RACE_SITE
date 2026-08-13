@@ -30,6 +30,7 @@ import {
   orthogonallyAdjacent,
   playerName,
   resetSetupItems,
+  resolveCoreArrivals,
   samePos,
   teamOf,
   viewToBoardPos,
@@ -551,23 +552,18 @@ function Game() {
         booster: { start: 95, end: 720, type: "sawtooth", second: 142 },
         holo: { start: 820, end: 260, type: "triangle", second: 1240 },
         orbit: { start: 180, end: 980, type: "sine", second: 270 },
-        pulse: { start: 1350, end: 190, type: "square", second: 1920 },
+        pulse: { start: 118, end: 42, type: "sawtooth", second: 76 },
         recall: { start: 940, end: 110, type: "triangle", second: 1410 },
       };
       const setting = settings[kind];
       oscillator.type = setting.type;
-      second.type = kind === "pulse" ? "square" : "sine";
+      second.type = kind === "pulse" ? "sawtooth" : "sine";
       oscillator.frequency.setValueAtTime(setting.start, now);
       oscillator.frequency.exponentialRampToValueAtTime(setting.end, now + duration);
       second.frequency.setValueAtTime(setting.second, now);
       second.frequency.exponentialRampToValueAtTime(Math.max(55, setting.end * 1.35), now + duration);
       gain.gain.setValueAtTime(0.0001, now);
       gain.gain.exponentialRampToValueAtTime(kind === "pulse" ? 0.18 : 0.24, now + 0.018);
-      if (kind === "pulse") {
-        for (let step = 1; step <= 6; step += 1) {
-          gain.gain.setValueAtTime(step % 2 ? 0.035 : 0.2, now + step * 0.055);
-        }
-      }
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       oscillator.connect(gain);
       second.connect(gain);
@@ -608,6 +604,20 @@ function Game() {
 
   const skipBlockedMove = () => {
     if (game.phase !== "move" || moves.length > 0) return;
+    if ((game.immobilizedMoves?.[game.turn] ?? 0) > 0) {
+      if (mode === "online") void submitOnlineAction("skip_move");
+      commit({
+        ...game,
+        immobilizedMoves: {
+          ...(game.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
+          [game.turn]: Math.max(0, (game.immobilizedMoves?.[game.turn] ?? 0) - 1),
+        },
+        phase: "place",
+        message: `${playerName(game.turn)}：電磁拘束中・メテオまたはアイテムを使用`,
+        log: [...game.log, `${playerName(game.turn)}はBLASTの電磁拘束で移動不能`],
+      });
+      return;
+    }
     if (game.turnCount === 0) {
       commit(finishTurn(game, "先攻の初手終了"));
       return;
@@ -786,13 +796,13 @@ function Game() {
     let resolved: GameState;
     if (reached.length) {
       const winner = coreWinner(game, reached) as Player | "draw";
-      resolved = {
+      resolved = resolveCoreArrivals(game, {
         ...draft,
         phase: "over",
         winner,
         message: winner === "draw" ? "同時到達 — DRAW" : `${playerName(winner)} WIN!`,
         log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
-      };
+      }, reached);
     } else {
       resolved = finishTurn(draft);
     }
@@ -903,7 +913,7 @@ function Game() {
   const useItem = (kind: ItemKind) => {
     if (!canControl || !canUseItem(game, kind)) return;
     try {
-      if (kind === "shield" || kind === "booster") showSwitchFx(kind, game.turn);
+      if (kind === "shield" || kind === "booster" || kind === "recall") showSwitchFx(kind, game.turn);
       if (mode === "online") void submitOnlineAction("use_item", undefined, undefined, false, undefined, undefined, kind);
       commit(applyUseItem(game, kind));
     } catch { return; }
@@ -1447,7 +1457,7 @@ function Game() {
           {switchFx && (
             <div key={switchFx.nonce} className={`switch-activation ${switchFx.kind} ${switchFx.player}`} role="status">
               <span className="switch-burst" />
-              <b>{switchFx.kind.toUpperCase()}</b>
+              <b>{switchFx.kind === "pulse" ? "BLAST" : switchFx.kind.toUpperCase()}</b>
               <small>ITEM ACTIVATED</small>
             </div>
           )}
@@ -1637,7 +1647,7 @@ function Game() {
                     }}
                   >
                     <ItemIcon kind={kind} />
-                    <span>{kind.toUpperCase()}</span>
+                    <span>{kind === "pulse" ? "BLAST" : kind.toUpperCase()}</span>
                     <b>{(game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length}</b>
                   </button>
                 ))}
@@ -1695,7 +1705,7 @@ function Game() {
                     title="使用すると、この手番はメテオを配置できません"
                   >
                     <ItemIcon kind={kind} />
-                    <span>{kind.toUpperCase()}</span>
+                    <span>{kind === "pulse" ? "BLAST" : kind.toUpperCase()}</span>
                   </button>
                 ))}
               </>
@@ -1720,7 +1730,7 @@ function Game() {
             {game.phase === "switch" && showTurnActionControls && game.pendingSwitches?.[0]?.kind !== "orbit" && (
               <div className="switch-target-controls">
                 <span className="action-label">
-                  {`${game.pendingSwitches?.[0]?.kind.toUpperCase()}：盤上から対象を選択`}
+                  {`${game.pendingSwitches?.[0]?.kind === "pulse" ? "BLAST" : game.pendingSwitches?.[0]?.kind.toUpperCase()}：盤上から対象を選択`}
                 </span>
                 <button className="secondary" onClick={cancelItemTarget}>戻る</button>
               </div>
@@ -1736,13 +1746,24 @@ function Game() {
               </div>
             )}
             {game.phase === "over" && (
-              <button
-                className="primary-action"
-                onClick={mode === "online" ? rematchOnlineRoom : restartCurrentGame}
-                disabled={mode === "online" && online.pending}
-              >
-                同じメンバーでもう一度
-              </button>
+              <>
+                {(game.finishOrder?.length ?? 0) > 0 && (
+                  <ol className="finish-ranking" aria-label="最終順位">
+                    {game.finishOrder?.map((player, index) => (
+                      <li key={player} className={player}>
+                        <b>{index + 1}位</b><span>{playerName(player)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                <button
+                  className="primary-action"
+                  onClick={mode === "online" ? rematchOnlineRoom : restartCurrentGame}
+                  disabled={mode === "online" && online.pending}
+                >
+                  同じメンバーでもう一度
+                </button>
+              </>
             )}
           </div>
         </section>
@@ -2164,7 +2185,7 @@ function Game() {
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
             <p><b>ITEM</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
-            <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
+            <p>BOOSTER / SHIELD / HOLO / ORBIT / BLAST / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
           </div>
@@ -2307,7 +2328,7 @@ function InventoryPanel({
       {itemCounts.map(({ kind, count }) => (
         <div key={kind} className={`inventory-item ${kind}`}>
           <ItemIcon kind={kind} />
-          <small>{kind.toUpperCase()}</small>
+          <small>{kind === "pulse" ? "BLAST" : kind.toUpperCase()}</small>
           <b>×{count}</b>
         </div>
       ))}

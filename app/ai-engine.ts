@@ -548,6 +548,7 @@ function selectWithDifficulty<T>(
   creative = false,
 ) {
   ranked.sort((a, b) => b.value - a.value);
+  if (!ranked.length) return undefined;
   if (ranked.length === 1) return ranked[0];
   if (difficulty === "hard") {
     if (!creative || Math.abs(ranked[0].value) >= 900_000 || random() < 0.78) return ranked[0];
@@ -695,7 +696,7 @@ export function chooseAiDecision(
       ranked[0].value - itemMove.value <= 120
         ? itemMove
         : selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant));
-    return { type: "move", target: selected.choice };
+    return selected ? { type: "move", target: selected.choice } : { type: "skip" };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
   for (const placement of placements(state)) {
@@ -753,7 +754,8 @@ export function chooseAiDecision(
     });
   }
   const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant));
-  if (!selected || selected.choice === "pass") return { type: "pass" };
+  if (!selected) return { type: "skip" };
+  if (selected.choice === "pass") return { type: "pass" };
   if ("itemKind" in selected.choice) return { type: "item", kind: selected.choice.itemKind as ItemKind };
   return { type: "meteor", ...selected.choice };
 }

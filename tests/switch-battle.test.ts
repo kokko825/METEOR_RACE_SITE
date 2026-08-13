@@ -8,6 +8,7 @@ import {
   confirmSetupItems,
   resetSetupItems,
   initialGameState,
+  legalMoves,
   samePos,
   type GameState,
   type ItemKind,
@@ -66,6 +67,18 @@ pulseGame = applyUseItem(pulseGame, "pulse");
 pulseGame = applyPulseSwitch(pulseGame, { r: 7, c: 7 });
 assert.ok(samePos(pulseGame.probes.blue, { r: 5, c: 7 }), "PULSE pushes a probe by one square");
 assert.equal(pulseGame.meteors.length, 1, "PULSE never destroys or recovers meteors");
+assert.equal(pulseGame.immobilizedMoves?.blue, 2, "BLAST prevents voluntary movement for two own turns");
+assert.deepEqual(legalMoves({ ...pulseGame, phase: "move", turn: "blue" }, "blue"), [], "an immobilized probe cannot move voluntarily");
+
+let boosterJump = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterJump = {
+  ...boosterJump,
+  phase: "move",
+  probes: { ...boosterJump.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
+  meteors: [{ r: 9, c: 7, owner: "blue", size: "small", id: 81 }],
+  boosterMoves: { ...boosterJump.boosterMoves, red: 1 },
+};
+assert.ok(legalMoves(boosterJump).some((move) => samePos(move, { r: 8, c: 7 })), "BOOSTER can jump over a meteor to an empty landing cell");
 
 let pulseHolo = initialGameState(15, "red", 2, false, 0, [], "item");
 pulseHolo = {
@@ -109,24 +122,21 @@ recallGame = {
   phase: "place",
   turnCount: 2,
   inventory: { ...recallGame.inventory, red: { small: 1, large: 1 } },
-  meteors: [{ r: 9, c: 7, owner: "red", size: "small", id: 20 }],
+  meteors: [
+    { r: 9, c: 7, owner: "red", size: "small", id: 20 },
+    { r: 8, c: 7, owner: "red", size: "large", id: 21 },
+    { r: 5, c: 7, owner: "blue", size: "small", id: 22 },
+  ],
+  obstacles: [
+    { r: 6, c: 7, owner: "red", id: 92, turns: -1 },
+    { r: 6, c: 8, owner: "blue", id: 93, turns: 4 },
+  ],
   itemHands: { red: ["recall"], blue: [] },
 };
 recallGame = applyUseItem(recallGame, "recall");
-recallGame = applyRecallItem(recallGame, 20);
-assert.equal(recallGame.meteors.length, 0);
-assert.equal(recallGame.inventory.red.small, 2, "RECALL returns only the selected own meteor");
-
-let recallHolo = initialGameState(15, "red", 2, false, 0, [], "item");
-recallHolo = {
-  ...recallHolo,
-  phase: "switch",
-  obstacles: [{ r: 6, c: 7, owner: "red", id: 92, turns: -1 }],
-  pendingSwitches: [{ kind: "recall", player: "red" }],
-  itemHands: { red: [], blue: [] },
-};
-recallHolo = applyRecallItem(recallHolo, 92);
-assert.equal(recallHolo.obstacles.length, 0, "RECALL removes the selected own holo meteor");
-assert.deepEqual(recallHolo.itemHands?.red, ["holo"], "RECALL returns the holo meteor to the item hand");
+assert.equal(recallGame.meteors.length, 1, "RECALL leaves opponent meteors on the board");
+assert.equal(recallGame.inventory.red.small, 2, "RECALL returns every own small meteor");
+assert.equal(recallGame.inventory.red.large, 2, "RECALL returns every own large meteor");
+assert.equal(recallGame.obstacles.length, 1, "RECALL removes every own holo and leaves opponent holos");
 
 console.log("item-battle: all checks passed");

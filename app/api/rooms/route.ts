@@ -532,7 +532,7 @@ export async function POST(request: Request) {
       nextState = resetSetupItems(state, setupActor);
     } else if (body.action === "use_item" && body.itemKind) {
       nextState = applyUseItem(state, body.itemKind);
-      if (body.itemKind === "shield" || body.itemKind === "booster") {
+      if (body.itemKind === "shield" || body.itemKind === "booster" || body.itemKind === "recall") {
         itemEffect = { kind: body.itemKind, player: state.turn };
       }
     } else if (body.action === "cancel_item") {
@@ -542,13 +542,23 @@ export async function POST(request: Request) {
     } else if (
       body.action === "skip_move" &&
       state.phase === "move" &&
-      (state.bonusMove || state.turnCount === 0) &&
+      (state.bonusMove || state.turnCount === 0 || (state.immobilizedMoves?.[state.turn] ?? 0) > 0) &&
       legalMoves(state).length === 0
     ) {
-      nextState = finishTurn(
-        { ...state, bonusMove: false },
-        "ボーナス移動先なし・手番終了",
-      );
+      if ((state.immobilizedMoves?.[state.turn] ?? 0) > 0) {
+        nextState = {
+          ...state,
+          immobilizedMoves: {
+            ...(state.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
+            [state.turn]: Math.max(0, (state.immobilizedMoves?.[state.turn] ?? 0) - 1),
+          },
+          phase: "place",
+          message: `${state.turn.toUpperCase()}：電磁拘束中・メテオまたはアイテムを使用`,
+          log: [...state.log, `${state.turn.toUpperCase()}はBLASTの電磁拘束で移動不能`],
+        };
+      } else {
+        nextState = finishTurn({ ...state, bonusMove: false }, "移動先なし・手番終了");
+      }
     } else if (body.action === "pass") {
       nextState = applyPass(state);
     } else if (body.action === "obstacle" && body.target) {

@@ -24,6 +24,7 @@ export type GameState = {
   shield: Record<Player, boolean>;
   shieldTurns?: Record<Player, number>;
   boosterMoves: Record<Player, number>;
+  immobilizedMoves?: Record<Player, number>;
   capsuleMeteors: Record<Player, number>;
   turnCount: number;
   probes: Record<Player, Pos>;
@@ -39,6 +40,7 @@ export type GameState = {
   inventory: Inventory;
   selected: MeteorSize | "obstacle" | "capsule";
   winner: Player | "draw" | null;
+  finishOrder?: Player[];
   message: string;
   log: string[];
   nextMeteorId: number;
@@ -223,6 +225,64 @@ export function coreWinner(state: GameState, reached: Player[]): Player {
   return reached[0];
 }
 
+export function resolveCoreArrivals(state: GameState, next: GameState, reached: Player[]): GameState {
+  if (!reached.length) return next;
+  const first = coreWinner(state, reached);
+  const ordered = [first, ...reached.filter((player) => player !== first)];
+  const multiRank = !isTeamVariant(state.variant) &&
+    (activePlayers(state).length > 2 || (state.finishOrder?.length ?? 0) > 0);
+  if (!multiRank) {
+    return {
+      ...next,
+      phase: "over",
+      bonusMove: false,
+      winner: first,
+      message: isTeamVariant(state.variant)
+        ? `${playerName(first)} / ${teamOf(first) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"} TEAM WIN!`
+        : `${playerName(first)} WIN!`,
+    };
+  }
+  const finishOrder = [...(state.finishOrder ?? [])];
+  ordered.forEach((player) => {
+    if (!finishOrder.includes(player)) finishOrder.push(player);
+  });
+  const remaining = activePlayers(state).filter((player) => !finishOrder.includes(player));
+  if (remaining.length <= 1) {
+    const finalOrder = [...finishOrder, ...remaining];
+    return {
+      ...next,
+      players: remaining,
+      phase: "over",
+      bonusMove: false,
+      winner: finalOrder[0] ?? first,
+      finishOrder: finalOrder,
+      message: `${playerName(finalOrder[0] ?? first)} WIN!　順位が確定しました`,
+    };
+  }
+  let turn = remaining.includes(next.turn) ? next.turn : remaining[0];
+  if (!remaining.includes(next.turn)) {
+    const players = activePlayers(state);
+    const index = Math.max(0, players.indexOf(state.turn));
+    for (let offset = 1; offset <= players.length; offset += 1) {
+      const candidate = players[(index + offset) % players.length];
+      if (remaining.includes(candidate)) {
+        turn = candidate;
+        break;
+      }
+    }
+  }
+  return {
+    ...next,
+    players: remaining,
+    turn,
+    phase: "move",
+    bonusMove: false,
+    winner: null,
+    finishOrder,
+    message: `${playerName(first)} GOAL!　${finishOrder.length}位確定。${playerName(turn)}の移動`,
+  };
+}
+
 export function initialGameState(
   size = 9,
   first: Player = "red",
@@ -283,6 +343,7 @@ export function initialGameState(
     shield: { red: false, blue: false, green: false, yellow: false },
     shieldTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     boosterMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
+    immobilizedMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
     capsuleMeteors: { red: 0, blue: 0, green: 0, yellow: 0 },
     turnCount: 0,
     probes,
@@ -303,6 +364,7 @@ export function initialGameState(
     },
     selected: "small",
     winner: null,
+    finishOrder: [],
     message: `${playerName(first)}：探査機を1マス移動`,
     log: [`ゲーム開始 — ${playerName(first)}が先攻`],
     nextMeteorId: 1,
@@ -462,6 +524,7 @@ export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind):
 }
 
 export function legalMoves(state: GameState, player = state.turn): Pos[] {
+  if ((state.immobilizedMoves?.[player] ?? 0) > 0) return [];
   const probe = state.probes[player];
   const players = activePlayers(state);
   const directions = [
@@ -489,7 +552,11 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
         ) &&
         !state.meteors.some((meteor) => samePos(meteor, target)) &&
         !activeObstacles(state).some((obstacle) => samePos(obstacle, target));
-      if (!legal) break;
+      if (!legal) {
+        const canJumpMeteor = maxSteps > 1 && step === 1 && state.meteors.some((meteor) => samePos(meteor, target));
+        if (canJumpMeteor) continue;
+        break;
+      }
       const mid = Math.floor(state.size / 2);
       if (step > 1 && target.r === mid && target.c === mid) break;
       moves.push(target);
@@ -718,7 +785,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
     `${playerName(state.turn)}が (${target.r},${target.c}) へ移動${pickupMessage}`,
   ];
   if (target.r === mid && target.c === mid) {
-    return {
+    return resolveCoreArrivals(state, {
       ...state,
       probes,
       phase: "over",
@@ -731,7 +798,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
             } TEAM WIN!`
           : `${playerName(state.turn)} WIN!`,
       log: [...log, `${playerName(state.turn)}が中央へ到達`],
-    };
+    }, [state.turn]);
   }
   const pendingSwitches: PendingSwitch[] = pickedItems
     .filter((item): item is FieldItem & { kind: PendingSwitch["kind"] } =>
@@ -848,6 +915,22 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
       log,
     }, `${playerName(player)}：BOOSTERを起動`);
   }
+  if (kind === "recall") {
+    const inventory: Inventory = Object.fromEntries(
+      PLAYER_ORDER.map((candidate) => [candidate, { ...state.inventory[candidate] }]),
+    ) as Inventory;
+    const recalled = state.meteors.filter((meteor) => meteor.owner === player && !meteor.consumable);
+    recalled.forEach((meteor) => { inventory[player][meteor.size] += 1; });
+    const holoCount = activeObstacles(state).filter((holo) => holo.owner === player).length;
+    return finishTurn({
+      ...state,
+      itemHands,
+      inventory,
+      meteors: state.meteors.filter((meteor) => meteor.owner !== player || meteor.consumable),
+      obstacles: activeObstacles(state).filter((holo) => holo.owner !== player),
+      log: [...log, `${playerName(player)} recalled all meteors (${recalled.length}) and removed holos (${holoCount})`],
+    }, `${playerName(player)}：自分のメテオを全回収`);
+  }
   return {
     ...state,
     itemHands,
@@ -924,7 +1007,7 @@ export function applyOrbitSwitch(state: GameState, ring: number, clockwise: bool
   });
   const mid = Math.floor(state.size / 2);
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));
-  return reached.length ? { ...next, phase: "over", winner: coreWinner(state, reached), message: `${playerName(coreWinner(state, reached))} WIN!` } : next;
+  return resolveCoreArrivals(state, next, reached);
 }
 
 export function applyPulseSwitch(state: GameState, target: Pos): GameState {
@@ -937,6 +1020,10 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
   const mid = Math.floor(state.size / 2);
   const core = { r: mid, c: mid };
   const radius = gameBalance(state).pulseRadius;
+  const immobilizedMoves = { ...(state.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
+  for (const player of activePlayers(state)) {
+    if (distance(state.probes[player], target) <= radius) immobilizedMoves[player] = Math.max(immobilizedMoves[player] ?? 0, 2);
+  }
   for (const player of activePlayers(state)) {
     const start = probes[player];
     const range = distance(start, target);
@@ -969,34 +1056,28 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
     const durability = Math.max(0, (obstacle.turns ?? 1) - (radius - range + 1) * activePlayers(state).length);
     if (durability > 0) obstacles.push({ ...obstacle, turns: durability });
   }
-  const next = finishSwitch({ ...state, probes, obstacles, log: [...state.log, `${playerName(current.player)} fired PULSE radius ${radius} at (${target.r},${target.c})`] });
+  const next = finishSwitch({ ...state, probes, obstacles, immobilizedMoves, log: [...state.log, `${playerName(current.player)} fired BLAST radius ${radius} at (${target.r},${target.c})`] });
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));
-  return reached.length ? { ...next, phase: "over", winner: coreWinner(state, reached), message: `${playerName(coreWinner(state, reached))} WIN!` } : next;
+  return resolveCoreArrivals(state, next, reached);
 }
 
-export function applyRecallItem(state: GameState, meteorId: number): GameState {
+export function applyRecallItem(state: GameState, meteorId?: number): GameState {
+  void meteorId;
   const current = state.pendingSwitches?.[0];
-  const meteor = state.meteors.find((entry) => entry.id === meteorId);
-  const holo = activeObstacles(state).find((entry) => entry.id === meteorId);
-  const target = meteor ?? holo;
-  if (state.phase !== "switch" || current?.kind !== "recall" || !target || target.owner !== current.player || meteor?.consumable) {
-    throw new Error("回収できる自分のメテオを選んでください");
+  if (state.phase !== "switch" || current?.kind !== "recall") {
+    throw new Error("リコールを使用できません");
   }
   const inventory: Inventory = Object.fromEntries(
     PLAYER_ORDER.map((player) => [player, { ...state.inventory[player] }]),
   ) as Inventory;
-  if (meteor) inventory[current.player][meteor.size] += 1;
-  const itemHands = holo ? {
-    ...(state.itemHands ?? {}),
-    [current.player]: [...(state.itemHands?.[current.player] ?? []), "holo" as ItemKind],
-  } : state.itemHands;
+  const recalled = state.meteors.filter((meteor) => meteor.owner === current.player && !meteor.consumable);
+  recalled.forEach((meteor) => { inventory[current.player][meteor.size] += 1; });
   return finishSwitch({
     ...state,
     inventory,
-    itemHands,
-    meteors: state.meteors.filter((entry) => entry.id !== meteorId),
-    obstacles: activeObstacles(state).filter((entry) => entry.id !== meteorId),
-    log: [...state.log, `${playerName(current.player)} recalled ${holo ? "HOLO" : meteor!.size} meteor`],
+    meteors: state.meteors.filter((meteor) => meteor.owner !== current.player || meteor.consumable),
+    obstacles: activeObstacles(state).filter((holo) => holo.owner !== current.player),
+    log: [...state.log, `${playerName(current.player)} recalled all own meteors`],
   });
 }
 
@@ -1156,7 +1237,7 @@ export function applyMeteor(
   let next: GameState;
   if (reached.length) {
     const winner = coreWinner(state, reached) as Player | "draw";
-    next = {
+    next = resolveCoreArrivals(state, {
       ...draft,
       phase: "over",
       winner,
@@ -1169,7 +1250,7 @@ export function applyMeteor(
               } TEAM WIN!`
             : `${playerName(winner)} WIN!`,
       log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
-    };
+    }, reached);
   } else if (blastSwitches.length) {
     next = {
       ...draft,
