@@ -1004,21 +1004,12 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
       obstacles.push(obstacle);
       continue;
     }
-    const steps = radius - range + 1;
-    const dr = Math.sign(obstacle.r - target.r);
-    const dc = Math.sign(obstacle.c - target.c);
-    let position = { r: obstacle.r, c: obstacle.c };
-    for (let index = 0; index < steps; index += 1) {
-      const destination = { r: position.r + dr, c: position.c + dc };
-      const blocked = destination.r < 0 || destination.c < 0 || destination.r >= state.size || destination.c >= state.size ||
-        samePos(destination, core) || state.meteors.some((meteor) => samePos(meteor, destination)) ||
-        activePlayers(state).some((player) => samePos(probes[player], destination)) ||
-        obstacles.some((other) => samePos(other, destination)) ||
-        activeObstacles(state).some((other) => other.id !== obstacle.id && samePos(other, destination));
-      if (blocked) break;
-      position = destination;
+    if (obstacle.turns === -1) {
+      obstacles.push(obstacle);
+      continue;
     }
-    obstacles.push({ ...obstacle, ...position });
+    const durability = Math.max(0, (obstacle.turns ?? 1) - (radius - range + 1));
+    if (durability > 0) obstacles.push({ ...obstacle, turns: durability });
   }
   const next = finishSwitch({ ...state, probes, obstacles, log: [...state.log, `${playerName(current.player)} fired PULSE radius ${radius} at (${target.r},${target.c})`] });
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));
@@ -1075,6 +1066,13 @@ export function applyMeteor(
   const radius = chosenSize === "small" ? 1 : 2;
   const destroyed = state.meteors.filter((meteor) => distance(meteor, target) <= radius);
   const survivors = state.meteors.filter((meteor) => distance(meteor, target) > radius);
+  const obstacles = activeObstacles(state).flatMap((obstacle) => {
+    const range = distance(obstacle, target);
+    if (range < 1 || range > radius || obstacle.turns === -1) return [obstacle];
+    const damage = chosenSize === "small" ? 1 : radius - range + 1;
+    const durability = Math.max(0, (obstacle.turns ?? 1) - damage);
+    return durability > 0 ? [{ ...obstacle, turns: durability }] : [];
+  });
   const placed: Meteor = {
     ...target,
     owner: state.turn,
@@ -1098,7 +1096,7 @@ export function applyMeteor(
   if (useCapsule) capsuleMeteors[state.turn] -= 1;
 
   // Probe movement is resolved while every old meteor is still on the board.
-  const blockingMeteors = [...state.meteors, ...activeObstacles(state), placed];
+  const blockingMeteors = [...state.meteors, ...obstacles, placed];
   const before = state.probes;
   const probes = Object.fromEntries(
     PLAYER_ORDER.map((player) => [player, { ...before[player] }]),
@@ -1187,6 +1185,7 @@ export function applyMeteor(
     itemSeed,
     nextItemId,
     meteors: [...survivors, placed],
+    obstacles,
     inventory,
     capsuleMeteors,
     boosterMoves,

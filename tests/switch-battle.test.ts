@@ -72,13 +72,13 @@ pulseHolo = {
   ...pulseHolo,
   phase: "switch",
   probes: { ...pulseHolo.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
-  obstacles: [{ r: 7, c: 8, owner: "blue", id: 90, turns: -1 }],
+  obstacles: [{ r: 7, c: 8, owner: "blue", id: 90, turns: 4 }],
   pendingSwitches: [{ kind: "pulse", player: "red" }],
-  balance: { ...pulseHolo.balance!, pulseRadius: 2, holoUnlimited: 1 },
+  balance: { ...pulseHolo.balance!, pulseRadius: 2, holoUnlimited: 0 },
 };
 pulseHolo = applyPulseSwitch(pulseHolo, { r: 7, c: 7 });
-assert.ok(samePos(pulseHolo.obstacles[0], { r: 7, c: 10 }), "PULSE is strongest near its center and pushes a nearby holo meteor two squares");
-assert.equal(pulseHolo.obstacles[0].turns, -1, "unlimited holo meteor does not expire");
+assert.ok(samePos(pulseHolo.obstacles[0], { r: 7, c: 8 }), "PULSE no longer moves a holo meteor");
+assert.equal(pulseHolo.obstacles[0].turns, 1, "PULSE damage plus normal turn decay shortens holo duration");
 
 let coreStop = initialGameState(15, "red", 2, false, 0, [], "item");
 coreStop = {
@@ -90,7 +90,19 @@ coreStop = {
   balance: { ...coreStop.balance!, pulseRadius: 2 },
 };
 coreStop = applyPulseSwitch(coreStop, { r: 7, c: 5 });
-assert.ok(samePos(coreStop.obstacles[0], { r: 7, c: 6 }), "PULSE stops a holo meteor before CORE");
+assert.ok(samePos(coreStop.obstacles[0], { r: 7, c: 6 }), "PULSE never moves a holo meteor toward CORE");
+
+let meteorHolo = initialGameState(15, "red", 2, false, 0, [], "item");
+meteorHolo = {
+  ...meteorHolo,
+  phase: "place",
+  turnCount: 2,
+  probes: { ...meteorHolo.probes, red: { r: 11, c: 7 }, blue: { r: 2, c: 2 } },
+  obstacles: [{ r: 7, c: 8, owner: "blue", id: 93, turns: 4 }],
+};
+meteorHolo = applyMeteor(meteorHolo, { r: 7, c: 9 }, "large").state;
+assert.ok(samePos(meteorHolo.obstacles[0], { r: 7, c: 8 }), "meteor blast does not move a holo meteor");
+assert.equal(meteorHolo.obstacles[0].turns, 1, "large meteor inner blast damage plus normal turn decay shortens holo duration");
 
 let recallGame = initialGameState(15, "red", 2, false, 0, [], "item");
 recallGame = {

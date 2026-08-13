@@ -2311,7 +2311,7 @@ function MeteorIcon({
 function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roundsLeft: number }) {
   const roundsLabel = roundsLeft === -1 ? "∞" : String(roundsLeft);
   return (
-    <span className={`obstacle-token ${obstacle.owner}`} title={roundsLeft === -1 ? "破壊不能のホロメテオ・無制限" : `破壊不能のお邪魔メテオ・残り${roundsLeft}巡`}>
+    <span className={`obstacle-token ${obstacle.owner}`} title={roundsLeft === -1 ? "破壊不能のホロメテオ・無制限" : `ホロメテオ・残り${roundsLeft}巡（爆風で短縮）`}>
       <i />
       <b>{roundsLabel}</b>
       <small>巡</small>
