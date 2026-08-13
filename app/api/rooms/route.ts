@@ -484,6 +484,7 @@ export async function POST(request: Request) {
   try {
     let nextState;
     let effect = null;
+    let itemEffect = null;
     if (body.action === "setup_item" && body.itemKind) {
       nextState = applySetupItem(state, body.itemKind);
     } else if (body.action === "setup_confirm") {
@@ -492,6 +493,9 @@ export async function POST(request: Request) {
       nextState = resetSetupItems(state);
     } else if (body.action === "use_item" && body.itemKind) {
       nextState = applyUseItem(state, body.itemKind);
+      if (body.itemKind === "shield" || body.itemKind === "booster") {
+        itemEffect = { kind: body.itemKind, player: state.turn };
+      }
     } else if (body.action === "cancel_item") {
       nextState = cancelPendingItem(state);
     } else if (body.action === "move" && body.target) {
@@ -521,12 +525,21 @@ export async function POST(request: Request) {
       };
     } else if (body.action === "switch_holo" && body.target) {
       nextState = applyHoloSwitch(state, body.target);
+      itemEffect = { kind: "holo", player: state.pendingSwitches?.[0]?.player ?? state.turn };
     } else if (body.action === "switch_pulse" && body.target) {
       nextState = applyPulseSwitch(state, body.target);
+      itemEffect = { kind: "pulse", player: state.pendingSwitches?.[0]?.player ?? state.turn };
     } else if (body.action === "switch_orbit") {
       nextState = applyOrbitSwitch(state, Number(body.ring), Boolean(body.clockwise));
+      itemEffect = {
+        kind: "orbit",
+        player: state.pendingSwitches?.[0]?.player ?? state.turn,
+        ring: Number(body.ring),
+        clockwise: Boolean(body.clockwise),
+      };
     } else if (body.action === "switch_recall") {
       nextState = applyRecallItem(state, Number(body.meteorId));
+      itemEffect = { kind: "recall", player: state.pendingSwitches?.[0]?.player ?? state.turn };
     } else {
       return json({ error: "操作が正しくありません" }, 400);
     }
@@ -537,6 +550,15 @@ export async function POST(request: Request) {
         onlineEffect: {
           ...effect,
           owner: state.turn,
+          version: nextVersion,
+        },
+      };
+    }
+    if (itemEffect) {
+      nextState = {
+        ...nextState,
+        onlineItemEffect: {
+          ...itemEffect,
           version: nextVersion,
         },
       };

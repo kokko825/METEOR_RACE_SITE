@@ -253,7 +253,7 @@ console.log("game-rules: all checks passed");
 }
 
 {
-  let item = initialGameState(11, "red", 2, false, 0, [], "item");
+  let item = initialGameState(15, "red", 2, false, 0, [], "item");
   assert.equal(item.size, 15);
   assert.equal(item.phase, "setup");
   assert.equal(item.fieldItems.length, 0, "開始前はアイテムを自動配置しない");
@@ -299,14 +299,14 @@ console.log("game-rules: all checks passed");
 
 {
   const combined = initialGameState(13, "red", 2, false, 0, [], "team-item");
-  assert.equal(combined.size, 15, "team-item uses the 15x15 item board");
+  assert.equal(combined.size, 13, "team-item supports the 13x13 item board");
   assert.deepEqual(combined.players, ["red", "blue", "yellow", "green"]);
   assert.equal(combined.phase, "setup", "all four players choose items before play");
 
   combined.phase = "switch";
   combined.pendingSwitches = [{ kind: "holo", player: "red" }];
   combined.switchResume = "finish";
-  const withObstacle = applyHoloSwitch(combined, { r: 6, c: 6 });
+  const withObstacle = applyHoloSwitch(combined, { r: 5, c: 5 });
   assert.equal(withObstacle.obstacles.length, 1);
   assert.ok((withObstacle.obstacles[0].turns ?? 0) > 0, "obstacle retains countdown data");
 
@@ -317,6 +317,12 @@ console.log("game-rules: all checks passed");
   const result = applyMove(winning, { r: 7, c: 7 });
   assert.equal(result.winner, "red");
   assert.match(result.message, /TEAM WIN/);
+}
+
+for (const boardSize of [11, 13, 15]) {
+  const item = initialGameState(boardSize, "red", 2, false, 0, [], "item");
+  assert.equal(item.size, boardSize, `item battle supports ${boardSize}x${boardSize}`);
+  assert.equal(item.phase, "setup");
 }
 
 {

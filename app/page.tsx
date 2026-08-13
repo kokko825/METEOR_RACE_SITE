@@ -56,6 +56,13 @@ type BlastFx = {
 type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
 type SwitchFx = { kind: ItemKind; player: Player; nonce: number };
 type OrbitFx = { ring: number; clockwise: boolean; nonce: number };
+type OnlineItemEffect = {
+  version: number;
+  kind: ItemKind;
+  player: Player;
+  ring?: number;
+  clockwise?: boolean;
+};
 
 function pushForPerspective(
   push: { from: Pos; dr: number; dc: number },
@@ -130,6 +137,7 @@ function Game() {
   });
   const recordedOutcome = useRef("");
   const playedOnlineEffect = useRef(0);
+  const playedOnlineItemEffect = useRef(0);
   const mid = Math.floor(game.size / 2);
   const moves = useMemo(() => legalMoves(game), [game]);
   const canControl =
@@ -139,6 +147,12 @@ function Game() {
         (online.role === game.turn ||
           (online.isHost && (game.botPlayers ?? []).includes(game.turn))) &&
       !online.pending));
+  const showTurnActionControls =
+    mode === "online"
+      ? online.role === game.turn
+      : mode === "lab"
+        ? false
+        : !(game.botPlayers ?? []).includes(game.turn);
 
   useEffect(() => {
     setStats({
@@ -177,7 +191,8 @@ function Game() {
 
   useEffect(() => {
     if (variant === "team" && size !== 13 && size !== 15) setSize(13);
-    if (variant === "team-item" && size !== 15) setSize(15);
+    if (variant === "team-item" && size !== 13 && size !== 15) setSize(13);
+    if (variant === "item" && ![11, 13, 15].includes(size)) setSize(11);
   }, [variant, size]);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
@@ -305,6 +320,8 @@ function Game() {
         setVariant(data.state.variant ?? "classic");
       }
       if (action.startsWith("switch_") && data.state) setGame(data.state);
+      const confirmedItemEffect = data.state?.onlineItemEffect as OnlineItemEffect | undefined;
+      if (confirmedItemEffect) playedOnlineItemEffect.current = confirmedItemEffect.version;
       if (action === "meteor" && data.state) {
         const confirmedEffect = data.state.onlineEffect as OnlineEffect | undefined;
         if (confirmedEffect) playedOnlineEffect.current = confirmedEffect.version;
@@ -1030,6 +1047,7 @@ function Game() {
         if (!response.ok) throw new Error(data.error ?? "同期できませんでした");
         if (data.version > online.version) {
           const remoteEffect = data.state.onlineEffect as OnlineEffect | undefined;
+          const remoteItemEffect = data.state.onlineItemEffect as OnlineItemEffect | undefined;
           const shouldAnimate =
             remoteEffect &&
             remoteEffect.version === data.version &&
@@ -1052,6 +1070,31 @@ function Game() {
             }, 980);
           } else {
             setGame(data.state);
+          }
+          if (remoteItemEffect && remoteItemEffect.version > playedOnlineItemEffect.current) {
+            playedOnlineItemEffect.current = remoteItemEffect.version;
+            setSwitchFx({
+              kind: remoteItemEffect.kind,
+              player: remoteItemEffect.player,
+              nonce: Date.now(),
+            });
+            window.setTimeout(() => setSwitchFx(null), 900);
+            if (
+              remoteItemEffect.kind === "orbit" &&
+              remoteItemEffect.ring !== undefined &&
+              remoteItemEffect.clockwise !== undefined
+            ) {
+              setOrbitFx({
+                ring: remoteItemEffect.ring,
+                clockwise: remoteItemEffect.clockwise,
+                nonce: Date.now(),
+              });
+              setIsAnimating(true);
+              window.setTimeout(() => {
+                setOrbitFx(null);
+                setIsAnimating(false);
+              }, 760);
+            }
           }
           setSize(data.state.size);
           setVariant(data.state.variant ?? "classic");
@@ -1456,7 +1499,7 @@ function Game() {
           </div>
 
           <div className="action-panel">
-            {game.phase === "setup" && (
+            {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">持ち込むアイテムを3個選択（同じ種類は2個まで）</span>
                 {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
@@ -1498,7 +1541,7 @@ function Game() {
                 </span>
               </div>
             )}
-            {game.phase === "place" && (
+            {game.phase === "place" && showTurnActionControls && (
               <>
                 <span className="action-label">配置するメテオ</span>
                 <button
@@ -1536,7 +1579,7 @@ function Game() {
                 ))}
               </>
             )}
-            {game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "orbit" && (
+            {game.phase === "switch" && showTurnActionControls && game.pendingSwitches?.[0]?.kind === "orbit" && (
               <div className="orbit-controls">
                 <span className="action-label">
                   {selectedOrbitRing
@@ -1553,7 +1596,7 @@ function Game() {
                 <button className="secondary" onClick={cancelItemTarget}>戻る</button>
               </div>
             )}
-            {game.phase === "switch" && game.pendingSwitches?.[0]?.kind !== "orbit" && (
+            {game.phase === "switch" && showTurnActionControls && game.pendingSwitches?.[0]?.kind !== "orbit" && (
               <div className="switch-target-controls">
                 <span className="action-label">
                   {`${game.pendingSwitches?.[0]?.kind.toUpperCase()}：盤上から対象を選択`}
@@ -1561,12 +1604,12 @@ function Game() {
                 <button className="secondary" onClick={cancelItemTarget}>戻る</button>
               </div>
             )}
-            {game.phase === "move" && moves.length === 0 && (
+            {game.phase === "move" && showTurnActionControls && moves.length === 0 && (
               <button className="primary-action" onClick={skipBlockedMove}>
                 移動不能 — メテオ配置へ
               </button>
             )}
-            {game.phase === "move" && game.bonusMove && moves.length > 0 && (
+            {game.phase === "move" && showTurnActionControls && game.bonusMove && moves.length > 0 && (
               <div className={`bonus-move-callout ${game.turn}`} role="status">
                 BONUS MOVE <b>2 / 2</b>
               </div>
@@ -1628,10 +1671,12 @@ function Game() {
                   setAiPlayerCount(4);
                   setLocalAiCount(2);
                 } else if (nextVariant === "item" || nextVariant === "team-item") {
-                  setSize(15);
                   if (nextVariant === "team-item") {
+                    if (size !== 13 && size !== 15) setSize(13);
                     setAiPlayerCount(4);
                     setLocalAiCount(2);
+                  } else if (![11, 13, 15].includes(size)) {
+                    setSize(11);
                   }
                 } else if (size === 15) {
                   setSize(11);
@@ -1641,7 +1686,7 @@ function Game() {
             >
               <option value="classic">CLASSIC</option>
               <option value="team">2 VS 2 TEAM</option>
-              <option value="item">アイテム戦 15 × 15</option>
+              <option value="item">アイテム戦</option>
               <option value="team-item">2 VS 2 チームアイテム戦</option>
             </select>
           </label>
@@ -1720,8 +1765,8 @@ function Game() {
               }}
             >
               <option value={9} disabled={setupPlayerCount > 2 || variant !== "classic"}>9 × 9</option>
-              <option value={11} disabled={isItemVariant(variant) || isTeamVariant(variant)}>11 × 11</option>
-              <option value={13} disabled={variant !== "team"}>13 × 13</option>
+              <option value={11} disabled={isTeamVariant(variant)}>11 × 11</option>
+              <option value={13} disabled={variant !== "team" && !isItemVariant(variant)}>13 × 13</option>
               <option value={15} disabled={!isItemVariant(variant) && !isTeamVariant(variant)}>15 × 15</option>
             </select>
           </label>

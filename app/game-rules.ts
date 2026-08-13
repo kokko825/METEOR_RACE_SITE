@@ -233,7 +233,7 @@ export function initialGameState(
     playerCount = 4;
     if (size === 9 || size === 11) size = 13;
   }
-  if (isItemVariant(variant)) size = 15;
+  if (variant === "item" && size === 9) size = 11;
   const count = Math.max(2, Math.min(4, playerCount));
   const players =
     isTeamVariant(variant)
