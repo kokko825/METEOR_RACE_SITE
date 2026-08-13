@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   applyMeteor,
+  applyBlastSwitch,
   applyOrbitSwitch,
   applyPulseSwitch,
   applyRecallItem,
@@ -55,31 +56,33 @@ assert.equal(shieldGame.shieldTurns?.red, 1, "shield lasts through every opponen
 const shielded = applyMeteor({ ...shieldGame, phase: "place" }, { r: 7, c: 5 }, "small").state;
 assert.ok(samePos(shielded.probes.red, { r: 7, c: 6 }), "shield cancels one square of blast movement");
 
-let pulseGame = initialGameState(15, "red", 2, false, 0, [], "item");
-pulseGame = {
-  ...pulseGame,
+let blastGame = initialGameState(15, "red", 2, false, 0, [], "item");
+blastGame = {
+  ...blastGame,
   phase: "place",
   turnCount: 2,
-  probes: { ...pulseGame.probes, red: { r: 10, c: 7 }, blue: { r: 6, c: 7 } },
+  probes: { ...blastGame.probes, red: { r: 10, c: 7 }, blue: { r: 6, c: 7 } },
   meteors: [{ r: 5, c: 6, owner: "blue", size: "small", id: 10 }],
-  itemHands: { red: ["pulse"], blue: [] },
+  itemHands: { red: ["blast"], blue: [] },
 };
-pulseGame = applyUseItem(pulseGame, "pulse");
-pulseGame = applyPulseSwitch(pulseGame, { r: 7, c: 7 });
-assert.ok(samePos(pulseGame.probes.blue, { r: 5, c: 7 }), "PULSE pushes a probe by one square");
-assert.equal(pulseGame.meteors.length, 1, "PULSE never destroys or recovers meteors");
-assert.equal(pulseGame.immobilizedMoves?.blue, 2, "BLAST prevents voluntary movement for two own turns");
-assert.deepEqual(legalMoves({ ...pulseGame, phase: "move", turn: "blue" }, "blue"), [], "an immobilized probe cannot move voluntarily");
+blastGame = applyUseItem(blastGame, "blast");
+blastGame = applyBlastSwitch(blastGame, { r: 7, c: 7 });
+assert.ok(samePos(blastGame.probes.blue, { r: 5, c: 7 }), "BLAST pushes a probe by one square");
+assert.equal(blastGame.meteors.length, 1, "BLAST never destroys or recovers meteors");
+assert.equal(blastGame.immobilizedMoves?.blue, 0, "BLAST does not apply PULSE immobilization");
+assert.equal(blastGame.pulseDevices?.length, 0, "BLAST does not leave a PULSE generator");
 
 let deviceGame = initialGameState(15, "red", 2, false, 0, [], "item");
 deviceGame = {
   ...deviceGame,
   phase: "switch",
-  probes: { ...deviceGame.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
+  probes: { ...deviceGame.probes, red: { r: 10, c: 7 }, blue: { r: 7, c: 9 } },
   pendingSwitches: [{ kind: "pulse", player: "red" }],
 };
 deviceGame = applyPulseSwitch(deviceGame, { r: 7, c: 8 });
-assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 7, c: 8 }), "BLAST leaves its fired EMP generator on the board");
+assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 7, c: 8 }), "PULSE leaves its fired EMP generator on the board");
+assert.equal(deviceGame.immobilizedMoves?.blue, 2, "PULSE independently applies immobilization");
+assert.ok(samePos(deviceGame.probes.blue, { r: 7, c: 9 }), "PULSE does not apply BLAST knockback");
 deviceGame = {
   ...deviceGame,
   phase: "switch",
@@ -106,11 +109,11 @@ pulseHolo = {
   phase: "switch",
   probes: { ...pulseHolo.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
   obstacles: [{ r: 7, c: 8, owner: "blue", id: 90, turns: 4 }],
-  pendingSwitches: [{ kind: "pulse", player: "red" }],
-  balance: { ...pulseHolo.balance!, pulseRadius: 2, holoUnlimited: 0 },
+  pendingSwitches: [{ kind: "blast", player: "red" }],
+  balance: { ...pulseHolo.balance!, blastRadius: 2, holoUnlimited: 0 },
 };
-pulseHolo = applyPulseSwitch(pulseHolo, { r: 7, c: 7 });
-assert.equal(pulseHolo.obstacles.length, 0, "PULSE inner damage removes a holo meteor with two displayed rounds left");
+pulseHolo = applyBlastSwitch(pulseHolo, { r: 7, c: 7 });
+assert.equal(pulseHolo.obstacles.length, 0, "BLAST inner damage removes a holo meteor with two displayed rounds left");
 
 let coreStop = initialGameState(15, "red", 2, false, 0, [], "item");
 coreStop = {
@@ -118,12 +121,12 @@ coreStop = {
   phase: "switch",
   probes: { ...coreStop.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
   obstacles: [{ r: 7, c: 6, owner: "blue", id: 91, turns: 6 }],
-  pendingSwitches: [{ kind: "pulse", player: "red" }],
-  balance: { ...coreStop.balance!, pulseRadius: 2 },
+  pendingSwitches: [{ kind: "blast", player: "red" }],
+  balance: { ...coreStop.balance!, blastRadius: 2 },
 };
-coreStop = applyPulseSwitch(coreStop, { r: 7, c: 5 });
-assert.ok(samePos(coreStop.obstacles[0], { r: 7, c: 6 }), "PULSE never moves a holo meteor toward CORE");
-assert.equal(coreStop.obstacles[0].turns, 1, "PULSE damage is measured in displayed rounds");
+coreStop = applyBlastSwitch(coreStop, { r: 7, c: 5 });
+assert.ok(samePos(coreStop.obstacles[0], { r: 7, c: 6 }), "BLAST never moves a holo meteor toward CORE");
+assert.equal(coreStop.obstacles[0].turns, 1, "BLAST damage is measured in displayed rounds");
 
 let meteorHolo = initialGameState(15, "red", 2, false, 0, [], "item");
 meteorHolo = {

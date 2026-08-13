@@ -3,7 +3,7 @@ import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type GameVariant = "classic" | "team" | "item" | "team-item";
-export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "pulse" | "recall";
+export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "blast" | "pulse" | "recall";
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
 export type FieldItem = Pos & { kind: ItemKind; id: number };
@@ -11,7 +11,7 @@ export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number }
 export type PulseDevice = Pos & { owner: Player; id: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
 export type Phase = "setup" | "move" | "place" | "switch" | "over";
-export type PendingSwitch = { kind: "holo" | "orbit" | "pulse" | "recall"; player: Player };
+export type PendingSwitch = { kind: "holo" | "orbit" | "blast" | "pulse" | "recall"; player: Player };
 
 export type GameState = {
   size: number;
@@ -156,7 +156,7 @@ function randomItemLayout(
       if (nearestProbe >= 2 && nearestProbe <= 5) nearbyCells.push(p);
     }
   }
-  const kinds: ItemKind[] = ["shield", "booster", "holo", "orbit", "pulse", "recall"];
+  const kinds: ItemKind[] = ["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"];
   const items: FieldItem[] = [];
   let currentSeed = seed;
   kinds.forEach((kind, index) => {
@@ -206,7 +206,7 @@ function respawnItem(
   }
   const kindRandom = nextItemRandom(state.itemSeed ?? 1);
   const cellRandom = nextItemRandom(kindRandom.seed);
-  const kinds: ItemKind[] = ["shield", "booster", "holo", "orbit", "pulse"];
+  const kinds: ItemKind[] = ["shield", "booster", "holo", "orbit", "blast", "pulse"];
   const kind = kinds[Math.floor(kindRandom.value * kinds.length)];
   const cell = cells[Math.floor(cellRandom.value * cells.length)];
   const nextItemId = state.nextItemId ?? 7;
@@ -764,8 +764,10 @@ export function applyMove(state: GameState, target: Pos): GameState {
       ? "シールド"
       : picked?.kind === "booster"
         ? "ブースト"
+        : picked?.kind === "blast"
+          ? "BLAST"
         : picked?.kind === "pulse"
-          ? "使い捨てメテオ"
+          ? "PULSE"
           : null;
   const mid = Math.floor(state.size / 2);
   const probes = { ...state.probes, [state.turn]: target };
@@ -808,7 +810,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
   }
   const pendingSwitches: PendingSwitch[] = pickedItems
     .filter((item): item is FieldItem & { kind: PendingSwitch["kind"] } =>
-      item.kind === "holo" || item.kind === "orbit" || item.kind === "pulse")
+      item.kind === "holo" || item.kind === "orbit" || item.kind === "blast" || item.kind === "pulse")
     .map((item) => ({ kind: item.kind, player: state.turn }));
   if (pendingSwitches.length) {
     return {
@@ -1017,21 +1019,15 @@ export function applyOrbitSwitch(state: GameState, ring: number, clockwise: bool
   return resolveCoreArrivals(state, next, reached);
 }
 
-export function applyPulseSwitch(state: GameState, target: Pos): GameState {
+export function applyBlastSwitch(state: GameState, target: Pos): GameState {
   const current = state.pendingSwitches?.[0];
-  if (state.phase !== "switch" || current?.kind !== "pulse" || target.r < 0 || target.c < 0 ||
-      target.r >= state.size || target.c >= state.size || activePlayers(state).some((p) => samePos(state.probes[p], target)) ||
-      (state.pulseDevices ?? []).some((device) => samePos(device, target))) {
-    throw new Error("PULSEを発動できないマスです");
+  if (state.phase !== "switch" || current?.kind !== "blast" || target.r < 0 || target.c < 0 ||
+      target.r >= state.size || target.c >= state.size || activePlayers(state).some((p) => samePos(state.probes[p], target))) {
+    throw new Error("BLASTを発動できないマスです");
   }
   const probes = { ...state.probes };
   const mid = Math.floor(state.size / 2);
-  const core = { r: mid, c: mid };
-  const radius = gameBalance(state).pulseRadius;
-  const immobilizedMoves = { ...(state.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
-  for (const player of activePlayers(state)) {
-    if (distance(state.probes[player], target) <= radius) immobilizedMoves[player] = Math.max(immobilizedMoves[player] ?? 0, 2);
-  }
+  const radius = gameBalance(state).blastRadius;
   for (const player of activePlayers(state)) {
     const start = probes[player];
     const range = distance(start, target);
@@ -1064,22 +1060,41 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
     const durability = Math.max(0, (obstacle.turns ?? 1) - (radius - range + 1) * activePlayers(state).length);
     if (durability > 0) obstacles.push({ ...obstacle, turns: durability });
   }
-  const pulseDevices = [...(state.pulseDevices ?? []), {
-    ...target,
-    owner: current.player,
-    id: state.nextPulseDeviceId ?? 1,
-  }];
   const next = finishSwitch({
     ...state,
     probes,
     obstacles,
-    immobilizedMoves,
-    pulseDevices,
-    nextPulseDeviceId: (state.nextPulseDeviceId ?? 1) + 1,
-    log: [...state.log, `${playerName(current.player)} placed an EMP generator and fired BLAST radius ${radius} at (${target.r},${target.c})`],
+    log: [...state.log, `${playerName(current.player)} fired BLAST radius ${radius} at (${target.r},${target.c})`],
   });
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));
   return resolveCoreArrivals(state, next, reached);
+}
+
+export function applyPulseSwitch(state: GameState, target: Pos): GameState {
+  const current = state.pendingSwitches?.[0];
+  if (state.phase !== "switch" || current?.kind !== "pulse" || target.r < 0 || target.c < 0 ||
+      target.r >= state.size || target.c >= state.size || activePlayers(state).some((p) => samePos(state.probes[p], target)) ||
+      (state.pulseDevices ?? []).some((device) => samePos(device, target))) {
+    throw new Error("PULSE発生装置を置けないマスです");
+  }
+  const radius = gameBalance(state).pulseRadius;
+  const immobilizedMoves = { ...(state.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
+  for (const player of activePlayers(state)) {
+    if (distance(state.probes[player], target) <= radius) {
+      immobilizedMoves[player] = Math.max(immobilizedMoves[player] ?? 0, 2);
+    }
+  }
+  return finishSwitch({
+    ...state,
+    immobilizedMoves,
+    pulseDevices: [...(state.pulseDevices ?? []), {
+      ...target,
+      owner: current.player,
+      id: state.nextPulseDeviceId ?? 1,
+    }],
+    nextPulseDeviceId: (state.nextPulseDeviceId ?? 1) + 1,
+    log: [...state.log, `${playerName(current.player)} placed and activated PULSE radius ${radius} at (${target.r},${target.c})`],
+  });
 }
 
 export function applyRecallItem(state: GameState, meteorId?: number): GameState {
@@ -1216,7 +1231,7 @@ export function applyMeteor(
     }
     if (picked.kind === "booster") boosterMoves[player] += 1;
     if (picked.kind === "recall") pendingItemDrops.push({ turns: activePlayers(state).length });
-    if (picked.kind === "holo" || picked.kind === "orbit" || picked.kind === "pulse") {
+    if (picked.kind === "holo" || picked.kind === "orbit" || picked.kind === "blast" || picked.kind === "pulse") {
       blastSwitches.push({ kind: picked.kind, player });
     }
     const scheduled = scheduleItemDrops(

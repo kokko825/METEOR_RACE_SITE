@@ -5,6 +5,7 @@ import {
   PLAYER_ORDER,
   activeObstacles,
   activePlayers,
+  applyBlastSwitch,
   applySetupItem,
   applyMeteor,
   applyHoloSwitch,
@@ -60,7 +61,7 @@ type BlastFx = {
 type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
 type SwitchFx = { kind: ItemKind; player: Player; nonce: number };
 type OrbitFx = { ring: number; clockwise: boolean; nonce: number };
-type PulseFx = { target: Pos; radius: number; nonce: number };
+type PulseFx = { kind: "blast" | "pulse"; target: Pos; radius: number; nonce: number };
 type OnlineItemEffect = {
   version: number;
   kind: ItemKind;
@@ -332,7 +333,7 @@ function Game() {
   };
 
   const submitOnlineAction = async (
-    action: "setup_item" | "setup_confirm" | "setup_cancel" | "use_item" | "cancel_item" | "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_pulse" | "switch_orbit" | "switch_recall",
+    action: "setup_item" | "setup_confirm" | "setup_cancel" | "use_item" | "cancel_item" | "move" | "meteor" | "obstacle" | "pass" | "skip_move" | "switch_holo" | "switch_blast" | "switch_pulse" | "switch_orbit" | "switch_recall",
     target?: Pos,
     meteorSize?: MeteorSize,
     useCapsule = false,
@@ -547,24 +548,25 @@ function Game() {
       const gain = context.createGain();
       const oscillator = context.createOscillator();
       const second = context.createOscillator();
-      const duration = kind === "shield" ? 0.58 : kind === "pulse" ? 0.48 : 0.42;
+      const duration = kind === "shield" ? 0.58 : kind === "blast" || kind === "pulse" ? 0.48 : 0.42;
       const settings: Record<ItemKind, { start: number; end: number; type: OscillatorType; second: number }> = {
         shield: { start: 72, end: 210, type: "sine", second: 108 },
         booster: { start: 95, end: 720, type: "sawtooth", second: 142 },
         holo: { start: 820, end: 260, type: "triangle", second: 1240 },
         orbit: { start: 180, end: 980, type: "sine", second: 270 },
-        pulse: { start: 118, end: 42, type: "sawtooth", second: 76 },
+        blast: { start: 118, end: 42, type: "sawtooth", second: 76 },
+        pulse: { start: 980, end: 160, type: "square", second: 1320 },
         recall: { start: 940, end: 110, type: "triangle", second: 1410 },
       };
       const setting = settings[kind];
       oscillator.type = setting.type;
-      second.type = kind === "pulse" ? "sawtooth" : "sine";
+      second.type = kind === "blast" ? "sawtooth" : kind === "pulse" ? "square" : "sine";
       oscillator.frequency.setValueAtTime(setting.start, now);
       oscillator.frequency.exponentialRampToValueAtTime(setting.end, now + duration);
       second.frequency.setValueAtTime(setting.second, now);
       second.frequency.exponentialRampToValueAtTime(Math.max(55, setting.end * 1.35), now + duration);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(kind === "pulse" ? 0.18 : 0.24, now + 0.018);
+      gain.gain.exponentialRampToValueAtTime(kind === "blast" || kind === "pulse" ? 0.18 : 0.24, now + 0.018);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       oscillator.connect(gain);
       second.connect(gain);
@@ -884,9 +886,18 @@ function Game() {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
     const next = applyPulseSwitch(game, target);
     showSwitchFx("pulse", player);
-    setPulseFx({ target, radius: game.balance?.pulseRadius ?? activeBalance.pulseRadius, nonce: Date.now() });
+    setPulseFx({ kind: "pulse", target, radius: game.balance?.pulseRadius ?? activeBalance.pulseRadius, nonce: Date.now() });
     window.setTimeout(() => setPulseFx(null), 950);
     if (mode === "online") void submitOnlineAction("switch_pulse", target);
+    commit(next);
+  };
+  const resolveBlast = (target: Pos) => {
+    const player = game.pendingSwitches?.[0]?.player ?? game.turn;
+    const next = applyBlastSwitch(game, target);
+    showSwitchFx("blast", player);
+    setPulseFx({ kind: "blast", target, radius: game.balance?.blastRadius ?? activeBalance.blastRadius, nonce: Date.now() });
+    window.setTimeout(() => setPulseFx(null), 950);
+    if (mode === "online") void submitOnlineAction("switch_blast", target);
     commit(next);
   };
   const resolveOrbit = (ring: number, clockwise: boolean) => {
@@ -956,6 +967,7 @@ function Game() {
           if (ring > 0) setSelectedOrbitRing(ring);
         }
         if (kind === "holo") resolveHolo({ r, c });
+        if (kind === "blast") resolveBlast({ r, c });
         if (kind === "pulse") resolvePulse({ r, c });
         if (kind === "recall") {
           const meteor = game.meteors.find((entry) => entry.r === r && entry.c === c);
@@ -1130,7 +1142,7 @@ function Game() {
       ? false
       : orbitSelecting
       ? orbitRingAt(r, c) > 0
-      : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
+      : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "blast" || game.pendingSwitches?.[0]?.kind === "pulse")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
       : game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "recall"
       ? (() => {
@@ -1209,10 +1221,11 @@ function Game() {
                 setIsAnimating(false);
               }, 760);
             }
-            if (remoteItemEffect.kind === "pulse" && remoteItemEffect.target) {
+            if ((remoteItemEffect.kind === "blast" || remoteItemEffect.kind === "pulse") && remoteItemEffect.target) {
               setPulseFx({
+                kind: remoteItemEffect.kind,
                 target: remoteItemEffect.target,
-                radius: remoteItemEffect.radius ?? data.state.balance?.pulseRadius ?? 1,
+                radius: remoteItemEffect.radius ?? (remoteItemEffect.kind === "blast" ? data.state.balance?.blastRadius : data.state.balance?.pulseRadius) ?? 1,
                 nonce: Date.now(),
               });
               window.setTimeout(() => setPulseFx(null), 950);
@@ -1344,6 +1357,8 @@ function Game() {
         passPlacement();
       } else if (decision.type === "holo") {
         resolveHolo(decision.target);
+      } else if (decision.type === "blast") {
+        resolveBlast(decision.target);
       } else if (decision.type === "pulse") {
         resolvePulse(decision.target);
       } else if (decision.type === "orbit") {
@@ -1458,7 +1473,7 @@ function Game() {
           {switchFx && (
             <div key={switchFx.nonce} className={`switch-activation ${switchFx.kind} ${switchFx.player}`} role="status">
               <span className="switch-burst" />
-              <b>{switchFx.kind === "pulse" ? "BLAST" : switchFx.kind.toUpperCase()}</b>
+              <b>{switchFx.kind.toUpperCase()}</b>
               <small>ITEM ACTIVATED</small>
             </div>
           )}
@@ -1572,7 +1587,7 @@ function Game() {
                   {pulseFx && distance(pos, pulseFx.target) <= pulseFx.radius && (
                     <span
                       key={`${pulseFx.nonce}-${r}-${c}`}
-                      className={`pulse-blast-cell${samePos(pos, pulseFx.target) ? " origin" : ""}`}
+                      className={`${pulseFx.kind === "blast" ? "blast-effect-cell" : "pulse-blast-cell"}${samePos(pos, pulseFx.target) ? " origin" : ""}`}
                       style={{ "--pulse-ring": distance(pos, pulseFx.target) } as React.CSSProperties}
                     >
                       <i /><i /><i />
@@ -1636,7 +1651,7 @@ function Game() {
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">アイテムを{balance.itemHandTotal}個選択（同じ種類は{balance.itemSameMax}個まで）</span>
-                {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
+                {(["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
                     className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}
@@ -1650,7 +1665,7 @@ function Game() {
                     }}
                   >
                     <ItemIcon kind={kind} />
-                    <span>{kind === "pulse" ? "BLAST" : kind.toUpperCase()}</span>
+                    <span>{kind.toUpperCase()}</span>
                     <b>{(game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length}</b>
                   </button>
                 ))}
@@ -1708,7 +1723,7 @@ function Game() {
                     title="使用すると、この手番はメテオを配置できません"
                   >
                     <ItemIcon kind={kind} />
-                    <span>{kind === "pulse" ? "BLAST" : kind.toUpperCase()}</span>
+                    <span>{kind.toUpperCase()}</span>
                   </button>
                 ))}
               </>
@@ -1733,7 +1748,7 @@ function Game() {
             {game.phase === "switch" && showTurnActionControls && game.pendingSwitches?.[0]?.kind !== "orbit" && (
               <div className="switch-target-controls">
                 <span className="action-label">
-                  {`${game.pendingSwitches?.[0]?.kind === "pulse" ? "BLAST" : game.pendingSwitches?.[0]?.kind.toUpperCase()}：盤上から対象を選択`}
+                  {`${game.pendingSwitches?.[0]?.kind.toUpperCase()}：盤上から対象を選択`}
                 </span>
                 <button className="secondary" onClick={cancelItemTarget}>戻る</button>
               </div>
@@ -2207,7 +2222,8 @@ const ITEM_ICONS: Record<ItemKind, string> = {
   booster: "▲",
   holo: "▣",
   orbit: "↻",
-  pulse: "✦",
+  blast: "✹",
+  pulse: "ϟ",
   recall: "↩",
 };
 
@@ -2305,8 +2321,8 @@ function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roun
 
 function PulseDeviceIcon({ device }: { device: PulseDevice }) {
   return (
-    <span className={`pulse-device ${device.owner}`} title="電磁パルス発生装置・発動済み">
-      <i /><b>EMP</b>
+    <span className={`pulse-device ${device.owner}`} title="PULSE発生装置・発動済み">
+      <i /><b>PULSE</b>
     </span>
   );
 }
@@ -2320,7 +2336,7 @@ function InventoryPanel({
   color: Player;
   items: ItemKind[];
 }) {
-  const itemCounts = (["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[])
+  const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
     .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
     .filter(({ count }) => count > 0);
   return (
@@ -2339,7 +2355,7 @@ function InventoryPanel({
       {itemCounts.map(({ kind, count }) => (
         <div key={kind} className={`inventory-item ${kind}`}>
           <ItemIcon kind={kind} />
-          <small>{kind === "pulse" ? "BLAST" : kind.toUpperCase()}</small>
+          <small>{kind.toUpperCase()}</small>
           <b>×{count}</b>
         </div>
       ))}

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { chooseAiDecision, type AiDifficulty } from "../app/ai-engine.js";
 import {
+  applyBlastSwitch,
   applyHoloSwitch,
   applyMeteor,
   applyMove,
@@ -253,6 +254,7 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     } else if (decision.type === "item") state = applyUseItem(state, decision.kind);
     else if (decision.type === "pass") state = applyPass(state);
     else if (decision.type === "holo") state = applyHoloSwitch(state, decision.target);
+    else if (decision.type === "blast") state = applyBlastSwitch(state, decision.target);
     else if (decision.type === "pulse") state = applyPulseSwitch(state, decision.target);
     else if (decision.type === "orbit") state = applyOrbitSwitch(state, decision.ring, decision.clockwise);
     else if (decision.type === "recall") state = applyRecallItem(state, decision.meteorId);

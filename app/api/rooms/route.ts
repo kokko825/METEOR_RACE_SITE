@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 
 export const dynamic = "force-dynamic";
@@ -575,6 +575,14 @@ export async function POST(request: Request) {
     } else if (body.action === "switch_holo" && body.target) {
       nextState = applyHoloSwitch(state, body.target);
       itemEffect = { kind: "holo", player: state.pendingSwitches?.[0]?.player ?? state.turn };
+    } else if (body.action === "switch_blast" && body.target) {
+      nextState = applyBlastSwitch(state, body.target);
+      itemEffect = {
+        kind: "blast",
+        player: state.pendingSwitches?.[0]?.player ?? state.turn,
+        target: body.target,
+        radius: state.balance?.blastRadius ?? 1,
+      };
     } else if (body.action === "switch_pulse" && body.target) {
       nextState = applyPulseSwitch(state, body.target);
       itemEffect = {

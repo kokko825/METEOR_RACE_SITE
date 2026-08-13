@@ -1,6 +1,7 @@
 import {
   activePlayers,
   activeObstacles,
+  applyBlastSwitch,
   applyMeteor,
   applyMove,
   applyHoloSwitch,
@@ -32,6 +33,7 @@ export type AiDecision =
   | { type: "item"; kind: ItemKind }
   | { type: "pass" }
   | { type: "holo"; target: Pos }
+  | { type: "blast"; target: Pos }
   | { type: "pulse"; target: Pos }
   | { type: "orbit"; ring: number; clockwise: boolean }
   | { type: "recall"; meteorId: number }
@@ -580,13 +582,14 @@ export function chooseAiDecision(
     const base: Record<ItemKind, number> = {
       booster: 94,
       shield: 91,
+      blast: 90,
       pulse: 90,
       holo: 87,
       orbit: 87,
       recall: 80,
     };
-    const controls: ItemKind[] = ["pulse", "holo", "orbit"];
-    const ranked = (["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[])
+    const controls: ItemKind[] = ["blast", "pulse", "holo", "orbit"];
+    const ranked = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
       .filter((kind) => own.filter((entry) => entry === kind).length < balance.itemSameMax)
       .map((kind) => {
         const duplicatePenalty = own.includes(kind) ? 24 : 0;
@@ -641,22 +644,22 @@ export function chooseAiDecision(
       const selected = selectWithDifficulty(ranked, difficulty, random, true);
       return selected ? { type: "holo", target: selected.choice } : { type: "skip" };
     }
-    if (pending.kind === "pulse") {
-      const pulseRadius = state.balance?.pulseRadius ?? 1;
+    if (pending.kind === "blast" || pending.kind === "pulse") {
+      const radius = pending.kind === "blast" ? state.balance?.blastRadius ?? 1 : state.balance?.pulseRadius ?? 1;
       const ranked = cells.flatMap((target) => {
         try {
-          const next = applyPulseSwitch(state, target);
+          const next = pending.kind === "blast" ? applyBlastSwitch(state, target) : applyPulseSwitch(state, target);
           const rivals = activePlayers(state).filter((p) => !allied(state, p, pending.player));
           const pushes = rivals.reduce((score, p) => {
             const range = distance(state.probes[p], target);
-            return score + (range >= 1 && range <= pulseRadius ? (pulseRadius - range + 1) * 120 : 0);
+            return score + (pending.kind === "blast" && range >= 1 && range <= radius ? (radius - range + 1) * 120 : 0);
           }, 0);
           return [{ choice: target, value: scoreResult(next, pending.player, difficulty, state) + pushes * 0.15 }];
         }
         catch { return []; }
       });
       const selected = selectWithDifficulty(ranked, difficulty, random, true);
-      return selected ? { type: "pulse", target: selected.choice } : { type: "skip" };
+      return selected ? { type: pending.kind, target: selected.choice } : { type: "skip" };
     }
     if (pending.kind === "recall") {
       const owned = state.meteors.filter((meteor) => meteor.owner === pending.player && !meteor.consumable);
@@ -732,6 +735,7 @@ export function chooseAiDecision(
   const itemBonuses: Partial<Record<ItemKind, number>> = {
     shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 42 : 8,
     booster: coreDistance(state, player) <= 5 ? 34 : 10,
+    blast: nearestRivalCore <= 3 ? 40 : 15,
     pulse: nearestRivalCore <= 3 ? 40 : 15,
     holo: nearestRivalCore <= 4 ? 38 : 9,
     recall: recallOpportunity + 18,
