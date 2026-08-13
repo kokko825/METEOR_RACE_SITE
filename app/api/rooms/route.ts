@@ -373,9 +373,7 @@ export async function POST(request: Request) {
     const requestedSize =
       body.size === 15 ? 15 : body.size === 13 ? 13 : body.size === 11 ? 11 : 9;
     const size =
-      isItemVariant(variant)
-        ? 15
-        : isTeamVariant(variant) && (requestedSize === 9 || requestedSize === 11)
+      isTeamVariant(variant) && (requestedSize === 9 || requestedSize === 11)
           ? 13
         : players > 2 && requestedSize === 9
           ? 11
@@ -472,25 +470,42 @@ export async function POST(request: Request) {
     return json(roomPayload(room!, email));
   }
   if (room.status !== "playing") return json({ error: "対戦相手の参加を待っています" }, 409);
-  if (body.version !== room.version) {
+  const isSetupAction =
+    body.action === "setup_item" ||
+    body.action === "setup_confirm" ||
+    body.action === "setup_cancel";
+  if (body.version !== room.version && !isSetupAction) {
     return json({ error: "盤面が更新されました", room: roomPayload(room, email) }, 409);
   }
 
   const state = JSON.parse(room.state_json);
   const hostControlsBot =
     email === room.host_email && (state.botPlayers ?? []).includes(state.turn);
-  if (state.turn !== role && !hostControlsBot) return json({ error: "相手の手番です" }, 403);
+  const independentSetupAction = state.phase === "setup" && isSetupAction && Boolean(role);
+  const requestedSetupActor = PLAYER_ORDER.includes(body.setupActor as Player)
+    ? body.setupActor as Player
+    : role ?? state.turn;
+  const mayControlSetupActor =
+    requestedSetupActor === role ||
+    (email === room.host_email && (state.botPlayers ?? []).includes(requestedSetupActor));
+  if (independentSetupAction && !mayControlSetupActor) {
+    return json({ error: "そのプレイヤーのアイテムは選択できません" }, 403);
+  }
+  const setupActor: Player = mayControlSetupActor ? requestedSetupActor : state.turn;
+  if (state.turn !== role && !hostControlsBot && !independentSetupAction) {
+    return json({ error: "相手の手番です" }, 403);
+  }
 
   try {
     let nextState;
     let effect = null;
     let itemEffect = null;
     if (body.action === "setup_item" && body.itemKind) {
-      nextState = applySetupItem(state, body.itemKind);
+      nextState = applySetupItem(state, body.itemKind, setupActor);
     } else if (body.action === "setup_confirm") {
-      nextState = confirmSetupItems(state);
+      nextState = confirmSetupItems(state, setupActor);
     } else if (body.action === "setup_cancel") {
-      nextState = resetSetupItems(state);
+      nextState = resetSetupItems(state, setupActor);
     } else if (body.action === "use_item" && body.itemKind) {
       nextState = applyUseItem(state, body.itemKind);
       if (body.itemKind === "shield" || body.itemKind === "booster") {

@@ -26,6 +26,15 @@ setup = select(setup, ["shield", "shield", "pulse"]);
 setup = confirmSetupItems(setup);
 assert.equal(setup.turn, "blue");
 assert.throws(() => applySetupItem({ ...setup, turn: "blue", itemHands: { ...setup.itemHands, blue: ["pulse", "pulse"] } }, "pulse"));
+
+{
+  let simultaneous = initialGameState(13, "red", 2, false, 0, [], "item");
+  simultaneous = applySetupItem(simultaneous, "shield", "red");
+  simultaneous = applySetupItem(simultaneous, "booster", "blue");
+  assert.deepEqual(simultaneous.itemHands?.red, ["shield"]);
+  assert.deepEqual(simultaneous.itemHands?.blue, ["booster"]);
+  assert.equal(simultaneous.turn, "red", "simultaneous loadout editing does not steal the shared turn");
+}
 setup = select(setup, ["booster", "recall", "orbit"]);
 setup = confirmSetupItems(setup);
 assert.equal(setup.phase, "move");

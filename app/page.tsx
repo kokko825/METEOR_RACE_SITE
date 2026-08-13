@@ -140,16 +140,23 @@ function Game() {
   const playedOnlineItemEffect = useRef(0);
   const mid = Math.floor(game.size / 2);
   const moves = useMemo(() => legalMoves(game), [game]);
+  const setupPlayer =
+    mode === "online" && game.phase === "setup" && online.role
+      ? online.role
+      : game.turn;
   const canControl =
     (mode === "online" || !needsNewGame) &&
     (mode !== "online" ||
       (online.status === "playing" &&
-        (online.role === game.turn ||
+        ((game.phase === "setup" && online.role && !game.setupConfirmed?.[online.role]) ||
+          online.role === game.turn ||
           (online.isHost && (game.botPlayers ?? []).includes(game.turn))) &&
       !online.pending));
   const showTurnActionControls =
     mode === "online"
-      ? online.role === game.turn
+      ? game.phase === "setup"
+        ? Boolean(online.role && !game.setupConfirmed?.[online.role])
+        : online.role === game.turn
       : mode === "lab"
         ? false
         : !(game.botPlayers ?? []).includes(game.turn);
@@ -299,6 +306,7 @@ function Game() {
     clockwise?: boolean,
     itemKind?: ItemKind,
     meteorId?: number,
+    setupActorOverride?: Player,
   ) => {
     if (mode !== "online" || !online.code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
@@ -314,6 +322,7 @@ function Game() {
         clockwise,
         itemKind,
         meteorId,
+        setupActor: setupActorOverride ?? setupPlayer,
       });
       if ((action === "setup_item" || action === "setup_confirm" || action === "setup_cancel" || action === "use_item" || action === "cancel_item" || action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
@@ -826,15 +835,15 @@ function Game() {
   };
 
   const confirmItemLoadout = () => {
-    if (!canControl || game.phase !== "setup" || (game.itemHands?.[game.turn]?.length ?? 0) !== 3) return;
+    if (!canControl || game.phase !== "setup" || (game.itemHands?.[setupPlayer]?.length ?? 0) !== 3) return;
     if (mode === "online") void submitOnlineAction("setup_confirm");
-    commit(confirmSetupItems(game));
+    commit(confirmSetupItems(game, setupPlayer));
   };
 
   const cancelItemLoadout = () => {
-    if (!canControl || game.phase !== "setup" || !(game.itemHands?.[game.turn]?.length ?? 0)) return;
+    if (!canControl || game.phase !== "setup" || !(game.itemHands?.[setupPlayer]?.length ?? 0)) return;
     if (mode === "online") void submitOnlineAction("setup_cancel");
-    commit(resetSetupItems(game));
+    commit(resetSetupItems(game, setupPlayer));
   };
 
   const handleCell = (r: number, c: number) => {
@@ -925,9 +934,7 @@ function Game() {
           : onlinePlayerCount + onlineAiCount;
     const playerCount = isTeamVariant(variant) ? 4 : configuredPlayerCount;
     const nextSize =
-      isItemVariant(variant)
-        ? 15
-        : isTeamVariant(variant) && (size === 9 || size === 11)
+      isTeamVariant(variant) && (size === 9 || size === 11)
           ? 13
         : playerCount > 2 && size === 9
           ? 11
@@ -1012,12 +1019,17 @@ function Game() {
       orthogonallyAdjacent(obstacle, { r, c }),
     );
 
-  const orbitSelecting = game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "orbit";
+  const orbitSelecting =
+    showTurnActionControls &&
+    game.phase === "switch" &&
+    game.pendingSwitches?.[0]?.kind === "orbit";
   const orbitRingAt = (r: number, c: number) => Math.max(Math.abs(r - mid), Math.abs(c - mid));
   const activeOrbitRing = selectedOrbitRing ?? hoveredOrbitRing;
 
   const validPlacement = (r: number, c: number) =>
     game.phase === "setup"
+      ? false
+      : game.phase === "switch" && !showTurnActionControls
       ? false
       : orbitSelecting
       ? orbitRingAt(r, c) > 0
@@ -1202,10 +1214,10 @@ function Game() {
         const setupDecision = chooseAiDecision(game, aiDifficulty);
         if (setupDecision.type === "setup") {
           const next = applySetupItem(game, setupDecision.kind);
-          if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, setupDecision.kind);
+          if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, setupDecision.kind, undefined, game.turn);
           commit(next);
         } else if (setupDecision.type === "confirm_setup") {
-          if (mode === "online") void submitOnlineAction("setup_confirm");
+          if (mode === "online") void submitOnlineAction("setup_confirm", undefined, undefined, false, undefined, undefined, undefined, undefined, game.turn);
           commit(confirmSetupItems(game));
         }
         return;
@@ -1505,11 +1517,11 @@ function Game() {
                 {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
-                    className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[game.turn] ?? []).includes(kind) ? "selected" : ""}`}
-                    disabled={!canControl || (game.itemHands?.[game.turn] ?? []).filter((entry) => entry === kind).length >= 2}
+                    className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}
+                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= 2}
                     onClick={() => {
                       try {
-                        const next = applySetupItem(game, kind);
+                        const next = applySetupItem(game, kind, setupPlayer);
                         if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, kind);
                         commit(next);
                       } catch { return; }
@@ -1517,23 +1529,23 @@ function Game() {
                   >
                     <ItemIcon kind={kind} />
                     <span>{kind.toUpperCase()}</span>
-                    <b>{(game.itemHands?.[game.turn] ?? []).filter((entry) => entry === kind).length}</b>
+                    <b>{(game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length}</b>
                   </button>
                 ))}
                 <b>
-                  {`${game.itemHands?.[game.turn]?.length ?? 0} / 3 選択済み`}
+                  {`${game.itemHands?.[setupPlayer]?.length ?? 0} / 3 選択済み`}
                 </b>
                 <span className="setup-confirm-actions">
                   <button
                     className="primary-action compact-action"
-                    disabled={(game.itemHands?.[game.turn]?.length ?? 0) !== 3}
+                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) !== 3}
                     onClick={confirmItemLoadout}
                   >
                     決定
                   </button>
                   <button
                     className="secondary-action compact-action"
-                    disabled={(game.itemHands?.[game.turn]?.length ?? 0) === 0}
+                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) === 0}
                     onClick={cancelItemLoadout}
                   >
                     選択をキャンセル

@@ -312,50 +312,50 @@ export function initialGameState(
   };
 }
 
-export function applySetupItem(state: GameState, kind: ItemKind): GameState {
+export function applySetupItem(state: GameState, kind: ItemKind, player = state.turn): GameState {
   if (!isItemVariant(state.variant) || state.phase !== "setup") {
     throw new Error("アイテム選択フェーズではありません");
   }
-  const hand = state.itemHands?.[state.turn] ?? [];
+  const hand = state.itemHands?.[player] ?? [];
   if (hand.length >= 3) throw new Error("持ち込めるアイテムは3個までです");
   if (hand.filter((entry) => entry === kind).length >= 2) {
     throw new Error("同じアイテムは2個までです");
   }
   const nextHand = [...hand, kind];
-  const itemHands = { ...(state.itemHands ?? {}), [state.turn]: nextHand };
+  const itemHands = { ...(state.itemHands ?? {}), [player]: nextHand };
   const setupPlacements = {
     ...(state.setupPlacements ?? {}),
-    [state.turn]: nextHand.map((entry, index) => ({ r: -1, c: -1 - index, kind: entry, id: index + 1 })),
+    [player]: nextHand.map((entry, index) => ({ r: -1, c: -1 - index, kind: entry, id: index + 1 })),
   };
   return {
     ...state,
     itemHands,
     setupPlacements,
-    setupConfirmed: { ...(state.setupConfirmed ?? {}), [state.turn]: false },
+    setupConfirmed: { ...(state.setupConfirmed ?? {}), [player]: false },
     message: nextHand.length === 3
-      ? `${playerName(state.turn)}：持ち込みを確認して決定`
-      : `${playerName(state.turn)}：アイテムをあと${3 - nextHand.length}個選択`,
-    log: [...state.log, `${playerName(state.turn)} selected ${kind.toUpperCase()}`],
+      ? `${playerName(player)}：持ち込みを確認して決定`
+      : `${playerName(player)}：アイテムをあと${3 - nextHand.length}個選択`,
+    log: [...state.log, `${playerName(player)} selected ${kind.toUpperCase()}`],
   };
 }
 
-export function resetSetupItems(state: GameState): GameState {
+export function resetSetupItems(state: GameState, player = state.turn): GameState {
   if (!isItemVariant(state.variant) || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
   return {
     ...state,
-    itemHands: { ...(state.itemHands ?? {}), [state.turn]: [] },
-    setupPlacements: { ...(state.setupPlacements ?? {}), [state.turn]: [] },
-    setupConfirmed: { ...(state.setupConfirmed ?? {}), [state.turn]: false },
-    message: `${playerName(state.turn)}：アイテムを3個選択`,
-    log: [...state.log, `${playerName(state.turn)} reset item loadout`],
+    itemHands: { ...(state.itemHands ?? {}), [player]: [] },
+    setupPlacements: { ...(state.setupPlacements ?? {}), [player]: [] },
+    setupConfirmed: { ...(state.setupConfirmed ?? {}), [player]: false },
+    message: `${playerName(player)}：アイテムを3個選択`,
+    log: [...state.log, `${playerName(player)} reset item loadout`],
   };
 }
 
-export function confirmSetupItems(state: GameState): GameState {
+export function confirmSetupItems(state: GameState, player = state.turn): GameState {
   if (!isItemVariant(state.variant) || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
-  if ((state.itemHands?.[state.turn]?.length ?? 0) !== 3) throw new Error("アイテムを3個選んでください");
+  if ((state.itemHands?.[player]?.length ?? 0) !== 3) throw new Error("アイテムを3個選んでください");
   const players = activePlayers(state);
-  const setupConfirmed = { ...(state.setupConfirmed ?? {}), [state.turn]: true };
+  const setupConfirmed = { ...(state.setupConfirmed ?? {}), [player]: true };
   const nextTurn = players.find((player) => !setupConfirmed[player]);
   if (nextTurn) {
     return {
@@ -363,7 +363,7 @@ export function confirmSetupItems(state: GameState): GameState {
       setupConfirmed,
       turn: nextTurn,
       message: `${playerName(nextTurn)}：アイテムを3個選択`,
-      log: [...state.log, `${playerName(state.turn)} completed item loadout`],
+      log: [...state.log, `${playerName(player)} completed item loadout`],
     };
   }
   return {
