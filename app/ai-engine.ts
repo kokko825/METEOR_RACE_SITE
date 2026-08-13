@@ -640,11 +640,15 @@ export function chooseAiDecision(
       return selected ? { type: "holo", target: selected.choice } : { type: "skip" };
     }
     if (pending.kind === "pulse") {
+      const pulseRadius = state.balance?.pulseRadius ?? 1;
       const ranked = cells.flatMap((target) => {
         try {
           const next = applyPulseSwitch(state, target);
           const rivals = activePlayers(state).filter((p) => !allied(state, p, pending.player));
-          const pushes = rivals.filter((p) => distance(state.probes[p], target) === 1).length * 120;
+          const pushes = rivals.reduce((score, p) => {
+            const range = distance(state.probes[p], target);
+            return score + (range >= 1 && range <= pulseRadius ? (pulseRadius - range + 1) * 120 : 0);
+          }, 0);
           return [{ choice: target, value: scoreResult(next, pending.player, difficulty, state) + pushes * 0.15 }];
         }
         catch { return []; }
@@ -657,7 +661,12 @@ export function chooseAiDecision(
       const ranked = owned.map((meteor) => ({
         choice: meteor.id,
         value: recallMeteorValue(state, pending.player, meteor),
-      }));
+      })).concat(activeObstacles(state)
+        .filter((holo) => holo.owner === pending.player)
+        .map((holo) => ({
+          choice: holo.id,
+          value: 55 + Math.max(0, 5 - distance(holo, state.probes[pending.player])) * 8,
+        })));
       const selected = selectWithDifficulty(ranked, difficulty, random, true);
       return selected ? { type: "recall", meteorId: selected.choice } : { type: "skip" };
     }
@@ -710,8 +719,13 @@ export function chooseAiDecision(
   const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
   const nearestRivalCore = Math.min(...rivals.map((candidate) => coreDistance(state, candidate)));
   const ownedMeteors = state.meteors.filter((meteor) => meteor.owner === player && !meteor.consumable);
-  const recallOpportunity = ownedMeteors.length
-    ? Math.max(...ownedMeteors.map((meteor) => recallMeteorValue(state, player, meteor)))
+  const ownedHolos = activeObstacles(state).filter((holo) => holo.owner === player);
+  const recallValues = [
+    ...ownedMeteors.map((meteor) => recallMeteorValue(state, player, meteor)),
+    ...ownedHolos.map((holo) => 55 + Math.max(0, 5 - distance(holo, state.probes[player])) * 8),
+  ];
+  const recallOpportunity = recallValues.length
+    ? Math.max(...recallValues)
     : -100;
   const itemBonuses: Partial<Record<ItemKind, number>> = {
     shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 42 : 8,

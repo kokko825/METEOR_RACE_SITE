@@ -892,7 +892,8 @@ function Game() {
         if (kind === "pulse") resolvePulse({ r, c });
         if (kind === "recall") {
           const meteor = game.meteors.find((entry) => entry.r === r && entry.c === c);
-          if (meteor) resolveRecall(meteor.id);
+          const holo = activeObstacles(game).find((entry) => entry.r === r && entry.c === c);
+          if (meteor ?? holo) resolveRecall((meteor ?? holo)!.id);
         }
       } catch { return; }
     }
@@ -1499,7 +1500,7 @@ function Game() {
                   {obstacle && (
                     <ObstacleIcon
                       obstacle={obstacle}
-                      roundsLeft={Math.max(1, Math.ceil((obstacle.turns ?? 1) / activePlayers(game).length))}
+                      roundsLeft={obstacle.turns === -1 ? -1 : Math.max(1, Math.ceil((obstacle.turns ?? 1) / activePlayers(game).length))}
                     />
                   )}
                   {fieldItem && (
@@ -2190,10 +2191,11 @@ function MeteorIcon({
 }
 
 function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roundsLeft: number }) {
+  const roundsLabel = roundsLeft === -1 ? "∞" : String(roundsLeft);
   return (
-    <span className={`obstacle-token ${obstacle.owner}`} title={`破壊不能のお邪魔メテオ・残り${roundsLeft}巡`}>
+    <span className={`obstacle-token ${obstacle.owner}`} title={roundsLeft === -1 ? "破壊不能のホロメテオ・無制限" : `破壊不能のお邪魔メテオ・残り${roundsLeft}巡`}>
       <i />
-      <b>{roundsLeft}</b>
+      <b>{roundsLabel}</b>
       <small>巡</small>
     </span>
   );
