@@ -36,7 +36,6 @@ import {
   type GameState,
   type GameVariant,
   type ItemKind,
-  type ItemSystem,
   type Meteor,
   type MeteorSize,
   type ObstacleMeteor,
@@ -96,7 +95,6 @@ function Game() {
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
-  const [itemSystem, setItemSystem] = useState<ItemSystem>("stock");
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [history, setHistory] = useState<GameState[]>([]);
@@ -178,8 +176,6 @@ function Game() {
     mode === "online" && game.phase === "setup" && online.role
       ? online.role
       : game.turn;
-  const setupItemLimit = game.itemSystem === "cooldown" ? 3 : balance.itemHandTotal;
-  const setupSameLimit = game.itemSystem === "cooldown" ? 1 : balance.itemSameMax;
   const canControl =
     (mode === "online" || !needsNewGame) &&
     (mode !== "online" ||
@@ -363,7 +359,6 @@ function Game() {
       if ((action === "setup_item" || action === "setup_confirm" || action === "setup_cancel" || action === "use_item" || action === "cancel_item" || action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
-        setItemSystem(data.state.itemSystem ?? "stock");
       }
       if (action.startsWith("switch_") && data.state) setGame(data.state);
       const confirmedItemEffect = data.state?.onlineItemEffect as OnlineItemEffect | undefined;
@@ -923,7 +918,7 @@ function Game() {
   };
 
   const confirmItemLoadout = () => {
-    if (!canControl || game.phase !== "setup" || (game.itemHands?.[setupPlayer]?.length ?? 0) !== setupItemLimit) return;
+    if (!canControl || game.phase !== "setup" || (game.itemHands?.[setupPlayer]?.length ?? 0) !== balance.itemHandTotal) return;
     if (mode === "online") void submitOnlineAction("setup_confirm");
     commit(confirmSetupItems(game, setupPlayer));
   };
@@ -978,11 +973,9 @@ function Game() {
           humanCount: onlinePlayerCount,
           aiCount: onlineAiCount,
           variant,
-          itemSystem,
         });
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
-        setItemSystem(data.state.itemSystem ?? itemSystem);
         setSize(data.state.size);
         setFirst(data.state.startingPlayer);
         setActiveFirst(data.state.startingPlayer);
@@ -1060,7 +1053,6 @@ function Game() {
           botPlayers,
           variant,
           activeBalance,
-          itemSystem,
         ),
       );
     }
@@ -1088,7 +1080,6 @@ function Game() {
         game.botPlayers ?? [],
         game.variant ?? "classic",
         game.balance ?? activeBalance,
-        game.itemSystem ?? "stock",
       ),
     );
   };
@@ -1631,16 +1622,12 @@ function Game() {
           <div className="action-panel">
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
-                <span className="action-label">
-                  {game.itemSystem === "cooldown"
-                    ? "クールタイム版：異なるアイテムを3種類選択（使用後に再使用待ち）"
-                    : `個数制限版：アイテムを${balance.itemHandTotal}個選択（同じ種類は${balance.itemSameMax}個まで）`}
-                </span>
+                <span className="action-label">アイテムを{balance.itemHandTotal}個選択（同じ種類は{balance.itemSameMax}個まで）</span>
                 {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
                     className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}
-                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= setupSameLimit}
+                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= balance.itemSameMax}
                     onClick={() => {
                       try {
                         const next = applySetupItem(game, kind, setupPlayer);
@@ -1655,12 +1642,12 @@ function Game() {
                   </button>
                 ))}
                 <b>
-                  {`${game.itemHands?.[setupPlayer]?.length ?? 0} / ${setupItemLimit} 選択済み`}
+                  {`${game.itemHands?.[setupPlayer]?.length ?? 0} / ${balance.itemHandTotal} 選択済み`}
                 </b>
                 <span className="setup-confirm-actions">
                   <button
                     className="primary-action compact-action"
-                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) !== setupItemLimit}
+                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) !== balance.itemHandTotal}
                     onClick={confirmItemLoadout}
                   >
                     決定
@@ -1709,9 +1696,6 @@ function Game() {
                   >
                     <ItemIcon kind={kind} />
                     <span>{kind.toUpperCase()}</span>
-                    {game.itemSystem === "cooldown" && (game.itemCooldowns?.[game.turn]?.[kind] ?? 0) > 0 && (
-                      <b>CT {game.itemCooldowns?.[game.turn]?.[kind]}</b>
-                    )}
                   </button>
                 ))}
               </>
@@ -1827,29 +1811,6 @@ function Game() {
               <option value="team-item">2 VS 2 チームアイテム戦</option>
             </select>
           </label>
-          {isItemVariant(variant) && (
-            <div className="vs-ai-count item-rule-toggle" aria-label="アイテムルール">
-              <span>ITEM RULE</span>
-              <button
-                type="button"
-                disabled={roomSettingsLocked}
-                className={itemSystem === "stock" ? "selected" : ""}
-                aria-pressed={itemSystem === "stock"}
-                onClick={() => { setItemSystem("stock"); setNeedsNewGame(true); }}
-              >
-                個数制限版
-              </button>
-              <button
-                type="button"
-                disabled={roomSettingsLocked}
-                className={itemSystem === "cooldown" ? "selected" : ""}
-                aria-pressed={itemSystem === "cooldown"}
-                onClick={() => { setItemSystem("cooldown"); setNeedsNewGame(true); }}
-              >
-                クールタイム版
-              </button>
-            </div>
-          )}
           <label>
             MODE
             <select
@@ -2202,8 +2163,7 @@ function Game() {
             <p><b>BLAST</b> 小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。</p>
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
-            <p><b>ITEM・個数制限版</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
-            <p><b>ITEM・クールタイム版</b> 異なる3種類を選択。アイテムは消費されず、種類別の待ち時間後に再使用できます。</p>
+            <p><b>ITEM</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
             <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>

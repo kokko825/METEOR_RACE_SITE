@@ -574,9 +574,7 @@ export function chooseAiDecision(
   if (state.phase === "setup") {
     const own = state.itemHands?.[player] ?? [];
     const balance = normalizeBalance(state.balance);
-    const handLimit = state.itemSystem === "cooldown" ? 3 : balance.itemHandTotal;
-    const sameLimit = state.itemSystem === "cooldown" ? 1 : balance.itemSameMax;
-    if (own.length === handLimit) return { type: "confirm_setup" };
+    if (own.length === balance.itemHandTotal) return { type: "confirm_setup" };
     const base: Record<ItemKind, number> = {
       booster: 94,
       shield: 91,
@@ -587,7 +585,7 @@ export function chooseAiDecision(
     };
     const controls: ItemKind[] = ["pulse", "holo", "orbit"];
     const ranked = (["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[])
-      .filter((kind) => own.filter((entry) => entry === kind).length < sameLimit)
+      .filter((kind) => own.filter((entry) => entry === kind).length < balance.itemSameMax)
       .map((kind) => {
         const duplicatePenalty = own.includes(kind) ? 24 : 0;
         const controlCount = own.filter((entry) => controls.includes(entry)).length;

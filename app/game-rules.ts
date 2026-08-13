@@ -3,7 +3,6 @@ import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type GameVariant = "classic" | "team" | "item" | "team-item";
-export type ItemSystem = "stock" | "cooldown";
 export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "pulse" | "recall";
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
@@ -16,7 +15,6 @@ export type PendingSwitch = { kind: "holo" | "orbit" | "pulse" | "recall"; playe
 export type GameState = {
   size: number;
   variant: GameVariant;
-  itemSystem: ItemSystem;
   players: Player[];
   turn: Player;
   phase: Phase;
@@ -54,7 +52,6 @@ export type GameState = {
   setupReady?: Player[];
   setupRejected?: Partial<Record<Player, Pos[]>>;
   itemHands?: Partial<Record<Player, ItemKind[]>>;
-  itemCooldowns?: Partial<Record<Player, Partial<Record<ItemKind, number>>>>;
   setupConfirmed?: Partial<Record<Player, boolean>>;
   balance?: BalanceConfig;
 };
@@ -70,7 +67,6 @@ export type MeteorResolution = {
 export const PLAYER_ORDER: Player[] = ["red", "blue", "green", "yellow"];
 export const isTeamVariant = (variant: GameVariant) => variant === "team" || variant === "team-item";
 export const isItemVariant = (variant: GameVariant) => variant === "item" || variant === "team-item";
-const ITEM_KINDS: ItemKind[] = ["shield", "booster", "holo", "orbit", "pulse", "recall"];
 export const activePlayers = (state: GameState): Player[] =>
   state.players?.length ? state.players : ["red", "blue"];
 const gameBalance = (state: GameState) => normalizeBalance(state.balance);
@@ -236,7 +232,6 @@ export function initialGameState(
   botPlayers: Player[] = [],
   variant: GameVariant = "classic",
   balance: BalanceConfig = DEFAULT_BALANCE,
-  itemSystem: ItemSystem = "stock",
 ): GameState {
   void obstaclesEnabled;
   if (isTeamVariant(variant)) {
@@ -274,7 +269,6 @@ export function initialGameState(
     size,
     balance: normalizeBalance(balance),
     variant,
-    itemSystem,
     players,
     turn: first,
     startingPlayer: first,
@@ -320,7 +314,6 @@ export function initialGameState(
     setupReady: [],
     setupRejected: {},
     itemHands: {},
-    itemCooldowns: {},
     setupConfirmed: {},
   };
 }
@@ -331,10 +324,8 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
   }
   const hand = state.itemHands?.[player] ?? [];
   const balance = gameBalance(state);
-  const handLimit = state.itemSystem === "cooldown" ? 3 : balance.itemHandTotal;
-  const sameLimit = state.itemSystem === "cooldown" ? 1 : balance.itemSameMax;
-  if (hand.length >= handLimit) throw new Error(`持ち込めるアイテムは${handLimit}個までです`);
-  if (hand.filter((entry) => entry === kind).length >= sameLimit) {
+  if (hand.length >= balance.itemHandTotal) throw new Error(`持ち込めるアイテムは${balance.itemHandTotal}個までです`);
+  if (hand.filter((entry) => entry === kind).length >= balance.itemSameMax) {
     throw new Error(`同じアイテムは${balance.itemSameMax}個までです`);
   }
   const nextHand = [...hand, kind];
@@ -348,9 +339,9 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
     itemHands,
     setupPlacements,
     setupConfirmed: { ...(state.setupConfirmed ?? {}), [player]: false },
-    message: nextHand.length === handLimit
+    message: nextHand.length === balance.itemHandTotal
       ? `${playerName(player)}：持ち込みを確認して決定`
-      : `${playerName(player)}：アイテムをあと${handLimit - nextHand.length}個選択`,
+      : `${playerName(player)}：アイテムをあと${balance.itemHandTotal - nextHand.length}個選択`,
     log: [...state.log, `${playerName(player)} selected ${kind.toUpperCase()}`],
   };
 }
@@ -369,8 +360,7 @@ export function resetSetupItems(state: GameState, player = state.turn): GameStat
 
 export function confirmSetupItems(state: GameState, player = state.turn): GameState {
   if (!isItemVariant(state.variant) || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
-  const handLimit = state.itemSystem === "cooldown" ? 3 : gameBalance(state).itemHandTotal;
-  if ((state.itemHands?.[player]?.length ?? 0) !== handLimit) throw new Error("必要数のアイテムを選んでください");
+  if ((state.itemHands?.[player]?.length ?? 0) !== gameBalance(state).itemHandTotal) throw new Error("必要数のアイテムを選んでください");
   const players = activePlayers(state);
   const setupConfirmed = { ...(state.setupConfirmed ?? {}), [player]: true };
   const nextTurn = players.find((player) => !setupConfirmed[player]);
@@ -601,15 +591,6 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     obstacles,
   });
   const nextTurn = nextPlayer(turnDraft);
-  const itemCooldowns = turnDraft.itemSystem === "cooldown"
-    ? {
-        ...(turnDraft.itemCooldowns ?? {}),
-        [nextTurn]: Object.fromEntries(ITEM_KINDS.map((kind) => [
-          kind,
-          Math.max(0, (turnDraft.itemCooldowns?.[nextTurn]?.[kind] ?? 0) - 1),
-        ])),
-      }
-    : turnDraft.itemCooldowns;
   const nextCount = turnDraft.turnCount + 1;
   const inventory = turnDraft.inventory;
   const turnLogs = extraLog ? [extraLog] : [];
@@ -641,7 +622,6 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
   return {
     ...turnDraft,
     turn: nextTurn,
-    itemCooldowns,
     phase: "move",
     bonusMove: false,
     turnCount: nextCount,
@@ -823,7 +803,6 @@ function finishSwitch(state: GameState): GameState {
 export function canUseItem(state: GameState, kind: ItemKind, player = state.turn) {
   if (!isItemVariant(state.variant) || state.phase !== "place") return false;
   if (!(state.itemHands?.[player] ?? []).includes(kind)) return false;
-  if (state.itemSystem === "cooldown" && (state.itemCooldowns?.[player]?.[kind] ?? 0) > 0) return false;
   if (kind === "shield" && (state.shieldTurns?.[player] ?? 0) > 0) return false;
   if (kind === "booster" && (state.boosterMoves?.[player] ?? 0) > 0) return false;
   if (kind === "recall" &&
@@ -833,7 +812,6 @@ export function canUseItem(state: GameState, kind: ItemKind, player = state.turn
 }
 
 function consumeItem(state: GameState, player: Player, kind: ItemKind) {
-  if (state.itemSystem === "cooldown") return state.itemHands ?? {};
   const hand = [...(state.itemHands?.[player] ?? [])];
   const index = hand.indexOf(kind);
   if (index < 0) throw new Error("そのアイテムを持っていません");
@@ -845,26 +823,12 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
   if (!canUseItem(state, kind)) throw new Error("このアイテムは現在使用できません");
   const player = state.turn;
   const itemHands = consumeItem(state, player, kind);
-  const balance = gameBalance(state);
-  const cooldownByKind: Record<ItemKind, number> = {
-    shield: balance.cooldownShield,
-    booster: balance.cooldownBooster,
-    holo: balance.cooldownHolo,
-    orbit: balance.cooldownOrbit,
-    pulse: balance.cooldownPulse,
-    recall: balance.cooldownRecall,
-  };
-  const itemCooldowns = state.itemSystem === "cooldown" ? {
-    ...(state.itemCooldowns ?? {}),
-    [player]: { ...(state.itemCooldowns?.[player] ?? {}), [kind]: cooldownByKind[kind] },
-  } : state.itemCooldowns;
   const log = [...state.log, `${playerName(player)} used ${kind.toUpperCase()}`];
   if (kind === "shield") {
     const duration = activePlayers(state).length * gameBalance(state).shieldRounds;
     return finishTurn({
       ...state,
       itemHands,
-      itemCooldowns,
       shield: { ...state.shield, [player]: true },
       shieldTurns: {
         red: state.shieldTurns?.red ?? 0,
@@ -880,7 +844,6 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
     return finishTurn({
       ...state,
       itemHands,
-      itemCooldowns,
       boosterMoves: { ...state.boosterMoves, [player]: gameBalance(state).boosterUses },
       log,
     }, `${playerName(player)}：BOOSTERを起動`);
@@ -888,7 +851,6 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
   return {
     ...state,
     itemHands,
-    itemCooldowns,
     phase: "switch",
     pendingSwitches: [{ kind, player }],
     switchResume: "finish",
@@ -903,14 +865,10 @@ export function cancelPendingItem(state: GameState): GameState {
   return {
     ...state,
     phase: "place",
-    itemHands: state.itemSystem === "cooldown" ? state.itemHands : {
+    itemHands: {
       ...(state.itemHands ?? {}),
       [current.player]: [...(state.itemHands?.[current.player] ?? []), current.kind],
     },
-    itemCooldowns: state.itemSystem === "cooldown" ? {
-      ...(state.itemCooldowns ?? {}),
-      [current.player]: { ...(state.itemCooldowns?.[current.player] ?? {}), [current.kind]: 0 },
-    } : state.itemCooldowns,
     pendingSwitches: [],
     switchResume: undefined,
     message: `${playerName(current.player)}：アイテムかメテオを選択`,
@@ -1008,7 +966,7 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
       obstacles.push(obstacle);
       continue;
     }
-    const durability = Math.max(0, (obstacle.turns ?? 1) - (radius - range + 1));
+    const durability = Math.max(0, (obstacle.turns ?? 1) - (radius - range + 1) * activePlayers(state).length);
     if (durability > 0) obstacles.push({ ...obstacle, turns: durability });
   }
   const next = finishSwitch({ ...state, probes, obstacles, log: [...state.log, `${playerName(current.player)} fired PULSE radius ${radius} at (${target.r},${target.c})`] });
@@ -1028,7 +986,7 @@ export function applyRecallItem(state: GameState, meteorId: number): GameState {
     PLAYER_ORDER.map((player) => [player, { ...state.inventory[player] }]),
   ) as Inventory;
   if (meteor) inventory[current.player][meteor.size] += 1;
-  const itemHands = holo && state.itemSystem !== "cooldown" ? {
+  const itemHands = holo ? {
     ...(state.itemHands ?? {}),
     [current.player]: [...(state.itemHands?.[current.player] ?? []), "holo" as ItemKind],
   } : state.itemHands;
@@ -1069,7 +1027,7 @@ export function applyMeteor(
   const obstacles = activeObstacles(state).flatMap((obstacle) => {
     const range = distance(obstacle, target);
     if (range < 1 || range > radius || obstacle.turns === -1) return [obstacle];
-    const damage = chosenSize === "small" ? 1 : radius - range + 1;
+    const damage = (chosenSize === "small" ? 1 : radius - range + 1) * activePlayers(state).length;
     const durability = Math.max(0, (obstacle.turns ?? 1) - damage);
     return durability > 0 ? [{ ...obstacle, turns: durability }] : [];
   });

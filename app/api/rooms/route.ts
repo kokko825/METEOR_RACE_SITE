@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type ItemSystem, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 
 export const dynamic = "force-dynamic";
@@ -156,7 +156,6 @@ export async function POST(request: Request) {
     meteorSize?: MeteorSize;
     nickname?: string;
     variant?: GameVariant;
-    itemSystem?: ItemSystem;
     useCapsule?: boolean;
     itemKind?: ItemKind;
     ring?: number;
@@ -369,7 +368,6 @@ export async function POST(request: Request) {
       body.variant === "team" || body.variant === "item" || body.variant === "team-item"
         ? body.variant
         : "classic";
-    const itemSystem: ItemSystem = body.itemSystem === "cooldown" ? "cooldown" : "stock";
     if (isTeamVariant(variant)) {
       aiCount = Math.max(0, 4 - humanCount);
     }
@@ -421,7 +419,6 @@ export async function POST(request: Request) {
       botPlayers,
       variant,
       liveBalance,
-      itemSystem,
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -479,7 +476,6 @@ export async function POST(request: Request) {
       previous.botPlayers ?? [],
       previous.variant ?? "classic",
       liveBalance,
-      previous.itemSystem ?? "stock",
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =

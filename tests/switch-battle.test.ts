@@ -77,20 +77,20 @@ pulseHolo = {
   balance: { ...pulseHolo.balance!, pulseRadius: 2, holoUnlimited: 0 },
 };
 pulseHolo = applyPulseSwitch(pulseHolo, { r: 7, c: 7 });
-assert.ok(samePos(pulseHolo.obstacles[0], { r: 7, c: 8 }), "PULSE no longer moves a holo meteor");
-assert.equal(pulseHolo.obstacles[0].turns, 1, "PULSE damage plus normal turn decay shortens holo duration");
+assert.equal(pulseHolo.obstacles.length, 0, "PULSE inner damage removes a holo meteor with two displayed rounds left");
 
 let coreStop = initialGameState(15, "red", 2, false, 0, [], "item");
 coreStop = {
   ...coreStop,
   phase: "switch",
   probes: { ...coreStop.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
-  obstacles: [{ r: 7, c: 6, owner: "blue", id: 91, turns: 4 }],
+  obstacles: [{ r: 7, c: 6, owner: "blue", id: 91, turns: 6 }],
   pendingSwitches: [{ kind: "pulse", player: "red" }],
   balance: { ...coreStop.balance!, pulseRadius: 2 },
 };
 coreStop = applyPulseSwitch(coreStop, { r: 7, c: 5 });
 assert.ok(samePos(coreStop.obstacles[0], { r: 7, c: 6 }), "PULSE never moves a holo meteor toward CORE");
+assert.equal(coreStop.obstacles[0].turns, 1, "PULSE damage is measured in displayed rounds");
 
 let meteorHolo = initialGameState(15, "red", 2, false, 0, [], "item");
 meteorHolo = {
@@ -101,8 +101,7 @@ meteorHolo = {
   obstacles: [{ r: 7, c: 8, owner: "blue", id: 93, turns: 4 }],
 };
 meteorHolo = applyMeteor(meteorHolo, { r: 7, c: 9 }, "large").state;
-assert.ok(samePos(meteorHolo.obstacles[0], { r: 7, c: 8 }), "meteor blast does not move a holo meteor");
-assert.equal(meteorHolo.obstacles[0].turns, 1, "large meteor inner blast damage plus normal turn decay shortens holo duration");
+assert.equal(meteorHolo.obstacles.length, 0, "large meteor inner blast removes a holo meteor with two displayed rounds left");
 
 let recallGame = initialGameState(15, "red", 2, false, 0, [], "item");
 recallGame = {
@@ -129,21 +128,5 @@ recallHolo = {
 recallHolo = applyRecallItem(recallHolo, 92);
 assert.equal(recallHolo.obstacles.length, 0, "RECALL removes the selected own holo meteor");
 assert.deepEqual(recallHolo.itemHands?.red, ["holo"], "RECALL returns the holo meteor to the item hand");
-
-let cooldownGame = initialGameState(15, "red", 2, false, 0, [], "item", undefined, "cooldown");
-cooldownGame = applySetupItem(cooldownGame, "pulse");
-cooldownGame = applySetupItem(cooldownGame, "shield");
-cooldownGame = applySetupItem(cooldownGame, "holo");
-assert.throws(() => applySetupItem(cooldownGame, "pulse"), /3個まで|1個まで/);
-cooldownGame = confirmSetupItems(cooldownGame);
-cooldownGame = applySetupItem(cooldownGame, "booster");
-cooldownGame = applySetupItem(cooldownGame, "orbit");
-cooldownGame = applySetupItem(cooldownGame, "recall");
-cooldownGame = confirmSetupItems(cooldownGame);
-cooldownGame = { ...cooldownGame, phase: "place", turnCount: 2 };
-cooldownGame = applyUseItem(cooldownGame, "pulse");
-assert.deepEqual(cooldownGame.itemHands?.red, ["pulse", "shield", "holo"], "cooldown items are not consumed");
-assert.ok((cooldownGame.itemCooldowns?.red?.pulse ?? 0) > 0, "using an item starts its individual cooldown");
-assert.throws(() => applyUseItem({ ...cooldownGame, phase: "place", turn: "red" }, "pulse"), /使用できません/);
 
 console.log("item-battle: all checks passed");

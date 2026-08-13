@@ -8,12 +8,6 @@ export type BalanceConfig = {
   holoRounds: number;
   holoUnlimited: number;
   pulseRadius: number;
-  cooldownShield: number;
-  cooldownBooster: number;
-  cooldownHolo: number;
-  cooldownOrbit: number;
-  cooldownPulse: number;
-  cooldownRecall: number;
   itemRespawnMinTurns: number;
   itemRespawnMaxTurns: number;
   itemBoardMax: number;
@@ -30,12 +24,6 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   holoRounds: 2,
   holoUnlimited: 0,
   pulseRadius: 1,
-  cooldownShield: 3,
-  cooldownBooster: 3,
-  cooldownHolo: 4,
-  cooldownOrbit: 5,
-  cooldownPulse: 4,
-  cooldownRecall: 3,
   itemRespawnMinTurns: 2,
   itemRespawnMaxTurns: 4,
   itemBoardMax: 6,
@@ -52,12 +40,6 @@ export const BALANCE_FIELDS = [
   { key: "holoRounds", externalKey: "item.holo.rounds", label: "お邪魔継続", min: 1, max: 99, unit: "巡" },
   { key: "holoUnlimited", externalKey: "item.holo.unlimited", label: "ホロメテオ無制限", min: 0, max: 1, unit: "0=OFF / 1=ON" },
   { key: "pulseRadius", externalKey: "item.pulse.radius", label: "パルス攻撃範囲", min: 1, max: 4, unit: "マス" },
-  { key: "cooldownShield", externalKey: "item.cooldown.shield", label: "CT版・シールド", min: 1, max: 99, unit: "巡" },
-  { key: "cooldownBooster", externalKey: "item.cooldown.booster", label: "CT版・ブースター", min: 1, max: 99, unit: "巡" },
-  { key: "cooldownHolo", externalKey: "item.cooldown.holo", label: "CT版・ホロメテオ", min: 1, max: 99, unit: "巡" },
-  { key: "cooldownOrbit", externalKey: "item.cooldown.orbit", label: "CT版・ORBIT", min: 1, max: 99, unit: "巡" },
-  { key: "cooldownPulse", externalKey: "item.cooldown.pulse", label: "CT版・パルス", min: 1, max: 99, unit: "巡" },
-  { key: "cooldownRecall", externalKey: "item.cooldown.recall", label: "CT版・リコール", min: 1, max: 99, unit: "巡" },
   { key: "emptyMeteorBonusMoves", externalKey: "meteor.empty.bonus_moves", label: "全消費ボーナス移動", min: 0, max: 1, unit: "回" },
 ] as const;
 
