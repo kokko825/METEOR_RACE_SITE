@@ -173,6 +173,7 @@ function placements(state: GameState): Placement[] {
     ...activePlayers(state).map((player) => state.probes[player]),
     ...state.meteors,
     ...state.fieldItems,
+    ...(state.pulseDevices ?? []),
   ];
   for (const anchor of anchors) {
     for (let dr = -2; dr <= 2; dr += 1) {

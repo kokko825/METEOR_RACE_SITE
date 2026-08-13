@@ -8,6 +8,7 @@ export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
 export type FieldItem = Pos & { kind: ItemKind; id: number };
 export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number };
+export type PulseDevice = Pos & { owner: Player; id: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
 export type Phase = "setup" | "move" | "place" | "switch" | "over";
 export type PendingSwitch = { kind: "holo" | "orbit" | "pulse" | "recall"; player: Player };
@@ -31,6 +32,7 @@ export type GameState = {
   meteors: Meteor[];
   obstaclesEnabled: boolean;
   obstacles: ObstacleMeteor[];
+  pulseDevices?: PulseDevice[];
   obstacleAvailable: Record<Player, number>;
   layoutOffset: number;
   startingPlayer: Player;
@@ -45,6 +47,7 @@ export type GameState = {
   log: string[];
   nextMeteorId: number;
   nextItemId: number;
+  nextPulseDeviceId?: number;
   itemSeed: number;
   repetitions: Record<string, number>;
   pendingSwitches?: PendingSwitch[];
@@ -350,6 +353,7 @@ export function initialGameState(
     meteors: [],
     obstaclesEnabled: false,
     obstacles: [],
+    pulseDevices: [],
     obstacleAvailable: {
       red: 0,
       blue: 0,
@@ -369,6 +373,7 @@ export function initialGameState(
     log: [`ゲーム開始 — ${playerName(first)}が先攻`],
     nextMeteorId: 1,
     nextItemId: 1,
+    nextPulseDeviceId: 1,
     itemSeed: itemLayout.seed,
     repetitions: {},
     setupPlacements: {},
@@ -582,6 +587,7 @@ function stateKey(state: GameState, nextTurn: Player) {
     activeObstacles(state)
       .map((obstacle) => `${obstacle.r},${obstacle.c},${obstacle.owner}`)
       .join("|"),
+    JSON.stringify(state.pulseDevices ?? []),
     JSON.stringify(state.obstacleAvailable ?? {}),
     JSON.stringify(state.passAvailable ?? {}),
     JSON.stringify(state.playerTurns ?? {}),
@@ -1002,6 +1008,7 @@ export function applyOrbitSwitch(state: GameState, ring: number, clockwise: bool
     probes,
     meteors: state.meteors.map(rotate),
     obstacles: activeObstacles(state).map(rotate),
+    pulseDevices: (state.pulseDevices ?? []).map(rotate),
     fieldItems: state.fieldItems.map(rotate),
     log: [...state.log, `${playerName(current.player)} rotated ring ${ring} ${clockwise ? "CW" : "CCW"}`],
   });
@@ -1013,7 +1020,8 @@ export function applyOrbitSwitch(state: GameState, ring: number, clockwise: bool
 export function applyPulseSwitch(state: GameState, target: Pos): GameState {
   const current = state.pendingSwitches?.[0];
   if (state.phase !== "switch" || current?.kind !== "pulse" || target.r < 0 || target.c < 0 ||
-      target.r >= state.size || target.c >= state.size || activePlayers(state).some((p) => samePos(state.probes[p], target))) {
+      target.r >= state.size || target.c >= state.size || activePlayers(state).some((p) => samePos(state.probes[p], target)) ||
+      (state.pulseDevices ?? []).some((device) => samePos(device, target))) {
     throw new Error("PULSEを発動できないマスです");
   }
   const probes = { ...state.probes };
@@ -1056,7 +1064,20 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
     const durability = Math.max(0, (obstacle.turns ?? 1) - (radius - range + 1) * activePlayers(state).length);
     if (durability > 0) obstacles.push({ ...obstacle, turns: durability });
   }
-  const next = finishSwitch({ ...state, probes, obstacles, immobilizedMoves, log: [...state.log, `${playerName(current.player)} fired BLAST radius ${radius} at (${target.r},${target.c})`] });
+  const pulseDevices = [...(state.pulseDevices ?? []), {
+    ...target,
+    owner: current.player,
+    id: state.nextPulseDeviceId ?? 1,
+  }];
+  const next = finishSwitch({
+    ...state,
+    probes,
+    obstacles,
+    immobilizedMoves,
+    pulseDevices,
+    nextPulseDeviceId: (state.nextPulseDeviceId ?? 1) + 1,
+    log: [...state.log, `${playerName(current.player)} placed an EMP generator and fired BLAST radius ${radius} at (${target.r},${target.c})`],
+  });
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));
   return resolveCoreArrivals(state, next, reached);
 }

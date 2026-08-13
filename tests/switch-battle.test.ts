@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   applyMeteor,
+  applyOrbitSwitch,
   applyPulseSwitch,
   applyRecallItem,
   applySetupItem,
@@ -69,6 +70,25 @@ assert.ok(samePos(pulseGame.probes.blue, { r: 5, c: 7 }), "PULSE pushes a probe 
 assert.equal(pulseGame.meteors.length, 1, "PULSE never destroys or recovers meteors");
 assert.equal(pulseGame.immobilizedMoves?.blue, 2, "BLAST prevents voluntary movement for two own turns");
 assert.deepEqual(legalMoves({ ...pulseGame, phase: "move", turn: "blue" }, "blue"), [], "an immobilized probe cannot move voluntarily");
+
+let deviceGame = initialGameState(15, "red", 2, false, 0, [], "item");
+deviceGame = {
+  ...deviceGame,
+  phase: "switch",
+  probes: { ...deviceGame.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
+  pendingSwitches: [{ kind: "pulse", player: "red" }],
+};
+deviceGame = applyPulseSwitch(deviceGame, { r: 7, c: 8 });
+assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 7, c: 8 }), "BLAST leaves its fired EMP generator on the board");
+deviceGame = {
+  ...deviceGame,
+  phase: "switch",
+  pendingSwitches: [{ kind: "orbit", player: deviceGame.turn }],
+  switchResume: "finish",
+};
+deviceGame = applyOrbitSwitch(deviceGame, 1, true);
+assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 8, c: 7 }), "ORBIT rotates a fired EMP generator with its ring");
+assert.equal(deviceGame.pulseDevices?.length, 1, "ORBIT does not reactivate or consume an EMP generator");
 
 let boosterJump = initialGameState(15, "red", 2, false, 0, [], "item");
 boosterJump = {

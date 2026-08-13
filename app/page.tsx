@@ -40,6 +40,7 @@ import {
   type Meteor,
   type MeteorSize,
   type ObstacleMeteor,
+  type PulseDevice,
   type Player,
   type Pos,
 } from "./game-rules";
@@ -1514,6 +1515,7 @@ function Game() {
                 : game.fieldItems;
               const fieldItem = visibleItems.find((item) => samePos(item, pos));
               const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
+              const pulseDevice = (game.pulseDevices ?? []).find((item) => samePos(item, pos));
               const legal =
                 canControl &&
                 game.phase === "move" &&
@@ -1544,7 +1546,7 @@ function Game() {
                     if (orbitSelecting && !selectedOrbitRing) setHoveredOrbitRing(null);
                   }}
                   disabled={game.phase === "over" || (!legal && !placeable)}
-                  aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}`}
+                  aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}${pulseDevice ? " 電磁パルス発生装置" : ""}`}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
                   {setupSlot && (
@@ -1591,6 +1593,7 @@ function Game() {
                       roundsLeft={obstacle.turns === -1 ? -1 : Math.max(1, Math.ceil((obstacle.turns ?? 1) / activePlayers(game).length))}
                     />
                   )}
+                  {pulseDevice && <PulseDeviceIcon device={pulseDevice} />}
                   {fieldItem && (
                     <span className={`field-item ${fieldItem.kind}`} title={fieldItem.kind}>
                       {fieldItem.kind === "shield"
@@ -2296,6 +2299,14 @@ function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roun
       <i />
       <b>{roundsLabel}</b>
       <small>巡</small>
+    </span>
+  );
+}
+
+function PulseDeviceIcon({ device }: { device: PulseDevice }) {
+  return (
+    <span className={`pulse-device ${device.owner}`} title="電磁パルス発生装置・発動済み">
+      <i /><b>EMP</b>
     </span>
   );
 }

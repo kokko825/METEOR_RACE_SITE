@@ -205,6 +205,11 @@ button { color: inherit; }
 .obstacle-token.blue { color:var(--blue); }
 .obstacle-token.green { color:var(--green); }
 .obstacle-token.yellow { color:var(--yellow); }
+.pulse-device { position:absolute; z-index:2; width:52%; aspect-ratio:1; display:grid; place-items:center; border-radius:50%; color:#ff8d8d; border:2px solid currentColor; background:radial-gradient(circle,#35151a 20%,#101820 65%); box-shadow:0 0 10px currentColor,inset 0 0 8px currentColor; }
+.pulse-device i { position:absolute; inset:-18%; border:1px dashed currentColor; border-radius:50%; opacity:.55; }
+.pulse-device b { font-size:clamp(5px,.72vw,9px); letter-spacing:.04em; }
+.pulse-device.red { color:var(--red); } .pulse-device.blue { color:var(--blue); }
+.pulse-device.green { color:var(--green); } .pulse-device.yellow { color:var(--yellow); }
 .impact-flash { position:absolute; z-index:2; width:42%; aspect-ratio:1; border-radius:50%; background:#fff3c8; box-shadow:0 0 16px 7px #ffb32d,0 0 38px 16px rgba(255,76,25,.86); animation:impact-flash .55s ease-out both; pointer-events:none; }
 .impact-flash.blue { box-shadow:0 0 16px 7px #d7f3ff,0 0 38px 16px rgba(40,150,255,.75); }
 .shockwave { position:absolute; z-index:6; width:100%; aspect-ratio:1; border:clamp(2px,.32vw,5px) solid rgba(255,217,122,.9); border-radius:50%; box-shadow:0 0 15px rgba(255,135,43,.8),inset 0 0 13px rgba(255,216,123,.35); pointer-events:none; animation:shockwave-small .82s cubic-bezier(.1,.62,.18,1) .1s both; }
