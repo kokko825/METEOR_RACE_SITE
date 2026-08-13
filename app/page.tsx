@@ -144,7 +144,20 @@ function Game() {
       .then((data) => {
         const loaded = normalizeBalance(data.balance);
         setActiveBalance(loaded);
-        setGame((current) => ({ ...current, balance: loaded }));
+        setGame((current) => {
+          const hasStarted = current.turnCount > 0 || current.meteors.length > 0 || current.phase === "over";
+          if (hasStarted) return current;
+          return {
+            ...current,
+            balance: loaded,
+            inventory: {
+              red: { small: loaded.meteorSmallStart, large: loaded.meteorLargeStart },
+              blue: { small: loaded.meteorSmallStart, large: loaded.meteorLargeStart },
+              green: { small: loaded.meteorSmallStart, large: loaded.meteorLargeStart },
+              yellow: { small: loaded.meteorSmallStart, large: loaded.meteorLargeStart },
+            },
+          };
+        });
       })
       .catch(() => undefined);
   }, []);

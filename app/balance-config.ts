@@ -34,9 +34,6 @@ export const BALANCE_FIELDS = [
   { key: "shieldRounds", externalKey: "item.shield.rounds", label: "シールド継続", min: 1, max: 3, unit: "巡" },
   { key: "boosterUses", externalKey: "item.booster.uses", label: "ブースター使用回数", min: 1, max: 3, unit: "回" },
   { key: "holoRounds", externalKey: "item.holo.rounds", label: "お邪魔継続", min: 1, max: 4, unit: "巡" },
-  { key: "itemRespawnMinTurns", externalKey: "item.respawn.min_turns", label: "再出現・最短", min: 1, max: 6, unit: "ターン" },
-  { key: "itemRespawnMaxTurns", externalKey: "item.respawn.max_turns", label: "再出現・最長", min: 2, max: 8, unit: "ターン" },
-  { key: "itemBoardMax", externalKey: "item.board.max", label: "盤上アイテム上限", min: 1, max: 12, unit: "個" },
   { key: "emptyMeteorBonusMoves", externalKey: "meteor.empty.bonus_moves", label: "全消費ボーナス移動", min: 0, max: 1, unit: "回" },
 ] as const;
 

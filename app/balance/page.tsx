@@ -34,7 +34,7 @@ export default function BalancePage() {
     if (!response.ok) throw new Error(data.error ?? "更新できませんでした");
     setRevision(data.revision ?? revision);
     if (data.balance) setDraft(normalizeBalance(data.balance));
-    setMessage(action === "publish" ? "公開版へ反映しました" : action === "rollback" ? "直前の公開値へ戻しました" : "下書きを保存しました");
+    setMessage(action === "publish" ? "公開しました。進行中の試合は変えず、再読み込み後または次のNEW GAMEから反映されます" : action === "rollback" ? "直前の公開値へ戻しました。次のNEW GAMEから反映されます" : "下書きを保存しました");
   };
 
   const exportCsv = () => {
@@ -93,7 +93,7 @@ export default function BalancePage() {
       </section>
       <aside className="balance-note">
         <b>安全な変更手順</b>
-        <p>CSVをExcelまたはNotionで編集 → 読み込み → 下書き保存 → AILABで試す → 問題なければ「サイト版へ反映」。公開ボタンを押すまで通常対戦には影響しません。</p>
+        <p>CSVをExcelまたはNotionで編集 → 読み込み → 下書き保存 → AILABで試す → 問題なければ「サイト版へ反映」。公開後は再読み込みした未開始ゲームと次のNEW GAMEへ適用され、進行中の試合は変わりません。</p>
         <a href="https://app.notion.com/p/912d09d3c8aa4f5d99f03117108e1202" target="_blank" rel="noreferrer">Notion バランス調整DBを開く</a>
       </aside>
     </main>
