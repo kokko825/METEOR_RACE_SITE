@@ -1066,7 +1066,11 @@ function Game() {
       : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "pulse")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
       : game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "recall"
-      ? game.meteors.some((meteor) => meteor.r === r && meteor.c === c && meteor.owner === game.turn && !meteor.consumable)
+      ? (() => {
+          const owner = game.pendingSwitches?.[0]?.player ?? game.turn;
+          return game.meteors.some((meteor) => meteor.r === r && meteor.c === c && meteor.owner === owner && !meteor.consumable) ||
+            activeObstacles(game).some((holo) => holo.r === r && holo.c === c && holo.owner === owner);
+        })()
       : game.selected === "obstacle"
       ? validObstaclePlacement(r, c)
       : validBasePlacement(r, c);
