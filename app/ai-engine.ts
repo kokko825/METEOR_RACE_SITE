@@ -22,6 +22,7 @@ import {
   type Player,
   type Pos,
 } from "./game-rules";
+import { normalizeBalance } from "./balance-config";
 
 export type AiDifficulty = "easy" | "normal" | "hard";
 export type AiDecision =
@@ -572,7 +573,8 @@ export function chooseAiDecision(
   const player = state.turn;
   if (state.phase === "setup") {
     const own = state.itemHands?.[player] ?? [];
-    if (own.length === 3) return { type: "confirm_setup" };
+    const balance = normalizeBalance(state.balance);
+    if (own.length === balance.itemHandTotal) return { type: "confirm_setup" };
     const base: Record<ItemKind, number> = {
       booster: 94,
       shield: 91,
@@ -583,7 +585,7 @@ export function chooseAiDecision(
     };
     const controls: ItemKind[] = ["pulse", "holo", "orbit"];
     const ranked = (["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[])
-      .filter((kind) => own.filter((entry) => entry === kind).length < 2)
+      .filter((kind) => own.filter((entry) => entry === kind).length < balance.itemSameMax)
       .map((kind) => {
         const duplicatePenalty = own.includes(kind) ? 24 : 0;
         const controlCount = own.filter((entry) => controls.includes(entry)).length;

@@ -42,6 +42,7 @@ import {
   type Pos,
 } from "./game-rules";
 import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
+import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
 
 type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
@@ -91,6 +92,7 @@ function Game() {
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
+  const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [history, setHistory] = useState<GameState[]>([]);
   const [mode, setMode] = useState<Mode>("human");
   const [setupMode, setSetupMode] = useState<Mode>("human");
@@ -135,11 +137,23 @@ function Game() {
     draw: 0,
     turns: 0,
   });
+  useEffect(() => {
+    const draft = new URLSearchParams(window.location.search).get("balance") === "draft";
+    fetch(`/api/balance${draft ? "?draft=1" : ""}`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((data) => {
+        const loaded = normalizeBalance(data.balance);
+        setActiveBalance(loaded);
+        setGame((current) => ({ ...current, balance: loaded }));
+      })
+      .catch(() => undefined);
+  }, []);
   const recordedOutcome = useRef("");
   const playedOnlineEffect = useRef(0);
   const playedOnlineItemEffect = useRef(0);
   const mid = Math.floor(game.size / 2);
   const moves = useMemo(() => legalMoves(game), [game]);
+  const balance = normalizeBalance(game.balance);
   const setupPlayer =
     mode === "online" && game.phase === "setup" && online.role
       ? online.role
@@ -835,7 +849,7 @@ function Game() {
   };
 
   const confirmItemLoadout = () => {
-    if (!canControl || game.phase !== "setup" || (game.itemHands?.[setupPlayer]?.length ?? 0) !== 3) return;
+    if (!canControl || game.phase !== "setup" || (game.itemHands?.[setupPlayer]?.length ?? 0) !== balance.itemHandTotal) return;
     if (mode === "online") void submitOnlineAction("setup_confirm");
     commit(confirmSetupItems(game, setupPlayer));
   };
@@ -968,6 +982,7 @@ function Game() {
           layoutOffset,
           botPlayers,
           variant,
+          activeBalance,
         ),
       );
     }
@@ -994,6 +1009,7 @@ function Game() {
         nextOffset,
         game.botPlayers ?? [],
         game.variant ?? "classic",
+        game.balance ?? activeBalance,
       ),
     );
   };
@@ -1194,6 +1210,7 @@ function Game() {
           nextOffset,
           game.botPlayers ?? players,
           game.variant ?? "classic",
+          game.balance ?? activeBalance,
         ),
       );
     }, Math.max(120, aiSpeed));
@@ -1513,12 +1530,12 @@ function Game() {
           <div className="action-panel">
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
-                <span className="action-label">持ち込むアイテムを3個選択（同じ種類は2個まで）</span>
+                <span className="action-label">持ち込むアイテムを{balance.itemHandTotal}個選択（同じ種類は{balance.itemSameMax}個まで）</span>
                 {(["shield", "booster", "holo", "orbit", "pulse", "recall"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
                     className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}
-                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= 2}
+                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= balance.itemSameMax}
                     onClick={() => {
                       try {
                         const next = applySetupItem(game, kind, setupPlayer);
@@ -1533,12 +1550,12 @@ function Game() {
                   </button>
                 ))}
                 <b>
-                  {`${game.itemHands?.[setupPlayer]?.length ?? 0} / 3 選択済み`}
+                  {`${game.itemHands?.[setupPlayer]?.length ?? 0} / ${balance.itemHandTotal} 選択済み`}
                 </b>
                 <span className="setup-confirm-actions">
                   <button
                     className="primary-action compact-action"
-                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) !== 3}
+                    disabled={(game.itemHands?.[setupPlayer]?.length ?? 0) !== balance.itemHandTotal}
                     onClick={confirmItemLoadout}
                   >
                     決定
@@ -2054,7 +2071,7 @@ function Game() {
             <p><b>BLAST</b> 小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。</p>
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
-            <p><b>ITEM</b> 対戦前に3個を選択。同じ種類は2個まで持ち込めます。</p>
+            <p><b>ITEM</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
             <p>BOOSTER / SHIELD / HOLO / ORBIT / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>

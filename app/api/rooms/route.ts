@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { PLAYER_ORDER, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,23 @@ async function ensureSchema() {
     )`),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS game_rooms_updated_idx ON game_rooms(updated_at)"),
   ]);
+}
+
+async function publishedBalance() {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS balance_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1), published_json TEXT NOT NULL,
+    draft_json TEXT NOT NULL, previous_json TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL
+  )`).run();
+  const defaults = JSON.stringify(DEFAULT_BALANCE);
+  await env.DB.prepare(`INSERT OR IGNORE INTO balance_settings
+    (id, published_json, draft_json, previous_json, revision, updated_at)
+    VALUES (1, ?, ?, ?, 1, ?)`)
+    .bind(defaults, defaults, defaults, Date.now())
+    .run();
+  const row = await env.DB.prepare("SELECT published_json FROM balance_settings WHERE id = 1")
+    .first<{ published_json: string }>();
+  return normalizeBalance(row ? JSON.parse(row.published_json) : DEFAULT_BALANCE);
 }
 
 function emailFrom(request: Request) {
@@ -143,7 +161,9 @@ export async function POST(request: Request) {
     ring?: number;
     clockwise?: boolean;
     meteorId?: number;
+    setupActor?: Player;
   };
+  const liveBalance = await publishedBalance();
 
   if (body.action === "create") {
     const playerCount = 2;
@@ -174,6 +194,8 @@ export async function POST(request: Request) {
               Boolean(body.obstaclesEnabled),
               layoutOffset,
               botPlayers,
+              "classic",
+              liveBalance,
             ),
             roomMemberNames: [normalizeNickname(body.nickname, email)],
             roomPreferredRoles: ["red"],
@@ -396,6 +418,7 @@ export async function POST(request: Request) {
       nextOffset,
       botPlayers,
       variant,
+      liveBalance,
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -452,6 +475,7 @@ export async function POST(request: Request) {
       nextOffset,
       previous.botPlayers ?? [],
       previous.variant ?? "classic",
+      liveBalance,
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =

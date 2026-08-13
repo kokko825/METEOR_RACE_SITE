@@ -1,3 +1,5 @@
+import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
+
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type GameVariant = "classic" | "team" | "item" | "team-item";
@@ -51,6 +53,7 @@ export type GameState = {
   setupRejected?: Partial<Record<Player, Pos[]>>;
   itemHands?: Partial<Record<Player, ItemKind[]>>;
   setupConfirmed?: Partial<Record<Player, boolean>>;
+  balance?: BalanceConfig;
 };
 
 export type MeteorResolution = {
@@ -66,6 +69,7 @@ export const isTeamVariant = (variant: GameVariant) => variant === "team" || var
 export const isItemVariant = (variant: GameVariant) => variant === "item" || variant === "team-item";
 export const activePlayers = (state: GameState): Player[] =>
   state.players?.length ? state.players : ["red", "blue"];
+const gameBalance = (state: GameState) => normalizeBalance(state.balance);
 export const activeObstacles = (state: GameState): ObstacleMeteor[] => {
   return state.obstacles ?? [];
 };
@@ -227,6 +231,7 @@ export function initialGameState(
   layoutOffset = 0,
   botPlayers: Player[] = [],
   variant: GameVariant = "classic",
+  balance: BalanceConfig = DEFAULT_BALANCE,
 ): GameState {
   void obstaclesEnabled;
   if (isTeamVariant(variant)) {
@@ -262,6 +267,7 @@ export function initialGameState(
   const itemLayout = { items: [] as FieldItem[], seed: initialItemSeed };
   return {
     size,
+    balance: normalizeBalance(balance),
     variant,
     players,
     turn: first,
@@ -290,10 +296,10 @@ export function initialGameState(
       yellow: 0,
     },
     inventory: {
-      red: { small: 2, large: 1 },
-      blue: { small: 2, large: 1 },
-      green: { small: 2, large: 1 },
-      yellow: { small: 2, large: 1 },
+      red: { small: balance.meteorSmallStart, large: balance.meteorLargeStart },
+      blue: { small: balance.meteorSmallStart, large: balance.meteorLargeStart },
+      green: { small: balance.meteorSmallStart, large: balance.meteorLargeStart },
+      yellow: { small: balance.meteorSmallStart, large: balance.meteorLargeStart },
     },
     selected: "small",
     winner: null,
@@ -317,9 +323,10 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
     throw new Error("アイテム選択フェーズではありません");
   }
   const hand = state.itemHands?.[player] ?? [];
-  if (hand.length >= 3) throw new Error("持ち込めるアイテムは3個までです");
-  if (hand.filter((entry) => entry === kind).length >= 2) {
-    throw new Error("同じアイテムは2個までです");
+  const balance = gameBalance(state);
+  if (hand.length >= balance.itemHandTotal) throw new Error(`持ち込めるアイテムは${balance.itemHandTotal}個までです`);
+  if (hand.filter((entry) => entry === kind).length >= balance.itemSameMax) {
+    throw new Error(`同じアイテムは${balance.itemSameMax}個までです`);
   }
   const nextHand = [...hand, kind];
   const itemHands = { ...(state.itemHands ?? {}), [player]: nextHand };
@@ -332,9 +339,9 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
     itemHands,
     setupPlacements,
     setupConfirmed: { ...(state.setupConfirmed ?? {}), [player]: false },
-    message: nextHand.length === 3
+    message: nextHand.length === balance.itemHandTotal
       ? `${playerName(player)}：持ち込みを確認して決定`
-      : `${playerName(player)}：アイテムをあと${3 - nextHand.length}個選択`,
+      : `${playerName(player)}：アイテムをあと${balance.itemHandTotal - nextHand.length}個選択`,
     log: [...state.log, `${playerName(player)} selected ${kind.toUpperCase()}`],
   };
 }
@@ -353,7 +360,7 @@ export function resetSetupItems(state: GameState, player = state.turn): GameStat
 
 export function confirmSetupItems(state: GameState, player = state.turn): GameState {
   if (!isItemVariant(state.variant) || state.phase !== "setup") throw new Error("アイテム選択フェーズではありません");
-  if ((state.itemHands?.[player]?.length ?? 0) !== 3) throw new Error("アイテムを3個選んでください");
+  if ((state.itemHands?.[player]?.length ?? 0) !== gameBalance(state).itemHandTotal) throw new Error("必要数のアイテムを選んでください");
   const players = activePlayers(state);
   const setupConfirmed = { ...(state.setupConfirmed ?? {}), [player]: true };
   const nextTurn = players.find((player) => !setupConfirmed[player]);
@@ -530,7 +537,9 @@ function scheduleItemDrops(state: GameState, count: number) {
   for (let index = 0; index < count; index += 1) {
     const random = nextItemRandom(itemSeed);
     itemSeed = random.seed;
-    pendingItemDrops.push({ turns: 2 + Math.floor(random.value * 3) });
+    const balance = gameBalance(state);
+    const span = balance.itemRespawnMaxTurns - balance.itemRespawnMinTurns + 1;
+    pendingItemDrops.push({ turns: balance.itemRespawnMinTurns + Math.floor(random.value * span) });
   }
   return { pendingItemDrops, itemSeed };
 }
@@ -548,7 +557,7 @@ function advanceItemDrops(draft: GameState): GameState {
   let itemSeed = draft.itemSeed;
   let nextItemId = draft.nextItemId;
   due.forEach(() => {
-    if (fieldItems.length >= 6) {
+    if (fieldItems.length >= gameBalance(draft).itemBoardMax) {
       waiting.push({ turns: 0 });
       return;
     }
@@ -745,7 +754,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
       state.inventory[state.turn].large +
       (state.capsuleMeteors?.[state.turn] ?? 0) ===
     0;
-  if (meteorless && !state.bonusMove) {
+  if (meteorless && !state.bonusMove && gameBalance(state).emptyMeteorBonusMoves > 0) {
     return {
       ...state,
       probes,
@@ -812,7 +821,7 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
   const itemHands = consumeItem(state, player, kind);
   const log = [...state.log, `${playerName(player)} used ${kind.toUpperCase()}`];
   if (kind === "shield") {
-    const duration = activePlayers(state).length;
+    const duration = activePlayers(state).length * gameBalance(state).shieldRounds;
     return finishTurn({
       ...state,
       itemHands,
@@ -831,7 +840,7 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
     return finishTurn({
       ...state,
       itemHands,
-      boosterMoves: { ...state.boosterMoves, [player]: 1 },
+      boosterMoves: { ...state.boosterMoves, [player]: gameBalance(state).boosterUses },
       log,
     }, `${playerName(player)}：BOOSTERを起動`);
   }
@@ -875,7 +884,7 @@ export function applyHoloSwitch(state: GameState, target: Pos): GameState {
       state.fieldItems.some((item) => samePos(item, target))) throw new Error("お邪魔を置けないマスです");
   return finishSwitch({
     ...state,
-    obstacles: [...activeObstacles(state), { ...target, owner: current.player, id: state.nextMeteorId, turns: activePlayers(state).length * 2 }],
+    obstacles: [...activeObstacles(state), { ...target, owner: current.player, id: state.nextMeteorId, turns: activePlayers(state).length * gameBalance(state).holoRounds }],
     nextMeteorId: state.nextMeteorId + 1,
     log: [...state.log, `${playerName(current.player)} placed HOLO at (${target.r},${target.c})`],
   });
