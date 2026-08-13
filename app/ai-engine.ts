@@ -589,10 +589,11 @@ export function chooseAiDecision(
       holo: 87,
       orbit: 87,
       recall: 80,
+      gravity: 86,
     };
     const controls: ItemKind[] = ["blast", "pulse", "holo", "orbit"];
-    const ranked = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
-      .filter((kind) => own.filter((entry) => entry === kind).length < balance.itemSameMax)
+    const ranked = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall", "gravity"] as ItemKind[])
+      .filter((kind) => own.filter((entry) => entry === kind).length < (kind === "gravity" ? 1 : balance.itemSameMax))
       .map((kind) => {
         const duplicatePenalty = own.includes(kind) ? 24 : 0;
         const controlCount = own.filter((entry) => controls.includes(entry)).length;
@@ -741,6 +742,7 @@ export function chooseAiDecision(
     pulse: nearestRivalCore <= 3 ? 40 : 15,
     holo: nearestRivalCore <= 4 ? 38 : 9,
     recall: recallOpportunity + 18,
+    gravity: coreDistance(state, player) > 2 ? 22 : -30,
   };
   const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
   for (const kind of usableItems) {

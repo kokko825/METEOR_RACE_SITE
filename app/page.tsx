@@ -559,6 +559,7 @@ function Game() {
         blast: { start: 118, end: 42, type: "sawtooth", second: 76 },
         pulse: { start: 980, end: 160, type: "square", second: 1320 },
         recall: { start: 940, end: 110, type: "triangle", second: 1410 },
+        gravity: { start: 520, end: 72, type: "sine", second: 780 },
       };
       const setting = settings[kind];
       oscillator.type = setting.type;
@@ -932,7 +933,7 @@ function Game() {
   const useItem = (kind: ItemKind) => {
     if (!canControl || !canUseItem(game, kind)) return;
     try {
-      if (kind === "shield" || kind === "booster" || kind === "recall") showSwitchFx(kind, game.turn);
+      if (kind === "shield" || kind === "booster" || kind === "recall" || kind === "gravity") showSwitchFx(kind, game.turn);
       if (mode === "online") void submitOnlineAction("use_item", undefined, undefined, false, undefined, undefined, kind);
       commit(applyUseItem(game, kind));
     } catch { return; }
@@ -1671,11 +1672,11 @@ function Game() {
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">アイテムを{balance.itemHandTotal}個選択（同じ種類は{balance.itemSameMax}個まで）</span>
-                {(["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[]).map((kind) => (
+                {(["shield", "booster", "holo", "orbit", "blast", "pulse", "recall", "gravity"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
                     className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}
-                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= balance.itemSameMax}
+                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= (kind === "gravity" ? 1 : balance.itemSameMax)}
                     onClick={() => {
                       try {
                         const next = applySetupItem(game, kind, setupPlayer);
@@ -2223,7 +2224,8 @@ function Game() {
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
             <p><b>ITEM</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
-            <p>BOOSTER / SHIELD / HOLO / ORBIT / BLAST / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
+            <p>BOOSTER / SHIELD / HOLO / ORBIT / BLAST / PULSE / RECALL / GRAVITY。移動後、メテオ配置の代わりに1個使用します。</p>
+            <p>GRAVITYは全探査機をCORE方向へ1マス引き寄せます。進路が塞がれた機体は動かず、COREへ入ればゴールです。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
           </div>
@@ -2245,6 +2247,7 @@ const ITEM_ICONS: Record<ItemKind, string> = {
   blast: "✹",
   pulse: "ϟ",
   recall: "↩",
+  gravity: "◎",
 };
 
 function ItemIcon({ kind }: { kind: ItemKind }) {
@@ -2356,7 +2359,7 @@ function InventoryPanel({
   color: Player;
   items: ItemKind[];
 }) {
-  const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
+  const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall", "gravity"] as ItemKind[])
     .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
     .filter(({ count }) => count > 0);
   return (

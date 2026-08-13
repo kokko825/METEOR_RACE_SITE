@@ -3,7 +3,7 @@ import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type GameVariant = "classic" | "team" | "item" | "team-item";
-export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "blast" | "pulse" | "recall";
+export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "blast" | "pulse" | "recall" | "gravity";
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
 export type FieldItem = Pos & { kind: ItemKind; id: number };
@@ -397,6 +397,9 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
   }
   const hand = state.itemHands?.[player] ?? [];
   const balance = gameBalance(state);
+  if (kind === "gravity" && hand.includes("gravity")) {
+    throw new Error("GRAVITY can only be selected once");
+  }
   if (hand.length >= balance.itemHandTotal) throw new Error(`持ち込めるアイテムは${balance.itemHandTotal}個までです`);
   if (hand.filter((entry) => entry === kind).length >= balance.itemSameMax) {
     throw new Error(`同じアイテムは${balance.itemSameMax}個までです`);
@@ -767,6 +770,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
   const boosterMoves = { ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
   const capsuleMeteors = { ...(state.capsuleMeteors ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
   const pickedBooster = pickedItems.some((item) => item.kind === "booster");
+  const pickedGravity = pickedItems.some((item) => item.kind === "gravity");
   pickedItems.forEach((item) => {
     if (item.kind === "shield") {
       shield[state.turn] = true;
@@ -784,9 +788,11 @@ export function applyMove(state: GameState, target: Pos): GameState {
           ? "BLAST"
         : picked?.kind === "pulse"
           ? "PULSE"
+        : picked?.kind === "gravity"
+          ? "GRAVITY"
           : null;
   const mid = Math.floor(state.size / 2);
-  const probes = { ...state.probes, [state.turn]: target };
+  let probes = { ...state.probes, [state.turn]: target };
   const pickedIds = new Set(pickedItems.map((item) => item.id));
   const fieldItems = (state.fieldItems ?? []).filter((item) => !pickedIds.has(item.id));
   const scheduled =
@@ -803,11 +809,18 @@ export function applyMove(state: GameState, target: Pos): GameState {
     boosterMoves,
     capsuleMeteors,
   };
+  if (pickedGravity) probes = applyGravity({ ...state, probes }).probes;
   const pickupMessage = pickedLabel ? `・${pickedLabel}を取得` : "";
   const log = [
     ...state.log,
     `${playerName(state.turn)}が (${target.r},${target.c}) へ移動${pickupMessage}`,
   ];
+  if (pickedGravity) {
+    const reached = activePlayers(state).filter((player) => samePos(probes[player], { r: mid, c: mid }));
+    if (reached.length) {
+      return resolveCoreArrivals(state, { ...state, probes, log }, reached);
+    }
+  }
   if (target.r === mid && target.c === mid) {
     return resolveCoreArrivals(state, {
       ...state,
@@ -910,6 +923,46 @@ function consumeItem(state: GameState, player: Player, kind: ItemKind) {
   return { ...(state.itemHands ?? {}), [player]: hand };
 }
 
+export function applyGravity(state: GameState): GameState {
+  const mid = Math.floor(state.size / 2);
+  const players = activePlayers(state);
+  const occupied = (target: Pos) =>
+    state.meteors.some((meteor) => samePos(meteor, target)) ||
+    activeObstacles(state).some((obstacle) => samePos(obstacle, target)) ||
+    activePulseDevices(state).some((device) => samePos(device, target)) ||
+    players.some((player) => samePos(state.probes[player], target));
+  const proposals = new Map<Player, Pos>();
+
+  players.forEach((player, playerIndex) => {
+    const start = state.probes[player];
+    const vertical = { r: start.r + Math.sign(mid - start.r), c: start.c };
+    const horizontal = { r: start.r, c: start.c + Math.sign(mid - start.c) };
+    const verticalDistance = Math.abs(start.r - mid);
+    const horizontalDistance = Math.abs(start.c - mid);
+    const candidates = verticalDistance === horizontalDistance && playerIndex % 2 === 1
+      ? [horizontal, vertical]
+      : verticalDistance >= horizontalDistance
+        ? [vertical, horizontal]
+        : [horizontal, vertical];
+    const target = candidates.find((candidate) =>
+      !samePos(candidate, start) &&
+      candidate.r >= 0 && candidate.c >= 0 && candidate.r < state.size && candidate.c < state.size &&
+      !occupied(candidate));
+    if (target) proposals.set(player, target);
+  });
+
+  const counts = new Map<string, number>();
+  proposals.forEach((target) => {
+    const key = `${target.r},${target.c}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+  const probes = { ...state.probes };
+  proposals.forEach((target, player) => {
+    if (counts.get(`${target.r},${target.c}`) === 1) probes[player] = target;
+  });
+  return { ...state, probes };
+}
+
 export function applyUseItem(state: GameState, kind: ItemKind): GameState {
   if (!canUseItem(state, kind)) throw new Error("このアイテムは現在使用できません");
   const player = state.turn;
@@ -938,6 +991,16 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
       boosterMoves: { ...state.boosterMoves, [player]: gameBalance(state).boosterUses },
       log,
     }, `${playerName(player)}：BOOSTERを起動`);
+  }
+  if (kind === "gravity") {
+    const pulled = applyGravity({ ...state, itemHands, log });
+    const advanced = finishTurn({
+      ...pulled,
+      log: [...pulled.log, "GRAVITY pulled all available probes one cell toward CORE"],
+    }, `${playerName(player)} activated GRAVITY`);
+    const core = { r: Math.floor(state.size / 2), c: Math.floor(state.size / 2) };
+    const reached = activePlayers(state).filter((candidate) => samePos(pulled.probes[candidate], core));
+    return resolveCoreArrivals(state, advanced, reached);
   }
   if (kind === "recall") {
     const inventory: Inventory = Object.fromEntries(

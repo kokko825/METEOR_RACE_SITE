@@ -4,6 +4,7 @@ import {
   applyMove,
   applyBlastSwitch,
   applyHoloSwitch,
+  applyGravity,
   applyOrbitSwitch,
   applyPulseSwitch,
   applyRecallItem,
@@ -123,6 +124,38 @@ assert.ok(boosterCoreMoves.some((move) => samePos(move, { r: 7, c: 7 })), "BOOST
 assert.ok(!boosterCoreMoves.some((move) => samePos(move, { r: 6, c: 7 })), "BOOSTER movement stops at CORE");
 boosterCore = applyMove(boosterCore, { r: 7, c: 7 });
 assert.equal(boosterCore.winner, "red", "entering CORE with BOOSTER wins the game");
+
+let gravityGame = initialGameState(15, "red", 4, false, 0, [], "item");
+gravityGame = {
+  ...gravityGame,
+  probes: {
+    red: { r: 11, c: 7 }, blue: { r: 3, c: 7 },
+    green: { r: 7, c: 3 }, yellow: { r: 7, c: 11 },
+  },
+};
+gravityGame = applyGravity(gravityGame);
+assert.deepEqual(gravityGame.probes.red, { r: 10, c: 7 }, "GRAVITY pulls red one cell inward");
+assert.deepEqual(gravityGame.probes.blue, { r: 4, c: 7 }, "GRAVITY pulls blue one cell inward");
+assert.deepEqual(gravityGame.probes.green, { r: 7, c: 4 }, "GRAVITY pulls green one cell inward");
+assert.deepEqual(gravityGame.probes.yellow, { r: 7, c: 10 }, "GRAVITY pulls yellow one cell inward");
+gravityGame = {
+  ...gravityGame,
+  probes: { ...gravityGame.probes, red: { r: 10, c: 7 } },
+  meteors: [{ r: 9, c: 7, owner: "blue", size: "small", id: 82 }],
+};
+gravityGame = applyGravity(gravityGame);
+assert.deepEqual(gravityGame.probes.red, { r: 10, c: 7 }, "GRAVITY cannot pull through a meteor");
+
+let gravityCore = initialGameState(15, "red", 2, false, 0, [], "item");
+gravityCore = {
+  ...gravityCore,
+  phase: "place",
+  probes: { ...gravityCore.probes, red: { r: 8, c: 7 }, blue: { r: 2, c: 7 } },
+  itemHands: { red: ["gravity"], blue: [] },
+};
+gravityCore = applyUseItem(gravityCore, "gravity");
+assert.deepEqual(gravityCore.probes.red, { r: 7, c: 7 }, "GRAVITY can pull a probe into CORE");
+assert.equal(gravityCore.winner, "red", "GRAVITY entering CORE wins the game");
 
 let pulseHolo = initialGameState(15, "red", 2, false, 0, [], "item");
 pulseHolo = {

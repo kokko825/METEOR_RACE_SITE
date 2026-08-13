@@ -532,7 +532,7 @@ export async function POST(request: Request) {
       nextState = resetSetupItems(state, setupActor);
     } else if (body.action === "use_item" && body.itemKind) {
       nextState = applyUseItem(state, body.itemKind);
-      if (body.itemKind === "shield" || body.itemKind === "booster" || body.itemKind === "recall") {
+      if (body.itemKind === "shield" || body.itemKind === "booster" || body.itemKind === "recall" || body.itemKind === "gravity") {
         itemEffect = { kind: body.itemKind, player: state.turn };
       }
     } else if (body.action === "cancel_item") {
