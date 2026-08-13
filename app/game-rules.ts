@@ -892,7 +892,7 @@ export function applyHoloSwitch(state: GameState, target: Pos): GameState {
       ...target,
       owner: current.player,
       id: state.nextMeteorId,
-      turns: activePlayers(state).length * gameBalance(state).holoRounds,
+      turns: gameBalance(state).holoUnlimited ? -1 : activePlayers(state).length * gameBalance(state).holoRounds,
     }],
     nextMeteorId: state.nextMeteorId + 1,
     log: [...state.log, `${playerName(current.player)} placed HOLO at (${target.r},${target.c})`],

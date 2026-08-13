@@ -567,7 +567,12 @@ export async function POST(request: Request) {
       itemEffect = { kind: "holo", player: state.pendingSwitches?.[0]?.player ?? state.turn };
     } else if (body.action === "switch_pulse" && body.target) {
       nextState = applyPulseSwitch(state, body.target);
-      itemEffect = { kind: "pulse", player: state.pendingSwitches?.[0]?.player ?? state.turn };
+      itemEffect = {
+        kind: "pulse",
+        player: state.pendingSwitches?.[0]?.player ?? state.turn,
+        target: body.target,
+        radius: state.balance?.pulseRadius ?? 1,
+      };
     } else if (body.action === "switch_orbit") {
       nextState = applyOrbitSwitch(state, Number(body.ring), Boolean(body.clockwise));
       itemEffect = {

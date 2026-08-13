@@ -72,13 +72,13 @@ pulseHolo = {
   ...pulseHolo,
   phase: "switch",
   probes: { ...pulseHolo.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
-  obstacles: [{ r: 7, c: 8, owner: "blue", id: 90, turns: 198 }],
+  obstacles: [{ r: 7, c: 8, owner: "blue", id: 90, turns: -1 }],
   pendingSwitches: [{ kind: "pulse", player: "red" }],
-  balance: { ...pulseHolo.balance!, pulseRadius: 2, holoRounds: 99 },
+  balance: { ...pulseHolo.balance!, pulseRadius: 2, holoUnlimited: 1 },
 };
 pulseHolo = applyPulseSwitch(pulseHolo, { r: 7, c: 7 });
 assert.ok(samePos(pulseHolo.obstacles[0], { r: 7, c: 10 }), "PULSE is strongest near its center and pushes a nearby holo meteor two squares");
-assert.ok((pulseHolo.obstacles[0].turns ?? 0) > 0, "a 99-round holo meteor remains active");
+assert.equal(pulseHolo.obstacles[0].turns, -1, "unlimited holo meteor does not expire");
 
 let coreStop = initialGameState(15, "red", 2, false, 0, [], "item");
 coreStop = {

@@ -57,12 +57,15 @@ type BlastFx = {
 type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
 type SwitchFx = { kind: ItemKind; player: Player; nonce: number };
 type OrbitFx = { ring: number; clockwise: boolean; nonce: number };
+type PulseFx = { target: Pos; radius: number; nonce: number };
 type OnlineItemEffect = {
   version: number;
   kind: ItemKind;
   player: Player;
   ring?: number;
   clockwise?: boolean;
+  target?: Pos;
+  radius?: number;
 };
 
 function pushForPerspective(
@@ -108,6 +111,7 @@ function Game() {
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
   const [switchFx, setSwitchFx] = useState<SwitchFx | null>(null);
   const [orbitFx, setOrbitFx] = useState<OrbitFx | null>(null);
+  const [pulseFx, setPulseFx] = useState<PulseFx | null>(null);
   const [hoveredOrbitRing, setHoveredOrbitRing] = useState<number | null>(null);
   const [selectedOrbitRing, setSelectedOrbitRing] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -819,6 +823,8 @@ function Game() {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
     const next = applyPulseSwitch(game, target);
     showSwitchFx("pulse", player);
+    setPulseFx({ target, radius: game.balance?.pulseRadius ?? activeBalance.pulseRadius, nonce: Date.now() });
+    window.setTimeout(() => setPulseFx(null), 950);
     if (mode === "online") void submitOnlineAction("switch_pulse", target);
     commit(next);
   };
@@ -1140,6 +1146,14 @@ function Game() {
                 setOrbitFx(null);
                 setIsAnimating(false);
               }, 760);
+            }
+            if (remoteItemEffect.kind === "pulse" && remoteItemEffect.target) {
+              setPulseFx({
+                target: remoteItemEffect.target,
+                radius: remoteItemEffect.radius ?? data.state.balance?.pulseRadius ?? 1,
+                nonce: Date.now(),
+              });
+              window.setTimeout(() => setPulseFx(null), 950);
             }
           }
           setSize(data.state.size);
@@ -1491,6 +1505,15 @@ function Game() {
                         falling={blastFx.stage === "probe"}
                       />
                     </>
+                  )}
+                  {pulseFx && distance(pos, pulseFx.target) <= pulseFx.radius && (
+                    <span
+                      key={`${pulseFx.nonce}-${r}-${c}`}
+                      className={`pulse-blast-cell${samePos(pos, pulseFx.target) ? " origin" : ""}`}
+                      style={{ "--pulse-ring": distance(pos, pulseFx.target) } as React.CSSProperties}
+                    >
+                      <i /><i /><i />
+                    </span>
                   )}
                   {meteor && (
                     <MeteorIcon
