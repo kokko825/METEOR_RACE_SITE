@@ -8,7 +8,7 @@ export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
 export type FieldItem = Pos & { kind: ItemKind; id: number };
 export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number };
-export type PulseDevice = Pos & { owner: Player; id: number; turns: number };
+export type PulseDevice = Pos & { owner: Player; id: number; turns: number; createdTurnCount?: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
 export type Phase = "setup" | "move" | "place" | "switch" | "over";
 export type PendingSwitch = { kind: "holo" | "orbit" | "blast" | "pulse" | "recall"; player: Player };
@@ -666,7 +666,9 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
       : ({ ...obstacle, turns: Math.max(0, (obstacle.turns ?? 1) - 1) }))
     .filter((obstacle) => obstacle.turns === -1 || (obstacle.turns ?? 0) > 0);
   const pulseDevices = activePulseDevices(draft)
-    .map((device) => ({ ...device, turns: Math.max(0, device.turns - 1) }))
+    .map((device) => device.createdTurnCount === draft.turnCount
+      ? device
+      : ({ ...device, turns: Math.max(0, device.turns - 1) }))
     .filter((device) => device.turns > 0);
   const turnDraft = advanceItemDrops({
     ...draft,
@@ -1101,7 +1103,8 @@ export function applyPulseSwitch(state: GameState, target: Pos): GameState {
       ...target,
       owner: current.player,
       id: state.nextPulseDeviceId ?? 1,
-      turns: 3,
+      turns: 2,
+      createdTurnCount: state.turnCount,
     }],
     nextPulseDeviceId: (state.nextPulseDeviceId ?? 1) + 1,
     log: [...state.log, `${playerName(current.player)} placed and activated PULSE radius ${radius} at (${target.r},${target.c})`],

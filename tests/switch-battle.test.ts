@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   applyMeteor,
   applyBlastSwitch,
+  applyHoloSwitch,
   applyOrbitSwitch,
   applyPulseSwitch,
   applyRecallItem,
@@ -79,6 +80,7 @@ deviceGame = {
   phase: "switch",
   probes: { ...deviceGame.probes, red: { r: 10, c: 7 }, blue: { r: 7, c: 9 } },
   pendingSwitches: [{ kind: "pulse", player: "red" }],
+  switchResume: "finish",
 };
 deviceGame = applyPulseSwitch(deviceGame, { r: 7, c: 8 });
 assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 7, c: 8 }), "PULSE leaves its fired EMP generator on the board");
@@ -166,5 +168,38 @@ assert.equal(recallGame.meteors.length, 1, "RECALL leaves opponent meteors on th
 assert.equal(recallGame.inventory.red.small, 2, "RECALL returns every own small meteor");
 assert.equal(recallGame.inventory.red.large, 2, "RECALL returns every own large meteor");
 assert.equal(recallGame.obstacles.length, 1, "RECALL removes every own holo and leaves opponent holos");
+
+let durationAudit = initialGameState(15, "red", 4, false, 0, [], "item");
+durationAudit = {
+  ...durationAudit,
+  phase: "place",
+  turnCount: 2,
+  itemHands: { red: ["shield"], blue: [], yellow: [], green: [] },
+};
+durationAudit = applyUseItem(durationAudit, "shield");
+assert.equal(durationAudit.shieldTurns?.red, 3, "one SHIELD round covers the other three players in a four-player match");
+durationAudit = finishTurn(finishTurn(finishTurn(durationAudit)));
+assert.equal(durationAudit.shield.red, false, "SHIELD expires when the owner receives the next turn, independent of seat order");
+
+let pulseDuration = initialGameState(15, "red", 4, false, 0, [], "item");
+pulseDuration = {
+  ...pulseDuration,
+  phase: "switch",
+  turnCount: 4,
+  probes: { ...pulseDuration.probes, red: { r: 10, c: 7 }, blue: { r: 6, c: 7 } },
+  pendingSwitches: [{ kind: "pulse", player: "red" }],
+  switchResume: "finish",
+};
+pulseDuration = applyPulseSwitch(pulseDuration, { r: 7, c: 8 });
+assert.equal(pulseDuration.pulseDevices?.[0]?.turns, 2, "PULSE starts at two turns immediately when placed");
+pulseDuration = finishTurn(pulseDuration);
+assert.equal(pulseDuration.pulseDevices?.[0]?.turns, 1, "PULSE consumes one count per completed turn, not per player round");
+pulseDuration = finishTurn(pulseDuration);
+assert.equal(pulseDuration.pulseDevices?.length, 0, "PULSE expires after exactly two subsequent turns in four-player play too");
+
+let holoDuration = initialGameState(15, "red", 4, false, 0, [], "item");
+holoDuration = { ...holoDuration, phase: "switch", turnCount: 4, pendingSwitches: [{ kind: "holo", player: "red" }] };
+holoDuration = applyHoloSwitch(holoDuration, { r: 6, c: 6 });
+assert.equal(Math.ceil((holoDuration.obstacles[0].turns ?? 0) / 4), 2, "HOLO remains round-based and starts at two displayed rounds");
 
 console.log("item-battle: all checks passed");
