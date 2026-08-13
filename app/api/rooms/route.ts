@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 
 export const dynamic = "force-dynamic";
@@ -542,7 +542,7 @@ export async function POST(request: Request) {
     } else if (
       body.action === "skip_move" &&
       state.phase === "move" &&
-      (state.bonusMove || state.turnCount === 0 || (state.immobilizedMoves?.[state.turn] ?? 0) > 0) &&
+      (state.bonusMove || state.turnCount === 0 || (state.immobilizedMoves?.[state.turn] ?? 0) > 0 || isPulseLocked(state, state.turn)) &&
       legalMoves(state).length === 0
     ) {
       if ((state.immobilizedMoves?.[state.turn] ?? 0) > 0) {
@@ -555,6 +555,13 @@ export async function POST(request: Request) {
           phase: "place",
           message: `${state.turn.toUpperCase()}：電磁拘束中・メテオまたはアイテムを使用`,
           log: [...state.log, `${state.turn.toUpperCase()}はBLASTの電磁拘束で移動不能`],
+        };
+      } else if (isPulseLocked(state, state.turn)) {
+        nextState = {
+          ...state,
+          phase: "place",
+          message: `${state.turn.toUpperCase()}：PULSE範囲内・メテオまたはアイテムを使用`,
+          log: [...state.log, `${state.turn.toUpperCase()}はPULSE範囲内のため移動不能`],
         };
       } else {
         nextState = finishTurn({ ...state, bonusMove: false }, "移動先なし・手番終了");

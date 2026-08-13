@@ -8,7 +8,7 @@ export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
 export type FieldItem = Pos & { kind: ItemKind; id: number };
 export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number };
-export type PulseDevice = Pos & { owner: Player; id: number };
+export type PulseDevice = Pos & { owner: Player; id: number; turns: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
 export type Phase = "setup" | "move" | "place" | "switch" | "over";
 export type PendingSwitch = { kind: "holo" | "orbit" | "blast" | "pulse" | "recall"; player: Player };
@@ -78,6 +78,10 @@ const gameBalance = (state: GameState) => normalizeBalance(state.balance);
 export const activeObstacles = (state: GameState): ObstacleMeteor[] => {
   return state.obstacles ?? [];
 };
+export const activePulseDevices = (state: GameState): PulseDevice[] =>
+  (state.pulseDevices ?? []).filter((device) => device.turns > 0);
+export const isPulseLocked = (state: GameState, player: Player): boolean =>
+  activePulseDevices(state).some((device) => distance(device, state.probes[player]) <= gameBalance(state).pulseRadius);
 export const canPlaceObstacle = (state: GameState, player?: Player) => {
   void state;
   void player;
@@ -187,6 +191,8 @@ function respawnItem(
         samePos(p, { r: mid, c: mid }) ||
         activePlayers(state).some((player) => samePos(p, probes[player])) ||
         state.meteors.some((meteor) => samePos(p, meteor)) ||
+        activeObstacles(state).some((obstacle) => samePos(p, obstacle)) ||
+        activePulseDevices(state).some((device) => samePos(p, device)) ||
         fieldItems.some((item) => samePos(p, item))
       ) continue;
       fallbackCells.push(p);
@@ -529,7 +535,7 @@ export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind):
 }
 
 export function legalMoves(state: GameState, player = state.turn): Pos[] {
-  if ((state.immobilizedMoves?.[player] ?? 0) > 0) return [];
+  if ((state.immobilizedMoves?.[player] ?? 0) > 0 || isPulseLocked(state, player)) return [];
   const probe = state.probes[player];
   const players = activePlayers(state);
   const directions = [
@@ -556,9 +562,11 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
           (candidate) => candidate !== player && samePos(target, state.probes[candidate]),
         ) &&
         !state.meteors.some((meteor) => samePos(meteor, target)) &&
-        !activeObstacles(state).some((obstacle) => samePos(obstacle, target));
+        !activeObstacles(state).some((obstacle) => samePos(obstacle, target)) &&
+        !activePulseDevices(state).some((device) => samePos(device, target));
       if (!legal) {
-        const canJumpMeteor = maxSteps > 1 && step === 1 && state.meteors.some((meteor) => samePos(meteor, target));
+        const canJumpMeteor = maxSteps > 1 && step === 1 &&
+          (state.meteors.some((meteor) => samePos(meteor, target)) || activePulseDevices(state).some((device) => samePos(device, target)));
         if (canJumpMeteor) continue;
         break;
       }
@@ -657,11 +665,15 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
       ? obstacle
       : ({ ...obstacle, turns: Math.max(0, (obstacle.turns ?? 1) - 1) }))
     .filter((obstacle) => obstacle.turns === -1 || (obstacle.turns ?? 0) > 0);
+  const pulseDevices = activePulseDevices(draft)
+    .map((device) => ({ ...device, turns: Math.max(0, device.turns - 1) }))
+    .filter((device) => device.turns > 0);
   const turnDraft = advanceItemDrops({
     ...draft,
     shieldTurns,
     shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, shieldTurns[p] > 0])) as Record<Player, boolean>,
     obstacles,
+    pulseDevices,
   });
   const nextTurn = nextPlayer(turnDraft);
   const nextCount = turnDraft.turnCount + 1;
@@ -976,6 +988,7 @@ export function applyHoloSwitch(state: GameState, target: Pos): GameState {
       startCells(state).some((cell) => samePos(cell, target)) ||
       activePlayers(state).some((p) => samePos(state.probes[p], target)) ||
       state.meteors.some((m) => samePos(m, target)) || activeObstacles(state).some((m) => samePos(m, target)) ||
+      activePulseDevices(state).some((device) => samePos(device, target)) ||
       state.fieldItems.some((item) => samePos(item, target))) throw new Error("お邪魔を置けないマスです");
   return finishSwitch({
     ...state,
@@ -1041,6 +1054,7 @@ export function applyBlastSwitch(state: GameState, target: Pos): GameState {
       const next = { r: position.r + dr, c: position.c + dc };
       if (next.r < 0 || next.c < 0 || next.r >= state.size || next.c >= state.size ||
           state.meteors.some((m) => samePos(m, next)) || activeObstacles(state).some((m) => samePos(m, next)) ||
+          activePulseDevices(state).some((device) => samePos(device, next)) ||
           activePlayers(state).some((p) => p !== player && samePos(probes[p], next))) break;
       position = next;
     }
@@ -1072,25 +1086,22 @@ export function applyBlastSwitch(state: GameState, target: Pos): GameState {
 
 export function applyPulseSwitch(state: GameState, target: Pos): GameState {
   const current = state.pendingSwitches?.[0];
+  const mid = Math.floor(state.size / 2);
   if (state.phase !== "switch" || current?.kind !== "pulse" || target.r < 0 || target.c < 0 ||
       target.r >= state.size || target.c >= state.size || activePlayers(state).some((p) => samePos(state.probes[p], target)) ||
+      samePos(target, { r: mid, c: mid }) || state.meteors.some((meteor) => samePos(meteor, target)) ||
+      activeObstacles(state).some((obstacle) => samePos(obstacle, target)) ||
       (state.pulseDevices ?? []).some((device) => samePos(device, target))) {
     throw new Error("PULSE発生装置を置けないマスです");
   }
   const radius = gameBalance(state).pulseRadius;
-  const immobilizedMoves = { ...(state.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
-  for (const player of activePlayers(state)) {
-    if (distance(state.probes[player], target) <= radius) {
-      immobilizedMoves[player] = Math.max(immobilizedMoves[player] ?? 0, 2);
-    }
-  }
   return finishSwitch({
     ...state,
-    immobilizedMoves,
     pulseDevices: [...(state.pulseDevices ?? []), {
       ...target,
       owner: current.player,
       id: state.nextPulseDeviceId ?? 1,
+      turns: 3,
     }],
     nextPulseDeviceId: (state.nextPulseDeviceId ?? 1) + 1,
     log: [...state.log, `${playerName(current.player)} placed and activated PULSE radius ${radius} at (${target.r},${target.c})`],
@@ -1131,6 +1142,7 @@ export function applyMeteor(
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||
     activeObstacles(state).some((obstacle) => samePos(obstacle, target)) ||
+    activePulseDevices(state).some((device) => samePos(device, target)) ||
     (useCapsule
       ? chosenSize !== "small" || (state.capsuleMeteors?.[state.turn] ?? 0) <= 0
       : state.inventory[state.turn][chosenSize] <= 0)
@@ -1171,7 +1183,7 @@ export function applyMeteor(
   if (useCapsule) capsuleMeteors[state.turn] -= 1;
 
   // Probe movement is resolved while every old meteor is still on the board.
-  const blockingMeteors = [...state.meteors, ...obstacles, placed];
+  const blockingMeteors = [...state.meteors, ...obstacles, ...activePulseDevices(state), placed];
   const before = state.probes;
   const probes = Object.fromEntries(
     PLAYER_ORDER.map((player) => [player, { ...before[player] }]),
@@ -1328,6 +1340,7 @@ export function applyObstacle(state: GameState, target: Pos): GameState {
     activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
     state.meteors.some((meteor) => samePos(meteor, target)) ||
     activeObstacles(state).some((obstacle) => samePos(obstacle, target)) ||
+    activePulseDevices(state).some((device) => samePos(device, target)) ||
     activeObstacles(state).some((obstacle) => orthogonallyAdjacent(obstacle, target))
   ) {
     throw new Error("そのマスにはお邪魔メテオを配置できません");

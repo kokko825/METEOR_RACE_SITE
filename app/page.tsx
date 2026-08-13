@@ -5,6 +5,7 @@ import {
   PLAYER_ORDER,
   activeObstacles,
   activePlayers,
+  activePulseDevices,
   applyBlastSwitch,
   applySetupItem,
   applyMeteor,
@@ -26,6 +27,7 @@ import {
   initialGameState as initialState,
   legalMoves,
   isItemVariant,
+  isPulseLocked,
   isTeamVariant,
   meteorName,
   orthogonallyAdjacent,
@@ -607,7 +609,7 @@ function Game() {
 
   const skipBlockedMove = () => {
     if (game.phase !== "move" || moves.length > 0) return;
-    if ((game.immobilizedMoves?.[game.turn] ?? 0) > 0) {
+    if ((game.immobilizedMoves?.[game.turn] ?? 0) > 0 || isPulseLocked(game, game.turn)) {
       if (mode === "online") void submitOnlineAction("skip_move");
       commit({
         ...game,
@@ -617,7 +619,7 @@ function Game() {
         },
         phase: "place",
         message: `${playerName(game.turn)}：電磁拘束中・メテオまたはアイテムを使用`,
-        log: [...game.log, `${playerName(game.turn)}はBLASTの電磁拘束で移動不能`],
+        log: [...game.log, `${playerName(game.turn)}はPULSE範囲内のため移動不能`],
       });
       return;
     }
@@ -715,6 +717,7 @@ function Game() {
       activePlayers(game).some((player) => samePos(target, game.probes[player])) ||
       game.meteors.some((m) => samePos(m, target)) ||
       activeObstacles(game).some((obstacle) => samePos(obstacle, target)) ||
+      activePulseDevices(game).some((device) => samePos(device, target)) ||
       game.inventory[game.turn][chosenSize] <= 0
     )
       return;
@@ -1120,13 +1123,20 @@ function Game() {
     !(r === mid && c === mid) &&
     !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
     !game.meteors.some((m) => m.r === r && m.c === c) &&
-    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c);
+    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c) &&
+    !activePulseDevices(game).some((device) => device.r === r && device.c === c);
 
   const validObstaclePlacement = (r: number, c: number) =>
     validBasePlacement(r, c) &&
     !activeObstacles(game).some((obstacle) =>
       orthogonallyAdjacent(obstacle, { r, c }),
     );
+  const validPulsePlacement = (r: number, c: number) =>
+    !(r === mid && c === mid) &&
+    !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player])) &&
+    !game.meteors.some((meteor) => meteor.r === r && meteor.c === c) &&
+    !activeObstacles(game).some((obstacle) => obstacle.r === r && obstacle.c === c) &&
+    !activePulseDevices(game).some((device) => device.r === r && device.c === c);
 
   const orbitSelecting =
     showTurnActionControls &&
@@ -1142,7 +1152,9 @@ function Game() {
       ? false
       : orbitSelecting
       ? orbitRingAt(r, c) > 0
-      : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "blast" || game.pendingSwitches?.[0]?.kind === "pulse")
+      : game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "pulse"
+      ? validPulsePlacement(r, c)
+      : game.phase === "switch" && (game.pendingSwitches?.[0]?.kind === "holo" || game.pendingSwitches?.[0]?.kind === "blast")
       ? !activePlayers(game).some((player) => samePos({ r, c }, game.probes[player]))
       : game.phase === "switch" && game.pendingSwitches?.[0]?.kind === "recall"
       ? (() => {
@@ -1531,6 +1543,7 @@ function Game() {
               const fieldItem = visibleItems.find((item) => samePos(item, pos));
               const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
               const pulseDevice = (game.pulseDevices ?? []).find((item) => samePos(item, pos));
+              const pulseField = activePulseDevices(game).find((device) => distance(device, pos) <= (game.balance?.pulseRadius ?? activeBalance.pulseRadius));
               const legal =
                 canControl &&
                 game.phase === "move" &&
@@ -1592,6 +1605,9 @@ function Game() {
                     >
                       <i /><i /><i />
                     </span>
+                  )}
+                  {pulseField && (
+                    <span className="pulse-field-cell" style={{ "--pulse-ring": distance(pos, pulseField) } as React.CSSProperties} />
                   )}
                   {meteor && (
                     <MeteorIcon
@@ -2321,8 +2337,8 @@ function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roun
 
 function PulseDeviceIcon({ device }: { device: PulseDevice }) {
   return (
-    <span className={`pulse-device ${device.owner}`} title="PULSE発生装置・発動済み">
-      <i /><b>PULSE</b>
+    <span className={`pulse-device ${device.owner}`} title={`PULSE発生装置・残り${device.turns}ターン`}>
+      <i /><b>PULSE</b><small>{device.turns}</small>
     </span>
   );
 }

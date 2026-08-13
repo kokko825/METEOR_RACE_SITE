@@ -1,6 +1,7 @@
 import {
   activePlayers,
   activeObstacles,
+  activePulseDevices,
   applyBlastSwitch,
   applyMeteor,
   applyMove,
@@ -164,7 +165,8 @@ function placements(state: GameState): Placement[] {
     samePos(p, center) ||
     activePlayers(state).some((player) => samePos(state.probes[player], p)) ||
     state.meteors.some((meteor) => samePos(meteor, p)) ||
-    activeObstacles(state).some((obstacle) => samePos(obstacle, p));
+    activeObstacles(state).some((obstacle) => samePos(obstacle, p)) ||
+    activePulseDevices(state).some((device) => samePos(device, p));
   const kinds: Array<{ size: MeteorSize; useCapsule: boolean }> = [];
   if (state.inventory[state.turn].small > 0) kinds.push({ size: "small", useCapsule: false });
   if (state.inventory[state.turn].large > 0) kinds.push({ size: "large", useCapsule: false });

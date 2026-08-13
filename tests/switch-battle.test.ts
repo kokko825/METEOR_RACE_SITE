@@ -8,6 +8,7 @@ import {
   applySetupItem,
   applyUseItem,
   confirmSetupItems,
+  finishTurn,
   resetSetupItems,
   initialGameState,
   legalMoves,
@@ -81,8 +82,9 @@ deviceGame = {
 };
 deviceGame = applyPulseSwitch(deviceGame, { r: 7, c: 8 });
 assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 7, c: 8 }), "PULSE leaves its fired EMP generator on the board");
-assert.equal(deviceGame.immobilizedMoves?.blue, 2, "PULSE independently applies immobilization");
+assert.deepEqual(legalMoves({ ...deviceGame, phase: "move", turn: "blue" }, "blue"), [], "PULSE field prevents voluntary movement while inside its range");
 assert.ok(samePos(deviceGame.probes.blue, { r: 7, c: 9 }), "PULSE does not apply BLAST knockback");
+assert.equal(deviceGame.pulseDevices?.[0]?.turns, 2, "PULSE remains deployed for two turns after activation");
 deviceGame = {
   ...deviceGame,
   phase: "switch",
@@ -92,6 +94,9 @@ deviceGame = {
 deviceGame = applyOrbitSwitch(deviceGame, 1, true);
 assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 8, c: 7 }), "ORBIT rotates a fired EMP generator with its ring");
 assert.equal(deviceGame.pulseDevices?.length, 1, "ORBIT does not reactivate or consume an EMP generator");
+assert.ok(legalMoves({ ...deviceGame, phase: "move", turn: "blue" }, "blue").length > 0, "moving PULSE away with ORBIT immediately unlocks a probe outside the field");
+deviceGame = finishTurn(deviceGame);
+assert.equal(deviceGame.pulseDevices?.length, 0, "PULSE generator disappears after its two active turns");
 
 let boosterJump = initialGameState(15, "red", 2, false, 0, [], "item");
 boosterJump = {
