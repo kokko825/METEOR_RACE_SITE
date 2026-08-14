@@ -146,16 +146,25 @@ gravityGame = {
 gravityGame = applyGravity(gravityGame);
 assert.deepEqual(gravityGame.probes.red, { r: 10, c: 7 }, "GRAVITY cannot pull through a meteor");
 
-let gravityCore = initialGameState(15, "red", 2, false, 0, [], "item");
-gravityCore = {
-  ...gravityCore,
-  phase: "place",
-  probes: { ...gravityCore.probes, red: { r: 8, c: 7 }, blue: { r: 2, c: 7 } },
-  itemHands: { red: ["gravity"], blue: [] },
+assert.throws(
+  () => applySetupItem(initialGameState(15, "red", 2, false, 0, [], "item"), "gravity"),
+  /reserved for ranked/,
+  "GRAVITY is no longer a selectable item",
+);
+let rankedGravity = initialGameState(15, "red", 2, false, 0, [], "classic", undefined, true);
+rankedGravity = {
+  ...rankedGravity,
+  probes: { ...rankedGravity.probes, red: { r: 9, c: 7 }, blue: { r: 7, c: 3 } },
+  meteors: [{ r: 8, c: 7, owner: "blue", size: "small", id: 501 }],
 };
-gravityCore = applyUseItem(gravityCore, "gravity");
-assert.deepEqual(gravityCore.probes.red, { r: 7, c: 7 }, "GRAVITY can pull a probe into CORE");
-assert.equal(gravityCore.winner, "red", "GRAVITY entering CORE wins the game");
+for (let turn = 0; turn < 8; turn += 1) rankedGravity = finishTurn(rankedGravity);
+assert.equal(rankedGravity.rankedGravityRoundsRemaining, 1, "ranked match warns one round before gravity");
+for (let turn = 0; turn < 2; turn += 1) rankedGravity = finishTurn(rankedGravity);
+assert.equal(rankedGravity.rankedGravityPulse, 1, "ranked gravity fires every five complete rounds");
+assert.equal(rankedGravity.rankedGravityRoundsRemaining, 5, "ranked gravity countdown resets after activation");
+assert.deepEqual(rankedGravity.probes.red, { r: 8, c: 7 });
+assert.deepEqual(rankedGravity.probes.blue, { r: 7, c: 4 });
+assert.ok(!rankedGravity.meteors.some((meteor) => meteor.id === 501), "orbital gravity clears a blocking normal meteor");
 
 let pulseHolo = initialGameState(15, "red", 2, false, 0, [], "item");
 pulseHolo = {

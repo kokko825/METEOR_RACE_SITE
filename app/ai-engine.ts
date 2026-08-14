@@ -600,8 +600,8 @@ export function chooseAiDecision(
       gravity: 86,
     };
     const controls: ItemKind[] = ["blast", "pulse", "holo", "orbit"];
-    const ranked = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall", "gravity"] as ItemKind[])
-      .filter((kind) => own.filter((entry) => entry === kind).length < (kind === "gravity" ? 1 : balance.itemSameMax))
+    const ranked = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
+      .filter((kind) => own.filter((entry) => entry === kind).length < balance.itemSameMax)
       .map((kind) => {
         const duplicatePenalty = own.includes(kind) ? 24 : 0;
         const controlCount = own.filter((entry) => controls.includes(entry)).length;

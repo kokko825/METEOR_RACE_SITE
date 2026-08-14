@@ -419,6 +419,7 @@ export async function POST(request: Request) {
       botPlayers,
       variant,
       liveBalance,
+      Boolean(body.ranked),
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -476,6 +477,7 @@ export async function POST(request: Request) {
       previous.botPlayers ?? [],
       previous.variant ?? "classic",
       liveBalance,
+      Boolean(previous.ranked),
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -532,7 +534,7 @@ export async function POST(request: Request) {
       nextState = resetSetupItems(state, setupActor);
     } else if (body.action === "use_item" && body.itemKind) {
       nextState = applyUseItem(state, body.itemKind);
-      if (body.itemKind === "shield" || body.itemKind === "booster" || body.itemKind === "recall" || body.itemKind === "gravity") {
+      if (body.itemKind === "shield" || body.itemKind === "booster" || body.itemKind === "recall") {
         itemEffect = { kind: body.itemKind, player: state.turn };
       }
     } else if (body.action === "cancel_item") {

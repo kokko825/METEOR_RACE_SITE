@@ -59,6 +59,10 @@ export type GameState = {
   itemHands?: Partial<Record<Player, ItemKind[]>>;
   setupConfirmed?: Partial<Record<Player, boolean>>;
   balance?: BalanceConfig;
+  ranked?: boolean;
+  rankedGravityRoundsRemaining?: number;
+  rankedRoundActed?: Player[];
+  rankedGravityPulse?: number;
 };
 
 export type MeteorResolution = {
@@ -301,6 +305,7 @@ export function initialGameState(
   botPlayers: Player[] = [],
   variant: GameVariant = "classic",
   balance: BalanceConfig = DEFAULT_BALANCE,
+  ranked = false,
 ): GameState {
   void obstaclesEnabled;
   if (isTeamVariant(variant)) {
@@ -388,6 +393,10 @@ export function initialGameState(
     setupRejected: {},
     itemHands: {},
     setupConfirmed: {},
+    ranked,
+    rankedGravityRoundsRemaining: 5,
+    rankedRoundActed: [],
+    rankedGravityPulse: 0,
   };
 }
 
@@ -397,9 +406,7 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
   }
   const hand = state.itemHands?.[player] ?? [];
   const balance = gameBalance(state);
-  if (kind === "gravity" && hand.includes("gravity")) {
-    throw new Error("GRAVITY can only be selected once");
-  }
+  if (kind === "gravity") throw new Error("GRAVITY is reserved for ranked orbital convergence");
   if (hand.length >= balance.itemHandTotal) throw new Error(`持ち込めるアイテムは${balance.itemHandTotal}個までです`);
   if (hand.filter((entry) => entry === kind).length >= balance.itemSameMax) {
     throw new Error(`同じアイテムは${balance.itemSameMax}個までです`);
@@ -675,17 +682,42 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
       ? device
       : ({ ...device, turns: Math.max(0, device.turns - 1) }))
     .filter((device) => device.turns > 0);
-  const turnDraft = advanceItemDrops({
+  let turnDraft = advanceItemDrops({
     ...draft,
     shieldTurns,
     shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, shieldTurns[p] > 0])) as Record<Player, boolean>,
     obstacles,
     pulseDevices,
   });
+  let rankedGravityTriggered = false;
+  if (turnDraft.ranked) {
+    const rankedPlayers = activePlayers(turnDraft);
+    const acted = [...new Set([...(turnDraft.rankedRoundActed ?? []), turnDraft.turn])]
+      .filter((player) => rankedPlayers.includes(player));
+    if (rankedPlayers.every((player) => acted.includes(player))) {
+      const remaining = Math.max(1, turnDraft.rankedGravityRoundsRemaining ?? 5) - 1;
+      if (remaining <= 0) {
+        turnDraft = applyGravity({
+          ...turnDraft,
+          rankedGravityRoundsRemaining: 5,
+          rankedRoundActed: [],
+          rankedGravityPulse: (turnDraft.rankedGravityPulse ?? 0) + 1,
+        }, true);
+        rankedGravityTriggered = true;
+      } else {
+        turnDraft = { ...turnDraft, rankedGravityRoundsRemaining: remaining, rankedRoundActed: [] };
+      }
+    } else {
+      turnDraft = { ...turnDraft, rankedRoundActed: acted };
+    }
+  }
   const nextTurn = nextPlayer(turnDraft);
   const nextCount = turnDraft.turnCount + 1;
   const inventory = turnDraft.inventory;
-  const turnLogs = extraLog ? [extraLog] : [];
+  const turnLogs = [
+    ...(extraLog ? [extraLog] : []),
+    ...(rankedGravityTriggered ? ["ORBITAL GRAVITY activated"] : []),
+  ];
   const playerTurns = {
     ...(turnDraft.playerTurns ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
     [turnDraft.turn]: (turnDraft.playerTurns?.[turnDraft.turn] ?? 0) + 1,
@@ -697,6 +729,23 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
   };
   const drawByRepeat = repetitions[key] >= 3;
   const drawByLimit = nextCount >= 120;
+  if (rankedGravityTriggered) {
+    const core = { r: Math.floor(turnDraft.size / 2), c: Math.floor(turnDraft.size / 2) };
+    const reached = activePlayers(turnDraft).filter((player) => samePos(turnDraft.probes[player], core));
+    if (reached.length) {
+      return resolveCoreArrivals(turnDraft, {
+        ...turnDraft,
+        turn: nextTurn,
+        phase: "move",
+        bonusMove: false,
+        turnCount: nextCount,
+        playerTurns,
+        repetitions,
+        message: "ORBITAL GRAVITY",
+        log: [...draft.log, ...turnLogs],
+      }, reached);
+    }
+  }
   if (drawByRepeat || drawByLimit) {
     const reason = drawByRepeat ? "同一局面が3回繰り返されました" : "60ラウンドが終了しました";
     return {
@@ -906,6 +955,7 @@ function finishSwitch(state: GameState): GameState {
 
 export function canUseItem(state: GameState, kind: ItemKind, player = state.turn) {
   if (!isItemVariant(state.variant) || state.phase !== "place") return false;
+  if (kind === "gravity") return false;
   if (!(state.itemHands?.[player] ?? []).includes(kind)) return false;
   if (kind === "shield" && (state.shieldTurns?.[player] ?? 0) > 0) return false;
   if (kind === "booster" && (state.boosterMoves?.[player] ?? 0) > 0) return false;
@@ -923,7 +973,7 @@ function consumeItem(state: GameState, player: Player, kind: ItemKind) {
   return { ...(state.itemHands ?? {}), [player]: hand };
 }
 
-export function applyGravity(state: GameState): GameState {
+export function applyGravity(state: GameState, forceThroughObstacles = false): GameState {
   const mid = Math.floor(state.size / 2);
   const players = activePlayers(state);
   const occupied = (target: Pos) =>
@@ -944,10 +994,16 @@ export function applyGravity(state: GameState): GameState {
       : verticalDistance >= horizontalDistance
         ? [vertical, horizontal]
         : [horizontal, vertical];
-    const target = candidates.find((candidate) =>
+    let target = candidates.find((candidate) =>
       !samePos(candidate, start) &&
       candidate.r >= 0 && candidate.c >= 0 && candidate.r < state.size && candidate.c < state.size &&
       !occupied(candidate));
+    if (!target && forceThroughObstacles) {
+      target = candidates.find((candidate) =>
+        !samePos(candidate, start) &&
+        candidate.r >= 0 && candidate.c >= 0 && candidate.r < state.size && candidate.c < state.size &&
+        !players.some((other) => other !== player && samePos(state.probes[other], candidate)));
+    }
     if (target) proposals.set(player, target);
   });
 
@@ -957,10 +1013,32 @@ export function applyGravity(state: GameState): GameState {
     counts.set(key, (counts.get(key) ?? 0) + 1);
   });
   const probes = { ...state.probes };
+  const clearedTargets: Pos[] = [];
   proposals.forEach((target, player) => {
-    if (counts.get(`${target.r},${target.c}`) === 1) probes[player] = target;
+    if (counts.get(`${target.r},${target.c}`) === 1) {
+      probes[player] = target;
+      clearedTargets.push(target);
+    }
   });
-  return { ...state, probes };
+  if (!forceThroughObstacles) return { ...state, probes };
+  const inventory: Inventory = Object.fromEntries(
+    PLAYER_ORDER.map((player) => [player, { ...state.inventory[player] }]),
+  ) as Inventory;
+  const meteors = state.meteors.filter((meteor) => {
+    if (!clearedTargets.some((target) => samePos(target, meteor))) return true;
+    if (!meteor.consumable) inventory[meteor.owner][meteor.size] += 1;
+    return false;
+  });
+  const obstacles = activeObstacles(state).flatMap((obstacle) => {
+    if (!clearedTargets.some((target) => samePos(target, obstacle))) return [obstacle];
+    if (obstacle.turns === -1) return [];
+    const turns = Math.max(0, (obstacle.turns ?? 1) - players.length);
+    return turns > 0 ? [{ ...obstacle, turns }] : [];
+  });
+  const pulseDevices = activePulseDevices(state).filter(
+    (device) => !clearedTargets.some((target) => samePos(target, device)),
+  );
+  return { ...state, probes, inventory, meteors, obstacles, pulseDevices };
 }
 
 export function applyUseItem(state: GameState, kind: ItemKind): GameState {

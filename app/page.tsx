@@ -96,10 +96,22 @@ type OnlineRoom = {
   isHost: boolean;
 };
 
+function rankTier(rating: number) {
+  if (rating >= 2000) return "ORBIT";
+  if (rating >= 1800) return "DIAMOND";
+  if (rating >= 1600) return "PLATINUM";
+  if (rating >= 1400) return "GOLD";
+  if (rating >= 1200) return "SILVER";
+  if (rating >= 1000) return "BRONZE";
+  return "IRON";
+}
+
 function Game() {
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
+  const [rankedMode, setRankedMode] = useState(false);
+  const [rankRating, setRankRating] = useState(1200);
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [history, setHistory] = useState<GameState[]>([]);
@@ -148,6 +160,10 @@ function Game() {
     turns: 0,
   });
   useEffect(() => {
+    const stored = Number(window.localStorage.getItem("meteor-race-rank-rating"));
+    if (Number.isFinite(stored) && stored >= 0) setRankRating(stored);
+  }, []);
+  useEffect(() => {
     const draft = new URLSearchParams(window.location.search).get("balance") === "draft";
     fetch(`/api/balance${draft ? "?draft=1" : ""}`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
@@ -172,6 +188,8 @@ function Game() {
       .catch(() => undefined);
   }, []);
   const recordedOutcome = useRef("");
+  const recordedRankOutcome = useRef("");
+  const playedRankedGravity = useRef(0);
   const playedOnlineEffect = useRef(0);
   const playedOnlineItemEffect = useRef(0);
   const mid = Math.floor(game.size / 2);
@@ -209,6 +227,7 @@ function Game() {
       turns: 0,
     });
     recordedOutcome.current = "";
+    recordedRankOutcome.current = "";
   }, [variant, size, aiPlayerCount, aiDifficulty]);
   const setupPlayerCount =
     isTeamVariant(variant)
@@ -263,6 +282,7 @@ function Game() {
       });
       setGame(data.state);
       setVariant(data.state.variant ?? "classic");
+      setRankedMode(Boolean(data.state.ranked));
       setSize(data.state.size);
       setFirst(data.state.startingPlayer);
       setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
@@ -301,6 +321,7 @@ function Game() {
       const data = await roomRequest({ action: "join", code, nickname });
       setGame(data.state);
       setVariant(data.state.variant ?? "classic");
+      setRankedMode(Boolean(data.state.ranked));
       setSize(data.state.size);
       setFirst(data.state.startingPlayer);
       setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
@@ -364,6 +385,7 @@ function Game() {
       if ((action === "setup_item" || action === "setup_confirm" || action === "setup_cancel" || action === "use_item" || action === "cancel_item" || action === "move" || action === "skip_move") && data.state) {
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
+        setRankedMode(Boolean(data.state.ranked));
       }
       if (action.startsWith("switch_") && data.state) setGame(data.state);
       const confirmedItemEffect = data.state?.onlineItemEffect as OnlineItemEffect | undefined;
@@ -469,6 +491,7 @@ function Game() {
       const data = await roomRequest({ action: "rematch", code: online.code });
       setGame(data.state);
       setVariant(data.state.variant ?? "classic");
+      setRankedMode(Boolean(data.state.ranked));
       setHistory([]);
       setBlastFx(null);
       setIsAnimating(false);
@@ -589,6 +612,13 @@ function Game() {
     setSwitchFx({ kind, player, nonce: Date.now() });
     window.setTimeout(() => setSwitchFx((current) => current?.kind === kind && current.player === player ? null : current), kind === "gravity" ? 1550 : 1050);
   };
+
+  useEffect(() => {
+    const pulse = game.rankedGravityPulse ?? 0;
+    if (!pulse || pulse <= playedRankedGravity.current) return;
+    playedRankedGravity.current = pulse;
+    showSwitchFx("gravity", game.turn);
+  }, [game.rankedGravityPulse]);
 
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
@@ -1004,9 +1034,11 @@ function Game() {
           humanCount: onlinePlayerCount,
           aiCount: onlineAiCount,
           variant,
+          ranked: rankedMode,
         });
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
+        setRankedMode(Boolean(data.state.ranked));
         setSize(data.state.size);
         setFirst(data.state.startingPlayer);
         setActiveFirst(data.state.startingPlayer);
@@ -1016,6 +1048,7 @@ function Game() {
         setMode("online");
         setNeedsNewGame(false);
         recordedOutcome.current = "";
+        recordedRankOutcome.current = "";
         setOnline((current) => ({
           ...current,
           status: data.status,
@@ -1065,6 +1098,7 @@ function Game() {
     setObstaclesEnabled(nextObstaclesEnabled);
     setNeedsNewGame(false);
     recordedOutcome.current = "";
+    recordedRankOutcome.current = "";
     if (setupMode !== "online") {
       const layoutOffset =
         setupMode !== "cpu" && playerCount === 3 ? Math.floor(Math.random() * 4) : 0;
@@ -1084,6 +1118,7 @@ function Game() {
           botPlayers,
           variant,
           activeBalance,
+          rankedMode,
         ),
       );
     }
@@ -1094,6 +1129,7 @@ function Game() {
     setIsAnimating(false);
     setHistory([]);
     recordedOutcome.current = "";
+    recordedRankOutcome.current = "";
     const players = activePlayers(game);
     const nextFirst =
       players.length === 2
@@ -1111,6 +1147,7 @@ function Game() {
         game.botPlayers ?? [],
         game.variant ?? "classic",
         game.balance ?? activeBalance,
+        Boolean(game.ranked),
       ),
     );
   };
@@ -1250,6 +1287,7 @@ function Game() {
           }
           setSize(data.state.size);
           setVariant(data.state.variant ?? "classic");
+          setRankedMode(Boolean(data.state.ranked));
           setFirst(data.state.startingPlayer);
           setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
           setHistory([]);
@@ -1317,6 +1355,30 @@ function Game() {
   }, [game.phase, game.winner, game.turnCount, game.log.length]);
 
   useEffect(() => {
+    if (!game.ranked || game.phase !== "over" || !game.winner || mode === "lab") return;
+    const key = `${game.turnCount}-${game.log.length}-${game.winner}-${game.finishOrder?.join("-") ?? ""}`;
+    if (recordedRankOutcome.current === key) return;
+    recordedRankOutcome.current = key;
+    const player = mode === "online" ? online.role ?? "red" : "red";
+    let delta = -5;
+    if (game.winner !== "draw") {
+      if (isTeamVariant(game.variant)) {
+        delta = teamOf(game.winner) === teamOf(player) ? 22 : -18;
+      } else {
+        const order = game.finishOrder?.length ? game.finishOrder : [game.winner];
+        const rank = order.indexOf(player);
+        const changes = order.length >= 4 ? [30, 12, -8, -20] : order.length === 3 ? [28, 8, -18] : [25, -20];
+        delta = changes[rank >= 0 ? rank : changes.length - 1];
+      }
+    }
+    setRankRating((current) => {
+      const next = Math.max(0, current + delta);
+      window.localStorage.setItem("meteor-race-rank-rating", String(next));
+      return next;
+    });
+  }, [game.ranked, game.phase, game.winner, game.turnCount, game.log.length, game.finishOrder, game.variant, mode, online.role]);
+
+  useEffect(() => {
     if (mode !== "lab" || !aiRunning || game.phase !== "over") return;
     const timer = window.setTimeout(() => {
       const players = activePlayers(game);
@@ -1324,6 +1386,7 @@ function Game() {
       setActiveFirst(nextFirst);
       setHistory([]);
       recordedOutcome.current = "";
+      recordedRankOutcome.current = "";
       const nextOffset = players.length === 3 ? ((game.layoutOffset ?? 0) + 1) % 4 : 0;
       setGame(
         initialState(
@@ -1335,6 +1398,7 @@ function Game() {
           game.botPlayers ?? players,
           game.variant ?? "classic",
           game.balance ?? activeBalance,
+          Boolean(game.ranked),
         ),
       );
     }, Math.max(120, aiSpeed));
@@ -1473,7 +1537,7 @@ function Game() {
   };
 
   return (
-    <main className={`shell variant-${game.variant}${switchFx?.kind === "gravity" ? " gravity-active" : ""}`}>
+    <main className={`shell variant-${game.variant}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">✦</span>
@@ -1484,6 +1548,7 @@ function Game() {
         </div>
         <div className="round">
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
+          {game.ranked && <><b>RANKED · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? 5} ROUNDS</em></>}
         </div>
       </header>
 
@@ -1682,11 +1747,11 @@ function Game() {
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">アイテムを{balance.itemHandTotal}個選択（同じ種類は{balance.itemSameMax}個まで）</span>
-                {(["shield", "booster", "holo", "orbit", "blast", "pulse", "recall", "gravity"] as ItemKind[]).map((kind) => (
+                {(["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[]).map((kind) => (
                   <button
                     key={kind}
                     className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}
-                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= (kind === "gravity" ? 1 : balance.itemSameMax)}
+                    disabled={!canControl || (game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length >= balance.itemSameMax}
                     onClick={() => {
                       try {
                         const next = applySetupItem(game, kind, setupPlayer);
@@ -1880,6 +1945,21 @@ function Game() {
               <option value="item">アイテム戦</option>
               <option value="team-item">2 VS 2 チームアイテム戦</option>
             </select>
+          </label>
+          <label className="ranked-setting">
+            RANKED
+            <button
+              type="button"
+              className={rankedMode ? "selected" : ""}
+              aria-pressed={rankedMode}
+              disabled={roomSettingsLocked}
+              onClick={() => {
+                setRankedMode((current) => !current);
+                setNeedsNewGame(true);
+              }}
+            >
+              {rankedMode ? "ON" : "OFF"}
+            </button>
           </label>
           <label>
             MODE
@@ -2234,8 +2314,9 @@ function Game() {
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
             <p><b>ITEM</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
-            <p>BOOSTER / SHIELD / HOLO / ORBIT / BLAST / PULSE / RECALL / GRAVITY。移動後、メテオ配置の代わりに1個使用します。</p>
-            <p>GRAVITYは全探査機をCORE方向へ1マス引き寄せます。進路が塞がれた機体は動かず、COREへ入ればゴールです。</p>
+            <p>BOOSTER / SHIELD / HOLO / ORBIT / BLAST / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
+            <p>RANKEDでは5巡ごとにORBITAL GRAVITYが発動し、全探査機をCORE方向へ1マス引き寄せます。</p>
+            <p><b>RANK</b> IRON → BRONZE → SILVER → GOLD → PLATINUM → DIAMOND → ORBIT。順位とTEAM勝敗でレートが増減します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
           </div>
@@ -2371,7 +2452,7 @@ function InventoryPanel({
   items: ItemKind[];
   loadoutHidden?: boolean;
 }) {
-  const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall", "gravity"] as ItemKind[])
+  const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
     .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
     .filter(({ count }) => count > 0);
   return (

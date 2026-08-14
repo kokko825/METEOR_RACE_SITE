@@ -41,6 +41,10 @@ button { color: inherit; }
 .brand h1 { margin: 0; font-size: clamp(22px, 3vw, 34px); letter-spacing: .19em; font-weight: 850; }
 .brand p { margin: 3px 0 0; color: var(--muted); letter-spacing: .25em; font-size: 9px; }
 .round { border: 1px solid var(--line); background: rgba(10,25,37,.65); padding: 9px 16px; color: #a9c0ce; letter-spacing: .2em; font-size: 11px; }
+.round b,.round em { display:block; margin-top:4px; letter-spacing:.1em; font-style:normal; }
+.round b { color:#d8b8ff; }.round em { color:#a77bdb; font-size:9px; }
+.ranked-setting button { min-width:64px; border:1px solid #77539e; color:#bfa0e8; background:rgba(85,42,126,.18); }
+.ranked-setting button.selected { color:#fff; background:#7041a2; box-shadow:0 0 16px rgba(180,105,255,.45); }
 
 .game-layout { display: grid; grid-template-columns: 180px minmax(420px, 680px) 180px; gap: clamp(18px, 3vw, 46px); align-items: center; justify-content: center; margin-top: 24px; }
 .player-card { align-self: stretch; min-height: 400px; padding: 24px 18px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(9,22,34,.92), rgba(4,10,17,.76)); text-align: center; position: relative; overflow: hidden; opacity: .64; transition: .25s ease; }
@@ -180,6 +184,10 @@ button { color: inherit; }
 .gravity-active .probe-motion.blue { --gravity-x:0%; --gravity-y:-42%; }
 .gravity-active .probe-motion.green { --gravity-x:-42%; --gravity-y:0%; }
 .gravity-active .probe-motion.yellow { --gravity-x:42%; --gravity-y:0%; }
+.ranked-gravity-warning .board { border-color:#b77aff; box-shadow:0 0 24px rgba(183,122,255,.7),0 0 85px rgba(122,55,190,.5),inset 0 0 42px rgba(151,82,220,.2); animation:ranked-gravity-warning 1.25s ease-in-out infinite; }
+.ranked-gravity-warning .arena::before { content:"ORBITAL GRAVITY NEXT ROUND"; display:block; margin:0 auto 7px; color:#e7d1ff; text-align:center; font-size:10px; font-weight:900; letter-spacing:.18em; text-shadow:0 0 12px #a64fff; animation:ranked-warning-text 1.25s ease-in-out infinite; }
+@keyframes ranked-gravity-warning { 50% { filter:saturate(1.35) brightness(1.15); transform:scale(.994); } }
+@keyframes ranked-warning-text { 50% { opacity:.55; text-shadow:0 0 28px #d49aff; } }
 @keyframes gravity-overlay { 0%{opacity:0;filter:blur(8px)} 15%{opacity:1;filter:blur(0)} 78%{opacity:1} 100%{opacity:0;filter:blur(5px)} }
 @keyframes gravity-streams { 0%{transform:rotate(0) scale(1.45);opacity:0} 20%{opacity:.8} 82%{transform:rotate(38deg) scale(.28);opacity:.95} 100%{transform:rotate(46deg) scale(.08);opacity:0} }
 @keyframes gravity-ring { 0%{transform:translate(-50%,-50%) scale(7);opacity:0} 18%{opacity:.85} 88%{transform:translate(-50%,-50%) scale(.65);opacity:1} 100%{transform:translate(-50%,-50%) scale(.18);opacity:0} }
