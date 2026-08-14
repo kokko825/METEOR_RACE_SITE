@@ -1634,7 +1634,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "104",
+          version: "105",
           roomCode: online.code || null,
         }),
       });
@@ -1663,7 +1663,7 @@ function Game() {
             <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 104</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 105</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
         </section>
       )}
       {entryStage && entryStage !== "title" && (
@@ -1720,7 +1720,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 104</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 105</span></nav>
             </section>
           </aside>
         </div>
@@ -1755,12 +1755,20 @@ function Game() {
           {game.phase === "setup" && isItemVariant(game.variant) && (
             <div className="item-selection-overlay" aria-live="polite">
               <header><small>LOADOUT PREVIEW</small><strong>選択したアイテム</strong></header>
-              <div className="item-preview-flags">
+              <div className={`item-preview-flags count-${Math.min(3, game.itemHands?.[setupPlayer]?.length ?? 0)}`}>
                 {(game.itemHands?.[setupPlayer] ?? []).length === 0 && <p>下のアイテムを選ぶと、ここに使用イメージと説明が追加されます。</p>}
                 {(game.itemHands?.[setupPlayer] ?? []).map((kind, index) => (
                   <article className={`item-preview-flag ${kind}`} key={`${kind}-${index}`}>
-                    <div className="item-effect-preview"><ItemIcon kind={kind} /><i /><i /><i /></div>
-                    <div><b>{kind.toUpperCase()}</b><p>{ITEM_DETAILS[kind]}</p></div>
+                    <header><ItemIcon kind={kind} /><b>{kind.toUpperCase()}</b></header>
+                    <div className="item-effect-preview" aria-label={`${kind} 使用イメージ`}>
+                      <span className="demo-grid" />
+                      <span className="demo-probe">▲</span>
+                      <span className="demo-target" />
+                      <span className="demo-effect" />
+                      <span className="demo-path" />
+                      <small>{ITEM_DEMO_LABELS[kind]}</small>
+                    </div>
+                    <p>{ITEM_DETAILS[kind]}</p>
                     <em>{index + 1}</em>
                   </article>
                 ))}
@@ -2526,6 +2534,17 @@ const ITEM_DETAILS: Record<ItemKind, string> = {
   pulse: "装置を置き、2巡のあいだ周囲の自力移動を封じます。",
   recall: "自分の通常メテオをすべて回収し、ホロメテオを消去します。",
   gravity: "全探査機をCORE方向へ1マス引き寄せます。",
+};
+
+const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
+  shield: "BLAST BLOCKED",
+  booster: "2-MASS SELECT",
+  holo: "BLOCK 2 ROUNDS",
+  orbit: "RING ROTATE 90°",
+  blast: "AREA BLAST",
+  pulse: "MOVE LOCK 2 ROUNDS",
+  recall: "ALL METEORS RETURN",
+  gravity: "PULL TO CORE",
 };
 
 function ItemIcon({ kind }: { kind: ItemKind }) {
