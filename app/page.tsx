@@ -1634,7 +1634,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "109",
+          version: "110",
           roomCode: online.code || null,
         }),
       });
@@ -1663,7 +1663,7 @@ function Game() {
             <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 109</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 110</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
         </section>
       )}
       {entryStage && entryStage !== "title" && (
@@ -1720,7 +1720,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 109</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 110</span></nav>
             </section>
           </aside>
         </div>
@@ -1757,18 +1757,21 @@ function Game() {
               <header><small>LOADOUT PREVIEW</small><strong>選択したアイテム</strong></header>
               <div className={`item-preview-flags count-${Math.min(3, game.itemHands?.[setupPlayer]?.length ?? 0)}`}>
                 {(game.itemHands?.[setupPlayer] ?? []).length === 0 && <p>下のアイテムを選ぶと、ここに使用イメージと説明が追加されます。</p>}
-                {(game.itemHands?.[setupPlayer] ?? []).map((kind, index) => (
-                  <article className={`item-preview-flag ${kind}`} key={`${kind}-${index}`}>
-                    <header><ItemIcon kind={kind} /><b>{kind.toUpperCase()}</b></header>
-                    <div className="item-preview-spec" aria-label={`${kind}の効果情報`}>
-                      <strong>{ITEM_DEMO_LABELS[kind]}</strong>
-                      <span>{ITEM_EFFECT_FACTS[kind][0]}</span>
-                      <small>{ITEM_EFFECT_FACTS[kind][1]}</small>
-                    </div>
-                    <p>{ITEM_DETAILS[kind]}</p>
-                    <em>{index + 1}</em>
-                  </article>
-                ))}
+                {(game.itemHands?.[setupPlayer] ?? []).map((kind, index) => {
+                  const facts = itemEffectFacts(kind, game.balance ?? activeBalance);
+                  return (
+                    <article className={`item-preview-flag ${kind}`} key={`${kind}-${index}`}>
+                      <header><ItemIcon kind={kind} /><b>{kind.toUpperCase()}</b></header>
+                      <div className="item-preview-spec" aria-label={`${kind}の効果情報`}>
+                        <strong>{ITEM_DEMO_LABELS[kind]}</strong>
+                        <span>{facts[0]}</span>
+                        <small>{facts[1]}</small>
+                      </div>
+                      <p>{itemDetail(kind, game.balance ?? activeBalance)}</p>
+                      <em>{index + 1}</em>
+                    </article>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -2533,6 +2536,20 @@ const ITEM_DETAILS: Record<ItemKind, string> = {
   gravity: "全探査機をCORE方向へ1マス引き寄せます。",
 };
 
+function itemDetail(kind: ItemKind, balance: BalanceConfig): string {
+  switch (kind) {
+    case "shield": return `${balance.shieldRounds}巡の間、次に受ける爆風を防ぎます。自分の爆風も無効になります。`;
+    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオを飛び越えてCOREへ到達できます。`;
+    case "holo": return balance.holoUnlimited
+      ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"
+      : `${balance.holoRounds}巡残るホロメテオを配置し、相手の進路を妨害します。`;
+    case "blast": return `指定地点と外周${balance.blastRadius}マスに、回収効果のないメテオ爆風を発生させます。`;
+    case "pulse": return `装置を置き、外周${balance.pulseRadius}マス以内の自力移動を2巡封じます。`;
+    case "gravity": return `${balance.rankedGravityRounds}巡ごとに、全探査機をCORE方向へ1マス引き寄せます。`;
+    default: return ITEM_DETAILS[kind];
+  }
+}
+
 const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
   shield: "BLAST BLOCKED",
   booster: "2-MASS SELECT",
@@ -2544,16 +2561,18 @@ const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
   gravity: "PULL TO CORE",
 };
 
-const ITEM_EFFECT_FACTS: Record<ItemKind, [string, string]> = {
-  shield: ["有効：1巡", "敵と自分の爆風を無効化"],
-  booster: ["移動：縦横2マス", "途中のメテオを飛び越え可能"],
-  holo: ["残存：2巡", "破壊不能の障害物として設置"],
-  orbit: ["回転：90度", "選択したリング上の配置を移動"],
-  blast: ["範囲：中心＋外周1マス", "爆風だけを指定地点に発生"],
-  pulse: ["範囲：中心＋外周1マス", "2巡の間、自力移動を封じる"],
-  recall: ["対象：自分の全メテオ", "通常は回収、ホロは消滅"],
-  gravity: ["移動：CORE方向へ1マス", "盤上の全探査機を内側へ移動"],
-};
+function itemEffectFacts(kind: ItemKind, balance: BalanceConfig): [string, string] {
+  switch (kind) {
+    case "shield": return [`有効：${balance.shieldRounds}巡`, "敵と自分の爆風を無効化"];
+    case "booster": return [`使用：${balance.boosterUses}回`, "縦横2マス進みメテオを飛び越える"];
+    case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, "破壊不能の障害物として設置"];
+    case "orbit": return ["回転：90度", "選択したリング上の配置を移動"];
+    case "blast": return [`範囲：中心＋外周${balance.blastRadius}マス`, "爆風だけを指定地点に発生"];
+    case "pulse": return [`範囲：中心＋外周${balance.pulseRadius}マス`, "2巡の間、自力移動を封じる"];
+    case "recall": return ["対象：自分の全メテオ", "通常は回収、ホロは消滅"];
+    case "gravity": return [`周期：${balance.rankedGravityRounds}巡`, "盤上の全探査機をCORE方向へ1マス移動"];
+  }
+}
 
 function ItemIcon({ kind }: { kind: ItemKind }) {
   return <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>;
