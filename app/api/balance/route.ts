@@ -30,8 +30,11 @@ function isAdmin(request: Request) {
   const configured = String((env as unknown as { BALANCE_ADMIN_EMAIL?: string }).BALANCE_ADMIN_EMAIL ?? "")
     .trim()
     .toLowerCase();
-  const current = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase() ?? "";
-  return Boolean(configured && current && configured === current);
+  const current = (request.headers.get("cf-access-authenticated-user-email") ??
+    request.headers.get("oai-authenticated-user-email"))?.trim().toLowerCase() ?? "";
+  const adminToken = String((env as unknown as { BALANCE_ADMIN_TOKEN?: string }).BALANCE_ADMIN_TOKEN ?? "");
+  const suppliedToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  return Boolean((configured && current && configured === current) || (adminToken && suppliedToken === adminToken));
 }
 
 async function readRow() {

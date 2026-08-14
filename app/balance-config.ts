@@ -13,6 +13,13 @@ export type BalanceConfig = {
   itemRespawnMaxTurns: number;
   itemBoardMax: number;
   emptyMeteorBonusMoves: number;
+  rankedGravityRounds: number;
+  aiProgressWeight: number;
+  aiDenialWeight: number;
+  aiItemWeight: number;
+  aiResourceWeight: number;
+  aiRetreatPenalty: number;
+  aiCreativity: number;
 };
 
 export const DEFAULT_BALANCE: BalanceConfig = {
@@ -30,6 +37,13 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   itemRespawnMaxTurns: 4,
   itemBoardMax: 6,
   emptyMeteorBonusMoves: 1,
+  rankedGravityRounds: 5,
+  aiProgressWeight: 100,
+  aiDenialWeight: 100,
+  aiItemWeight: 100,
+  aiResourceWeight: 100,
+  aiRetreatPenalty: 100,
+  aiCreativity: 22,
 };
 
 export const BALANCE_FIELDS = [
@@ -44,6 +58,13 @@ export const BALANCE_FIELDS = [
   { key: "blastRadius", externalKey: "item.blast.radius", label: "BLAST効果範囲", min: 1, max: 4, unit: "マス" },
   { key: "pulseRadius", externalKey: "item.pulse.radius", label: "PULSE効果範囲", min: 1, max: 4, unit: "マス" },
   { key: "emptyMeteorBonusMoves", externalKey: "meteor.empty.bonus_moves", label: "全消費ボーナス移動", min: 0, max: 1, unit: "回" },
+  { key: "rankedGravityRounds", externalKey: "ranked.gravity.rounds", label: "軌道収束の発生周期", min: 3, max: 99, unit: "巡" },
+  { key: "aiProgressWeight", externalKey: "ai.weight.progress", label: "AI 前進評価", min: 25, max: 200, unit: "%" },
+  { key: "aiDenialWeight", externalKey: "ai.weight.denial", label: "AI 妨害評価", min: 25, max: 200, unit: "%" },
+  { key: "aiItemWeight", externalKey: "ai.weight.item", label: "AI アイテム評価", min: 25, max: 200, unit: "%" },
+  { key: "aiResourceWeight", externalKey: "ai.weight.resource", label: "AI 資源温存評価", min: 25, max: 200, unit: "%" },
+  { key: "aiRetreatPenalty", externalKey: "ai.penalty.retreat", label: "AI 後退への減点", min: 25, max: 200, unit: "%" },
+  { key: "aiCreativity", externalKey: "ai.creativity", label: "AI 行動の揺らぎ", min: 0, max: 60, unit: "%" },
 ] as const;
 
 export function normalizeBalance(input?: Partial<BalanceConfig> | null): BalanceConfig {
@@ -55,4 +76,18 @@ export function normalizeBalance(input?: Partial<BalanceConfig> | null): Balance
   next.itemRespawnMaxTurns = Math.max(next.itemRespawnMinTurns, next.itemRespawnMaxTurns);
   next.itemSameMax = Math.min(next.itemHandTotal, next.itemSameMax);
   return next;
+}
+
+export function balanceWarnings(input?: Partial<BalanceConfig> | null): string[] {
+  const value = normalizeBalance(input);
+  const warnings: string[] = [];
+  if (value.aiDenialWeight > value.aiProgressWeight * 1.25) warnings.push("妨害評価が前進評価より高く、試合が停滞しやすい設定です。");
+  if (value.aiProgressWeight > value.aiDenialWeight * 1.65) warnings.push("前進評価が妨害評価より大幅に高く、ゴール直前の相手を見逃す可能性があります。");
+  if (value.aiItemWeight < 65) warnings.push("アイテム評価が低く、アイテム戦で取得を無視しやすい設定です。");
+  if (value.aiRetreatPenalty < 70) warnings.push("後退への減点が低く、通常戦で無駄な後方移動が増える可能性があります。");
+  if (value.aiCreativity > 45) warnings.push("行動の揺らぎが大きく、明確な好手を選ばない場面が増える可能性があります。");
+  if (value.rankedGravityRounds > 8) warnings.push("軌道収束の間隔が長く、ランク戦の停滞防止が弱くなります。");
+  if (value.shieldRounds > 2) warnings.push("SHIELDが長く、CORE直前の防御が強すぎる可能性があります。");
+  if (value.itemHandTotal > 4) warnings.push("持ち込みアイテムが多く、妨害の連続使用が増える可能性があります。");
+  return warnings;
 }

@@ -19,6 +19,7 @@ import {
   type GameState,
   type ItemKind,
 } from "../app/game-rules";
+import { DEFAULT_BALANCE } from "../app/balance-config";
 
 const select = (state: GameState, kinds: ItemKind[]) =>
   kinds.reduce((current, kind) => applySetupItem(current, kind), state);
@@ -165,6 +166,22 @@ assert.equal(rankedGravity.rankedGravityRoundsRemaining, 5, "ranked gravity coun
 assert.deepEqual(rankedGravity.probes.red, { r: 8, c: 7 });
 assert.deepEqual(rankedGravity.probes.blue, { r: 7, c: 4 });
 assert.ok(!rankedGravity.meteors.some((meteor) => meteor.id === 501), "orbital gravity clears a blocking normal meteor");
+
+let fastRankedGravity = initialGameState(
+  9,
+  "red",
+  2,
+  false,
+  0,
+  [],
+  "classic",
+  { ...DEFAULT_BALANCE, rankedGravityRounds: 3 },
+  true,
+);
+assert.equal(fastRankedGravity.rankedGravityRoundsRemaining, 3, "configured gravity cycle is stored in the match");
+for (let turn = 0; turn < 6; turn += 1) fastRankedGravity = finishTurn(fastRankedGravity);
+assert.equal(fastRankedGravity.rankedGravityPulse, 1, "configured three-round gravity cycle activates");
+assert.equal(fastRankedGravity.rankedGravityRoundsRemaining, 3, "configured gravity cycle resets to its configured value");
 
 let pulseHolo = initialGameState(15, "red", 2, false, 0, [], "item");
 pulseHolo = {

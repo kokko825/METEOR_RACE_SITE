@@ -394,7 +394,7 @@ export function initialGameState(
     itemHands: {},
     setupConfirmed: {},
     ranked,
-    rankedGravityRoundsRemaining: 5,
+    rankedGravityRoundsRemaining: balance.rankedGravityRounds,
     rankedRoundActed: [],
     rankedGravityPulse: 0,
   };
@@ -695,11 +695,12 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     const acted = [...new Set([...(turnDraft.rankedRoundActed ?? []), turnDraft.turn])]
       .filter((player) => rankedPlayers.includes(player));
     if (rankedPlayers.every((player) => acted.includes(player))) {
-      const remaining = Math.max(1, turnDraft.rankedGravityRoundsRemaining ?? 5) - 1;
+      const gravityRounds = gameBalance(turnDraft).rankedGravityRounds;
+      const remaining = Math.max(1, turnDraft.rankedGravityRoundsRemaining ?? gravityRounds) - 1;
       if (remaining <= 0) {
         turnDraft = applyGravity({
           ...turnDraft,
-          rankedGravityRoundsRemaining: 5,
+          rankedGravityRoundsRemaining: gravityRounds,
           rankedRoundActed: [],
           rankedGravityPulse: (turnDraft.rankedGravityPulse ?? 0) + 1,
         }, true);

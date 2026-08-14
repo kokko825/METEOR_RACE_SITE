@@ -55,7 +55,11 @@ async function publishedBalance() {
 }
 
 function emailFrom(request: Request) {
-  return request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase() ?? null;
+  const authenticated = request.headers.get("cf-access-authenticated-user-email") ??
+    request.headers.get("oai-authenticated-user-email");
+  if (authenticated?.trim()) return authenticated.trim().toLowerCase();
+  const anonymous = request.headers.get("x-meteor-player-id")?.trim().toLowerCase() ?? "";
+  return /^player:[a-z0-9-]{20,80}$/.test(anonymous) ? anonymous : null;
 }
 
 function displayNameFromEmail(email: string) {
@@ -129,7 +133,7 @@ function roomPayload(room: RoomRow, email: string) {
 
 export async function GET(request: Request) {
   const email = emailFrom(request);
-  if (!email) return json({ error: "ChatGPTでサインインしてください" }, 401);
+  if (!email) return json({ error: "プレイヤー識別情報を作成できませんでした" }, 401);
   await ensureSchema();
   const code = new URL(request.url).searchParams.get("code")?.trim().toUpperCase();
   if (!code) return json({ error: "ルームコードが必要です" }, 400);
@@ -140,7 +144,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const email = emailFrom(request);
-  if (!email) return json({ error: "ChatGPTでサインインしてください" }, 401);
+  if (!email) return json({ error: "プレイヤー識別情報を作成できませんでした" }, 401);
   await ensureSchema();
   const body = (await request.json()) as {
     action?: string;

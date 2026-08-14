@@ -259,9 +259,14 @@ function Game() {
   }, [variant, size]);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
+    let playerId = window.localStorage.getItem("meteor-race-player-id");
+    if (!playerId) {
+      playerId = `player:${crypto.randomUUID()}`;
+      window.localStorage.setItem("meteor-race-player-id", playerId);
+    }
     const response = await fetch("/api/rooms", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-meteor-player-id": playerId },
       body: JSON.stringify(payload),
     });
     const data = await response.json();
@@ -1219,7 +1224,13 @@ function Game() {
     const poll = window.setInterval(async () => {
       if (isAnimating || online.pending) return;
       try {
+        let playerId = window.localStorage.getItem("meteor-race-player-id");
+        if (!playerId) {
+          playerId = `player:${crypto.randomUUID()}`;
+          window.localStorage.setItem("meteor-race-player-id", playerId);
+        }
         const response = await fetch(`/api/rooms?code=${encodeURIComponent(online.code)}`, {
+          headers: { "x-meteor-player-id": playerId },
           cache: "no-store",
         });
         const data = await response.json();
@@ -1548,7 +1559,7 @@ function Game() {
         </div>
         <div className="round">
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
-          {game.ranked && <><b>RANKED · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? 5} ROUNDS</em></>}
+          {game.ranked && <><b>RANKED · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
       </header>
 

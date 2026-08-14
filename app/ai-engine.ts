@@ -108,10 +108,17 @@ function positionValue(state: GameState, player: Player) {
   const terminal = terminalValue(state, player);
   if (terminal !== null) return terminal;
   const players = activePlayers(state);
-  const style =
+  const configured = normalizeBalance(state.balance);
+  const styleBase =
     players.length === 2 || isItemVariant(state.variant) || isTeamVariant(state.variant)
       ? { progress: 1, denial: 1, items: 1, resources: 1 }
       : personality(player);
+  const style = {
+    progress: styleBase.progress * configured.aiProgressWeight / 100,
+    denial: styleBase.denial * configured.aiDenialWeight / 100,
+    items: styleBase.items * configured.aiItemWeight / 100,
+    resources: styleBase.resources * configured.aiResourceWeight / 100,
+  };
   const friends = players.filter((p) => allied(state, p, player));
   const rivals = players.filter((p) => !allied(state, p, player));
   const span = Math.max(1, state.size - 1);
@@ -527,7 +534,8 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
   // Outside ITEM mode, voluntarily moving away from the CORE is almost never
   // worth a tempo. A large penalty removes routine retreating while still
   // allowing a forced defensive retreat or a move-plus-blast win to outweigh it.
-  const retreatPenalty = isItemVariant(state.variant) ? backwardSteps * 95 : backwardSteps * 260;
+  const retreatScale = normalizeBalance(state.balance).aiRetreatPenalty / 100;
+  const retreatPenalty = (isItemVariant(state.variant) ? backwardSteps * 95 : backwardSteps * 260) * retreatScale;
   const inwardSteps = Math.max(
     0,
     coreDistance(state, player) -
@@ -559,12 +567,13 @@ function selectWithDifficulty<T>(
   difficulty: AiDifficulty,
   random: () => number,
   creative = false,
+  creativity = 22,
 ) {
   ranked.sort((a, b) => b.value - a.value);
   if (!ranked.length) return undefined;
   if (ranked.length === 1) return ranked[0];
   if (difficulty === "hard") {
-    if (!creative || Math.abs(ranked[0].value) >= 900_000 || random() < 0.78) return ranked[0];
+    if (!creative || Math.abs(ranked[0].value) >= 900_000 || random() >= creativity / 100) return ranked[0];
     const alternatives = ranked.slice(1, 5).filter((entry) => ranked[0].value - entry.value <= 18);
     return alternatives[Math.floor(random() * alternatives.length)] ?? ranked[0];
   }
@@ -584,6 +593,7 @@ export function chooseAiDecision(
   random: () => number = Math.random,
 ): AiDecision {
   if (state.phase === "over") return { type: "skip" };
+  const creativity = normalizeBalance(state.balance).aiCreativity;
   const player = state.turn;
   if (state.phase === "setup") {
     const own = state.itemHands?.[player] ?? [];
@@ -652,7 +662,7 @@ export function chooseAiDecision(
           return [{ choice: target, value: routeBlock }];
         } catch { return []; }
       });
-      const selected = selectWithDifficulty(ranked, difficulty, random, true);
+      const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
       return selected ? { type: "holo", target: selected.choice } : { type: "skip" };
     }
     if (pending.kind === "blast" || pending.kind === "pulse") {
@@ -669,7 +679,7 @@ export function chooseAiDecision(
         }
         catch { return []; }
       });
-      const selected = selectWithDifficulty(ranked, difficulty, random, true);
+      const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
       return selected ? { type: pending.kind, target: selected.choice } : { type: "skip" };
     }
     if (pending.kind === "recall") {
@@ -683,7 +693,7 @@ export function chooseAiDecision(
           choice: holo.id,
           value: 55 + Math.max(0, 5 - distance(holo, state.probes[pending.player])) * 8,
         })));
-      const selected = selectWithDifficulty(ranked, difficulty, random, true);
+      const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
       return selected ? { type: "recall", meteorId: selected.choice } : { type: "skip" };
     }
     const options = orbitOptions(state, pending.player, difficulty);
@@ -710,7 +720,7 @@ export function chooseAiDecision(
       itemMove &&
       ranked[0].value - itemMove.value <= 120
         ? itemMove
-        : selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant));
+        : selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);
     return selected ? { type: "move", target: selected.choice } : { type: "skip" };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
@@ -770,7 +780,7 @@ export function chooseAiDecision(
       value: scoreResult(next, player, difficulty, state) + (itemBonuses[kind] ?? 0),
     });
   }
-  const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant));
+  const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);
   if (!selected) return { type: "skip" };
   if (selected.choice === "pass") return { type: "pass" };
   if ("itemKind" in selected.choice) return { type: "item", kind: selected.choice.itemKind as ItemKind };

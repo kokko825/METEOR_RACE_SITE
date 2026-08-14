@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BALANCE_FIELDS, DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "../balance-config";
+import { BALANCE_FIELDS, DEFAULT_BALANCE, balanceWarnings, normalizeBalance, type BalanceConfig } from "../balance-config";
 
 export default function BalancePage() {
   const [draft, setDraft] = useState<BalanceConfig>(DEFAULT_BALANCE);
@@ -9,6 +9,7 @@ export default function BalancePage() {
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("読み込み中…");
   const fileRef = useRef<HTMLInputElement>(null);
+  const warnings = balanceWarnings(draft);
 
   const load = async () => {
     const response = await fetch("/api/balance?draft=1", { cache: "no-store" });
@@ -79,6 +80,11 @@ export default function BalancePage() {
         <button onClick={() => fileRef.current?.click()}>CSVを読み込む</button>
         <input ref={fileRef} hidden type="file" accept=".csv,text/csv" onChange={(event) => event.target.files?.[0] && void importCsv(event.target.files[0])} />
       </section>
+      <aside className={`balance-safety ${warnings.length ? "warning" : "safe"}`}>
+        <b>{warnings.length ? `公開前の注意 ${warnings.length}件` : "安全確認：重大な数値警告なし"}</b>
+        {warnings.length > 0 && <ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
+        <p>数値警告は簡易判定です。公開前に「AILAB用に保存して試す」で全モードを確認してください。</p>
+      </aside>
       <section className="balance-grid" aria-label="バランス調整値">
         {BALANCE_FIELDS.map((field) => (
           <label key={field.key}>
