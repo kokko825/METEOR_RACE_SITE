@@ -35,6 +35,8 @@ button, select { font: inherit; }
 button { color: inherit; }
 
 .shell { width: min(1440px, 100%); margin: 0 auto; padding: 22px 30px 36px; }
+.shell.entry-active { width:100%; min-height:100dvh; padding:0; overflow:hidden; }
+.shell.entry-active > :not(.title-screen):not(.entry-flow):not(.settings-overlay) { display:none !important; }
 .topbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-mark { color: var(--gold); font-size: 32px; filter: drop-shadow(0 0 9px #ffc943); }
@@ -416,7 +418,15 @@ button { color: inherit; }
 .online-panel .player-count-buttons button small { width:auto; color:#7f9eae; font-size:9px; }
 .online-panel .player-count-buttons button.selected { color:#07131d; border-color:var(--gold); background:linear-gradient(135deg,#ffe78f,#ffbd39); box-shadow:0 0 18px rgba(255,211,99,.28); }
 .online-panel .player-count-buttons button.selected small { color:#664900; }
-.ai-lab { margin-top:14px; display:grid; grid-template-columns:minmax(220px,1.7fr) repeat(4,minmax(80px,.65fr)) auto; border:1px solid rgba(124,190,218,.16); background:linear-gradient(90deg,rgba(9,25,36,.92),rgba(5,13,21,.75)); }
+.ai-lab-panel { margin-top:14px; padding:0; border:1px solid rgba(124,190,218,.16); background:linear-gradient(90deg,rgba(9,25,36,.92),rgba(5,13,21,.75)); }
+.ai-lab-panel > summary { min-height:48px; display:flex; align-items:center; gap:14px; padding:10px 14px; cursor:pointer; list-style:none; color:#85a4b5; letter-spacing:.16em; font-size:9px; }
+.ai-lab-panel > summary::-webkit-details-marker { display:none; }
+.ai-lab-panel > summary::after { content:"＋"; margin-left:auto; color:#63dfff; font-size:16px; }
+.ai-lab-panel[open] > summary::after { content:"−"; }
+.ai-lab-panel > summary strong { color:#dcecf4; letter-spacing:.06em; font-size:11px; }
+.ai-lab-panel > summary small { margin-left:auto; color:#597686; letter-spacing:.12em; }
+.ai-lab-panel > summary small + * { margin-left:0; }
+.ai-lab { display:grid; grid-template-columns:minmax(220px,1.7fr) repeat(4,minmax(80px,.65fr)) auto; border-top:1px solid rgba(124,190,218,.12); }
 .lab-title,.lab-stat,.strategy-note { padding:13px 15px; border-right:1px solid rgba(124,190,218,.12); }
 .lab-title { display:grid; align-content:center; gap:4px; }
 .lab-title span { color:var(--gold); font-size:10px; letter-spacing:.18em; }
@@ -526,3 +536,8 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .item-preview-spec span{color:#f1f7f9;font-size:clamp(10px,1.15vw,14px);font-weight:900}
 .item-preview-spec small{color:#91aeb9;font-size:clamp(8px,.9vw,11px);line-height:1.55}
 @media(max-width:700px){.item-preview-flag{grid-template-rows:auto minmax(82px,1fr) auto}.item-preview-spec{min-height:82px;gap:6px;padding:9px 4px}.item-preview-spec strong{font-size:7px}.item-preview-spec span{font-size:8px}.item-preview-spec small{font-size:6px}}
+
+/* Focused first-time rule guide. */
+.play-guide{max-width:980px}.play-guide>div:first-child small{color:#ff9b57;letter-spacing:.24em}.play-guide>div:first-child h2{margin:5px 0;font-size:clamp(30px,5vw,62px)}.play-guide>div:first-child p{max-width:760px;color:#8ba7b4;line-height:1.8}.play-guide-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.play-guide-grid article{min-height:180px;display:grid;align-content:start;gap:8px;padding:18px;border:1px solid #285164;background:linear-gradient(155deg,rgba(12,44,58,.94),rgba(3,13,20,.96))}.play-guide-grid article>b{color:#ff9853;font-size:10px;letter-spacing:.18em}.play-guide-grid article>strong{color:#fff;font-size:21px;letter-spacing:.12em}.play-guide-grid article>p{margin:0;color:#8da8b5;font-size:11px;line-height:1.75}
+@media(max-width:700px){.play-guide-grid{grid-template-columns:1fr 1fr}.play-guide-grid article{min-height:135px;padding:12px}.play-guide>div:first-child p{font-size:11px}.play-guide-grid article>strong{font-size:16px}}
+.settings-drawer nav button{border:0;background:transparent;color:#78dcf5;padding:0;cursor:pointer;text-decoration:underline;font-size:10px}
