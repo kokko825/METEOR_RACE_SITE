@@ -1634,7 +1634,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "105",
+          version: "106",
           roomCode: online.code || null,
         }),
       });
@@ -1663,7 +1663,7 @@ function Game() {
             <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 105</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 106</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
         </section>
       )}
       {entryStage && entryStage !== "title" && (
@@ -1720,7 +1720,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 105</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 106</span></nav>
             </section>
           </aside>
         </div>
@@ -1760,14 +1760,7 @@ function Game() {
                 {(game.itemHands?.[setupPlayer] ?? []).map((kind, index) => (
                   <article className={`item-preview-flag ${kind}`} key={`${kind}-${index}`}>
                     <header><ItemIcon kind={kind} /><b>{kind.toUpperCase()}</b></header>
-                    <div className="item-effect-preview" aria-label={`${kind} 使用イメージ`}>
-                      <span className="demo-grid" />
-                      <span className="demo-probe">▲</span>
-                      <span className="demo-target" />
-                      <span className="demo-effect" />
-                      <span className="demo-path" />
-                      <small>{ITEM_DEMO_LABELS[kind]}</small>
-                    </div>
+                    <ItemBoardSnapshot kind={kind} />
                     <p>{ITEM_DETAILS[kind]}</p>
                     <em>{index + 1}</em>
                   </article>
@@ -2549,6 +2542,30 @@ const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
 
 function ItemIcon({ kind }: { kind: ItemKind }) {
   return <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>;
+}
+
+function ItemBoardSnapshot({ kind }: { kind: ItemKind }) {
+  const probeCell = kind === "booster" ? 16 : kind === "gravity" ? 21 : 17;
+  const enemyCell = kind === "orbit" ? 3 : 7;
+  const meteorCells = kind === "recall" ? [2, 8, 19] : kind === "blast" ? [12] : kind === "shield" ? [7] : kind === "holo" ? [12] : [];
+  const highlightedCells = kind === "booster" ? [12, 7] : kind === "pulse" ? [7, 8, 12, 13] : kind === "orbit" ? [0, 1, 2, 3, 4] : kind === "gravity" ? [7, 11, 13, 17] : [];
+  const blastCells = kind === "shield" || kind === "blast" ? [2, 6, 7, 8, 12] : [];
+  return (
+    <div className={`item-board-snapshot ${kind}`} aria-label={`${kind}を実際に使用した盤面イメージ`}>
+      <div className="snapshot-board">
+        {Array.from({ length: 25 }, (_, cell) => (
+          <span key={cell} className={`snapshot-cell${highlightedCells.includes(cell) ? " highlighted" : ""}${blastCells.includes(cell) ? " blast-zone" : ""}`}>
+            {cell === 12 && <i className="snapshot-core">CORE</i>}
+            {meteorCells.includes(cell) && <i className={`snapshot-meteor ${kind === "holo" ? "holo" : ""}`}>✦</i>}
+            {cell === probeCell && <i className="snapshot-probe self">▲</i>}
+            {cell === enemyCell && <i className="snapshot-probe enemy">▲</i>}
+          </span>
+        ))}
+      </div>
+      <div className="snapshot-fx" aria-hidden="true"><i /><i /><i /></div>
+      <small>{ITEM_DEMO_LABELS[kind]}</small>
+    </div>
+  );
 }
 
 function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {
