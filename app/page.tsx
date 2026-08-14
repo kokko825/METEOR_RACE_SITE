@@ -1634,7 +1634,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "108",
+          version: "109",
           roomCode: online.code || null,
         }),
       });
@@ -1663,7 +1663,7 @@ function Game() {
             <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 108</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 109</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
         </section>
       )}
       {entryStage && entryStage !== "title" && (
@@ -1720,7 +1720,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 108</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 109</span></nav>
             </section>
           </aside>
         </div>
@@ -1760,7 +1760,11 @@ function Game() {
                 {(game.itemHands?.[setupPlayer] ?? []).map((kind, index) => (
                   <article className={`item-preview-flag ${kind}`} key={`${kind}-${index}`}>
                     <header><ItemIcon kind={kind} /><b>{kind.toUpperCase()}</b></header>
-                    <ItemBoardSnapshot kind={kind} />
+                    <div className="item-preview-spec" aria-label={`${kind}の効果情報`}>
+                      <strong>{ITEM_DEMO_LABELS[kind]}</strong>
+                      <span>{ITEM_EFFECT_FACTS[kind][0]}</span>
+                      <small>{ITEM_EFFECT_FACTS[kind][1]}</small>
+                    </div>
                     <p>{ITEM_DETAILS[kind]}</p>
                     <em>{index + 1}</em>
                   </article>
@@ -2540,23 +2544,19 @@ const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
   gravity: "PULL TO CORE",
 };
 
+const ITEM_EFFECT_FACTS: Record<ItemKind, [string, string]> = {
+  shield: ["有効：1巡", "敵と自分の爆風を無効化"],
+  booster: ["移動：縦横2マス", "途中のメテオを飛び越え可能"],
+  holo: ["残存：2巡", "破壊不能の障害物として設置"],
+  orbit: ["回転：90度", "選択したリング上の配置を移動"],
+  blast: ["範囲：中心＋外周1マス", "爆風だけを指定地点に発生"],
+  pulse: ["範囲：中心＋外周1マス", "2巡の間、自力移動を封じる"],
+  recall: ["対象：自分の全メテオ", "通常は回収、ホロは消滅"],
+  gravity: ["移動：CORE方向へ1マス", "盤上の全探査機を内側へ移動"],
+};
+
 function ItemIcon({ kind }: { kind: ItemKind }) {
   return <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>;
-}
-
-function ItemBoardSnapshot({ kind }: { kind: ItemKind }) {
-  return (
-    <div className={`item-board-snapshot ${kind}`} aria-label={`${kind}を実際に使用した盤面イメージ`}>
-      <div className="snapshot-capture-bar"><span><i /> RED TURN</span><b>{kind.toUpperCase()} ACTIVATED</b></div>
-      <div className="snapshot-stage">
-        <div className="real-board-crop">
-          <img src="/item-captures/game-board-source.jpg" alt="実際のMETEOR RACEゲーム盤" />
-        </div>
-        <div className="snapshot-fx" aria-hidden="true"><i /><i /><i /></div>
-      </div>
-      <small><span>ACTUAL GAME CAPTURE</span>{ITEM_DEMO_LABELS[kind]}</small>
-    </div>
-  );
 }
 
 function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {

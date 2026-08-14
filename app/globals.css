@@ -517,3 +517,12 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .item-board-snapshot.booster .snapshot-fx i:nth-child(2){top:62%}.item-board-snapshot.booster .snapshot-fx i:nth-child(3){top:42%}
 .item-board-snapshot.holo .snapshot-fx i:first-child,.item-board-snapshot.blast .snapshot-fx i:first-child,.item-board-snapshot.pulse .snapshot-fx i:first-child,.item-board-snapshot.gravity .snapshot-fx i:first-child{left:50%;top:50%}
 @media(max-width:700px){.snapshot-stage{min-height:104px}.real-board-crop img{width:190%;left:-45%;top:-31%}}
+
+/* Image-free item briefing: retain the tall colored flag silhouette. */
+.item-preview-flag{grid-template-rows:auto minmax(108px,1fr) auto}
+.item-preview-spec{position:relative;display:flex;min-height:108px;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px 10px;border-block:1px solid color-mix(in srgb,var(--item-color) 38%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--item-color) 11%,#041019),#030b10);box-shadow:inset 0 0 24px color-mix(in srgb,var(--item-color) 9%,transparent)}
+.item-preview-spec::before{content:"";width:42px;height:2px;background:var(--item-color);box-shadow:0 0 12px var(--item-color)}
+.item-preview-spec strong{color:var(--item-color);font-size:clamp(10px,1.1vw,14px);letter-spacing:.14em}
+.item-preview-spec span{color:#f1f7f9;font-size:clamp(10px,1.15vw,14px);font-weight:900}
+.item-preview-spec small{color:#91aeb9;font-size:clamp(8px,.9vw,11px);line-height:1.55}
+@media(max-width:700px){.item-preview-flag{grid-template-rows:auto minmax(82px,1fr) auto}.item-preview-spec{min-height:82px;gap:6px;padding:9px 4px}.item-preview-spec strong{font-size:7px}.item-preview-spec span{font-size:8px}.item-preview-spec small{font-size:6px}}
