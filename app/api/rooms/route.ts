@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { PLAYER_ORDER, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
+import { isRankedOpen } from "../../ranked-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +167,7 @@ export async function POST(request: Request) {
     clockwise?: boolean;
     meteorId?: number;
     setupActor?: Player;
+    ranked?: boolean;
   };
   const liveBalance = await publishedBalance();
 
@@ -423,7 +425,7 @@ export async function POST(request: Request) {
       botPlayers,
       variant,
       liveBalance,
-      Boolean(body.ranked),
+      Boolean(body.ranked) && isRankedOpen(),
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =

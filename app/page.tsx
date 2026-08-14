@@ -49,6 +49,7 @@ import {
 } from "./game-rules";
 import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
+import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 
 type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
@@ -112,6 +113,7 @@ function Game() {
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
   const [rankedMode, setRankedMode] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [rankRating, setRankRating] = useState(1200);
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
@@ -131,6 +133,7 @@ function Game() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [profileEmail, setProfileEmail] = useState("未連携");
   const [publicPlayerId, setPublicPlayerId] = useState("--------");
+  const [profileStatus, setProfileStatus] = useState("");
   const [contactType, setContactType] = useState("不具合報告");
   const [contactMessage, setContactMessage] = useState("");
   const [contactStatus, setContactStatus] = useState("");
@@ -185,15 +188,25 @@ function Game() {
   useEffect(() => { window.localStorage.setItem("meteor-race-sfx-volume", String(sfxVolume)); }, [sfxVolume]);
   useEffect(() => { window.localStorage.setItem("meteor-race-reduced-motion", reducedMotion ? "1" : "0"); }, [reducedMotion]);
   useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const rankedOpen = isRankedOpen(new Date(currentTime));
+  useEffect(() => { if (!rankedOpen) setRankedMode(false); }, [rankedOpen]);
+  useEffect(() => {
     let playerId = window.localStorage.getItem("meteor-race-player-id");
     if (!playerId) {
       playerId = `player:${crypto.randomUUID()}`;
       window.localStorage.setItem("meteor-race-player-id", playerId);
     }
-    setPublicPlayerId(playerId.replace("player:", "").slice(0, 8).toUpperCase());
     fetch("/api/profile", { headers: { "x-meteor-player-id": playerId }, cache: "no-store" })
       .then((response) => response.json())
-      .then((data) => setProfileEmail(data.email ?? "未連携"))
+      .then((data) => {
+        setProfileEmail(data.email ?? "未連携");
+        setPublicPlayerId(data.playerId ?? playerId.replace("player:", "").slice(0, 8).toUpperCase());
+        if (data.nickname) setNickname(data.nickname);
+        setProfileStatus(data.synced ? "アカウント間で同期中" : "この端末に保存");
+      })
       .catch(() => setProfileEmail("未連携"));
   }, []);
   useEffect(() => {
@@ -1580,6 +1593,22 @@ function Game() {
     return playerName(player);
   };
 
+  const saveProfile = async () => {
+    const playerId = window.localStorage.getItem("meteor-race-player-id") ?? "";
+    setProfileStatus("保存中…");
+    try {
+      const response = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-meteor-player-id": playerId },
+        body: JSON.stringify({ nickname }),
+      });
+      if (!response.ok) throw new Error();
+      setProfileStatus(profileEmail === "端末内プロフィール" ? "この端末に保存しました" : "アカウントに保存しました");
+    } catch {
+      setProfileStatus("保存できませんでした");
+    }
+  };
+
   const sendContact = async () => {
     if (contactMessage.trim().length < 10) {
       setContactStatus("内容を10文字以上で入力してください");
@@ -1595,7 +1624,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "102",
+          version: "103",
           roomCode: online.code || null,
         }),
       });
@@ -1624,11 +1653,11 @@ function Game() {
             <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 102</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 103</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
         </section>
       )}
       {entryStage && entryStage !== "title" && (
-        <section className="entry-flow" aria-label="対戦準備">
+        <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
           <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" ? "title" : "rule")}>← BACK</button><div><small>GAME START</small><b>{entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>ゲームを選択</h2><p>基本ルールと遊び方を一度に選択します。</p><h3>RULE</h3><div className="choice-row"><button className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => setVariant("classic")}><strong>CLASSIC</strong><span>基本ルール</span></button><button className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => setVariant("item")}><strong>ITEM</strong><span>アイテム持ち込み</span></button></div><h3>PLAY STYLE</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>SINGLE</strong><span>CPU対戦</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>LOCAL</strong><span>同じ端末</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>ONLINE</strong><span>通信対戦</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>次へ</button></div>}
@@ -1637,6 +1666,7 @@ function Game() {
         </section>
       )}
       <header className="topbar">
+        <button className="game-back" type="button" onClick={() => setEntryStage("rule")}>← 戻る</button>
         <div className="brand">
           <span className="brand-mark">✦</span>
           <div>
@@ -1648,7 +1678,6 @@ function Game() {
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>RANKED · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
-        <button className="title-return" type="button" onClick={() => setEntryStage("title")}>⌂ TITLE</button>
         <button className="settings-gear" type="button" aria-label="設定を開く" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>⚙</button>
       </header>
 
@@ -1659,6 +1688,8 @@ function Game() {
             <section>
               <h3>ACCOUNT</h3>
               <label>ニックネーム<input maxLength={16} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="PLAYER" /></label>
+              <button className="profile-save" type="button" onClick={() => void saveProfile()}>プロフィールを保存</button>
+              <p role="status">{profileStatus}</p>
               <dl><div><dt>メールアドレス</dt><dd>{profileEmail}</dd></div><div><dt>PLAYER ID</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
               <p>メールアドレスと内部IDは他のプレイヤーへ表示されません。対戦中のニックネーム変更は次の試合から反映されます。</p>
             </section>
@@ -1679,7 +1710,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 102</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 103</span></nav>
             </section>
           </aside>
         </div>
@@ -2046,7 +2077,7 @@ function Game() {
       )}
 
       <section className="control-strip" id="match-setup">
-        <div className="settings">
+        <div className="settings in-game-settings">
           <label>
             GAME
             <select
@@ -2448,7 +2479,7 @@ function Game() {
             <p><b>TEAM</b> 13×13または15×15。RED＋YELLOW対BLUE＋GREENです。</p>
             <p><b>ITEM</b> 対戦前に{balance.itemHandTotal}個を選択。同じ種類は{balance.itemSameMax}個まで持ち込めます。</p>
             <p>BOOSTER / SHIELD / HOLO / ORBIT / BLAST / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
-            <p>RANKEDでは5巡ごとにORBITAL GRAVITYが発動し、全探査機をCORE方向へ1マス引き寄せます。</p>
+            <p><b>RANKED</b> 毎日8:00–9:00と20:00–21:00（日本時間）のみ参加できます。5巡ごとにORBITAL GRAVITYが発動します。</p>
             <p><b>RANK</b> IRON → BRONZE → SILVER → GOLD → PLATINUM → DIAMOND → ORBIT。順位とTEAM勝敗でレートが増減します。</p>
             <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
             <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
