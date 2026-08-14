@@ -587,7 +587,7 @@ function Game() {
   const showSwitchFx = (kind: ItemKind, player: Player) => {
     playItemSound(kind);
     setSwitchFx({ kind, player, nonce: Date.now() });
-    window.setTimeout(() => setSwitchFx((current) => current?.kind === kind && current.player === player ? null : current), 1050);
+    window.setTimeout(() => setSwitchFx((current) => current?.kind === kind && current.player === player ? null : current), kind === "gravity" ? 1550 : 1050);
   };
 
   const moveProbe = (target: Pos) => {
@@ -1221,7 +1221,7 @@ function Game() {
               player: remoteItemEffect.player,
               nonce: Date.now(),
             });
-            window.setTimeout(() => setSwitchFx(null), 900);
+            window.setTimeout(() => setSwitchFx(null), remoteItemEffect.kind === "gravity" ? 1550 : 900);
             if (
               remoteItemEffect.kind === "orbit" &&
               remoteItemEffect.ring !== undefined &&
@@ -1473,7 +1473,7 @@ function Game() {
   };
 
   return (
-    <main className={`shell variant-${game.variant}`}>
+    <main className={`shell variant-${game.variant}${switchFx?.kind === "gravity" ? " gravity-active" : ""}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">✦</span>
@@ -1499,8 +1499,9 @@ function Game() {
           {switchFx && (
             <div key={switchFx.nonce} className={`switch-activation ${switchFx.kind} ${switchFx.player}`} role="status">
               <span className="switch-burst" />
+              {switchFx.kind === "gravity" && <span className="gravity-well"><i /><i /><i /></span>}
               <b>{switchFx.kind.toUpperCase()}</b>
-              <small>ITEM ACTIVATED</small>
+              <small>{switchFx.kind === "gravity" ? "GRAVITATIONAL PULL" : "ITEM ACTIVATED"}</small>
             </div>
           )}
           <div className={`turn-callout ${displayAccent}`} aria-live="polite">
@@ -2287,7 +2288,7 @@ function ProbeToken({
 }) {
   return (
     <span
-      className={`probe-motion${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${push ? " blast-lift" : ""}`}
+      className={`probe-motion ${player}${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${push ? " blast-lift" : ""}`}
       style={
         push
           ? ({
