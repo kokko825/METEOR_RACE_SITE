@@ -1634,7 +1634,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "106",
+          version: "107",
           roomCode: online.code || null,
         }),
       });
@@ -1663,7 +1663,7 @@ function Game() {
             <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 106</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 107</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
         </section>
       )}
       {entryStage && entryStage !== "title" && (
@@ -1720,7 +1720,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 106</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 107</span></nav>
             </section>
           </aside>
         </div>
@@ -2552,6 +2552,7 @@ function ItemBoardSnapshot({ kind }: { kind: ItemKind }) {
   const blastCells = kind === "shield" || kind === "blast" ? [2, 6, 7, 8, 12] : [];
   return (
     <div className={`item-board-snapshot ${kind}`} aria-label={`${kind}を実際に使用した盤面イメージ`}>
+      <div className="snapshot-capture-bar"><span><i /> RED TURN</span><b>{kind.toUpperCase()} ACTIVATED</b></div>
       <div className="snapshot-board">
         {Array.from({ length: 25 }, (_, cell) => (
           <span key={cell} className={`snapshot-cell${highlightedCells.includes(cell) ? " highlighted" : ""}${blastCells.includes(cell) ? " blast-zone" : ""}`}>
@@ -2563,7 +2564,7 @@ function ItemBoardSnapshot({ kind }: { kind: ItemKind }) {
         ))}
       </div>
       <div className="snapshot-fx" aria-hidden="true"><i /><i /><i /></div>
-      <small>{ITEM_DEMO_LABELS[kind]}</small>
+      <small><span>GAME CAPTURE</span>{ITEM_DEMO_LABELS[kind]}</small>
     </div>
   );
 }
