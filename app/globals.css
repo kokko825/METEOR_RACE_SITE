@@ -83,6 +83,9 @@ button { color: inherit; }
 .inventory-item.gravity { color:#c58cff; }
 .inventory-item .item-icon { width:22px; height:22px; font-size:12px; }
 .inventory-item small { color:currentColor; }
+.loadout-hidden { color:#718794; }
+.loadout-hidden i { text-align:center; font-style:normal; opacity:.55; }
+.loadout-hidden b { font-size:9px; letter-spacing:.08em; color:#718794; }
 .mini-meteor { font-style:normal; font-size:15px; text-shadow:0 0 8px currentColor; }
 .mini-meteor.large { font-size:20px; }
 

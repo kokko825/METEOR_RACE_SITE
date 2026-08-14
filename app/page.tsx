@@ -1450,6 +1450,15 @@ function Game() {
     online.role ? online.memberRoles.indexOf(online.role) : -1;
   const ownDisplayName =
     ownMemberIndex >= 0 ? online.memberNames[ownMemberIndex] : nickname.trim();
+  const canSeeLoadout = (player: Player) => {
+    if (game.phase !== "setup") return true;
+    if (mode === "online") return online.role === player;
+    if (mode === "cpu") return player === "red";
+    if (mode === "human") {
+      return player === game.turn && !(game.botPlayers ?? []).includes(player);
+    }
+    return false;
+  };
   const resultPlayer =
     game.phase === "over" && game.winner && game.winner !== "draw"
       ? game.winner
@@ -1483,7 +1492,7 @@ function Game() {
           <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
           <ProbeIcon color="red" teamMode={isTeamVariant(game.variant)} />
-          <InventoryPanel inventory={game.inventory.red} color="red" items={game.itemHands?.red ?? []} />
+          <InventoryPanel inventory={game.inventory.red} color="red" items={canSeeLoadout("red") ? game.itemHands?.red ?? [] : []} loadoutHidden={!canSeeLoadout("red")} />
         </aside>
 
         <section className="arena">
@@ -1811,7 +1820,7 @@ function Game() {
           <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
           <ProbeIcon color="blue" teamMode={isTeamVariant(game.variant)} />
-          <InventoryPanel inventory={game.inventory.blue} color="blue" items={game.itemHands?.blue ?? []} />
+          <InventoryPanel inventory={game.inventory.blue} color="blue" items={canSeeLoadout("blue") ? game.itemHands?.blue ?? [] : []} loadoutHidden={!canSeeLoadout("blue")} />
         </aside>
       </section>
       {activePlayers(game).length > 2 && (
@@ -1831,7 +1840,7 @@ function Game() {
               <span className="eyebrow">{displayNameForPlayer(player, index + 3)}</span>
               <h2>{playerName(player)}</h2>
               <ProbeIcon color={player} teamMode={isTeamVariant(game.variant)} />
-              <InventoryPanel inventory={game.inventory[player]} color={player} items={game.itemHands?.[player] ?? []} />
+              <InventoryPanel inventory={game.inventory[player]} color={player} items={canSeeLoadout(player) ? game.itemHands?.[player] ?? [] : []} loadoutHidden={!canSeeLoadout(player)} />
             </aside>
           ))}
         </section>
@@ -2354,10 +2363,12 @@ function InventoryPanel({
   inventory,
   color,
   items,
+  loadoutHidden = false,
 }: {
   inventory: Record<MeteorSize, number>;
   color: Player;
   items: ItemKind[];
+  loadoutHidden?: boolean;
 }) {
   const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall", "gravity"] as ItemKind[])
     .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
@@ -2375,6 +2386,13 @@ function InventoryPanel({
         <small>LARGE</small>
         <b>×{inventory.large}</b>
       </div>
+      {loadoutHidden && (
+        <div className="loadout-hidden" aria-label="アイテム構成は戦闘開始まで非公開">
+          <i>◆</i>
+          <small>LOADOUT</small>
+          <b>SECRET</b>
+        </div>
+      )}
       {itemCounts.map(({ kind, count }) => (
         <div key={kind} className={`inventory-item ${kind}`}>
           <ItemIcon kind={kind} />
