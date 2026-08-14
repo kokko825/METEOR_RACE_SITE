@@ -107,6 +107,7 @@ function rankTier(rating: number) {
 }
 
 function Game() {
+  const [showTitle, setShowTitle] = useState(true);
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
@@ -1594,7 +1595,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "99",
+          version: "100",
           roomCode: online.code || null,
         }),
       });
@@ -1609,6 +1610,26 @@ function Game() {
 
   return (
     <main className={`shell variant-${game.variant}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
+      {showTitle && (
+        <section className="title-screen" aria-label="METEOR RACE タイトル画面">
+          <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
+          <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
+          <div className="title-copy">
+            <small>INTERPLANETARY TACTICAL RACE</small>
+            <h1>METEOR<br/><span>RACE</span></h1>
+            <p>BLAST YOUR WAY TO THE CORE</p>
+          </div>
+          <nav>
+            <button className="title-start" type="button" onClick={() => {
+              setShowTitle(false);
+              window.setTimeout(() => document.getElementById("match-setup")?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" }), 30);
+            }}>GAME START <span>▶</span></button>
+            <button type="button" onClick={() => { setShowTitle(false); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
+            <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
+          </nav>
+          <footer><span>Version 100</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+        </section>
+      )}
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">✦</span>
@@ -1651,7 +1672,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#settings" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 99</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 100</span></nav>
             </section>
           </aside>
         </div>
@@ -2017,7 +2038,7 @@ function Game() {
         </section>
       )}
 
-      <section className="control-strip">
+      <section className="control-strip" id="match-setup">
         <div className="settings">
           <label>
             GAME
@@ -2410,7 +2431,7 @@ function Game() {
             RESET DATA
           </button>
         </section>
-        <details className="rules">
+        <details className="rules" id="rules">
           <summary>HOW TO PLAY</summary>
           <div className="rule-grid">
             <p><b>MOVE</b> 縦横へ必ず1マス。移動不能時だけ省略できます。</p>
