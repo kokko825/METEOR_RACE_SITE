@@ -172,13 +172,19 @@ export async function POST(request: Request) {
   const liveBalance = await publishedBalance();
 
   if (body.action === "create") {
+    const createRanked = Boolean(body.ranked) && isRankedOpen();
+    const createVariant: GameVariant = createRanked
+      ? (body.variant === "item" ? "item" : "classic")
+      : body.variant === "team" || body.variant === "item" || body.variant === "team-item"
+        ? body.variant
+        : "classic";
     const playerCount = 2;
     const requestedSize = body.size === 11 ? 11 : 9;
     const size = playerCount > 2 && requestedSize === 9 ? 11 : requestedSize;
     const allowedPlayers: Player[] = ["red", "blue", "green", "yellow"].slice(0, playerCount) as Player[];
     const first: Player = allowedPlayers[0];
     const humanSeats = [allowedPlayers[0]];
-    const botPlayers = [allowedPlayers[1]];
+    const botPlayers = createRanked ? [] : [allowedPlayers[1]];
     const layoutOffset =
       playerCount === 3 ? crypto.getRandomValues(new Uint8Array(1))[0] % 4 : 0;
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -200,8 +206,9 @@ export async function POST(request: Request) {
               Boolean(body.obstaclesEnabled),
               layoutOffset,
               botPlayers,
-              "classic",
+              createVariant,
               liveBalance,
+              createRanked,
             ),
             roomMemberNames: [normalizeNickname(body.nickname, email)],
             roomPreferredRoles: ["red"],
@@ -364,16 +371,23 @@ export async function POST(request: Request) {
       room.player4_email,
     ];
     const joinedPlayers = memberEmails.slice(0, 4).filter(Boolean).length;
-    const humanCount = Math.max(
+    let humanCount = Math.max(
       1,
       Math.min(joinedPlayers, Number(body.humanCount ?? joinedPlayers)),
     );
     let aiCount = Math.max(0, Math.min(4 - humanCount, Number(body.aiCount ?? 0)));
     if (humanCount + aiCount < 2) aiCount = 1;
-    const variant: GameVariant =
+    let variant: GameVariant =
       body.variant === "team" || body.variant === "item" || body.variant === "team-item"
         ? body.variant
         : "classic";
+    const ranked = Boolean(body.ranked) && isRankedOpen();
+    if (ranked) {
+      if (joinedPlayers < 2) return json({ error: "ランク戦には対戦相手が必要です" }, 400);
+      humanCount = 2;
+      aiCount = 0;
+      variant = isItemVariant(variant) ? "item" : "classic";
+    }
     if (isTeamVariant(variant)) {
       aiCount = Math.max(0, 4 - humanCount);
     }
@@ -425,7 +439,7 @@ export async function POST(request: Request) {
       botPlayers,
       variant,
       liveBalance,
-      Boolean(body.ranked) && isRankedOpen(),
+      ranked,
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =

@@ -114,7 +114,9 @@ function Game() {
   const [variant, setVariant] = useState<GameVariant>("classic");
   const [rankedMode, setRankedMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
-  const [rankRating, setRankRating] = useState(1200);
+  const [classicRankRating, setClassicRankRating] = useState(1200);
+  const [itemRankRating, setItemRankRating] = useState(1200);
+  const rankRating = isItemVariant(variant) ? itemRankRating : classicRankRating;
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [history, setHistory] = useState<GameState[]>([]);
@@ -174,8 +176,12 @@ function Game() {
     turns: 0,
   });
   useEffect(() => {
-    const stored = Number(window.localStorage.getItem("meteor-race-rank-rating"));
-    if (Number.isFinite(stored) && stored >= 0) setRankRating(stored);
+    const legacyRank = Number(window.localStorage.getItem("meteor-race-rank-rating"));
+    const storedClassic = Number(window.localStorage.getItem("meteor-race-rank-classic"));
+    const storedItem = Number(window.localStorage.getItem("meteor-race-rank-item"));
+    if (Number.isFinite(storedClassic) && storedClassic >= 0) setClassicRankRating(storedClassic);
+    else if (Number.isFinite(legacyRank) && legacyRank >= 0) setClassicRankRating(legacyRank);
+    if (Number.isFinite(storedItem) && storedItem >= 0) setItemRankRating(storedItem);
     setNickname(window.localStorage.getItem("meteor-race-nickname") ?? "");
     setMasterVolume(Number(window.localStorage.getItem("meteor-race-master-volume") ?? 80));
     setBgmVolume(Number(window.localStorage.getItem("meteor-race-bgm-volume") ?? 65));
@@ -330,6 +336,8 @@ function Game() {
         aiCount: onlineAiCount,
         obstaclesEnabled,
         nickname,
+        variant,
+        ranked: rankedMode,
       });
       setGame(data.state);
       setVariant(data.state.variant ?? "classic");
@@ -1428,9 +1436,11 @@ function Game() {
         delta = changes[rank >= 0 ? rank : changes.length - 1];
       }
     }
-    setRankRating((current) => {
+    const updateRating = isItemVariant(game.variant) ? setItemRankRating : setClassicRankRating;
+    const storageKey = isItemVariant(game.variant) ? "meteor-race-rank-item" : "meteor-race-rank-classic";
+    updateRating((current) => {
       const next = Math.max(0, current + delta);
-      window.localStorage.setItem("meteor-race-rank-rating", String(next));
+      window.localStorage.setItem(storageKey, String(next));
       return next;
     });
   }, [game.ranked, game.phase, game.winner, game.turnCount, game.log.length, game.finishOrder, game.variant, mode, online.role]);
@@ -1624,7 +1634,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "103",
+          version: "104",
           roomCode: online.code || null,
         }),
       });
@@ -1653,15 +1663,15 @@ function Game() {
             <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 103</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 104</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
         </section>
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
           <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" ? "title" : "rule")}>← BACK</button><div><small>GAME START</small><b>{entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
-          {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>ゲームを選択</h2><p>基本ルールと遊び方を一度に選択します。</p><h3>RULE</h3><div className="choice-row"><button className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => setVariant("classic")}><strong>CLASSIC</strong><span>基本ルール</span></button><button className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => setVariant("item")}><strong>ITEM</strong><span>アイテム持ち込み</span></button></div><h3>PLAY STYLE</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>SINGLE</strong><span>CPU対戦</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>LOCAL</strong><span>同じ端末</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>ONLINE</strong><span>通信対戦</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>次へ</button></div>}
-          {entryStage === "match" && <div className="entry-panel compact-flow"><h2>対戦設定</h2><p>{variant.toUpperCase()} · {setupMode === "cpu" ? "SINGLE" : setupMode === "human" ? "LOCAL" : "ONLINE"}</p><h3>MATCH TYPE</h3><div className="choice-row"><button className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(variant === "item" || variant === "team-item" ? "item" : "classic"); setSize(variant === "item" || variant === "team-item" ? 11 : 9); }}><strong>FREE FOR ALL</strong><span>個人戦</span></button><button className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(variant === "item" || variant === "team-item" ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>チーム戦</span></button></div>{setupMode === "online" && <div className="rank-choice"><button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}>CASUAL</button><button className={rankedMode ? "selected" : ""} onClick={() => setRankedMode(true)}>RANKED</button></div>}<div className="entry-settings"><label>BOARD SIZE<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? "PLAYERS" : "CPU ADD"}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setupMode === "human" ? setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2)) : setOnlineAiCount((Math.max(0, onlineAiCount - 1) as 0|1|2|3))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : setupMode === "human" ? localAiCount : onlineAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setupMode === "human" ? setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2)) : setOnlineAiCount((Math.min(3, onlineAiCount + 1) as 0|1|2|3))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>AI LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div><button className="entry-confirm" onClick={() => { if (setupMode !== "online") applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? "ONLINE LOBBYへ" : "BATTLE START"}</button></div>}
+          {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>プレイ方法を選択</h2><p>誰と遊ぶかを選んでください。</p><h3>PLAY STYLE</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>SINGLE</strong><span>CPUと対戦</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>LOCAL</strong><span>同じ端末で対戦</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>ONLINE</strong><span>通信対戦</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>次へ</button></div>}
+          {entryStage === "match" && <div className="entry-panel compact-flow"><h2>{setupMode === "online" ? "オンライン対戦" : "対戦設定"}</h2><p>{setupMode === "cpu" ? "SINGLE" : setupMode === "human" ? "LOCAL" : "ONLINE"}</p>{setupMode === "online" ? <><h3>ONLINE TYPE</h3><div className="rank-choice"><button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}><strong>CASUAL ROOM</strong><span>ホストがルールを自由に設定</span></button><button className={rankedMode ? "selected" : "locked"} disabled={!rankedOpen} onClick={() => { setRankedMode(true); setVariant(isItemVariant(variant) ? "item" : "classic"); setOnlinePlayerCount(2); setOnlineAiCount(0); }}><strong>{rankedOpen ? "RANKED" : "🔒 RANKED CLOSED"}</strong><span>{rankedOpen ? "1対1・開催中" : RANKED_SCHEDULE_LABEL}</span></button></div>{rankedMode && <><h3>RANK RULE</h3><div className="choice-row"><button className={!isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>CLASSIC RANK</strong><span>{rankTier(classicRankRating)} {classicRankRating}</span></button><button className={isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>ITEM RANK</strong><span>{rankTier(itemRankRating)} {itemRankRating}</span></button></div></>}<p className={rankedOpen ? "rank-window open" : "rank-window"}>{rankedMode ? "1対1固定。CLASSICとITEMは別々のレートです。" : "ルーム作成後、ホストがゲーム・盤面・人数・AI数を設定できます。"}</p></> : <><h3>RULE</h3><div className="choice-row"><button className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>CLASSIC</strong><span>メテオ中心の基本ルール</span></button><button className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>ITEM</strong><span>アイテム持ち込み戦</span></button></div><h3>MATCH TYPE</h3><div className="choice-row"><button className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>FREE FOR ALL</strong><span>個人戦</span></button><button className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>チーム戦</span></button></div><div className="entry-settings"><label>BOARD SIZE<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? "PLAYERS" : "CPU ADD"}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>AI LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div></>}<button className="entry-confirm" onClick={() => { applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? "ONLINE LOBBYへ" : "BATTLE START"}</button></div>}
           <footer><span>RULE + PLAY STYLE</span><i /><span>MATCH SETUP</span></footer>
         </section>
       )}
@@ -1710,7 +1720,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 103</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 104</span></nav>
             </section>
           </aside>
         </div>
@@ -1742,8 +1752,23 @@ function Game() {
             <span className={`status-dot ${displayAccent}`} />
             {game.message}
           </div>
+          {game.phase === "setup" && isItemVariant(game.variant) && (
+            <div className="item-selection-overlay" aria-live="polite">
+              <header><small>LOADOUT PREVIEW</small><strong>選択したアイテム</strong></header>
+              <div className="item-preview-flags">
+                {(game.itemHands?.[setupPlayer] ?? []).length === 0 && <p>下のアイテムを選ぶと、ここに使用イメージと説明が追加されます。</p>}
+                {(game.itemHands?.[setupPlayer] ?? []).map((kind, index) => (
+                  <article className={`item-preview-flag ${kind}`} key={`${kind}-${index}`}>
+                    <div className="item-effect-preview"><ItemIcon kind={kind} /><i /><i /><i /></div>
+                    <div><b>{kind.toUpperCase()}</b><p>{ITEM_DETAILS[kind]}</p></div>
+                    <em>{index + 1}</em>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
           <div
-            className={`board turn-${displayAccent}`}
+            className={`board turn-${displayAccent}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}`}
             data-perspective={perspectiveSlot}
             style={{
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
@@ -2077,7 +2102,7 @@ function Game() {
       )}
 
       <section className="control-strip" id="match-setup">
-        <div className="settings in-game-settings">
+        <div className={`settings in-game-settings ${mode === "online" && !rankedMode ? "casual-host-settings" : ""}`}>
           <label>
             GAME
             <select
@@ -2125,7 +2150,7 @@ function Game() {
               {rankedMode ? "ON" : "OFF"}
             </button>
           </label>
-          <label>
+          <label className="mode-setting">
             MODE
             <select
               value={setupMode}
@@ -2242,29 +2267,6 @@ function Game() {
               </select>
             </label>
           )}
-          <button
-            type="button"
-            className={soundEnabled ? "setting-toggle selected" : "setting-toggle"}
-            aria-pressed={soundEnabled}
-            onClick={() => setSoundEnabled((value) => !value)}
-          >
-            効果音 {soundEnabled ? "ON" : "OFF"}
-          </button>
-          <button
-            className={`new-game-button ${needsNewGame ? "attention" : ""}`}
-            onClick={applyNewGameSettings}
-            disabled={roomSettingsLocked || online.pending}
-          >
-            NEW GAME
-            <small>
-              {roomSettingsLocked
-                ? "ROOM LEADER ONLY"
-                : needsNewGame
-                  ? "設定を適用して開始"
-                  : "現在の設定で再開始"}
-            </small>
-          </button>
-          <button onClick={undo} disabled={!history.length || mode === "online" || needsNewGame}>UNDO</button>
           {mode === "lab" && (
             <>
               <button onClick={() => setAiRunning((v) => !v)}>{aiRunning ? "PAUSE AI" : "RUN AI"}</button>
@@ -2281,7 +2283,7 @@ function Game() {
         </div>
         {needsNewGame && (
           <div className="settings-pending" role="status">
-            設定はまだ対局に反映されていません。「NEW GAME」を押すと新しい設定で開始します。
+            変更内容は次の対戦開始時に反映されます。
           </div>
         )}
         {mode === "online" && (
@@ -2409,6 +2411,16 @@ function Game() {
             {online.code && online.isHost && (
               <span className="room-leader-badge">ROOM LEADER</span>
             )}
+            {online.code && online.isHost && !rankedMode && (
+              <button type="button" className="apply-room-settings" onClick={applyNewGameSettings} disabled={online.pending}>
+                ルーム設定を適用して対戦開始
+              </button>
+            )}
+            {online.code && online.isHost && rankedMode && (
+              <button type="button" className="apply-room-settings ranked" onClick={applyNewGameSettings} disabled={online.pending || online.joinedPlayers < 2}>
+                {online.joinedPlayers < 2 ? "対戦相手を待っています" : `${isItemVariant(variant) ? "ITEM" : "CLASSIC"} ランク戦を開始`}
+              </button>
+            )}
             {online.code && (
               <button
                 type="button"
@@ -2503,6 +2515,17 @@ const ITEM_ICONS: Record<ItemKind, string> = {
   pulse: "ϟ",
   recall: "↩",
   gravity: "◎",
+};
+
+const ITEM_DETAILS: Record<ItemKind, string> = {
+  shield: "次に受ける爆風を防ぐ防御フィールド。自分の爆風も無効になります。",
+  booster: "縦横へ最大2マス前進。途中のメテオを飛び越えてCOREへ到達できます。",
+  holo: "2巡残るホロメテオを配置し、相手の進路を封鎖します。",
+  orbit: "選んだリングを90度回転させ、盤上の配置をまとめて動かします。",
+  blast: "指定地点に回収効果のないメテオ爆風を発生させます。",
+  pulse: "装置を置き、2巡のあいだ周囲の自力移動を封じます。",
+  recall: "自分の通常メテオをすべて回収し、ホロメテオを消去します。",
+  gravity: "全探査機をCORE方向へ1マス引き寄せます。",
 };
 
 function ItemIcon({ kind }: { kind: ItemKind }) {
