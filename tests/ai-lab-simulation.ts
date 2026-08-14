@@ -11,6 +11,9 @@ import {
   applyRecallItem,
   applySetupItem,
   applyUseItem,
+  activePlayers,
+  activeObstacles,
+  activePulseDevices,
   confirmSetupItems,
   finishTurn,
   initialGameState,
@@ -147,6 +150,22 @@ import {
 }
 
 {
+  const state = initialGameState(15, "red", 4, false, 0, ["red", "blue", "green", "yellow"], "item");
+  state.phase = "move";
+  state.turn = "red";
+  state.players = ["red", "blue"];
+  state.finishOrder = ["yellow", "green"];
+  state.probes.red = { r: 8, c: 7 };
+  state.probes.blue = { r: 6, c: 7 };
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(
+    decision,
+    { type: "move", target: { r: 7, c: 7 } },
+    "a remaining AI must secure the best available rank instead of avoiding CORE",
+  );
+}
+
+{
   for (const difficulty of ["easy", "normal", "hard"] as const) {
     const state = initialGameState(15, "red", 2, false, 0, [], "item");
     state.turn = "blue";
@@ -181,8 +200,8 @@ import {
   const use = chooseAiDecision(state, "hard", () => 0);
   assert.deepEqual(use, { type: "item", kind: "recall" }, "AI should recover an exhausted, valuable meteor");
   state = applyUseItem(state, "recall");
-  const target = chooseAiDecision(state, "hard", () => 0);
-  assert.deepEqual(target, { type: "recall", meteorId: 99 }, "RECALL should select the most valuable recoverable meteor");
+  assert.equal(state.meteors.length, 0, "RECALL should immediately recover all owned normal meteors");
+  assert.equal(state.inventory.red.large, 1, "the recovered large meteor should return to inventory");
 }
 
 {
@@ -288,6 +307,7 @@ for (const difficulty of difficulties) {
     let turns = 0;
     let moves = 0;
     let retreats = 0;
+    const outcomes: Array<{ winner: string; finishOrder: Player[]; active: Player[]; distances: Record<string, number>; coreBlockedBy: string[] }> = [];
     const games = Math.max(1, Number(process.env.AI_LAB_GAMES ?? 4));
     for (let index = 0; index < games; index += 1) {
       const players = (["red", "blue", "green", "yellow"] as Player[]).slice(0, scenario.count);
@@ -316,6 +336,18 @@ for (const difficulty of difficulties) {
       turns += final.turnCount;
       moves += result.moves;
       retreats += result.retreats;
+      const mid = Math.floor(final.size / 2);
+      outcomes.push({
+        winner: final.winner ?? "draw",
+        finishOrder: [...(final.finishOrder ?? [])],
+        active: [...activePlayers(final)],
+        distances: Object.fromEntries(activePlayers(final).map((p) => [p, Math.abs(final.probes[p].r - mid) + Math.abs(final.probes[p].c - mid)])),
+        coreBlockedBy: [
+          ...final.meteors.filter((x) => x.r === mid && x.c === mid).map((x) => `meteor:${x.owner}`),
+          ...activeObstacles(final).filter((x) => x.r === mid && x.c === mid).map((x) => `holo:${x.owner}`),
+          ...activePulseDevices(final).filter((x) => x.r === mid && x.c === mid).map((x) => `pulse:${x.owner}`),
+        ],
+      });
     }
     console.log(
       JSON.stringify({
@@ -328,6 +360,7 @@ for (const difficulty of difficulties) {
           scenario.variant === "item" || moves === 0
             ? null
             : Math.round((retreats / moves) * 1000) / 10,
+        outcomes,
       }),
     );
   }

@@ -62,6 +62,14 @@ const wonBy = (state: GameState, player: Player) =>
     (isTeamVariant(state.variant) && teamOf(state.winner) === teamOf(player)));
 
 function terminalValue(state: GameState, player: Player) {
+  // In free-for-all ranking matches, reaching CORE remains a decisive success
+  // even when another probe has already secured first place. Treating every
+  // later finisher as a loss made the remaining AIs deliberately avoid CORE
+  // and play for the 120-turn draw.
+  if (!isTeamVariant(state.variant)) {
+    const rank = state.finishOrder?.indexOf(player) ?? -1;
+    if (rank >= 0) return 1_000_000 - rank * 100_000;
+  }
   if (state.phase !== "over") return null;
   if (state.winner === "draw") return -900;
   return wonBy(state, player) ? 1_000_000 : -1_000_000;
