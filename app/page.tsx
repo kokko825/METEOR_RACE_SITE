@@ -107,7 +107,7 @@ function rankTier(rating: number) {
 }
 
 function Game() {
-  const [showTitle, setShowTitle] = useState(true);
+  const [entryStage, setEntryStage] = useState<"title" | "rule" | "play" | "match" | "setup" | null>("title");
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
@@ -1595,7 +1595,7 @@ function Game() {
           type: contactType,
           message: contactMessage,
           nickname,
-          version: "100",
+          version: "101",
           roomCode: online.code || null,
         }),
       });
@@ -1610,7 +1610,7 @@ function Game() {
 
   return (
     <main className={`shell variant-${game.variant}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
-      {showTitle && (
+      {entryStage === "title" && (
         <section className="title-screen" aria-label="METEOR RACE タイトル画面">
           <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
           <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
@@ -1620,14 +1620,22 @@ function Game() {
             <p>BLAST YOUR WAY TO THE CORE</p>
           </div>
           <nav>
-            <button className="title-start" type="button" onClick={() => {
-              setShowTitle(false);
-              window.setTimeout(() => document.getElementById("match-setup")?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" }), 30);
-            }}>GAME START <span>▶</span></button>
-            <button type="button" onClick={() => { setShowTitle(false); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
+            <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>GAME START <span>▶</span></button>
+            <button type="button" onClick={() => { setEntryStage(null); window.setTimeout(() => document.getElementById("rules")?.scrollIntoView({ behavior: "smooth" }), 30); }}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 100</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>Version 101</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+        </section>
+      )}
+      {entryStage && entryStage !== "title" && (
+        <section className="entry-flow" aria-label="対戦準備">
+          <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
+          <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" ? "title" : entryStage === "play" ? "rule" : entryStage === "match" ? "play" : "match")}>← BACK</button><div><small>GAME START</small><b>{entryStage === "rule" ? "01 / RULE" : entryStage === "play" ? "02 / PLAY STYLE" : entryStage === "match" ? "03 / MATCH TYPE" : "04 / SETUP"}</b></div></header>
+          {entryStage === "rule" && <div className="entry-panel"><h2>ルールを選択</h2><p>使用する基本ルールを選んでください。</p><div className="entry-cards"><button onClick={() => { setVariant("classic"); setEntryStage("play"); }}><strong>CLASSIC</strong><span>メテオだけを使う基本ルール</span></button><button onClick={() => { setVariant("item"); setEntryStage("play"); }}><strong>ITEM</strong><span>3つのアイテムを持ち込む戦術戦</span></button></div></div>}
+          {entryStage === "play" && <div className="entry-panel"><h2>プレイ方法を選択</h2><p>誰と遊ぶかを選んでください。</p><div className="entry-cards three"><button onClick={() => { setSetupMode("cpu"); setEntryStage("match"); }}><strong>SINGLE</strong><span>CPUと対戦</span></button><button onClick={() => { setSetupMode("human"); setEntryStage("match"); }}><strong>LOCAL</strong><span>同じ端末で対戦</span></button><button onClick={() => { setSetupMode("online"); setEntryStage("match"); }}><strong>ONLINE</strong><span>離れた相手と対戦</span></button></div></div>}
+          {entryStage === "match" && <div className="entry-panel"><h2>対戦形式を選択</h2><p>{setupMode === "online" ? "対戦形式とレートの有無を選んでください。" : "個人戦または2対2を選んでください。"}</p><div className="entry-cards"><button onClick={() => { setVariant(variant === "item" || variant === "team-item" ? "item" : "classic"); setSize(variant === "item" || variant === "team-item" ? 11 : 9); setEntryStage("setup"); }}><strong>FREE FOR ALL</strong><span>全員がライバルの個人戦</span></button><button onClick={() => { setVariant(variant === "item" || variant === "team-item" ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); setEntryStage("setup"); }}><strong>2 VS 2 TEAM</strong><span>仲間とCOREを目指す4人戦</span></button></div>{setupMode === "online" && <div className="rank-choice"><button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}>CASUAL</button><button className={rankedMode ? "selected" : ""} onClick={() => setRankedMode(true)}>RANKED</button></div>}</div>}
+          {entryStage === "setup" && <div className="entry-panel"><h2>対戦設定</h2><p>{variant.toUpperCase()} · {setupMode === "cpu" ? "SINGLE" : setupMode === "human" ? "LOCAL" : rankedMode ? "ONLINE RANKED" : "ONLINE CASUAL"}</p><div className="entry-settings"><label>BOARD SIZE<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? "PLAYERS" : "CPU ADD"}</span><button onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setupMode === "human" ? setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2)) : setOnlineAiCount((Math.max(0, onlineAiCount - 1) as 0|1|2|3))}>−</button><b>{setupMode === "cpu" ? aiPlayerCount : setupMode === "human" ? localAiCount : onlineAiCount}</b><button onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setupMode === "human" ? setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2)) : setOnlineAiCount((Math.min(3, onlineAiCount + 1) as 0|1|2|3))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>AI LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div><button className="entry-confirm" onClick={() => { if (setupMode !== "online") applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? "ONLINE LOBBYへ" : "BATTLE START"}</button></div>}
+          <footer><span>CLASSIC / ITEM</span><i /><span>SINGLE / LOCAL / ONLINE</span><i /><span>FREE FOR ALL / TEAM</span></footer>
         </section>
       )}
       <header className="topbar">
@@ -1672,7 +1680,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 100</span></nav>
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#match-setup" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 101</span></nav>
             </section>
           </aside>
         </div>
