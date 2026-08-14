@@ -123,6 +123,16 @@ function Game() {
   const [localAiCount, setLocalAiCount] = useState<0 | 1 | 2>(0);
   const [aiRunning, setAiRunning] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [masterVolume, setMasterVolume] = useState(80);
+  const [bgmVolume, setBgmVolume] = useState(65);
+  const [sfxVolume, setSfxVolume] = useState(80);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [profileEmail, setProfileEmail] = useState("未連携");
+  const [publicPlayerId, setPublicPlayerId] = useState("--------");
+  const [contactType, setContactType] = useState("不具合報告");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactStatus, setContactStatus] = useState("");
   const [obstaclesEnabled, setObstaclesEnabled] = useState(false);
   const [aiSpeed, setAiSpeed] = useState(420);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("normal");
@@ -162,6 +172,28 @@ function Game() {
   useEffect(() => {
     const stored = Number(window.localStorage.getItem("meteor-race-rank-rating"));
     if (Number.isFinite(stored) && stored >= 0) setRankRating(stored);
+    setNickname(window.localStorage.getItem("meteor-race-nickname") ?? "");
+    setMasterVolume(Number(window.localStorage.getItem("meteor-race-master-volume") ?? 80));
+    setBgmVolume(Number(window.localStorage.getItem("meteor-race-bgm-volume") ?? 65));
+    setSfxVolume(Number(window.localStorage.getItem("meteor-race-sfx-volume") ?? 80));
+    setReducedMotion(window.localStorage.getItem("meteor-race-reduced-motion") === "1");
+  }, []);
+  useEffect(() => { window.localStorage.setItem("meteor-race-nickname", nickname); }, [nickname]);
+  useEffect(() => { window.localStorage.setItem("meteor-race-master-volume", String(masterVolume)); }, [masterVolume]);
+  useEffect(() => { window.localStorage.setItem("meteor-race-bgm-volume", String(bgmVolume)); }, [bgmVolume]);
+  useEffect(() => { window.localStorage.setItem("meteor-race-sfx-volume", String(sfxVolume)); }, [sfxVolume]);
+  useEffect(() => { window.localStorage.setItem("meteor-race-reduced-motion", reducedMotion ? "1" : "0"); }, [reducedMotion]);
+  useEffect(() => {
+    let playerId = window.localStorage.getItem("meteor-race-player-id");
+    if (!playerId) {
+      playerId = `player:${crypto.randomUUID()}`;
+      window.localStorage.setItem("meteor-race-player-id", playerId);
+    }
+    setPublicPlayerId(playerId.replace("player:", "").slice(0, 8).toUpperCase());
+    fetch("/api/profile", { headers: { "x-meteor-player-id": playerId }, cache: "no-store" })
+      .then((response) => response.json())
+      .then((data) => setProfileEmail(data.email ?? "未連携"))
+      .catch(() => setProfileEmail("未連携"));
   }, []);
   useEffect(() => {
     const draft = new URLSearchParams(window.location.search).get("balance") === "draft";
@@ -552,7 +584,7 @@ function Game() {
       low.frequency.setValueAtTime(105, context.currentTime);
       low.frequency.exponentialRampToValueAtTime(34, context.currentTime + duration);
       gain.gain.setValueAtTime(0.0001, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.7, context.currentTime + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.7 * masterVolume / 100 * sfxVolume / 100, context.currentTime + 0.018);
       gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
       noise.connect(noiseFilter).connect(gain);
       low.connect(gain);
@@ -597,7 +629,7 @@ function Game() {
       second.frequency.setValueAtTime(setting.second, now);
       second.frequency.exponentialRampToValueAtTime(Math.max(55, setting.end * 1.35), now + duration);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(kind === "blast" || kind === "pulse" ? 0.18 : 0.24, now + 0.018);
+      gain.gain.exponentialRampToValueAtTime((kind === "blast" || kind === "pulse" ? 0.18 : 0.24) * masterVolume / 100 * sfxVolume / 100, now + 0.018);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       oscillator.connect(gain);
       second.connect(gain);
@@ -1547,8 +1579,36 @@ function Game() {
     return playerName(player);
   };
 
+  const sendContact = async () => {
+    if (contactMessage.trim().length < 10) {
+      setContactStatus("内容を10文字以上で入力してください");
+      return;
+    }
+    setContactStatus("送信中…");
+    const playerId = window.localStorage.getItem("meteor-race-player-id") ?? "";
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-meteor-player-id": playerId },
+        body: JSON.stringify({
+          type: contactType,
+          message: contactMessage,
+          nickname,
+          version: "99",
+          roomCode: online.code || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "送信できませんでした");
+      setContactMessage("");
+      setContactStatus(`送信しました（受付番号 ${data.reference}）`);
+    } catch (error) {
+      setContactStatus(error instanceof Error ? error.message : "送信できませんでした");
+    }
+  };
+
   return (
-    <main className={`shell variant-${game.variant}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}`}>
+    <main className={`shell variant-${game.variant}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">✦</span>
@@ -1561,7 +1621,41 @@ function Game() {
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>RANKED · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
+        <button className="settings-gear" type="button" aria-label="設定を開く" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>⚙</button>
       </header>
+
+      {settingsOpen && (
+        <div className="settings-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}>
+          <aside className="settings-drawer" role="dialog" aria-modal="true" aria-label="設定">
+            <header><div><small>METEOR RACE</small><h2>SETTINGS</h2></div><button type="button" aria-label="設定を閉じる" onClick={() => setSettingsOpen(false)}>×</button></header>
+            <section>
+              <h3>ACCOUNT</h3>
+              <label>ニックネーム<input maxLength={16} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="PLAYER" /></label>
+              <dl><div><dt>メールアドレス</dt><dd>{profileEmail}</dd></div><div><dt>PLAYER ID</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
+              <p>メールアドレスと内部IDは他のプレイヤーへ表示されません。対戦中のニックネーム変更は次の試合から反映されます。</p>
+            </section>
+            <section>
+              <h3>SOUND</h3>
+              <label>全体音量 <b>{masterVolume}</b><input type="range" min="0" max="100" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /></label>
+              <label>BGM <b>{bgmVolume}</b><input type="range" min="0" max="100" value={bgmVolume} onChange={(event) => setBgmVolume(Number(event.target.value))} /></label>
+              <label>効果音 <b>{sfxVolume}</b><input type="range" min="0" max="100" value={sfxVolume} onChange={(event) => setSfxVolume(Number(event.target.value))} /></label>
+              <button type="button" className={soundEnabled ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setSoundEnabled((value) => !value)}>一括ミュート {soundEnabled ? "OFF" : "ON"}</button>
+            </section>
+            <section>
+              <h3>DISPLAY</h3>
+              <button type="button" className={reducedMotion ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setReducedMotion((value) => !value)}>演出短縮 {reducedMotion ? "ON" : "OFF"}</button>
+            </section>
+            <section>
+              <h3>CONTACT</h3>
+              <select value={contactType} onChange={(event) => setContactType(event.target.value)}><option>不具合報告</option><option>ご意見・要望</option><option>アカウントについて</option><option>その他</option></select>
+              <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
+              <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
+              {contactStatus && <p role="status">{contactStatus}</p>}
+              <nav><a href="#rules" onClick={() => setSettingsOpen(false)}>ルールブック</a><a href="#settings" onClick={() => setSettingsOpen(false)}>ゲーム設定</a><span>Version 99</span></nav>
+            </section>
+          </aside>
+        </div>
+      )}
 
       <section className="game-layout">
         <aside className={`player-card red-card ${(game.phase === "over" ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>

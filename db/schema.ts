@@ -14,3 +14,16 @@ export const gameRooms = sqliteTable("game_rooms", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
+
+export const contactMessages = sqliteTable("contact_messages", {
+  id: text("id").primaryKey(),
+  playerId: text("player_id").notNull(),
+  email: text("email"),
+  nickname: text("nickname"),
+  category: text("category").notNull(),
+  message: text("message").notNull(),
+  siteVersion: text("site_version").notNull(),
+  roomCode: text("room_code"),
+  status: text("status").notNull().default("new"),
+  createdAt: integer("created_at").notNull(),
+});
