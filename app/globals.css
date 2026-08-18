@@ -214,8 +214,9 @@ button { color: inherit; }
 .probe-portrait.team-moon::after { border:2px solid #62d6ff; box-shadow:0 0 10px #29a9ff; }
 .probe-token i { font-style:normal; font-size:clamp(9px,2vw,24px); text-shadow:0 1px 2px #000; }
 .probe-effects { position:absolute; inset:0; z-index:8; pointer-events:none; }
-.shield-effect { position:absolute; width:54%; aspect-ratio:1; right:-25%; top:-22%; display:grid; place-items:center; color:#a9f3ff; background:rgba(23,145,213,.38); border:2px solid #65d9ff; clip-path:polygon(25% 7%,75% 7%,98% 50%,75% 93%,25% 93%,2% 50%); filter:drop-shadow(0 0 5px #29bfff); }
-.shield-effect::after { content:""; position:absolute; inset:17%; border:1px solid rgba(214,250,255,.75); clip-path:inherit; }
+.shield-effect { position:absolute; width:54%; aspect-ratio:1; right:-25%; top:-22%; display:grid; place-items:center; color:#a9f3ff; filter:drop-shadow(0 0 5px #29bfff); }
+.shield-effect::before { content:""; position:absolute; inset:0; background:rgba(23,145,213,.38); border:2px solid #65d9ff; clip-path:polygon(25% 7%,75% 7%,98% 50%,75% 93%,25% 93%,2% 50%); }
+.shield-effect::after { content:""; position:absolute; inset:17%; border:1px solid rgba(214,250,255,.75); clip-path:polygon(25% 7%,75% 7%,98% 50%,75% 93%,25% 93%,2% 50%); }
 .shield-effect b,.boost-effect b { position:absolute; right:-3px; top:-7px; min-width:16px; height:16px; padding:0 3px; display:grid; place-items:center; border-radius:9px; color:white; background:#06111a; border:1px solid currentColor; font-size:10px; line-height:1; text-shadow:none; }
 .boost-effect { position:absolute; width:48%; height:72%; left:-23%; top:14%; filter:drop-shadow(0 0 5px rgba(255,139,36,.9)); }
 .boost-effect i { position:absolute; left:4%; width:72%; height:57%; background:rgba(255,133,35,.52); clip-path:polygon(50% 0,100% 100%,0 100%); }
