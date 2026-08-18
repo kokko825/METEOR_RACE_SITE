@@ -2382,7 +2382,7 @@ const ITEM_DETAILS: Record<ItemKind, string> = {
 function itemDetail(kind: ItemKind, balance: BalanceConfig): string {
   switch (kind) {
     case "shield": return `${balance.shieldRounds}巡の間、次に受ける爆風を防ぎます。自分の爆風も無効になります。`;
-    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオを飛び越えてCOREへ到達できます。1巡以内に移動しないと効果が消えます。`;
+    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオやお邪魔メテオを飛び越えてCOREへ到達できます（PULSEデバイスは飛び越えられません）。2マス移動で実際に使うまで効果は持続します。`;
     case "holo": return balance.holoUnlimited
       ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"
       : `${balance.holoRounds}巡残るホロメテオを配置し、相手の進路を妨害します。`;

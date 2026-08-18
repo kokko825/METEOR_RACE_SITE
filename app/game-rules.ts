@@ -22,7 +22,6 @@ export type GameState = {
   shield: Record<Player, boolean>;
   shieldTurns?: Record<Player, number>;
   boosterMoves: Record<Player, number>;
-  boosterTurns?: Record<Player, number>;
   immobilizedMoves?: Record<Player, number>;
   capsuleMeteors: Record<Player, number>;
   turnCount: number;
@@ -250,7 +249,6 @@ export function initialGameState(
     shield: { red: false, blue: false, green: false, yellow: false },
     shieldTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     boosterMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
-    boosterTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     immobilizedMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
     capsuleMeteors: { red: 0, blue: 0, green: 0, yellow: 0 },
     turnCount: 0,
@@ -379,9 +377,9 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
         !activeObstacles(state).some((obstacle) => samePos(obstacle, target)) &&
         !activePulseDevices(state).some((device) => samePos(device, target));
       if (!legal) {
-        const canJumpMeteor = maxSteps > 1 && step === 1 &&
-          (state.meteors.some((meteor) => samePos(meteor, target)) || activePulseDevices(state).some((device) => samePos(device, target)));
-        if (canJumpMeteor) continue;
+        const canJumpObstacle = maxSteps > 1 && step === 1 &&
+          (state.meteors.some((meteor) => samePos(meteor, target)) || activeObstacles(state).some((obstacle) => samePos(obstacle, target)));
+        if (canJumpObstacle) continue;
         break;
       }
       const mid = Math.floor(state.size / 2);
@@ -419,7 +417,6 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.itemHands ?? {}),
     JSON.stringify(state.shield ?? {}),
     JSON.stringify(state.boosterMoves ?? {}),
-    JSON.stringify(state.boosterTurns ?? {}),
     JSON.stringify(state.capsuleMeteors ?? {}),
     state.bonusMove ? "bonus" : "normal",
   ].join("/");
@@ -428,18 +425,6 @@ function stateKey(state: GameState, nextTurn: Player) {
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
   const shieldTurns = Object.fromEntries(
     PLAYER_ORDER.map((player) => [player, Math.max(0, (draft.shieldTurns?.[player] ?? 0) - 1)]),
-  ) as Record<Player, number>;
-  // BOOSTER also expires after 1 round even if never used, so getting
-  // PULSE-locked or otherwise stalled for a full round burns the charge
-  // instead of banking it indefinitely for a free move once unlocked.
-  const boosterTurns = Object.fromEntries(
-    PLAYER_ORDER.map((player) => [player, Math.max(0, (draft.boosterTurns?.[player] ?? 0) - 1)]),
-  ) as Record<Player, number>;
-  const boosterMoves = Object.fromEntries(
-    PLAYER_ORDER.map((player) => [
-      player,
-      boosterTurns[player] > 0 ? (draft.boosterMoves?.[player] ?? 0) : 0,
-    ]),
   ) as Record<Player, number>;
   const obstacles = activeObstacles(draft)
     .map((obstacle) => obstacle.turns === -1
@@ -455,8 +440,6 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     ...draft,
     shieldTurns,
     shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, shieldTurns[p] > 0])) as Record<Player, boolean>,
-    boosterTurns,
-    boosterMoves,
     obstacles,
     pulseDevices,
   };
@@ -573,10 +556,11 @@ export function applyMove(state: GameState, target: Pos): GameState {
     throw new Error("そのマスへは移動できません");
   }
   const mid = Math.floor(state.size / 2);
+  const origin = state.probes[state.turn];
+  const moveSteps = Math.abs(target.r - origin.r) + Math.abs(target.c - origin.c);
   const probes = { ...state.probes, [state.turn]: target };
-  // BOOSTER is consumed by the very next move regardless of how many squares
-  // that move actually covers (a 1-square move still spends the charge).
-  if ((state.boosterMoves?.[state.turn] ?? 0) > 0) {
+  // BOOSTER is only consumed when its 2-square jump is actually used.
+  if (moveSteps > 1 && (state.boosterMoves?.[state.turn] ?? 0) > 0) {
     state = {
       ...state,
       boosterMoves: {
@@ -769,17 +753,6 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
       ...state,
       itemHands,
       boosterMoves: { ...state.boosterMoves, [player]: gameBalance(state).boosterUses },
-      boosterTurns: {
-        red: state.boosterTurns?.red ?? 0,
-        blue: state.boosterTurns?.blue ?? 0,
-        green: state.boosterTurns?.green ?? 0,
-        yellow: state.boosterTurns?.yellow ?? 0,
-        // +1 versus SHIELD's formula: the activation turn's own finishTurn
-        // call "spends" one tick immediately, and BOOSTER (unlike SHIELD)
-        // still needs to survive through the owner's own next turn so a
-        // normal, unobstructed player still gets to use it.
-        [player]: activePlayers(state).length + 1,
-      },
       log,
     }, `${playerName(player)}：BOOSTERを起動`);
   }

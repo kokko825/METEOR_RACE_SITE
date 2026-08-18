@@ -127,45 +127,52 @@ assert.ok(!boosterCoreMoves.some((move) => samePos(move, { r: 6, c: 7 })), "BOOS
 boosterCore = applyMove(boosterCore, { r: 7, c: 7 });
 assert.equal(boosterCore.winner, "red", "entering CORE with BOOSTER wins the game");
 
-let boosterExpiry = initialGameState(15, "red", 2, false, 0, [], "item");
-boosterExpiry = {
-  ...boosterExpiry,
+let boosterSingleStep = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterSingleStep = {
+  ...boosterSingleStep,
   phase: "move",
   turnCount: 2,
-  probes: { ...boosterExpiry.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
-  boosterMoves: { ...boosterExpiry.boosterMoves, red: 1 },
+  probes: { ...boosterSingleStep.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
+  boosterMoves: { ...boosterSingleStep.boosterMoves, red: 1 },
 };
-boosterExpiry = applyMove(boosterExpiry, { r: 9, c: 7 });
-assert.equal(boosterExpiry.boosterMoves.red, 0, "BOOSTER is spent by the very next move, even a single-square one");
-assert.ok(!legalMoves(boosterExpiry).some((move) => distance(boosterExpiry.probes.red, move) > 1), "BOOSTER no longer grants extended range after it has been spent");
+boosterSingleStep = applyMove(boosterSingleStep, { r: 9, c: 7 });
+assert.equal(boosterSingleStep.boosterMoves.red, 1, "a single-square move does not spend the BOOSTER charge");
 
-let boosterSurvives = initialGameState(15, "red", 2, false, 0, [], "item");
-boosterSurvives = {
-  ...boosterSurvives,
+let boosterTwoStep = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterTwoStep = {
+  ...boosterTwoStep,
+  phase: "move",
+  turnCount: 2,
+  probes: { ...boosterTwoStep.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
+  boosterMoves: { ...boosterTwoStep.boosterMoves, red: 1 },
+};
+boosterTwoStep = applyMove(boosterTwoStep, { r: 8, c: 7 });
+assert.equal(boosterTwoStep.boosterMoves.red, 0, "using the full 2-square jump spends the BOOSTER charge");
+assert.ok(!legalMoves(boosterTwoStep).some((move) => distance(boosterTwoStep.probes.red, move) > 1), "BOOSTER no longer grants extended range after it has been spent");
+
+let boosterNoExpiry = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterNoExpiry = {
+  ...boosterNoExpiry,
   phase: "place",
   turnCount: 2,
   itemHands: { red: ["booster"], blue: [] },
 };
-boosterSurvives = applyUseItem(boosterSurvives, "booster");
-assert.equal(boosterSurvives.turn, "blue", "using BOOSTER ends the turn");
-assert.equal(boosterSurvives.boosterMoves.red, 1, "the charge is granted immediately");
-boosterSurvives = finishTurn(boosterSurvives, "blue passes");
-assert.equal(boosterSurvives.turn, "red", "back to the owner's turn");
-assert.equal(boosterSurvives.boosterMoves.red, 1, "BOOSTER survives through the opponent's single turn to the owner's own next turn");
+boosterNoExpiry = applyUseItem(boosterNoExpiry, "booster");
+assert.equal(boosterNoExpiry.boosterMoves.red, 1, "the charge is granted immediately");
+for (let round = 0; round < 6; round += 1) {
+  boosterNoExpiry = finishTurn(boosterNoExpiry, "pass");
+}
+assert.equal(boosterNoExpiry.boosterMoves.red, 1, "BOOSTER no longer expires with elapsed turns — only actually using the 2-square jump spends it");
 
-let boosterLockedOut = initialGameState(15, "red", 2, false, 0, [], "item");
-boosterLockedOut = {
-  ...boosterLockedOut,
-  phase: "place",
-  turnCount: 2,
-  itemHands: { red: ["booster"], blue: [] },
+let boosterJumpsHolo = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterJumpsHolo = {
+  ...boosterJumpsHolo,
+  phase: "move",
+  probes: { ...boosterJumpsHolo.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
+  obstacles: [{ r: 9, c: 7, owner: "blue", id: 90, turns: 4 }],
+  boosterMoves: { ...boosterJumpsHolo.boosterMoves, red: 1 },
 };
-boosterLockedOut = applyUseItem(boosterLockedOut, "booster");
-boosterLockedOut = finishTurn(boosterLockedOut, "blue passes");
-assert.equal(boosterLockedOut.boosterMoves.red, 1, "BOOSTER is still available when the owner's own turn arrives");
-boosterLockedOut = finishTurn(boosterLockedOut, "red is PULSE-locked and cannot move this turn");
-assert.equal(boosterLockedOut.turn, "blue");
-assert.equal(boosterLockedOut.boosterMoves.red, 0, "BOOSTER expires once the owner's own turn passes without using it (e.g. a PULSE lock)");
+assert.ok(legalMoves(boosterJumpsHolo).some((move) => samePos(move, { r: 8, c: 7 })), "BOOSTER can jump over a HOLO obstacle to an empty landing cell");
 
 let gravityGame = initialGameState(15, "red", 4, false, 0, [], "item");
 gravityGame = {
