@@ -1759,7 +1759,7 @@ function Game() {
                       player={probe}
                       teamMode={isTeamVariant(game.variant)}
                       isSelf={probe === selfPlayer}
-                      shield={Boolean(game.shield?.[probe])}
+                      shieldCharges={game.shieldCharges?.[probe] ?? 0}
                       boost={game.boosterMoves?.[probe] ?? 0}
                       rotation={
                         viewR === mid && viewC === mid
@@ -2432,7 +2432,7 @@ function ProbeToken({
   push,
   teamMode = false,
   isSelf = false,
-  shield = false,
+  shieldCharges = 0,
   boost = 0,
 }: {
   player: Player;
@@ -2440,7 +2440,7 @@ function ProbeToken({
   push?: { from: Pos; dr: number; dc: number };
   teamMode?: boolean;
   isSelf?: boolean;
-  shield?: boolean;
+  shieldCharges?: number;
   boost?: number;
 }) {
   return (
@@ -2455,9 +2455,9 @@ function ProbeToken({
           : undefined
       }
     >
-      {(shield || boost > 0) && (
-        <span className="probe-effects" aria-label={`${shield ? "シールド1 " : ""}${boost > 0 ? `ブースト${boost}` : ""}`}>
-          {shield && <span className="shield-effect"><b>1</b></span>}
+      {(shieldCharges > 0 || boost > 0) && (
+        <span className="probe-effects" aria-label={`${shieldCharges > 0 ? `シールド${shieldCharges} ` : ""}${boost > 0 ? `ブースト${boost}` : ""}`}>
+          {shieldCharges > 0 && <span className="shield-effect"><b>{shieldCharges}</b></span>}
           {boost > 0 && <span className="boost-effect"><i /><i /><b>{boost}</b></span>}
         </span>
       )}
