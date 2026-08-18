@@ -21,7 +21,12 @@ type RoomRow = {
   status: string;
 };
 
+// A Worker isolate handles many requests in a row (e.g. every 500ms room-poll
+// tick from each connected client), so memoize this instead of re-running the
+// idempotent CREATE TABLE/INDEX statements on every single request.
+let schemaEnsured = false;
 async function ensureSchema() {
+  if (schemaEnsured) return;
   await env.DB.batch([
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS game_rooms (
       code TEXT PRIMARY KEY,
@@ -39,6 +44,7 @@ async function ensureSchema() {
     )`),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS game_rooms_updated_idx ON game_rooms(updated_at)"),
   ]);
+  schemaEnsured = true;
 }
 
 async function publishedBalance() {
@@ -174,10 +180,9 @@ export async function POST(request: Request) {
     setupActor?: Player;
     ranked?: boolean;
   };
-  const liveBalance = await publishedBalance();
-
   if (body.action === "create") {
     if (!(await withinRateLimit(request, "rooms-create", 10, 300))) return rateLimitedResponse();
+    const liveBalance = await publishedBalance();
     const createRanked = Boolean(body.ranked) && isRankedOpen();
     const createVariant: GameVariant = createRanked
       ? (body.variant === "item" ? "item" : "classic")
@@ -372,6 +377,7 @@ export async function POST(request: Request) {
     if (body.version !== room.version) {
       return json({ error: "盤面が更新されました", room: roomPayload(room, email) }, 409);
     }
+    const liveBalance = await publishedBalance();
     const previous = JSON.parse(room.state_json);
     const memberEmails = [
       room.host_email,
@@ -484,6 +490,7 @@ export async function POST(request: Request) {
 
   if (body.action === "rematch") {
     if (room.status !== "finished") return json({ error: "対局終了後に再戦できます" }, 409);
+    const liveBalance = await publishedBalance();
     const previous = JSON.parse(room.state_json);
     const players = previous.players?.length ?? room.max_players;
     const playerList = PLAYER_ORDER.slice(0, players);
@@ -676,14 +683,18 @@ export async function POST(request: Request) {
         await applyDuelRatingChange(identity, finishedVariant, ratingDelta(finishedVariant, winner, finishOrder, seatPlayer));
       }
     }
+    const nextStateJson = JSON.stringify(nextState);
     const result = await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = ?, status = ?, updated_at = ? WHERE code = ? AND version = ?",
     )
-      .bind(JSON.stringify(nextState), nextVersion, status, Date.now(), code, room.version)
+      .bind(nextStateJson, nextVersion, status, Date.now(), code, room.version)
       .run();
     if (!result.meta.changes) return json({ error: "盤面が更新されました" }, 409);
-    room = await roomByCode(code);
-    return json({ ...roomPayload(room!, email), effect });
+    // Every field besides state_json/version/status is unchanged by a game
+    // action, so build the response from what we already have instead of
+    // spending another D1 round-trip re-reading the row we just wrote.
+    const updatedRoom: RoomRow = { ...room, state_json: nextStateJson, version: nextVersion, status };
+    return json({ ...roomPayload(updatedRoom, email), effect });
   } catch (error) {
     room = await roomByCode(code);
     return json(

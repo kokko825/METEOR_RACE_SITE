@@ -1,11 +1,17 @@
 import { env } from "cloudflare:workers";
 
+// A Worker isolate stays warm across many requests, so this only costs a
+// round-trip once per isolate instead of on every single rate-limit check
+// (which would otherwise mean one extra D1 write per 500ms room-poll tick).
+let schemaEnsured = false;
 async function ensureRateLimitSchema() {
+  if (schemaEnsured) return;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS rate_limits (
     bucket_key TEXT PRIMARY KEY,
     window_start INTEGER NOT NULL,
     count INTEGER NOT NULL
   )`).run();
+  schemaEnsured = true;
 }
 
 function clientKey(request: Request): string {
