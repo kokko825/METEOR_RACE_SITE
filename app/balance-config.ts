@@ -3,7 +3,7 @@ export type BalanceConfig = {
   meteorLargeStart: number;
   itemHandTotal: number;
   itemSameMax: number;
-  shieldRounds: number;
+  shieldHitCapacity: number;
   boosterUses: number;
   holoRounds: number;
   holoUnlimited: number;
@@ -23,7 +23,7 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   meteorLargeStart: 1,
   itemHandTotal: 3,
   itemSameMax: 2,
-  shieldRounds: 1,
+  shieldHitCapacity: 2,
   boosterUses: 1,
   holoRounds: 2,
   holoUnlimited: 0,
@@ -43,7 +43,7 @@ export const BALANCE_FIELDS = [
   { key: "meteorLargeStart", externalKey: "meteor.large.start", label: "大メテオ初期数", min: 0, max: 3, unit: "個" },
   { key: "itemHandTotal", externalKey: "item.hand.total", label: "アイテム持込総数", min: 1, max: 6, unit: "個" },
   { key: "itemSameMax", externalKey: "item.hand.same_max", label: "同一アイテム上限", min: 1, max: 3, unit: "個" },
-  { key: "shieldRounds", externalKey: "item.shield.rounds", label: "シールド継続", min: 1, max: 3, unit: "巡" },
+  { key: "shieldHitCapacity", externalKey: "item.shield.hit_capacity", label: "シールド耐久", min: 1, max: 4, unit: "回" },
   { key: "boosterUses", externalKey: "item.booster.uses", label: "ブースター使用回数", min: 1, max: 99, unit: "回" },
   { key: "holoRounds", externalKey: "item.holo.rounds", label: "お邪魔継続", min: 1, max: 99, unit: "巡" },
   { key: "holoUnlimited", externalKey: "item.holo.unlimited", label: "ホロメテオ無制限", min: 0, max: 1, unit: "0=OFF / 1=ON" },
@@ -76,7 +76,7 @@ export function balanceWarnings(input?: Partial<BalanceConfig> | null): string[]
   if (value.aiRetreatPenalty < 70) warnings.push("後退への減点が低く、通常戦で無駄な後方移動が増える可能性があります。");
   if (value.aiCreativity > 45) warnings.push("行動の揺らぎが大きく、明確な好手を選ばない場面が増える可能性があります。");
   if (value.rankedGravityRounds > 8) warnings.push("軌道収束の間隔が長く、ランク戦の停滞防止が弱くなります。");
-  if (value.shieldRounds > 2) warnings.push("SHIELDが長く、CORE直前の防御が強すぎる可能性があります。");
+  if (value.shieldHitCapacity > 3) warnings.push("SHIELDの耐久が高く、CORE直前の防御が強すぎる可能性があります。");
   if (value.itemHandTotal > 4) warnings.push("持ち込みアイテムが多く、妨害の連続使用が増える可能性があります。");
   return warnings;
 }

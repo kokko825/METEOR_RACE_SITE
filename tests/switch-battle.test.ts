@@ -16,6 +16,7 @@ import {
   initialGameState,
   legalMoves,
   samePos,
+  distance,
   type GameState,
   type ItemKind,
 } from "../app/game-rules";
@@ -54,12 +55,36 @@ shieldGame = {
   turnCount: 2,
   probes: { ...shieldGame.probes, red: { r: 7, c: 6 }, blue: { r: 2, c: 7 } },
   itemHands: { red: ["shield"], blue: [] },
+  inventory: { ...shieldGame.inventory, blue: { small: 5, large: 2 } },
 };
 shieldGame = applyUseItem(shieldGame, "shield");
 assert.equal(shieldGame.turn, "blue");
-assert.equal(shieldGame.shieldTurns?.red, 1, "shield lasts through every opponent in one round");
+assert.equal(shieldGame.shieldCharges?.red, 2, "SHIELD starts with two absorbable hits");
 const shielded = applyMeteor({ ...shieldGame, phase: "place" }, { r: 7, c: 5 }, "small").state;
 assert.ok(samePos(shielded.probes.red, { r: 7, c: 6 }), "shield cancels one square of blast movement");
+assert.equal(shielded.shieldCharges?.red, 1, "a normal hit consumes one shield charge");
+assert.equal(shielded.shield.red, true, "shield survives after absorbing one normal hit");
+const shieldedAgain = applyMeteor({ ...shielded, phase: "place", turn: "blue" }, { r: 6, c: 6 }, "small").state;
+assert.ok(samePos(shieldedAgain.probes.red, { r: 7, c: 6 }), "the remaining charge blocks a second normal hit");
+assert.equal(shieldedAgain.shieldCharges?.red, 0, "a second normal hit exhausts SHIELD");
+assert.equal(shieldedAgain.shield.red, false, "SHIELD is gone after two normal hits");
+const unshieldedHit = applyMeteor({ ...shieldedAgain, phase: "place", turn: "blue" }, { r: 8, c: 7 }, "small").state;
+assert.ok(!samePos(unshieldedHit.probes.red, { r: 7, c: 6 }), "a third hit pushes red once SHIELD is exhausted");
+
+let bigHitShield = initialGameState(15, "red", 2, false, 0, [], "item");
+bigHitShield = {
+  ...bigHitShield,
+  phase: "place",
+  turnCount: 2,
+  probes: { ...bigHitShield.probes, red: { r: 7, c: 6 }, blue: { r: 2, c: 7 } },
+  itemHands: { red: ["shield"], blue: [] },
+};
+bigHitShield = applyUseItem(bigHitShield, "shield");
+assert.equal(bigHitShield.shieldCharges?.red, 2);
+const afterBigHit = applyMeteor({ ...bigHitShield, phase: "place" }, { r: 7, c: 5 }, "large").state;
+assert.ok(samePos(afterBigHit.probes.red, { r: 7, c: 6 }), "SHIELD fully blocks a close-range large-meteor blast");
+assert.equal(afterBigHit.shieldCharges?.red, 0, "a close-range large-meteor hit consumes both charges at once");
+assert.equal(afterBigHit.shield.red, false, "SHIELD breaks immediately from a close-range large-meteor hit");
 
 let blastGame = initialGameState(15, "red", 2, false, 0, [], "item");
 blastGame = {
@@ -125,6 +150,18 @@ assert.ok(boosterCoreMoves.some((move) => samePos(move, { r: 7, c: 7 })), "BOOST
 assert.ok(!boosterCoreMoves.some((move) => samePos(move, { r: 6, c: 7 })), "BOOSTER movement stops at CORE");
 boosterCore = applyMove(boosterCore, { r: 7, c: 7 });
 assert.equal(boosterCore.winner, "red", "entering CORE with BOOSTER wins the game");
+
+let boosterExpiry = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterExpiry = {
+  ...boosterExpiry,
+  phase: "move",
+  turnCount: 2,
+  probes: { ...boosterExpiry.probes, red: { r: 10, c: 7 }, blue: { r: 2, c: 2 } },
+  boosterMoves: { ...boosterExpiry.boosterMoves, red: 1 },
+};
+boosterExpiry = applyMove(boosterExpiry, { r: 9, c: 7 });
+assert.equal(boosterExpiry.boosterMoves.red, 0, "BOOSTER is spent by the very next move, even a single-square one");
+assert.ok(!legalMoves(boosterExpiry).some((move) => distance(boosterExpiry.probes.red, move) > 1), "BOOSTER no longer grants extended range after it has been spent");
 
 let gravityGame = initialGameState(15, "red", 4, false, 0, [], "item");
 gravityGame = {
@@ -250,9 +287,10 @@ durationAudit = {
   itemHands: { red: ["shield"], blue: [], yellow: [], green: [] },
 };
 durationAudit = applyUseItem(durationAudit, "shield");
-assert.equal(durationAudit.shieldTurns?.red, 3, "one SHIELD round covers the other three players in a four-player match");
+assert.equal(durationAudit.shieldCharges?.red, 2, "SHIELD starts with two absorbable hits regardless of player count");
 durationAudit = finishTurn(finishTurn(finishTurn(durationAudit)));
-assert.equal(durationAudit.shield.red, false, "SHIELD expires when the owner receives the next turn, independent of seat order");
+assert.equal(durationAudit.shield.red, true, "SHIELD no longer expires from the passage of turns alone");
+assert.equal(durationAudit.shieldCharges?.red, 2, "SHIELD charges are untouched while nothing hits the owner");
 
 let pulseDuration = initialGameState(15, "red", 4, false, 0, [], "item");
 pulseDuration = {
