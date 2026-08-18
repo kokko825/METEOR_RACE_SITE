@@ -139,6 +139,34 @@ boosterExpiry = applyMove(boosterExpiry, { r: 9, c: 7 });
 assert.equal(boosterExpiry.boosterMoves.red, 0, "BOOSTER is spent by the very next move, even a single-square one");
 assert.ok(!legalMoves(boosterExpiry).some((move) => distance(boosterExpiry.probes.red, move) > 1), "BOOSTER no longer grants extended range after it has been spent");
 
+let boosterSurvives = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterSurvives = {
+  ...boosterSurvives,
+  phase: "place",
+  turnCount: 2,
+  itemHands: { red: ["booster"], blue: [] },
+};
+boosterSurvives = applyUseItem(boosterSurvives, "booster");
+assert.equal(boosterSurvives.turn, "blue", "using BOOSTER ends the turn");
+assert.equal(boosterSurvives.boosterMoves.red, 1, "the charge is granted immediately");
+boosterSurvives = finishTurn(boosterSurvives, "blue passes");
+assert.equal(boosterSurvives.turn, "red", "back to the owner's turn");
+assert.equal(boosterSurvives.boosterMoves.red, 1, "BOOSTER survives through the opponent's single turn to the owner's own next turn");
+
+let boosterLockedOut = initialGameState(15, "red", 2, false, 0, [], "item");
+boosterLockedOut = {
+  ...boosterLockedOut,
+  phase: "place",
+  turnCount: 2,
+  itemHands: { red: ["booster"], blue: [] },
+};
+boosterLockedOut = applyUseItem(boosterLockedOut, "booster");
+boosterLockedOut = finishTurn(boosterLockedOut, "blue passes");
+assert.equal(boosterLockedOut.boosterMoves.red, 1, "BOOSTER is still available when the owner's own turn arrives");
+boosterLockedOut = finishTurn(boosterLockedOut, "red is PULSE-locked and cannot move this turn");
+assert.equal(boosterLockedOut.turn, "blue");
+assert.equal(boosterLockedOut.boosterMoves.red, 0, "BOOSTER expires once the owner's own turn passes without using it (e.g. a PULSE lock)");
+
 let gravityGame = initialGameState(15, "red", 4, false, 0, [], "item");
 gravityGame = {
   ...gravityGame,

@@ -119,9 +119,15 @@ function positionValue(state: GameState, player: Player) {
         (state.shield?.[p] ? 26 : 0) +
         (state.boosterMoves?.[p] ?? 0) * 8) *
       (sign > 0 ? style.resources : style.denial);
-    if (state.phase === "move" && state.turn === p) {
-      score += sign * Math.min(legalMoves(state, p).length, 5) * 3;
-    }
+    // legalMoves(state, p) is well-defined for any player regardless of whose
+    // turn it actually is, so score everyone's current mobility every time —
+    // not just when p happens to be state.turn. The old guard meant a rival
+    // immobilized by PULSE/HOLO only registered as "bad for them" on the
+    // exact snapshot where it was already their move phase; in any lookahead
+    // where the turn had moved on (the common case for PULSE, whose whole
+    // point is to matter on a *later* turn), a fully locked rival scored
+    // identically to a fully free one.
+    score += sign * Math.min(legalMoves(state, p).length, 5) * 3;
   }
 
   // Board meteors are useful only when they shape a route or are plausibly recoverable.
