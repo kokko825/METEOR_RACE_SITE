@@ -5,7 +5,6 @@ import {
   applyMove,
   applyObstacle,
   applyPass,
-  applySetupSwitch,
   activePlayers,
   boardToViewDelta,
   coreWinner,
@@ -253,48 +252,9 @@ console.log("game-rules: all checks passed");
 }
 
 {
-  let item = initialGameState(15, "red", 2, false, 0, [], "item");
+  const item = initialGameState(15, "red", 2, false, 0, [], "item");
   assert.equal(item.size, 15);
-  assert.equal(item.phase, "setup");
-  assert.equal(item.fieldItems.length, 0, "開始前はアイテムを自動配置しない");
-  assert.throws(() => applySetupSwitch(item, { r: 4, c: 4 }, "shield"), /配置できません/);
-  item = applySetupSwitch(item, { r: 3, c: 3 }, "shield");
-  item = applySetupSwitch(item, { r: 5, c: 5 }, "orbit");
-  assert.equal(item.phase, "setup", "3個を置くまではゲームを開始しない");
-  assert.throws(() => applySetupSwitch(item, { r: 5, c: 5 }, "shield"), /異なる3種類/);
-  item = applySetupSwitch(item, { r: 9, c: 9 }, "pulse");
-  assert.equal(item.phase, "setup", "相手の配置完了を待つ");
-  assert.equal(item.turn, "blue");
-  assert.equal(item.fieldItems.length, 0, "全員確定までは盤上へ公開しない");
-  item = applySetupSwitch(item, { r: 3, c: 3 }, "booster");
-  item = applySetupSwitch(item, { r: 3, c: 7 }, "holo");
-  item = applySetupSwitch(item, { r: 11, c: 7 }, "recall");
-  assert.equal(item.phase, "setup", "重複があればゲームを開始しない");
-  assert.equal(item.turn, "red");
-  assert.deepEqual(item.setupPending?.red, ["shield"]);
-  assert.deepEqual(item.setupPending?.blue, ["booster"]);
-  assert.throws(
-    () => applySetupSwitch(item, { r: 3, c: 3 }, "shield"),
-    /配置できません/,
-    "衝突したマスは同じプレイヤーの再配置候補から除外する",
-  );
-  item = applySetupSwitch(item, { r: 5, c: 9 }, "shield");
-  assert.equal(item.turn, "blue", "重複した相手にも再配置ターンを渡す");
-  item = applySetupSwitch(item, { r: 9, c: 5 }, "booster");
-  assert.equal(item.phase, "move", "全員の重複解消後にゲームを開始する");
-  assert.equal(item.fieldItems.length, 6);
-  item.turnCount = 2;
-  item.probes.red = { r: 4, c: 3 };
-  item.fieldItems = [{ r: 3, c: 3, kind: "booster", id: 1 }];
-  item = applyMove(item, { r: 3, c: 3 });
-  assert.equal(item.boosterMoves.red, 1);
-  assert.equal(item.fieldItems.length, 0, "取得直後は盤上から消える");
-  assert.equal(item.pendingItemDrops?.length, 1, "2〜4ターン後の再出現を予約する");
-  item.phase = "move";
-  assert.ok(legalMoves(item).some((move) => samePos(move, { r: 3, c: 5 })));
-  for (let turn = 0; turn < 5; turn += 1) item = finishTurn(item);
-  assert.equal(item.fieldItems.length, 1, "予約したアイテムが別の場所へ再出現する");
-  assert.ok(!samePos(item.fieldItems[0], { r: 3, c: 3 }), "取得マスには固定再出現しない");
+  assert.equal(item.phase, "setup", "アイテム戦はARSENAL選択から始まる");
 }
 
 {
@@ -323,27 +283,6 @@ for (const boardSize of [11, 13, 15]) {
   const item = initialGameState(boardSize, "red", 2, false, 0, [], "item");
   assert.equal(item.size, boardSize, `item battle supports ${boardSize}x${boardSize}`);
   assert.equal(item.phase, "setup");
-}
-
-{
-  let item = initialGameState(15, "red", 2, false, 0, [], "item");
-  item.turnCount = 2;
-  item.phase = "move";
-  item.probes.red = { r: 4, c: 3 };
-  item.boosterMoves.red = 2;
-  item.fieldItems = [
-    { r: 4, c: 4, kind: "shield", id: 1 },
-    { r: 4, c: 5, kind: "booster", id: 2 },
-  ];
-  item = applyMove(item, { r: 4, c: 5 });
-  assert.equal(item.shield.red, true, "2マス移動の途中でシールドを取得する");
-  assert.equal(item.boosterMoves.red, 3, "着地点のブースターも連続取得する");
-  assert.equal(item.boosterMoves.red, 3, "連続取得したブースターをすべて保持する");
-  assert.equal(item.fieldItems.length, 0, "2個とも取得直後は盤上から消える");
-  assert.equal(item.pendingItemDrops?.length, 2, "2個とも独立して再出現を予約する");
-  for (let turn = 0; turn < 5; turn += 1) item = finishTurn(item);
-  assert.equal(item.fieldItems.length, 2, "2個とも2〜4ターン後に再出現する");
-  assert.ok(item.fieldItems.length <= 6, "盤上のアイテムは最大6個");
 }
 
 {

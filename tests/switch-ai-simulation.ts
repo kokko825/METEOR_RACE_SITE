@@ -5,12 +5,12 @@ import { applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyOrbitSw
 const itemUses: Record<string, number> = {};
 const itemUsesByPlayer: Record<string, Record<string, number>> = {};
 const setupChoices: Record<string, Record<string, number>> = {};
-const orbitEffects = { resolutions: 0, zeroRelationshipChange: 0, itemAccessImproved: 0, meteorPressureImproved: 0 };
+const orbitEffects = { resolutions: 0, zeroRelationshipChange: 0, meteorPressureImproved: 0 };
 const manhattan = (a: { r: number; c: number }, b: { r: number; c: number }) =>
   Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
 function orbitRelations(state: GameState) {
   const players = ["red", "blue", "green", "yellow"].slice(0, state.playerCount) as GameState["turn"][];
-  const assets = [...state.fieldItems, ...state.meteors, ...(state.obstacles ?? [])];
+  const assets = [...state.meteors, ...(state.obstacles ?? [])];
   return players.flatMap((player) => assets.map((asset) => manhattan(state.probes[player], asset)));
 }
 function step(state: GameState, random: () => number): GameState {
@@ -39,25 +39,18 @@ function step(state: GameState, random: () => number): GameState {
       .slice(0, state.playerCount)
       .filter((candidate) => candidate !== player);
     const beforeRelations = orbitRelations(state);
-    const beforeItem = state.fieldItems.length
-      ? Math.min(...state.fieldItems.map((item) => manhattan(state.probes[player], item)))
-      : 99;
     const ownedBefore = state.meteors.filter((meteor) => meteor.owner === player);
     const beforeMeteor = ownedBefore.length && rivals.length
       ? Math.min(...ownedBefore.flatMap((meteor) => rivals.map((rival) => manhattan(state.probes[rival], meteor))))
       : 99;
     const after = applyOrbitSwitch(state, d.ring, d.clockwise);
     const afterRelations = orbitRelations(after);
-    const afterItem = after.fieldItems.length
-      ? Math.min(...after.fieldItems.map((item) => manhattan(after.probes[player], item)))
-      : 99;
     const ownedAfter = after.meteors.filter((meteor) => meteor.owner === player);
     const afterMeteor = ownedAfter.length && rivals.length
       ? Math.min(...ownedAfter.flatMap((meteor) => rivals.map((rival) => manhattan(after.probes[rival], meteor))))
       : 99;
     orbitEffects.resolutions += 1;
     if (beforeRelations.every((value, index) => value === afterRelations[index])) orbitEffects.zeroRelationshipChange += 1;
-    if (afterItem < beforeItem) orbitEffects.itemAccessImproved += 1;
     if (afterMeteor < beforeMeteor) orbitEffects.meteorPressureImproved += 1;
     return after;
   }

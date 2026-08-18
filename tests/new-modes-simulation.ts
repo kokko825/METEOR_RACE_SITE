@@ -42,7 +42,6 @@ function play(variant: GameVariant, seed: number) {
     ["red", "blue", "green", "yellow"],
     variant,
   );
-  let pickups = 0;
   for (let action = 0; action < 450 && state.phase !== "over"; action += 1) {
     if (state.phase === "move") {
       const moves = legalMoves(state);
@@ -53,16 +52,11 @@ function play(variant: GameVariant, seed: number) {
         continue;
       }
       const mid = Math.floor(state.size / 2);
-      const beforeItemIds = new Set(state.fieldItems.map((item) => item.id));
       moves.sort((a, b) => {
-        const score = (p: Pos) =>
-          Math.abs(p.r - mid) +
-          Math.abs(p.c - mid) -
-          (state.fieldItems.some((item) => samePos(item, p)) ? 5 : 0);
+        const score = (p: Pos) => Math.abs(p.r - mid) + Math.abs(p.c - mid);
         return score(a) - score(b);
       });
       state = applyMove(state, moves[(seed + action) % Math.min(2, moves.length)]);
-      if (state.fieldItems.some((item) => !beforeItemIds.has(item.id))) pickups += 1;
       continue;
     }
 
@@ -88,7 +82,7 @@ function play(variant: GameVariant, seed: number) {
     state = applyMeteor(state, target, capsule ? "small" : size, capsule).state;
   }
   assert.equal(state.phase, "over", `${variant} simulation must terminate`);
-  return { winner: state.winner, turns: state.turnCount, pickups };
+  return { winner: state.winner, turns: state.turnCount };
 }
 
 for (const variant of ["team", "item"] as const) {
@@ -100,8 +94,6 @@ for (const variant of ["team", "item"] as const) {
         result.winner !== "draw" && result.winner !== null,
     );
     assert.ok(teamWins.every((result) => teamOf(result.winner) === "sun" || teamOf(result.winner) === "moon"));
-  } else {
-    assert.ok(results.some((result) => result.pickups > 0), "item matches must collect items");
   }
   const average = results.reduce((sum, result) => sum + result.turns, 0) / results.length;
   console.log(variant, { games: results.length, averageTurns: average.toFixed(1) });

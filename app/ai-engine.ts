@@ -76,32 +76,10 @@ function terminalValue(state: GameState, player: Player) {
 }
 
 function personality(player: Player) {
-  if (player === "red") return { progress: 1.04, denial: 1, items: 1, resources: 1 };
-  if (player === "blue") return { progress: 1.02, denial: 1.04, items: 1, resources: 1.01 };
-  if (player === "green") return { progress: 1.02, denial: 1, items: 1.05, resources: 1 };
-  return { progress: 1.02, denial: 1.02, items: 1, resources: 1.05 };
-}
-
-function itemValue(state: GameState, player: Player, kind: GameState["fieldItems"][number]["kind"]) {
-  if (kind === "shield") return state.shield?.[player] ? 12 : 105;
-  if (kind === "booster") {
-    const remaining = state.boosterMoves?.[player] ?? 0;
-    return remaining >= 2 ? 18 : remaining === 1 ? 58 : 92;
-  }
-  return 78;
-}
-
-function itemsOnMove(state: GameState, move: Pos) {
-  const start = state.probes[state.turn];
-  const steps = distance(start, move);
-  const dr = Math.sign(move.r - start.r);
-  const dc = Math.sign(move.c - start.c);
-  return Array.from({ length: steps }, (_, index) => ({
-    r: start.r + dr * (index + 1),
-    c: start.c + dc * (index + 1),
-  }))
-    .map((cell) => state.fieldItems.find((item) => samePos(item, cell)))
-    .filter((item): item is GameState["fieldItems"][number] => Boolean(item));
+  if (player === "red") return { progress: 1.04, denial: 1, resources: 1 };
+  if (player === "blue") return { progress: 1.02, denial: 1.04, resources: 1.01 };
+  if (player === "green") return { progress: 1.02, denial: 1, resources: 1 };
+  return { progress: 1.02, denial: 1.02, resources: 1.05 };
 }
 
 function positionValue(state: GameState, player: Player) {
@@ -111,12 +89,11 @@ function positionValue(state: GameState, player: Player) {
   const configured = normalizeBalance(state.balance);
   const styleBase =
     players.length === 2 || isItemVariant(state.variant) || isTeamVariant(state.variant)
-      ? { progress: 1, denial: 1, items: 1, resources: 1 }
+      ? { progress: 1, denial: 1, resources: 1 }
       : personality(player);
   const style = {
     progress: styleBase.progress * configured.aiProgressWeight / 100,
     denial: styleBase.denial * configured.aiDenialWeight / 100,
-    items: styleBase.items * configured.aiItemWeight / 100,
     resources: styleBase.resources * configured.aiResourceWeight / 100,
   };
   const friends = players.filter((p) => allied(state, p, player));
@@ -144,19 +121,6 @@ function positionValue(state: GameState, player: Player) {
       (sign > 0 ? style.resources : style.denial);
     if (state.phase === "move" && state.turn === p) {
       score += sign * Math.min(legalMoves(state, p).length, 5) * 3;
-    }
-  }
-
-  if (isItemVariant(state.variant)) {
-    for (const item of state.fieldItems) {
-      const friendReach = Math.min(...friends.map((p) => distance(state.probes[p], item)));
-      const rivalReach = Math.min(...rivals.map((p) => distance(state.probes[p], item)));
-      const value = Math.max(...friends.map((p) => itemValue(state, p, item.kind)));
-      // Nearby items should pull the route toward them, while distant items must not
-      // distract the AI from racing or answering an immediate threat.
-      const proximity = Math.max(0, 5 - friendReach);
-      score +=
-        ((rivalReach - friendReach) * value * 0.12 + proximity * value * 0.08) * style.items;
     }
   }
 
@@ -191,7 +155,6 @@ function placements(state: GameState): Placement[] {
     center,
     ...activePlayers(state).map((player) => state.probes[player]),
     ...state.meteors,
-    ...state.fieldItems,
     ...(state.pulseDevices ?? []),
   ];
   for (const anchor of anchors) {
@@ -215,7 +178,7 @@ function placements(state: GameState): Placement[] {
     }
   }
   // A few deterministic quiet squares preserve surprising long-term setups on 15×15.
-  let quietSeed = ((state.itemSeed ?? 1) + state.turnCount * 97 + state.nextMeteorId * 31) >>> 0;
+  let quietSeed = (state.turnCount * 97 + state.nextMeteorId * 31 + 7) >>> 0;
   for (let index = 0; index < 12; index += 1) {
     quietSeed = (Math.imul(quietSeed, 1664525) + 1013904223) >>> 0;
     const r = quietSeed % state.size;
@@ -521,11 +484,6 @@ function bestPlacement(
 }
 
 function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDifficulty) {
-  const pickedItems = itemsOnMove(state, move);
-  const pickupScore = pickedItems.reduce(
-    (sum, item) => sum + itemValue(state, player, item.kind) * 2,
-    0,
-  );
   const backwardSteps = Math.max(
     0,
     coreDistance({ ...state, probes: { ...state.probes, [player]: move } }, player) -
@@ -546,18 +504,16 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
   if (next.phase === "place" && next.turn === player) {
     const placed = bestPlacement(next, player, difficulty);
     next = placed.choice === "pass" ? applyPass(next) : applyPlacement(next, placed.choice);
-    return placed.value + pickupScore + developmentBonus - retreatPenalty;
+    return placed.value + developmentBonus - retreatPenalty;
   }
   let score = scoreResult(next, player, difficulty);
-  // The item disappears and respawns after a delay, so retain the pickup reward
-  // explicitly instead of relying only on the resulting board position.
-  score += pickupScore + developmentBonus - retreatPenalty;
+  score += developmentBonus - retreatPenalty;
   // A bonus move is deliberately valued as part of the same turn, not as a generic reward.
   if (next.phase === "move" && next.turn === player && next.bonusMove) {
     const continuation = legalMoves(next, player)
       .map((second) => scoreResult(applyMove(next, second), player, difficulty))
       .sort((a, b) => b - a)[0];
-    if (continuation !== undefined) score = continuation + pickupScore + developmentBonus - retreatPenalty;
+    if (continuation !== undefined) score = continuation + developmentBonus - retreatPenalty;
   }
   return score;
 }
@@ -640,7 +596,7 @@ export function chooseAiDecision(
     const pending = state.pendingSwitches?.[0];
     if (!pending) return { type: "skip" };
     const candidateKeys = new Set<string>();
-    const anchors: Pos[] = [centerOf(state), ...activePlayers(state).map((p) => state.probes[p]), ...state.meteors, ...state.fieldItems];
+    const anchors: Pos[] = [centerOf(state), ...activePlayers(state).map((p) => state.probes[p]), ...state.meteors];
     for (const anchor of anchors) for (let dr = -2; dr <= 2; dr += 1) for (let dc = -2; dc <= 2; dc += 1) {
       const r = anchor.r + dr, c = anchor.c + dc;
       if (r >= 0 && c >= 0 && r < state.size && c < state.size) candidateKeys.add(`${r},${c}`);
@@ -710,17 +666,7 @@ export function chooseAiDecision(
       value: scoreMove(state, move, player, difficulty),
     }));
     ranked.sort((a, b) => b.value - a.value);
-    const usefulItemMoves = ranked.filter((entry) =>
-      itemsOnMove(state, entry.choice).some((item) => itemValue(state, player, item.kind) >= 70),
-    );
-    const itemMove = usefulItemMoves[0];
-    const selected =
-      isItemVariant(state.variant) &&
-      Math.abs(ranked[0].value) < 900_000 &&
-      itemMove &&
-      ranked[0].value - itemMove.value <= 120
-        ? itemMove
-        : selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);
+    const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);
     return selected ? { type: "move", target: selected.choice } : { type: "skip" };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];

@@ -138,32 +138,6 @@ button { color: inherit; }
 .cell.legal { background:rgba(99,223,255,.07); }
 .cell.legal:hover { background:rgba(99,223,255,.2); }
 .cell.placeable:hover { background:rgba(255,211,99,.11); }
-.cell.setup-slot { cursor:pointer; isolation:isolate; }
-.cell.setup-slot::before { content:""; position:absolute; inset:12%; z-index:0; border:2px solid currentColor; background:color-mix(in srgb,currentColor 14%,transparent); box-shadow:0 0 10px color-mix(in srgb,currentColor 70%,transparent),inset 0 0 8px color-mix(in srgb,currentColor 24%,transparent); animation:setup-slot-pulse 1.6s ease-in-out infinite; }
-.cell.setup-inner { color:#ff6bda; }.cell.setup-middle { color:#5eeaff; }.cell.setup-outer { color:#ffd363; }
-.setup-slot-label { position:absolute; z-index:2; inset:0; display:grid; place-content:center; pointer-events:none; color:currentColor; line-height:1; text-shadow:0 1px 3px #000; }
-.setup-slot-label b { font-size:clamp(6px,.8vw,9px); letter-spacing:-.04em; }
-.setup-slot-label i { margin-top:2px; font-size:clamp(6px,.7vw,8px); font-style:normal; }
-.cell.setup-rejected { color:#64727a; cursor:not-allowed; }
-.cell.setup-rejected::before { animation:none; background:rgba(30,38,44,.7); box-shadow:none; border-style:dashed; opacity:.7; }
-@keyframes setup-slot-pulse { 50% { filter:brightness(1.4); transform:scale(.92); } }
-.field-item { position:absolute; z-index:4; width:58%; aspect-ratio:1; display:grid; place-items:center; border-radius:50%; font-weight:900; font-size:clamp(8px,1.4vw,17px); color:#fff; box-shadow:0 0 12px currentColor; animation:item-float 1.8s ease-in-out infinite; }
-.field-item.shield { color:#77e9ff; border:1px solid currentColor; background:rgba(28,126,164,.5); }
-.field-item.booster { color:#ffe35e; border:1px solid currentColor; background:rgba(178,112,0,.5); }
-.field-item.capsule { color:#ff8ae8; border:1px solid currentColor; background:rgba(128,33,115,.55); }
-.field-item.holo,.field-item.orbit,.field-item.blast,.field-item.pulse,.field-item.recall,.field-item.gravity { font-size:0; border:1px solid currentColor; }
-.field-item.holo { color:#d77cff; background:rgba(104,35,139,.58); }
-.field-item.orbit { color:#69ffb0; background:rgba(18,112,76,.55); }
-.field-item.blast { color:#ff954f; background:rgba(145,65,20,.55); }
-.field-item.pulse { color:#ff3bd4; background:rgba(130,20,110,.55); }
-.field-item.recall { color:#fff; background:rgba(58,103,135,.65); }
-.field-item.gravity { color:#d6a3ff; background:rgba(83,38,130,.62); }
-.field-item.holo::after { content:"H"; font-size:clamp(8px,1.4vw,17px); }
-.field-item.orbit::after { content:"↻"; font-size:clamp(8px,1.4vw,17px); }
-.field-item.blast::after { content:"✹"; font-size:clamp(8px,1.4vw,17px); }
-.field-item.pulse::after { content:"ϟ"; font-size:clamp(8px,1.4vw,17px); }
-.field-item.recall::after { content:"↩"; font-size:clamp(8px,1.4vw,17px); }
-.field-item.gravity::after { content:"◎"; font-size:clamp(8px,1.4vw,17px); }
 .orbit-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
 .orbit-controls span { display:flex; gap:3px; }
 .orbit-controls button { border:1px solid #69ffb0; background:#0a2630; color:#caffdf; padding:6px; cursor:pointer; }
@@ -219,7 +193,6 @@ button { color: inherit; }
 @keyframes switch-burst { from{opacity:1;transform:scale(.2)} to{opacity:0;transform:scale(7)} }
 .item-status { display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#9fb5c0; font-size:10px; letter-spacing:.08em; }
 .item-status b { color:#fff; border:1px solid rgba(255,255,255,.15); padding:6px 9px; }
-@keyframes item-float { 50% { transform:translateY(-8%); filter:brightness(1.25); } }
 .move-pip { width:22%; aspect-ratio:1; border:1px solid #7fe8ff; border-radius:50%; box-shadow:0 0 9px #52d9ff; opacity:.75; }
 .core { background: radial-gradient(circle, rgba(255,218,111,.24), rgba(255,170,40,.05) 50%, transparent 70%); }
 .core-ring { width:72%; aspect-ratio:1; border:1px solid #e6b951; transform:rotate(45deg); display:grid; place-items:center; box-shadow:0 0 16px rgba(255,211,99,.42), inset 0 0 12px rgba(255,211,99,.2); }

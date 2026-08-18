@@ -571,15 +571,8 @@ function Game() {
 
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
-    const start = game.probes[game.turn];
-    const steps = Math.max(Math.abs(target.r - start.r), Math.abs(target.c - start.c));
-    const dr = Math.sign(target.r - start.r), dc = Math.sign(target.c - start.c);
-    const picked = Array.from({ length: steps }, (_, i) => ({ r: start.r + dr * (i + 1), c: start.c + dc * (i + 1) }))
-      .map((cell) => game.fieldItems.find((item) => samePos(item, cell)))
-      .filter((item): item is GameState["fieldItems"][number] => Boolean(item)).at(-1);
-    if (picked) showSwitchFx(picked.kind, game.turn);
     if (mode === "online") {
-      // Reflect movement and item pickup immediately while the server confirms the action.
+      // Reflect movement immediately while the server confirms the action.
       setGame(applyMove(game, target));
       void submitOnlineAction("move", target);
       return;
@@ -642,10 +635,6 @@ function Game() {
     try {
       const capsule = useCapsule || game.selected === "capsule";
       const resolution = applyMeteor(game, target, chosenSize, capsule);
-      const blastPickup = activePlayers(game)
-        .map((player) => ({ player, item: game.fieldItems.find((item) => samePos(item, resolution.state.probes[player])) }))
-        .find(({ player, item }) => Boolean(item) && !samePos(game.probes[player], resolution.state.probes[player]));
-      if (blastPickup?.item) showSwitchFx(blastPickup.item.kind, blastPickup.player);
       if (mode === "online") {
         setIsAnimating(true);
         setBlastFx({
@@ -1686,23 +1675,9 @@ function Game() {
                     return boardToViewDelta({ r: from.r - r, c: from.c - c }, perspectiveSlot);
                   })()
                 : null;
-              const setupSlot = false;
-              const setupRejected = setupSlot &&
-                (game.setupRejected?.[game.turn] ?? []).some((cell) => samePos(cell, pos));
-              const setupZone = setupSlot
-                ? ((r === 5 || r === 9) && (c === 5 || c === 9)
-                    ? "inner"
-                    : (r === 2 || r === 12) && (c === 2 || c === 12)
-                      ? "outer"
-                      : "middle")
-                : null;
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const meteor = game.meteors.find((m) => samePos(m, pos));
-              const visibleItems = game.phase === "setup"
-                ? (game.setupPlacements?.[game.turn] ?? [])
-                : game.fieldItems;
-              const fieldItem = visibleItems.find((item) => samePos(item, pos));
               const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
               const pulseDevice = (game.pulseDevices ?? []).find((item) => samePos(item, pos));
               const pulseField = activePulseDevices(game).find((device) => distance(device, pos) <= (game.balance?.pulseRadius ?? activeBalance.pulseRadius));
@@ -1721,8 +1696,6 @@ function Game() {
                     placeable ? "placeable" : "",
                     orbitSelecting && activeOrbitRing === orbitRingAt(r, c) ? "orbit-preview" : "",
                     orbitShift ? `orbit-shift ${orbitFx?.clockwise ? "clockwise" : "counterclockwise"}` : "",
-                    setupSlot ? `setup-slot setup-${setupZone}` : "",
-                    setupRejected ? "setup-rejected" : "",
                   ].join(" ")}
                   onClick={() => handleCell(r, c)}
                   style={orbitShift ? ({
@@ -1739,12 +1712,6 @@ function Game() {
                   aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}${pulseDevice ? " 電磁パルス発生装置" : ""}`}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
-                  {setupSlot && (
-                    <span className="setup-slot-label" aria-hidden="true">
-                      <b>{r + 1},{c + 1}</b>
-                      <i>{setupRejected ? "×" : setupZone === "inner" ? "内" : setupZone === "middle" ? "中" : "外"}</i>
-                    </span>
-                  )}
                   {blastFx && samePos(pos, blastFx.target) && (
                     <>
                       {blastFx.stage === "probe" && (
@@ -1787,15 +1754,6 @@ function Game() {
                     />
                   )}
                   {pulseDevice && <PulseDeviceIcon device={pulseDevice} roundsLeft={Math.max(1, Math.ceil(pulseDevice.turns / activePlayers(game).length))} />}
-                  {fieldItem && (
-                    <span className={`field-item ${fieldItem.kind}`} title={fieldItem.kind}>
-                      {fieldItem.kind === "shield"
-                        ? "⬡"
-                        : fieldItem.kind === "booster"
-                          ? "»"
-                          : "●+"}
-                    </span>
-                  )}
                   {probe && (
                     <ProbeToken
                       player={probe}

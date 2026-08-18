@@ -6,7 +6,6 @@ export type GameVariant = "classic" | "team" | "item" | "team-item";
 export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "blast" | "pulse" | "recall" | "gravity";
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
-export type FieldItem = Pos & { kind: ItemKind; id: number };
 export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number };
 export type PulseDevice = Pos & { owner: Player; id: number; turns: number; createdTurnCount?: number };
 export type Inventory = Record<Player, Record<MeteorSize, number>>;
@@ -20,8 +19,6 @@ export type GameState = {
   turn: Player;
   phase: Phase;
   bonusMove: boolean;
-  fieldItems: FieldItem[];
-  pendingItemDrops?: { turns: number }[];
   shield: Record<Player, boolean>;
   shieldTurns?: Record<Player, number>;
   boosterMoves: Record<Player, number>;
@@ -46,16 +43,10 @@ export type GameState = {
   message: string;
   log: string[];
   nextMeteorId: number;
-  nextItemId: number;
   nextPulseDeviceId?: number;
-  itemSeed: number;
   repetitions: Record<string, number>;
   pendingSwitches?: PendingSwitch[];
   switchResume?: "place" | "finish";
-  setupPlacements?: Partial<Record<Player, FieldItem[]>>;
-  setupPending?: Partial<Record<Player, ItemKind[]>>;
-  setupReady?: Player[];
-  setupRejected?: Partial<Record<Player, Pos[]>>;
   itemHands?: Partial<Record<Player, ItemKind[]>>;
   setupConfirmed?: Partial<Record<Player, boolean>>;
   balance?: BalanceConfig;
@@ -101,14 +92,6 @@ export const nextPlayer = (state: GameState, player = state.turn): Player => {
   return players[(players.indexOf(player) + 1) % players.length];
 };
 export const samePos = (a: Pos, b: Pos) => a.r === b.r && a.c === b.c;
-export const SWITCH_SETUP_CELLS_15: Pos[] = [
-  { r: 5, c: 5 }, { r: 5, c: 9 }, { r: 9, c: 5 }, { r: 9, c: 9 },
-  { r: 3, c: 7 }, { r: 7, c: 3 }, { r: 7, c: 11 }, { r: 11, c: 7 },
-  { r: 3, c: 3 }, { r: 3, c: 11 }, { r: 11, c: 3 }, { r: 11, c: 11 },
-  { r: 2, c: 2 }, { r: 2, c: 12 }, { r: 12, c: 2 }, { r: 12, c: 12 },
-];
-export const isSwitchSetupCell = (target: Pos) =>
-  SWITCH_SETUP_CELLS_15.some((cell) => samePos(cell, target));
 export const distance = (a: Pos, b: Pos) =>
   Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
 export const orthogonallyAdjacent = (a: Pos, b: Pos) =>
@@ -139,93 +122,6 @@ function startCells(state: GameState): Pos[] {
 }
 export const meteorName = (size: MeteorSize) => (size === "small" ? "小メテオ" : "大メテオ");
 
-function nextItemRandom(seed: number) {
-  const nextSeed = (Math.imul(seed >>> 0, 1664525) + 1013904223) >>> 0;
-  return { seed: nextSeed, value: nextSeed / 4294967296 };
-}
-
-function randomItemLayout(
-  size: number,
-  probes: Record<Player, Pos>,
-  seed: number,
-): { items: FieldItem[]; seed: number } {
-  const mid = Math.floor(size / 2);
-  const nearbyCells: Pos[] = [];
-  const fallbackCells: Pos[] = [];
-  for (let r = 0; r < size; r += 1) {
-    for (let c = 0; c < size; c += 1) {
-      const p = { r, c };
-      const nearestProbe = Math.min(...PLAYER_ORDER.map((player) => distance(p, probes[player])));
-      if (
-        samePos(p, { r: mid, c: mid }) ||
-        PLAYER_ORDER.some((player) => samePos(p, probes[player]))
-      ) continue;
-      fallbackCells.push(p);
-      if (nearestProbe >= 2 && nearestProbe <= 5) nearbyCells.push(p);
-    }
-  }
-  const kinds: ItemKind[] = ["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"];
-  const items: FieldItem[] = [];
-  let currentSeed = seed;
-  kinds.forEach((kind, index) => {
-    const cells = nearbyCells.length ? nearbyCells : fallbackCells;
-    const random = nextItemRandom(currentSeed);
-    currentSeed = random.seed;
-    const cellIndex = Math.floor(random.value * cells.length);
-    const [cell] = cells.splice(cellIndex, 1);
-    const fallbackIndex = fallbackCells.findIndex((candidate) => samePos(candidate, cell));
-    if (fallbackIndex >= 0) fallbackCells.splice(fallbackIndex, 1);
-    items.push({ ...cell, kind, id: index + 1 });
-  });
-  return { items, seed: currentSeed };
-}
-
-function respawnItem(
-  state: GameState,
-  fieldItems: FieldItem[],
-  probes: Record<Player, Pos>,
-): { fieldItems: FieldItem[]; itemSeed: number; nextItemId: number } {
-  const mid = Math.floor(state.size / 2);
-  const nearbyCells: Pos[] = [];
-  const fallbackCells: Pos[] = [];
-  for (let r = 0; r < state.size; r += 1) {
-    for (let c = 0; c < state.size; c += 1) {
-      const p = { r, c };
-      if (
-        samePos(p, { r: mid, c: mid }) ||
-        activePlayers(state).some((player) => samePos(p, probes[player])) ||
-        state.meteors.some((meteor) => samePos(p, meteor)) ||
-        activeObstacles(state).some((obstacle) => samePos(p, obstacle)) ||
-        activePulseDevices(state).some((device) => samePos(p, device)) ||
-        fieldItems.some((item) => samePos(p, item))
-      ) continue;
-      fallbackCells.push(p);
-      const nearestProbe = Math.min(
-        ...activePlayers(state).map((player) => distance(p, probes[player])),
-      );
-      if (nearestProbe >= 1 && nearestProbe <= 4) nearbyCells.push(p);
-    }
-  }
-  const cells = nearbyCells.length ? nearbyCells : fallbackCells;
-  if (!cells.length) {
-    return {
-      fieldItems,
-      itemSeed: state.itemSeed ?? 1,
-      nextItemId: state.nextItemId ?? 1,
-    };
-  }
-  const kindRandom = nextItemRandom(state.itemSeed ?? 1);
-  const cellRandom = nextItemRandom(kindRandom.seed);
-  const kinds: ItemKind[] = ["shield", "booster", "holo", "orbit", "blast", "pulse"];
-  const kind = kinds[Math.floor(kindRandom.value * kinds.length)];
-  const cell = cells[Math.floor(cellRandom.value * cells.length)];
-  const nextItemId = state.nextItemId ?? 7;
-  return {
-    fieldItems: [...fieldItems, { ...cell, kind, id: nextItemId }],
-    itemSeed: cellRandom.seed,
-    nextItemId: nextItemId + 1,
-  };
-}
 
 export function coreWinner(state: GameState, reached: Player[]): Player {
   if (reached.includes(state.turn)) return state.turn;
@@ -337,8 +233,6 @@ export function initialGameState(
     green: slots[(offset + 2) % 4],
     yellow: slots[(offset + 3) % 4],
   };
-  const initialItemSeed = Math.floor(Math.random() * 0xffffffff) || 1;
-  const itemLayout = { items: [] as FieldItem[], seed: initialItemSeed };
   return {
     size,
     balance: normalizeBalance(balance),
@@ -352,8 +246,6 @@ export function initialGameState(
     layoutOffset: offset,
     phase: isItemVariant(variant) ? "setup" : "move",
     bonusMove: false,
-    fieldItems: itemLayout.items,
-    pendingItemDrops: [],
     shield: { red: false, blue: false, green: false, yellow: false },
     shieldTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     boosterMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
@@ -383,14 +275,8 @@ export function initialGameState(
     message: `${playerName(first)}：探査機を1マス移動`,
     log: [`ゲーム開始 — ${playerName(first)}が先攻`],
     nextMeteorId: 1,
-    nextItemId: 1,
     nextPulseDeviceId: 1,
-    itemSeed: itemLayout.seed,
     repetitions: {},
-    setupPlacements: {},
-    setupPending: {},
-    setupReady: [],
-    setupRejected: {},
     itemHands: {},
     setupConfirmed: {},
     ranked,
@@ -413,14 +299,9 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
   }
   const nextHand = [...hand, kind];
   const itemHands = { ...(state.itemHands ?? {}), [player]: nextHand };
-  const setupPlacements = {
-    ...(state.setupPlacements ?? {}),
-    [player]: nextHand.map((entry, index) => ({ r: -1, c: -1 - index, kind: entry, id: index + 1 })),
-  };
   return {
     ...state,
     itemHands,
-    setupPlacements,
     setupConfirmed: { ...(state.setupConfirmed ?? {}), [player]: false },
     message: nextHand.length === balance.itemHandTotal
       ? `${playerName(player)}：持ち込みを確認して決定`
@@ -434,7 +315,6 @@ export function resetSetupItems(state: GameState, player = state.turn): GameStat
   return {
     ...state,
     itemHands: { ...(state.itemHands ?? {}), [player]: [] },
-    setupPlacements: { ...(state.setupPlacements ?? {}), [player]: [] },
     setupConfirmed: { ...(state.setupConfirmed ?? {}), [player]: false },
     message: `${playerName(player)}：アイテムを3個選択`,
     log: [...state.log, `${playerName(player)} reset item loadout`],
@@ -463,84 +343,6 @@ export function confirmSetupItems(state: GameState, player = state.turn): GameSt
     phase: "move",
     message: `${playerName(state.startingPlayer)}：探査機を1マス移動`,
     log: [...state.log, "全員のアイテム選択完了 — ゲームスタート"],
-  };
-}
-
-export function applySetupSwitch(state: GameState, target: Pos, kind: ItemKind): GameState {
-  if (!isItemVariant(state.variant) || state.phase !== "setup") {
-    throw new Error("スイッチ配置フェーズではありません");
-  }
-  const placements = state.setupPlacements ?? {};
-  const own = placements[state.turn] ?? [];
-  const pending = state.setupPending?.[state.turn] ?? [];
-  if (pending.length ? !pending.includes(kind) : own.length >= 3 || own.some((item) => item.kind === kind)) {
-    throw new Error("異なる3種類のスイッチを選んでください");
-  }
-  const mid = Math.floor(state.size / 2);
-  const occupied =
-    target.r < 0 || target.c < 0 || target.r >= state.size || target.c >= state.size ||
-    !isSwitchSetupCell(target) ||
-    samePos(target, { r: mid, c: mid }) ||
-    activePlayers(state).some((player) => samePos(target, state.probes[player])) ||
-    own.some((item) => samePos(target, item)) ||
-    (state.setupRejected?.[state.turn] ?? []).some((cell) => samePos(target, cell));
-  if (occupied) throw new Error("そのマスにはスイッチを配置できません");
-
-  const nextOwn = [...own, { ...target, kind, id: state.nextItemId }];
-  const nextPending = pending.length ? pending.filter((entry, index) => entry !== kind || index !== pending.indexOf(kind)) : [];
-  const playerComplete = pending.length ? nextPending.length === 0 : nextOwn.length === 3;
-  const setupPlacements = { ...placements, [state.turn]: nextOwn };
-  const setupPending = { ...(state.setupPending ?? {}), [state.turn]: nextPending };
-  const setupReady = playerComplete
-    ? [...new Set([...(state.setupReady ?? []), state.turn])]
-    : (state.setupReady ?? []);
-  const players = activePlayers(state);
-  let nextTurn = players.find((player) => !setupReady.includes(player)) ?? state.turn;
-
-  if (setupReady.length === players.length) {
-    const all = players.flatMap((player) => setupPlacements[player] ?? []);
-    const conflictKeys = new Set(all.filter((item, index) => all.some((other, otherIndex) => index !== otherIndex && samePos(item, other))).map((item) => `${item.r},${item.c}`));
-    if (!conflictKeys.size) {
-      return {
-        ...state, setupPlacements, setupPending, setupReady, fieldItems: all,
-        nextItemId: state.nextItemId + 1, turn: state.startingPlayer, phase: "move",
-        message: `${playerName(state.startingPlayer)}：探査機を1マス移動`,
-        log: [...state.log, `${kind.toUpperCase()}を秘密配置`, "全員の配置完了 — ゲームスタート"],
-      };
-    }
-    const retryPending: Partial<Record<Player, ItemKind[]>> = {};
-    const retryPlacements: Partial<Record<Player, FieldItem[]>> = {};
-    const retryRejected: Partial<Record<Player, Pos[]>> = { ...(state.setupRejected ?? {}) };
-    players.forEach((player) => {
-      const entries = setupPlacements[player] ?? [];
-      const conflicts = entries.filter((item) => conflictKeys.has(`${item.r},${item.c}`));
-      retryPending[player] = conflicts.map((item) => item.kind);
-      retryPlacements[player] = entries.filter((item) => !conflictKeys.has(`${item.r},${item.c}`));
-      retryRejected[player] = [
-        ...(retryRejected[player] ?? []),
-        ...conflicts.filter((item) => !(retryRejected[player] ?? []).some((cell) => samePos(cell, item))),
-      ];
-    });
-    const retryReady = players.filter((player) => !(retryPending[player]?.length));
-    nextTurn = players.find((player) => !retryReady.includes(player)) ?? state.startingPlayer;
-    return {
-      ...state, setupPlacements: retryPlacements, setupPending: retryPending,
-      setupReady: retryReady, setupRejected: retryRejected,
-      nextItemId: state.nextItemId + 1, turn: nextTurn,
-      message: `${playerName(nextTurn)}：重なったスイッチだけ再配置`,
-      log: [...state.log, `${kind.toUpperCase()}を秘密配置`, "配置が重複 — 該当スイッチを再配置"],
-    };
-  }
-
-  return {
-    ...state, setupPlacements, setupPending, setupReady,
-    nextItemId: state.nextItemId + 1, turn: playerComplete ? nextTurn : state.turn,
-    message: playerComplete
-      ? `${playerName(nextTurn)}：スイッチを3個配置`
-      : pending.length
-        ? `重なったスイッチをあと${nextPending.length}個再配置`
-        : `スイッチをあと${3 - nextOwn.length}個配置`,
-    log: [...state.log, `${kind.toUpperCase()}を秘密配置`],
   };
 }
 
@@ -613,59 +415,11 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.playerTurns ?? {}),
     JSON.stringify(state.inventory),
     JSON.stringify(state.itemHands ?? {}),
-    JSON.stringify(state.fieldItems ?? []),
-    JSON.stringify(state.pendingItemDrops ?? []),
-    state.itemSeed ?? 0,
-    state.nextItemId ?? 0,
     JSON.stringify(state.shield ?? {}),
     JSON.stringify(state.boosterMoves ?? {}),
     JSON.stringify(state.capsuleMeteors ?? {}),
     state.bonusMove ? "bonus" : "normal",
   ].join("/");
-}
-
-function scheduleItemDrops(state: GameState, count: number) {
-  let itemSeed = state.itemSeed ?? 1;
-  const pendingItemDrops = [...(state.pendingItemDrops ?? [])];
-  for (let index = 0; index < count; index += 1) {
-    const random = nextItemRandom(itemSeed);
-    itemSeed = random.seed;
-    const balance = gameBalance(state);
-    const span = balance.itemRespawnMaxTurns - balance.itemRespawnMinTurns + 1;
-    pendingItemDrops.push({ turns: balance.itemRespawnMinTurns + Math.floor(random.value * span) });
-  }
-  return { pendingItemDrops, itemSeed };
-}
-
-function advanceItemDrops(draft: GameState): GameState {
-  if (!isItemVariant(draft.variant) || !(draft.pendingItemDrops?.length)) return draft;
-  const waiting: { turns: number }[] = [];
-  const due: { turns: number }[] = [];
-  draft.pendingItemDrops.forEach((drop) => {
-    const next = { turns: drop.turns - 1 };
-    if (next.turns < 0) due.push(next);
-    else waiting.push(next);
-  });
-  let fieldItems = draft.fieldItems ?? [];
-  let itemSeed = draft.itemSeed;
-  let nextItemId = draft.nextItemId;
-  due.forEach(() => {
-    if (fieldItems.length >= gameBalance(draft).itemBoardMax) {
-      waiting.push({ turns: 0 });
-      return;
-    }
-    const beforeCount = fieldItems.length;
-    const spawned = respawnItem(
-      { ...draft, fieldItems, itemSeed, nextItemId },
-      fieldItems,
-      draft.probes,
-    );
-    fieldItems = spawned.fieldItems;
-    itemSeed = spawned.itemSeed;
-    nextItemId = spawned.nextItemId;
-    if (fieldItems.length === beforeCount) waiting.push({ turns: 0 });
-  });
-  return { ...draft, fieldItems, itemSeed, nextItemId, pendingItemDrops: waiting };
 }
 
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
@@ -682,13 +436,13 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
       ? device
       : ({ ...device, turns: Math.max(0, device.turns - 1) }))
     .filter((device) => device.turns > 0);
-  let turnDraft = advanceItemDrops({
+  let turnDraft: GameState = {
     ...draft,
     shieldTurns,
     shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, shieldTurns[p] > 0])) as Record<Player, boolean>,
     obstacles,
     pulseDevices,
-  });
+  };
   let rankedGravityTriggered = false;
   if (turnDraft.ranked) {
     const rankedPlayers = activePlayers(turnDraft);
@@ -801,76 +555,12 @@ export function applyMove(state: GameState, target: Pos): GameState {
   if (state.phase !== "move" || !legalMoves(state).some((move) => samePos(move, target))) {
     throw new Error("そのマスへは移動できません");
   }
-  const start = state.probes[state.turn];
-  const moveSteps = distance(start, target);
-  const stepDelta = {
-    r: Math.sign(target.r - start.r),
-    c: Math.sign(target.c - start.c),
-  };
-  const traversed = Array.from({ length: moveSteps }, (_, index) => ({
-    r: start.r + stepDelta.r * (index + 1),
-    c: start.c + stepDelta.c * (index + 1),
-  }));
-  const pickedItems = traversed
-    .map((cell) => state.fieldItems?.find((item) => samePos(item, cell)))
-    .filter((item): item is FieldItem => Boolean(item));
-  const picked = pickedItems[pickedItems.length - 1];
-  const shield = { ...(state.shield ?? { red: false, blue: false, green: false, yellow: false }) };
-  const shieldTurns = { ...(state.shieldTurns ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
-  const boosterMoves = { ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
-  const capsuleMeteors = { ...(state.capsuleMeteors ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
-  const pickedBooster = pickedItems.some((item) => item.kind === "booster");
-  const pickedGravity = pickedItems.some((item) => item.kind === "gravity");
-  pickedItems.forEach((item) => {
-    if (item.kind === "shield") {
-      shield[state.turn] = true;
-      shieldTurns[state.turn] += activePlayers(state).length * 2 + 1;
-    }
-  });
-  if (pickedBooster) boosterMoves[state.turn] += pickedItems.filter((item) => item.kind === "booster").length;
-  else if ((boosterMoves[state.turn] ?? 0) > 0 && moveSteps > 1) boosterMoves[state.turn] -= 1;
-  const pickedLabel =
-    picked?.kind === "shield"
-      ? "シールド"
-      : picked?.kind === "booster"
-        ? "ブースト"
-        : picked?.kind === "blast"
-          ? "BLAST"
-        : picked?.kind === "pulse"
-          ? "PULSE"
-        : picked?.kind === "gravity"
-          ? "GRAVITY"
-          : null;
   const mid = Math.floor(state.size / 2);
-  let probes = { ...state.probes, [state.turn]: target };
-  const pickedIds = new Set(pickedItems.map((item) => item.id));
-  const fieldItems = (state.fieldItems ?? []).filter((item) => !pickedIds.has(item.id));
-  const scheduled =
-    isItemVariant(state.variant)
-      ? scheduleItemDrops(state, pickedItems.length)
-      : { pendingItemDrops: state.pendingItemDrops ?? [], itemSeed: state.itemSeed };
-  state = {
-    ...state,
-    fieldItems,
-    pendingItemDrops: scheduled.pendingItemDrops,
-    itemSeed: scheduled.itemSeed,
-    shield,
-    shieldTurns,
-    boosterMoves,
-    capsuleMeteors,
-  };
-  if (pickedGravity) probes = applyGravity({ ...state, probes }).probes;
-  const pickupMessage = pickedLabel ? `・${pickedLabel}を取得` : "";
+  const probes = { ...state.probes, [state.turn]: target };
   const log = [
     ...state.log,
-    `${playerName(state.turn)}が (${target.r},${target.c}) へ移動${pickupMessage}`,
+    `${playerName(state.turn)}が (${target.r},${target.c}) へ移動`,
   ];
-  if (pickedGravity) {
-    const reached = activePlayers(state).filter((player) => samePos(probes[player], { r: mid, c: mid }));
-    if (reached.length) {
-      return resolveCoreArrivals(state, { ...state, probes, log }, reached);
-    }
-  }
   if (target.r === mid && target.c === mid) {
     return resolveCoreArrivals(state, {
       ...state,
@@ -886,21 +576,6 @@ export function applyMove(state: GameState, target: Pos): GameState {
           : `${playerName(state.turn)} WIN!`,
       log: [...log, `${playerName(state.turn)}が中央へ到達`],
     }, [state.turn]);
-  }
-  const pendingSwitches: PendingSwitch[] = pickedItems
-    .filter((item): item is FieldItem & { kind: PendingSwitch["kind"] } =>
-      item.kind === "holo" || item.kind === "orbit" || item.kind === "blast" || item.kind === "pulse")
-    .map((item) => ({ kind: item.kind, player: state.turn }));
-  if (pendingSwitches.length) {
-    return {
-      ...state,
-      probes,
-      phase: "switch",
-      pendingSwitches,
-      switchResume: state.turnCount === 0 ? "finish" : "place",
-      message: `${playerName(state.turn)}: ${pendingSwitches[0].kind.toUpperCase()} SWITCH`,
-      log,
-    };
   }
   if (state.turnCount === 0) {
     return finishTurn({ ...state, probes, log }, "先攻の初手：メテオ配置なし");
@@ -937,9 +612,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
     ...state,
     probes,
     phase: "place",
-    message: pickedLabel
-      ? `${playerName(state.turn)}：${pickedLabel}を取得・メテオを配置`
-      : `${playerName(state.turn)}：メテオを配置`,
+    message: `${playerName(state.turn)}：メテオを配置`,
     log,
   };
 }
@@ -1134,8 +807,7 @@ export function applyHoloSwitch(state: GameState, target: Pos): GameState {
       startCells(state).some((cell) => samePos(cell, target)) ||
       activePlayers(state).some((p) => samePos(state.probes[p], target)) ||
       state.meteors.some((m) => samePos(m, target)) || activeObstacles(state).some((m) => samePos(m, target)) ||
-      activePulseDevices(state).some((device) => samePos(device, target)) ||
-      state.fieldItems.some((item) => samePos(item, target))) throw new Error("お邪魔を置けないマスです");
+      activePulseDevices(state).some((device) => samePos(device, target))) throw new Error("お邪魔を置けないマスです");
   return finishSwitch({
     ...state,
     obstacles: [...activeObstacles(state), {
@@ -1170,7 +842,6 @@ export function applyOrbitSwitch(state: GameState, ring: number, clockwise: bool
     meteors: state.meteors.map(rotate),
     obstacles: activeObstacles(state).map(rotate),
     pulseDevices: (state.pulseDevices ?? []).map(rotate),
-    fieldItems: state.fieldItems.map(rotate),
     log: [...state.log, `${playerName(current.player)} rotated ring ${ring} ${clockwise ? "CW" : "CCW"}`],
   });
   const mid = Math.floor(state.size / 2);
@@ -1368,63 +1039,16 @@ export function applyMeteor(
     probes[player] = position;
   });
 
-  let fieldItems = state.fieldItems ?? [];
-  let itemSeed = state.itemSeed;
-  const nextItemId = state.nextItemId;
-  let pendingItemDrops = [...(state.pendingItemDrops ?? [])];
-  const boosterMoves = {
-    ...(state.boosterMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
-  };
-  const shieldAfterBlast = { ...(state.shield ?? { red: false, blue: false, green: false, yellow: false }) };
-  const shieldTurnsAfterBlast = { ...(state.shieldTurns ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
-  const blastSwitches: PendingSwitch[] = [];
-  const pickupLogs: string[] = [];
-  activePlayers(state).forEach((player) => {
-    if (samePos(before[player], probes[player])) return;
-    const picked = fieldItems.find((item) => samePos(item, probes[player]));
-    if (!picked) return;
-    fieldItems = fieldItems.filter((item) => item.id !== picked.id);
-    if (picked.kind === "shield") {
-      shieldAfterBlast[player] = true;
-      shieldTurnsAfterBlast[player] += activePlayers(state).length * 2 + 1;
-    }
-    if (picked.kind === "booster") boosterMoves[player] += 1;
-    if (picked.kind === "recall") pendingItemDrops.push({ turns: activePlayers(state).length });
-    if (picked.kind === "holo" || picked.kind === "orbit" || picked.kind === "blast" || picked.kind === "pulse") {
-      blastSwitches.push({ kind: picked.kind, player });
-    }
-    const scheduled = scheduleItemDrops(
-      { ...state, pendingItemDrops, itemSeed, nextItemId },
-      1,
-    );
-    pendingItemDrops = scheduled.pendingItemDrops;
-    itemSeed = scheduled.itemSeed;
-    const label =
-      picked.kind === "shield"
-        ? "シールド"
-        : picked.kind === "booster"
-          ? "ブースト"
-          : "使い捨てメテオ";
-    pickupLogs.push(`${playerName(player)}が爆風着地で${label}を取得`);
-  });
-
   const placementLog = `${playerName(state.turn)}が${meteorName(chosenSize)}を (${target.r},${target.c}) に配置`;
   const recoveryLog = destroyed.length ? ` — メテオ${destroyed.length}個を破壊・返還` : "";
-  const log = [...state.log, placementLog + recoveryLog, ...pickupLogs];
+  const log = [...state.log, placementLog + recoveryLog];
   const draft: GameState = {
     ...state,
     probes,
-    fieldItems,
-    pendingItemDrops,
-    itemSeed,
-    nextItemId,
     meteors: [...survivors, placed],
     obstacles,
     inventory,
     capsuleMeteors,
-    boosterMoves,
-    shield: shieldAfterBlast,
-    shieldTurns: shieldTurnsAfterBlast,
     nextMeteorId: state.nextMeteorId + 1,
     log,
   };
@@ -1446,14 +1070,6 @@ export function applyMeteor(
             : `${playerName(winner)} WIN!`,
       log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
     }, reached);
-  } else if (blastSwitches.length) {
-    next = {
-      ...draft,
-      phase: "switch",
-      pendingSwitches: blastSwitches,
-      switchResume: "finish",
-      message: `${playerName(blastSwitches[0].player)}: ${blastSwitches[0].kind.toUpperCase()} SWITCH`,
-    };
   } else {
     next = finishTurn(draft);
   }
