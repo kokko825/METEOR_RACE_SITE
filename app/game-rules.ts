@@ -20,7 +20,7 @@ export type GameState = {
   phase: Phase;
   bonusMove: boolean;
   shield: Record<Player, boolean>;
-  shieldCharges?: Record<Player, number>;
+  shieldTurns?: Record<Player, number>;
   boosterMoves: Record<Player, number>;
   immobilizedMoves?: Record<Player, number>;
   capsuleMeteors: Record<Player, number>;
@@ -247,7 +247,7 @@ export function initialGameState(
     phase: isItemVariant(variant) ? "setup" : "move",
     bonusMove: false,
     shield: { red: false, blue: false, green: false, yellow: false },
-    shieldCharges: { red: 0, blue: 0, green: 0, yellow: 0 },
+    shieldTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     boosterMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
     immobilizedMoves: { red: 0, blue: 0, green: 0, yellow: 0 },
     capsuleMeteors: { red: 0, blue: 0, green: 0, yellow: 0 },
@@ -423,10 +423,9 @@ function stateKey(state: GameState, nextTurn: Player) {
 }
 
 export function finishTurn(draft: GameState, extraLog?: string): GameState {
-  // SHIELD no longer decays with turns — it only depletes when it actually
-  // absorbs a blast hit (see applyMeteor/applyBlastSwitch), so just keep the
-  // boolean flag in sync with whatever charges remain.
-  const shieldCharges = draft.shieldCharges ?? { red: 0, blue: 0, green: 0, yellow: 0 };
+  const shieldTurns = Object.fromEntries(
+    PLAYER_ORDER.map((player) => [player, Math.max(0, (draft.shieldTurns?.[player] ?? 0) - 1)]),
+  ) as Record<Player, number>;
   const obstacles = activeObstacles(draft)
     .map((obstacle) => obstacle.turns === -1
       ? obstacle
@@ -439,8 +438,8 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     .filter((device) => device.turns > 0);
   let turnDraft: GameState = {
     ...draft,
-    shieldCharges,
-    shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, (shieldCharges[p] ?? 0) > 0])) as Record<Player, boolean>,
+    shieldTurns,
+    shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, shieldTurns[p] > 0])) as Record<Player, boolean>,
     obstacles,
     pulseDevices,
   };
@@ -643,7 +642,7 @@ export function canUseItem(state: GameState, kind: ItemKind, player = state.turn
   if (!isItemVariant(state.variant) || state.phase !== "place") return false;
   if (kind === "gravity") return false;
   if (!(state.itemHands?.[player] ?? []).includes(kind)) return false;
-  if (kind === "shield" && (state.shieldCharges?.[player] ?? 0) > 0) return false;
+  if (kind === "shield" && (state.shieldTurns?.[player] ?? 0) > 0) return false;
   if (kind === "booster" && (state.boosterMoves?.[player] ?? 0) > 0) return false;
   if (kind === "recall" &&
       !state.meteors.some((meteor) => meteor.owner === player && !meteor.consumable) &&
@@ -733,17 +732,17 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
   const itemHands = consumeItem(state, player, kind);
   const log = [...state.log, `${playerName(player)} used ${kind.toUpperCase()}`];
   if (kind === "shield") {
-    const charges = gameBalance(state).shieldHitCapacity;
+    const duration = activePlayers(state).length * gameBalance(state).shieldRounds;
     return finishTurn({
       ...state,
       itemHands,
       shield: { ...state.shield, [player]: true },
-      shieldCharges: {
-        red: state.shieldCharges?.red ?? 0,
-        blue: state.shieldCharges?.blue ?? 0,
-        green: state.shieldCharges?.green ?? 0,
-        yellow: state.shieldCharges?.yellow ?? 0,
-        [player]: charges,
+      shieldTurns: {
+        red: state.shieldTurns?.red ?? 0,
+        blue: state.shieldTurns?.blue ?? 0,
+        green: state.shieldTurns?.green ?? 0,
+        yellow: state.shieldTurns?.yellow ?? 0,
+        [player]: duration,
       },
       log,
     }, `${playerName(player)}：SHIELDを起動`);
@@ -870,16 +869,12 @@ export function applyBlastSwitch(state: GameState, target: Pos): GameState {
   const probes = { ...state.probes };
   const mid = Math.floor(state.size / 2);
   const radius = gameBalance(state).blastRadius;
-  const shieldCharges = { ...(state.shieldCharges ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
   for (const player of activePlayers(state)) {
     const start = probes[player];
     const range = distance(start, target);
     if (range < 1 || range > radius) continue;
-    const rawSteps = radius - range + 1;
-    const charges = shieldCharges[player] ?? 0;
-    const blocked = charges > 0;
-    if (blocked) shieldCharges[player] = Math.max(0, charges - rawSteps);
-    const steps = blocked ? 0 : rawSteps;
+    const shieldReduction = (state.shieldTurns?.[player] ?? 0) > 0 ? 1 : 0;
+    const steps = Math.max(0, radius - range + 1 - shieldReduction);
     const dr = Math.sign(start.r - target.r);
     const dc = Math.sign(start.c - target.c);
     let position = { ...start };
@@ -911,8 +906,6 @@ export function applyBlastSwitch(state: GameState, target: Pos): GameState {
     ...state,
     probes,
     obstacles,
-    shieldCharges,
-    shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, (shieldCharges[p] ?? 0) > 0])) as Record<Player, boolean>,
     log: [...state.log, `${playerName(current.player)} fired BLAST radius ${radius} at (${target.r},${target.c})`],
   });
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));
@@ -1025,18 +1018,13 @@ export function applyMeteor(
     PLAYER_ORDER.map((player) => [player, { ...before[player] }]),
   ) as Record<Player, Pos>;
   const reached: Player[] = [];
-  const shieldCharges = { ...(state.shieldCharges ?? { red: 0, blue: 0, green: 0, yellow: 0 }) };
 
   activePlayers(state).forEach((player) => {
     const start = before[player];
     const d = distance(start, target);
     const rawSteps =
       chosenSize === "small" ? (d === 1 ? 1 : 0) : d === 1 ? 2 : d === 2 ? 1 : 0;
-    if (!rawSteps) return;
-    const charges = shieldCharges[player] ?? 0;
-    const shieldBlocked = charges > 0;
-    if (shieldBlocked) shieldCharges[player] = Math.max(0, charges - rawSteps);
-    const steps = shieldBlocked ? 0 : rawSteps;
+    const steps = Math.max(0, rawSteps - ((state.shieldTurns?.[player] ?? 0) > 0 ? 1 : 0));
     if (!steps) return;
     const dr = Math.sign(start.r - target.r);
     const dc = Math.sign(start.c - target.c);
@@ -1072,8 +1060,6 @@ export function applyMeteor(
     obstacles,
     inventory,
     capsuleMeteors,
-    shieldCharges,
-    shield: Object.fromEntries(PLAYER_ORDER.map((p) => [p, (shieldCharges[p] ?? 0) > 0])) as Record<Player, boolean>,
     nextMeteorId: state.nextMeteorId + 1,
     log,
   };

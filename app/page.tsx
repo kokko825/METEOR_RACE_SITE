@@ -1759,7 +1759,7 @@ function Game() {
                       player={probe}
                       teamMode={isTeamVariant(game.variant)}
                       isSelf={probe === selfPlayer}
-                      shieldCharges={game.shieldCharges?.[probe] ?? 0}
+                      shieldTurns={game.shieldTurns?.[probe] ?? 0}
                       boost={game.boosterMoves?.[probe] ?? 0}
                       rotation={
                         viewR === mid && viewC === mid
@@ -2381,7 +2381,7 @@ const ITEM_DETAILS: Record<ItemKind, string> = {
 
 function itemDetail(kind: ItemKind, balance: BalanceConfig): string {
   switch (kind) {
-    case "shield": return `爆風を${balance.shieldHitCapacity}回分防ぎます（大型メテオの近距離ヒットなら1回で効果切れ）。自分の爆風も無効になります。`;
+    case "shield": return `${balance.shieldRounds}巡の間、次に受ける爆風を防ぎます。自分の爆風も無効になります。`;
     case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオを飛び越えてCOREへ到達できます。`;
     case "holo": return balance.holoUnlimited
       ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"
@@ -2406,7 +2406,7 @@ const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
 
 function itemEffectFacts(kind: ItemKind, balance: BalanceConfig): [string, string] {
   switch (kind) {
-    case "shield": return [`耐久：${balance.shieldHitCapacity}回`, "敵と自分の爆風を無効化"];
+    case "shield": return [`有効：${balance.shieldRounds}巡`, "敵と自分の爆風を無効化"];
     case "booster": return [`使用：${balance.boosterUses}回`, "縦横2マス進みメテオを飛び越える"];
     case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, "破壊不能の障害物として設置"];
     case "orbit": return ["回転：90度", "選択したリング上の配置を移動"];
@@ -2432,7 +2432,7 @@ function ProbeToken({
   push,
   teamMode = false,
   isSelf = false,
-  shieldCharges = 0,
+  shieldTurns = 0,
   boost = 0,
 }: {
   player: Player;
@@ -2440,7 +2440,7 @@ function ProbeToken({
   push?: { from: Pos; dr: number; dc: number };
   teamMode?: boolean;
   isSelf?: boolean;
-  shieldCharges?: number;
+  shieldTurns?: number;
   boost?: number;
 }) {
   return (
@@ -2455,9 +2455,9 @@ function ProbeToken({
           : undefined
       }
     >
-      {(shieldCharges > 0 || boost > 0) && (
-        <span className="probe-effects" aria-label={`${shieldCharges > 0 ? `シールド${shieldCharges} ` : ""}${boost > 0 ? `ブースト${boost}` : ""}`}>
-          {shieldCharges > 0 && <span className="shield-effect"><b>{shieldCharges}</b></span>}
+      {(shieldTurns > 0 || boost > 0) && (
+        <span className="probe-effects" aria-label={`${shieldTurns > 0 ? `シールド${shieldTurns} ` : ""}${boost > 0 ? `ブースト${boost}` : ""}`}>
+          {shieldTurns > 0 && <span className="shield-effect"><b>{shieldTurns}</b></span>}
           {boost > 0 && <span className="boost-effect"><i /><i /><b>{boost}</b></span>}
         </span>
       )}
