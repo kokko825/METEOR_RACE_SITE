@@ -217,11 +217,11 @@ button { color: inherit; }
 .shield-effect { position:absolute; width:54%; aspect-ratio:1; right:-25%; top:-22%; display:grid; place-items:center; color:#a9f3ff; background:rgba(23,145,213,.38); border:2px solid #65d9ff; clip-path:polygon(25% 7%,75% 7%,98% 50%,75% 93%,25% 93%,2% 50%); filter:drop-shadow(0 0 5px #29bfff); }
 .shield-effect::after { content:""; position:absolute; inset:17%; border:1px solid rgba(214,250,255,.75); clip-path:inherit; }
 .shield-effect b,.boost-effect b { position:absolute; right:-3px; top:-7px; min-width:16px; height:16px; padding:0 3px; display:grid; place-items:center; border-radius:9px; color:white; background:#06111a; border:1px solid currentColor; font-size:10px; line-height:1; text-shadow:none; }
-.boost-effect { position:absolute; width:48%; height:72%; right:-23%; top:14%; filter:drop-shadow(0 0 5px rgba(255,139,36,.9)); }
+.boost-effect { position:absolute; width:48%; height:72%; left:-23%; top:14%; filter:drop-shadow(0 0 5px rgba(255,139,36,.9)); }
 .boost-effect i { position:absolute; left:4%; width:72%; height:57%; background:rgba(255,133,35,.52); clip-path:polygon(50% 0,100% 100%,0 100%); }
 .boost-effect i:first-child { top:0; }
 .boost-effect i:nth-child(2) { top:27%; left:22%; opacity:.68; }
-.boost-effect b { color:#ffac55; right:-4px; top:-8px; }
+.boost-effect b { color:#ffac55; right:auto; left:-4px; top:-8px; }
 @keyframes team-aura { from { transform:scale(.94); opacity:.55; } to { transform:scale(1.04); opacity:1; } }
 .meteor-token { position:absolute; width:58%; aspect-ratio:1; display:grid; place-items:center; z-index:3; color:#f5c477; clip-path:polygon(19% 4%,42% 10%,58% 0,76% 13%,95% 24%,88% 45%,100% 61%,82% 78%,66% 96%,46% 87%,27% 100%,15% 79%,0 65%,10% 45%,4% 26%); background:radial-gradient(circle at 30% 29%,#21130f 0 9%,transparent 10%),radial-gradient(circle at 68% 62%,#28150f 0 12%,transparent 13%),radial-gradient(circle at 62% 23%,#e39a50 0 5%,transparent 6%),linear-gradient(145deg,#c9823f,#70401f 43%,#2c1812 76%,#100b09); box-shadow:0 0 11px #e15b28; font-size:clamp(7px,1.4vw,17px); text-shadow:0 1px 2px #000; }
 .meteor-token.large { width:78%; clip-path:polygon(13% 2%,31% 9%,48% 0,61% 10%,79% 5%,93% 21%,88% 39%,100% 53%,91% 72%,76% 78%,64% 98%,45% 89%,28% 100%,18% 82%,2% 71%,9% 51%,0 34%,14% 23%); background:radial-gradient(circle at 27% 31%,#1b100c 0 10%,transparent 11%),radial-gradient(circle at 67% 60%,#21120d 0 14%,transparent 15%),radial-gradient(circle at 72% 25%,#f0a64d 0 7%,transparent 8%),linear-gradient(140deg,#d78a3c,#6a381b 45%,#24130e 75%,#090706); box-shadow:0 0 18px #ff7b2e; }
