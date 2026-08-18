@@ -90,3 +90,5 @@ npm run build
 **月額0円運用のため**：無料枠を超えそうになったら自動課金ではなく、機能縮退（新規オンライン対戦の受付停止など）を検討してください。詳細は [FREE_SITE_OPERATION_PLAN.md](./FREE_SITE_OPERATION_PLAN.md) を参照。
 
 広告・音楽の設定は `/balance` 管理画面の「サイト設定」タブから、デプロイ後にいつでも調整できます（コード変更・再デプロイ不要）。
+
+<!-- Cloudflare Workers Builds connectivity test: 2026-08-18T02:14:21Z -->
