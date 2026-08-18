@@ -92,3 +92,4 @@ npm run build
 広告・音楽の設定は `/balance` 管理画面の「サイト設定」タブから、デプロイ後にいつでも調整できます（コード変更・再デプロイ不要）。
 
 <!-- Cloudflare Workers Builds connectivity test: 2026-08-18T02:14:21Z -->
+<!-- build fix verification: 2026-08-18T02:23:44Z -->
