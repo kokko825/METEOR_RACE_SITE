@@ -4,6 +4,7 @@ import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 import { isRankedOpen } from "../../ranked-schedule";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 import { ratingDelta, ABANDON_PENALTY } from "../../duel-rating";
+import { applyDuelRatingChange } from "../../duel-rating-store";
 
 export const dynamic = "force-dynamic";
 
@@ -93,35 +94,6 @@ function shuffledPlayers(players: Player[]) {
     [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
   }
   return shuffled;
-}
-
-async function ensureDuelRatingSchema() {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS duel_ratings (
-    identity_key TEXT PRIMARY KEY,
-    classic_rating INTEGER NOT NULL DEFAULT 1200,
-    item_rating INTEGER NOT NULL DEFAULT 1200,
-    wins INTEGER NOT NULL DEFAULT 0,
-    losses INTEGER NOT NULL DEFAULT 0,
-    updated_at INTEGER NOT NULL
-  )`).run();
-}
-
-/**
- * Server-authoritative 真剣タイマン rating update. Unlike the old
- * localStorage-based number (freely editable via devtools), this is the
- * only place a player's rate is ever written, keyed by their existing
- * anonymous identity (email header or device player-id) — no account or
- * login required.
- */
-async function applyRatingChange(identityKey: string, variant: GameVariant, delta: number) {
-  await ensureDuelRatingSchema();
-  const column = isItemVariant(variant) ? "item_rating" : "classic_rating";
-  await env.DB.prepare(
-    "INSERT INTO duel_ratings (identity_key, updated_at) VALUES (?, ?) ON CONFLICT(identity_key) DO NOTHING",
-  ).bind(identityKey, Date.now()).run();
-  await env.DB.prepare(
-    `UPDATE duel_ratings SET ${column} = MAX(0, ${column} + ?), wins = wins + ?, losses = losses + ?, updated_at = ? WHERE identity_key = ?`,
-  ).bind(delta, delta > 0 ? 1 : 0, delta <= 0 ? 1 : 0, Date.now(), identityKey).run();
 }
 
 async function roomByCode(code: string) {
@@ -298,7 +270,7 @@ export async function POST(request: Request) {
     ) {
       state.botPlayers = [...(state.botPlayers ?? []), leavingRole];
       if (state.ranked) {
-        await applyRatingChange(email, state.variant, ABANDON_PENALTY);
+        await applyDuelRatingChange(email, state.variant, ABANDON_PENALTY);
       }
     }
     const nextSeats = remaining
@@ -701,7 +673,7 @@ export async function POST(request: Request) {
         const seatPlayer = seats[index];
         const identity = memberEmails[index];
         if (!identity || !seatPlayer || botPlayers.includes(seatPlayer)) continue;
-        await applyRatingChange(identity, finishedVariant, ratingDelta(finishedVariant, winner, finishOrder, seatPlayer));
+        await applyDuelRatingChange(identity, finishedVariant, ratingDelta(finishedVariant, winner, finishOrder, seatPlayer));
       }
     }
     const result = await env.DB.prepare(

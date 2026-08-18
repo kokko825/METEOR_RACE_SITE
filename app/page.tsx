@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
-import { getMusicManager, type MusicAssetConfig, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
-import { normalizeSiteConfig } from "./site-config";
+import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
 import { rankTier } from "./duel-rating";
+import { playBoom as playBoomSfx, playItemSound as playItemSoundSfx } from "./sfx";
+import { useLocalSettings } from "./hooks/use-local-settings";
+import { useProfile } from "./hooks/use-profile";
+import { useMusicSync } from "./hooks/use-music-sync";
 import {
   PLAYER_ORDER,
   activeObstacles,
@@ -109,9 +112,6 @@ function Game() {
   const [variant, setVariant] = useState<GameVariant>("classic");
   const [rankedMode, setRankedMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
-  const [classicRankRating, setClassicRankRating] = useState(1200);
-  const [itemRankRating, setItemRankRating] = useState(1200);
-  const rankRating = isItemVariant(variant) ? itemRankRating : classicRankRating;
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [history, setHistory] = useState<GameState[]>([]);
@@ -124,16 +124,14 @@ function Game() {
   const [aiRunning, setAiRunning] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [masterVolume, setMasterVolume] = useState(80);
-  const [bgmVolume, setBgmVolume] = useState(65);
-  const [sfxVolume, setSfxVolume] = useState(80);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const [musicAssets, setMusicAssets] = useState<Partial<MusicAssetConfig>>({});
-  const [musicEnabled, setMusicEnabled] = useState(true);
-  const [battleTrack, setBattleTrack] = useState<BattleTrackChoice>("random");
-  const [profileEmail, setProfileEmail] = useState("未連携");
-  const [publicPlayerId, setPublicPlayerId] = useState("--------");
-  const [profileStatus, setProfileStatus] = useState("");
+  const {
+    nickname, setNickname,
+    masterVolume, setMasterVolume,
+    bgmVolume, setBgmVolume,
+    sfxVolume, setSfxVolume,
+    reducedMotion, setReducedMotion,
+    battleTrack, setBattleTrack,
+  } = useLocalSettings();
   const [contactType, setContactType] = useState("不具合報告");
   const [contactMessage, setContactMessage] = useState("");
   const [contactStatus, setContactStatus] = useState("");
@@ -148,7 +146,6 @@ function Game() {
   const [selectedOrbitRing, setSelectedOrbitRing] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState("");
-  const [nickname, setNickname] = useState("");
   const [onlinePlayerCount, setOnlinePlayerCount] = useState<1 | 2 | 3 | 4>(2);
   const [onlineAiCount, setOnlineAiCount] = useState<0 | 1 | 2 | 3>(0);
   const [online, setOnline] = useState<OnlineRoom>({
@@ -173,91 +170,7 @@ function Game() {
     draw: 0,
     turns: 0,
   });
-  useEffect(() => {
-    const legacyRank = Number(window.localStorage.getItem("meteor-race-rank-rating"));
-    const storedClassic = Number(window.localStorage.getItem("meteor-race-rank-classic"));
-    const storedItem = Number(window.localStorage.getItem("meteor-race-rank-item"));
-    if (Number.isFinite(storedClassic) && storedClassic >= 0) setClassicRankRating(storedClassic);
-    else if (Number.isFinite(legacyRank) && legacyRank >= 0) setClassicRankRating(legacyRank);
-    if (Number.isFinite(storedItem) && storedItem >= 0) setItemRankRating(storedItem);
-    setNickname(window.localStorage.getItem("meteor-race-nickname") ?? "");
-    setMasterVolume(Number(window.localStorage.getItem("meteor-race-master-volume") ?? 80));
-    setBgmVolume(Number(window.localStorage.getItem("meteor-race-bgm-volume") ?? 65));
-    setSfxVolume(Number(window.localStorage.getItem("meteor-race-sfx-volume") ?? 80));
-    setReducedMotion(window.localStorage.getItem("meteor-race-reduced-motion") === "1");
-    const storedTrack = window.localStorage.getItem("meteor-race-battle-track");
-    if (storedTrack) setBattleTrack(storedTrack as BattleTrackChoice);
-  }, []);
-  useEffect(() => { window.localStorage.setItem("meteor-race-nickname", nickname); }, [nickname]);
-  useEffect(() => { window.localStorage.setItem("meteor-race-master-volume", String(masterVolume)); }, [masterVolume]);
-  useEffect(() => { window.localStorage.setItem("meteor-race-bgm-volume", String(bgmVolume)); }, [bgmVolume]);
-  useEffect(() => { window.localStorage.setItem("meteor-race-sfx-volume", String(sfxVolume)); }, [sfxVolume]);
-  useEffect(() => { window.localStorage.setItem("meteor-race-reduced-motion", reducedMotion ? "1" : "0"); }, [reducedMotion]);
-
-  // Interactive music: load site-config (ads/music toggles + shared theme
-  // URLs), start the engine on the first user gesture (autoplay policy),
-  // then keep it in sync with volume/mute/reduced-motion/track-choice.
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/site-config", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        const config = normalizeSiteConfig(data.config);
-        setMusicEnabled(Boolean(config.musicEnabled));
-        setMusicAssets({
-          titleUrl: config.musicTitleUrl,
-          fanfareUrl: config.musicFanfareUrl,
-          waitingUrl: config.musicWaitingUrl,
-          gameStartSeUrl: config.musicGameStartSeUrl,
-          crossfadeMs: config.musicCrossfadeMs,
-          bpm: config.musicBpm,
-        });
-      })
-      .catch(() => {});
-    const manager = getMusicManager();
-    const startOnGesture = () => manager.start();
-    window.addEventListener("pointerdown", startOnGesture, { once: true });
-    window.addEventListener("keydown", startOnGesture, { once: true });
-    return () => {
-      cancelled = true;
-      window.removeEventListener("pointerdown", startOnGesture);
-      window.removeEventListener("keydown", startOnGesture);
-    };
-  }, []);
-  useEffect(() => {
-    getMusicManager().configure({ ...musicAssets, crossfadeMs: reducedMotion ? 120 : musicAssets.crossfadeMs });
-  }, [musicAssets, reducedMotion]);
-  useEffect(() => {
-    getMusicManager().setEnabled(musicEnabled && soundEnabled);
-  }, [musicEnabled, soundEnabled]);
-  useEffect(() => {
-    getMusicManager().setVolume(masterVolume, bgmVolume);
-  }, [masterVolume, bgmVolume]);
-  useEffect(() => {
-    getMusicManager().setBattleTrack(battleTrack);
-    window.localStorage.setItem("meteor-race-battle-track", battleTrack);
-  }, [battleTrack]);
-  const recordedGoalMusic = useRef("");
-  useEffect(() => {
-    // TENSION LEVEL 0-4 follows the nearest-to-CORE active player (spec §7).
-    if (game.phase === "over") {
-      const key = `${game.turnCount}-${game.log.length}-${game.winner ?? ""}`;
-      if (recordedGoalMusic.current !== key) {
-        recordedGoalMusic.current = key;
-        getMusicManager().dispatch({ type: "GOAL" });
-      }
-      return;
-    }
-    const mid = Math.floor(game.size / 2);
-    const distances = activePlayers(game).map((player) => {
-      const probe = game.probes[player];
-      return Math.abs(probe.r - mid) + Math.abs(probe.c - mid);
-    });
-    const nearest = Math.min(...distances);
-    const level = nearest <= 1 ? 4 : nearest === 2 ? 3 : nearest === 3 ? 2 : nearest === 4 ? 1 : 0;
-    getMusicManager().dispatch({ type: "TENSION_CHANGED", level: level as 0 | 1 | 2 | 3 | 4 });
-  }, [game]);
+  useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, reducedMotion, battleTrack });
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
@@ -265,26 +178,12 @@ function Game() {
   }, []);
   const rankedOpen = isRankedOpen(new Date(currentTime));
   useEffect(() => { if (!rankedOpen) setRankedMode(false); }, [rankedOpen]);
-  const refreshProfile = () => {
-    let playerId = window.localStorage.getItem("meteor-race-player-id");
-    if (!playerId) {
-      playerId = `player:${crypto.randomUUID()}`;
-      window.localStorage.setItem("meteor-race-player-id", playerId);
-    }
-    return fetch("/api/profile", { headers: { "x-meteor-player-id": playerId }, cache: "no-store" })
-      .then((response) => response.json())
-      .then((data) => {
-        setProfileEmail(data.email ?? "未連携");
-        setPublicPlayerId(data.playerId ?? playerId.replace("player:", "").slice(0, 8).toUpperCase());
-        if (data.nickname) setNickname(data.nickname);
-        setProfileStatus(data.synced ? "アカウント間で同期中" : "この端末に保存");
-        // 真剣タイマンのレートはサーバーが権威（改ざん防止）。取得できた値で常に上書きする。
-        if (Number.isFinite(data.classicRating)) setClassicRankRating(data.classicRating);
-        if (Number.isFinite(data.itemRating)) setItemRankRating(data.itemRating);
-      })
-      .catch(() => setProfileEmail("未連携"));
-  };
-  useEffect(() => { void refreshProfile(); }, []);
+  const {
+    profileEmail, publicPlayerId,
+    profileStatus, setProfileStatus,
+    classicRankRating, itemRankRating, refreshProfile,
+  } = useProfile(setNickname);
+  const rankRating = isItemVariant(variant) ? itemRankRating : classicRankRating;
   useEffect(() => {
     const draft = new URLSearchParams(window.location.search).get("balance") === "draft";
     fetch(`/api/balance${draft ? "?draft=1" : ""}`, { cache: "no-store" })
@@ -650,92 +549,11 @@ function Game() {
     setGame(next);
   };
 
-  const playBoom = () => {
-    if (!soundEnabled) return;
-    try {
-      const AudioContextClass =
-        window.AudioContext ??
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextClass) return;
-      const context = new AudioContextClass();
-      const duration = 0.72;
-      const gain = context.createGain();
-      const low = context.createOscillator();
-      const noise = context.createBufferSource();
-      const noiseFilter = context.createBiquadFilter();
-      const buffer = context.createBuffer(1, context.sampleRate * duration, context.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i += 1) {
-        const decay = Math.pow(1 - i / data.length, 2.8);
-        data[i] = (Math.random() * 2 - 1) * decay;
-      }
-      noise.buffer = buffer;
-      noiseFilter.type = "lowpass";
-      noiseFilter.frequency.setValueAtTime(720, context.currentTime);
-      noiseFilter.frequency.exponentialRampToValueAtTime(90, context.currentTime + duration);
-      low.type = "sine";
-      low.frequency.setValueAtTime(105, context.currentTime);
-      low.frequency.exponentialRampToValueAtTime(34, context.currentTime + duration);
-      gain.gain.setValueAtTime(0.0001, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.7 * masterVolume / 100 * sfxVolume / 100, context.currentTime + 0.018);
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
-      noise.connect(noiseFilter).connect(gain);
-      low.connect(gain);
-      gain.connect(context.destination);
-      noise.start();
-      low.start();
-      noise.stop(context.currentTime + duration);
-      low.stop(context.currentTime + duration);
-      window.setTimeout(() => void context.close(), 900);
-    } catch {
-      // Some browsers block generated audio until the first user interaction.
-    }
-  };
+  const playBoom = () => playBoomSfx(soundEnabled, masterVolume, sfxVolume);
 
   const playItemSound = (kind: ItemKind) => {
     if (soundEnabled) getMusicManager().dispatch({ type: "ITEM_GET", kind });
-    if (!soundEnabled) return;
-    try {
-      const AudioContextClass = window.AudioContext ??
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextClass) return;
-      const context = new AudioContextClass();
-      const now = context.currentTime;
-      const gain = context.createGain();
-      const oscillator = context.createOscillator();
-      const second = context.createOscillator();
-      const duration = kind === "shield" ? 0.58 : kind === "blast" || kind === "pulse" ? 0.48 : 0.42;
-      const settings: Record<ItemKind, { start: number; end: number; type: OscillatorType; second: number }> = {
-        shield: { start: 72, end: 210, type: "sine", second: 108 },
-        booster: { start: 95, end: 720, type: "sawtooth", second: 142 },
-        holo: { start: 820, end: 260, type: "triangle", second: 1240 },
-        orbit: { start: 180, end: 980, type: "sine", second: 270 },
-        blast: { start: 118, end: 42, type: "sawtooth", second: 76 },
-        pulse: { start: 980, end: 160, type: "square", second: 1320 },
-        recall: { start: 940, end: 110, type: "triangle", second: 1410 },
-        gravity: { start: 520, end: 72, type: "sine", second: 780 },
-      };
-      const setting = settings[kind];
-      oscillator.type = setting.type;
-      second.type = kind === "blast" ? "sawtooth" : kind === "pulse" ? "square" : "sine";
-      oscillator.frequency.setValueAtTime(setting.start, now);
-      oscillator.frequency.exponentialRampToValueAtTime(setting.end, now + duration);
-      second.frequency.setValueAtTime(setting.second, now);
-      second.frequency.exponentialRampToValueAtTime(Math.max(55, setting.end * 1.35), now + duration);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime((kind === "blast" || kind === "pulse" ? 0.18 : 0.24) * masterVolume / 100 * sfxVolume / 100, now + 0.018);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      oscillator.connect(gain);
-      second.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(now);
-      second.start(now);
-      oscillator.stop(now + duration);
-      second.stop(now + duration);
-      window.setTimeout(() => void context.close(), (duration + 0.2) * 1000);
-    } catch {
-      // Audio may remain blocked until a user gesture on some mobile browsers.
-    }
+    playItemSoundSfx(kind, soundEnabled, masterVolume, sfxVolume);
   };
 
   const showSwitchFx = (kind: ItemKind, player: Player) => {
