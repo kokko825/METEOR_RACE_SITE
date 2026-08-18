@@ -2,6 +2,8 @@ import { env } from "cloudflare:workers";
 import { PLAYER_ORDER, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 import { isRankedOpen } from "../../ranked-schedule";
+import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
+import { ratingDelta, ABANDON_PENALTY } from "../../duel-rating";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +95,35 @@ function shuffledPlayers(players: Player[]) {
   return shuffled;
 }
 
+async function ensureDuelRatingSchema() {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS duel_ratings (
+    identity_key TEXT PRIMARY KEY,
+    classic_rating INTEGER NOT NULL DEFAULT 1200,
+    item_rating INTEGER NOT NULL DEFAULT 1200,
+    wins INTEGER NOT NULL DEFAULT 0,
+    losses INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`).run();
+}
+
+/**
+ * Server-authoritative 真剣タイマン rating update. Unlike the old
+ * localStorage-based number (freely editable via devtools), this is the
+ * only place a player's rate is ever written, keyed by their existing
+ * anonymous identity (email header or device player-id) — no account or
+ * login required.
+ */
+async function applyRatingChange(identityKey: string, variant: GameVariant, delta: number) {
+  await ensureDuelRatingSchema();
+  const column = isItemVariant(variant) ? "item_rating" : "classic_rating";
+  await env.DB.prepare(
+    "INSERT INTO duel_ratings (identity_key, updated_at) VALUES (?, ?) ON CONFLICT(identity_key) DO NOTHING",
+  ).bind(identityKey, Date.now()).run();
+  await env.DB.prepare(
+    `UPDATE duel_ratings SET ${column} = MAX(0, ${column} + ?), wins = wins + ?, losses = losses + ?, updated_at = ? WHERE identity_key = ?`,
+  ).bind(delta, delta > 0 ? 1 : 0, delta <= 0 ? 1 : 0, Date.now(), identityKey).run();
+}
+
 async function roomByCode(code: string) {
   return env.DB.prepare(
     "SELECT code, host_email, guest_email, player3_email, player4_email, max_players, seat_order_json, state_json, version, status FROM game_rooms WHERE code = ?",
@@ -133,6 +164,7 @@ function roomPayload(room: RoomRow, email: string) {
 }
 
 export async function GET(request: Request) {
+  if (!(await withinRateLimit(request, "rooms-get", 120, 60))) return rateLimitedResponse();
   const email = emailFrom(request);
   if (!email) return json({ error: "プレイヤー識別情報を作成できませんでした" }, 401);
   await ensureSchema();
@@ -144,6 +176,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!(await withinRateLimit(request, "rooms-post", 90, 60))) return rateLimitedResponse();
   const email = emailFrom(request);
   if (!email) return json({ error: "プレイヤー識別情報を作成できませんでした" }, 401);
   await ensureSchema();
@@ -172,6 +205,7 @@ export async function POST(request: Request) {
   const liveBalance = await publishedBalance();
 
   if (body.action === "create") {
+    if (!(await withinRateLimit(request, "rooms-create", 10, 300))) return rateLimitedResponse();
     const createRanked = Boolean(body.ranked) && isRankedOpen();
     const createVariant: GameVariant = createRanked
       ? (body.variant === "item" ? "item" : "classic")
@@ -263,6 +297,9 @@ export async function POST(request: Request) {
       !(state.botPlayers ?? []).includes(leavingRole)
     ) {
       state.botPlayers = [...(state.botPlayers ?? []), leavingRole];
+      if (state.ranked) {
+        await applyRatingChange(email, state.variant, ABANDON_PENALTY);
+      }
     }
     const nextSeats = remaining
       .map((entry) => entry.seat)
@@ -655,6 +692,18 @@ export async function POST(request: Request) {
       };
     }
     const status = nextState.phase === "over" ? "finished" : "playing";
+    if (status === "finished" && (nextState.ranked ?? state.ranked)) {
+      const finishedVariant = nextState.variant ?? state.variant;
+      const winner = nextState.winner ?? null;
+      const finishOrder = nextState.finishOrder;
+      const botPlayers = nextState.botPlayers ?? [];
+      for (let index = 0; index < seats.length; index += 1) {
+        const seatPlayer = seats[index];
+        const identity = memberEmails[index];
+        if (!identity || !seatPlayer || botPlayers.includes(seatPlayer)) continue;
+        await applyRatingChange(identity, finishedVariant, ratingDelta(finishedVariant, winner, finishOrder, seatPlayer));
+      }
+    }
     const result = await env.DB.prepare(
       "UPDATE game_rooms SET state_json = ?, version = ?, status = ?, updated_at = ? WHERE code = ? AND version = ?",
     )

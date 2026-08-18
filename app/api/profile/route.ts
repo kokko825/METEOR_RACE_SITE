@@ -28,16 +28,35 @@ async function publicId(key: string) {
   return Array.from(new Uint8Array(digest).slice(0, 5), (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
 }
 
+async function ensureDuelRatingSchema() {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS duel_ratings (
+    identity_key TEXT PRIMARY KEY,
+    classic_rating INTEGER NOT NULL DEFAULT 1200,
+    item_rating INTEGER NOT NULL DEFAULT 1200,
+    wins INTEGER NOT NULL DEFAULT 0,
+    losses INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  )`).run();
+}
+
 export async function GET(request: Request) {
   const current = identity(request);
   if (!current.key) return Response.json({ email: "未連携", playerId: "--------", nickname: "", synced: false });
   await ensureProfileSchema();
+  await ensureDuelRatingSchema();
   const row = await env.DB.prepare("SELECT nickname FROM player_profiles WHERE identity_key = ?").bind(current.key).first<{ nickname: string }>();
+  const rating = await env.DB.prepare(
+    "SELECT classic_rating, item_rating, wins, losses FROM duel_ratings WHERE identity_key = ?",
+  ).bind(current.key).first<{ classic_rating: number; item_rating: number; wins: number; losses: number }>();
   return Response.json({
     email: current.email ? maskedEmail(current.email) : "端末内プロフィール",
     playerId: await publicId(current.key),
     nickname: row?.nickname ?? "",
     synced: Boolean(current.email),
+    classicRating: rating?.classic_rating ?? 1200,
+    itemRating: rating?.item_rating ?? 1200,
+    wins: rating?.wins ?? 0,
+    losses: rating?.losses ?? 0,
   }, { headers: { "Cache-Control": "no-store" } });
 }
 

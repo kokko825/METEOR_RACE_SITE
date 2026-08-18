@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ async function ensureSchema() {
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
 export async function POST(request: Request) {
+  if (!(await withinRateLimit(request, "contact-post", 5, 600))) return rateLimitedResponse();
   const playerId = clean(request.headers.get("x-meteor-player-id"), 90);
   if (!/^player:[a-z0-9-]{20,80}$/.test(playerId)) return Response.json({ error: "プレイヤー情報を確認できません" }, { status: 401 });
   const body = await request.json() as Record<string, unknown>;

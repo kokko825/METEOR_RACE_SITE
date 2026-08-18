@@ -30,6 +30,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.dev.vars
 
 # vercel
 .vercel
@@ -40,3 +41,13 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+# Codex snapshot archives and local run logs (not part of the source of truth)
+site-*.tar.gz
+site-*.tar
+dev-*.log
+tsconfig.tsbuildinfo
+.ai-lab-fast/
+.rules-test-fast/
+.switch-ai-fast/
+.switch-test-fast/

@@ -1,0 +1,17 @@
+{
+  // Deployment config for `vinext deploy` / `wrangler deploy` — independent of
+  // ChatGPT Sites. See README.md "独自公開手順" for the full setup steps.
+  "name": "meteor-race",
+  "compatibility_date": "2026-05-15",
+
+  "account_id": "0981889589ce88f85c9250466106d987",
+  "workers_dev": false,
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "meteor-race-db",
+      "database_id": "3d2c55fc-6f3d-4f7e-a5d6-38592cc42991"
+    }
+  ]
+}
