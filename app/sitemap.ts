@@ -25,5 +25,17 @@ export default function sitemap() {
       changeFrequency: "monthly" as const,
       priority: 0.8,
     },
+    {
+      url: `${SITE_URL}/privacy`,
+      lastModified: CONTENT_LAST_MODIFIED,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${SITE_URL}/terms`,
+      lastModified: CONTENT_LAST_MODIFIED,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
   ];
 }

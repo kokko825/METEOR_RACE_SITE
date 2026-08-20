@@ -60,6 +60,11 @@ button { color: inherit; }
 .shell { width: min(1440px, 100%); margin: 0 auto; padding: 22px 30px 36px; }
 .shell.entry-active { width:100%; min-height:100dvh; padding:0; overflow:hidden; }
 .shell.entry-active > :not(.title-screen):not(.entry-flow):not(.settings-overlay) { display:none !important; }
+.shell.online-lobby-only>.topbar,.shell.online-lobby-only>.game-layout,.shell.online-lobby-only>.extra-players{display:none!important}
+.shell.online-lobby-only .ai-lab-panel,.shell.online-lobby-only .rules,.shell.online-lobby-only .history-panel{display:none!important}
+.shell.online-lobby-only .control-strip{margin-top:0;padding-top:0;border-top:0;min-height:100dvh;display:grid;align-content:center}
+.shell.room-uncreated .in-game-settings,.shell.room-uncreated .settings-pending{display:none!important}
+.shell.online-lobby-only .online-panel{margin:0 auto;width:min(760px,100%);padding:clamp(18px,4vw,36px)}
 .topbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-mark { color: var(--gold); font-size: 32px; filter: drop-shadow(0 0 9px #ffc943); }
@@ -597,6 +602,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .doc-next a{color:#78dcf5}
 .doc-cta{padding:14px 30px;border:1px solid #e47835;background:linear-gradient(100deg,#9b3f16,#f08c3d);color:#fff !important;text-decoration:none;font-weight:800;letter-spacing:.16em}
 .doc-cta:hover{box-shadow:0 0 24px rgba(246,119,42,.4)}
+.doc-updated{margin-top:48px;color:#658392;font-size:12px}
 .play-guide-links,.rule-links{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px}
 .play-guide-links a,.rule-links a{color:#78dcf5;text-decoration:none}
 .play-guide-links a:hover,.rule-links a:hover{text-decoration:underline}

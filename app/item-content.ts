@@ -34,9 +34,9 @@ export const ITEM_ICONS: Record<ItemKind, string> = {
 
 /** Balance-independent fallback copy, used for items whose text has no tunable numbers in it. */
 export const ITEM_DETAILS: Record<ItemKind, string> = {
-  shield: "次に受ける爆風を防ぐ防御フィールド。自分の爆風も無効になります。",
+  shield: "1巡のあいだ爆風を防ぐ防御フィールド。自分の爆風も無効になります。",
   booster: "縦横へ最大2マス前進。途中のメテオを飛び越えてCOREへ到達できます。",
-  holo: "2巡残るホロメテオを配置し、相手の進路を封鎖します。",
+  holo: "4巡残るホロメテオを配置し、相手の進路を封鎖します。",
   orbit: "選んだリングを90度回転させ、盤上の配置をまとめて動かします。",
   blast: "指定地点に回収効果のないメテオ爆風を発生させます。",
   pulse: "装置を置き、2巡のあいだ周囲の自力移動を封じます。",
@@ -46,7 +46,7 @@ export const ITEM_DETAILS: Record<ItemKind, string> = {
 
 export function itemDetail(kind: ItemKind, balance: BalanceConfig): string {
   switch (kind) {
-    case "shield": return `${balance.shieldRounds}巡の間、次に受ける爆風を防ぎます。自分の爆風も無効になります。`;
+    case "shield": return `${balance.shieldRounds}巡の間、受ける爆風を防ぎます。自分の爆風も無効になります。`;
     case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオやお邪魔メテオを飛び越えてCOREへ到達できます。2マス移動で実際に使うまで効果は持続します。`;
     case "holo": return balance.holoUnlimited
       ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"

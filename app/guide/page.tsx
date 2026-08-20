@@ -112,7 +112,7 @@ export default async function GuidePage() {
         <h2>ランク</h2>
         <p>
           IRON → BRONZE → SILVER → GOLD → PLATINUM → DIAMOND → ORBIT の順に上がります。
-          個人戦は順位、チーム戦は勝敗でレートが増減します。CLASSICとITEMのレートは別々に管理されます。
+          真剣タイマンは1対1専用です。勝敗でレートが増減し、CLASSICとITEMのレートは別々に管理されます。
         </p>
       </section>
 
