@@ -47,11 +47,11 @@ export const ITEM_DETAILS: Record<ItemKind, string> = {
 export function itemDetail(kind: ItemKind, balance: BalanceConfig): string {
   switch (kind) {
     case "shield": return `${balance.shieldRounds}巡の間、次に受ける爆風を防ぎます。自分の爆風も無効になります。`;
-    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオやお邪魔メテオを飛び越えてCOREへ到達できます（PULSEデバイスは飛び越えられません）。2マス移動で実際に使うまで効果は持続します。`;
+    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオやお邪魔メテオを飛び越えてCOREへ到達できます。2マス移動で実際に使うまで効果は持続します。`;
     case "holo": return balance.holoUnlimited
       ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"
-      : `${balance.holoRounds}巡残るホロメテオを配置し、相手の進路を妨害します。`;
-    case "blast": return `指定地点と外周${balance.blastRadius}マスに、回収効果のないメテオ爆風を発生させます。`;
+      : `${balance.holoRounds}巡残るホロメテオを配置し、相手の進路を妨害します。爆風を受けると残り時間が縮み、威力が高いほど大きく削られます。`;
+    case "blast": return `指定地点と外周${balance.blastRadius}マスに、大メテオと同じ爆風だけを発生させます。メテオは残らず、回収効果もありません。`;
     case "pulse": return `装置を置き、外周${balance.pulseRadius}マス以内の自力移動を2巡封じます。`;
     case "gravity": return `${balance.rankedGravityRounds}巡ごとに、全探査機をCORE方向へ1マス引き寄せます。`;
     default: return ITEM_DETAILS[kind];
@@ -73,12 +73,12 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig): [string
 
 /** One-line tactical note per item — written for the guide page, where a reader has no board in front of them. */
 export const ITEM_TACTICS: Record<ItemKind, string> = {
-  shield: "COREへ詰める直前に張ると、相手の妨害用の爆風を1回無効化して押し切れます。自分の爆風も消えるため、爆風で進む手とは併用できません。",
+  shield: "COREへ詰める直前に張ると、相手の妨害用の爆風を1巡のあいだ無効化して押し切れます。自分の爆風も消えるため、爆風で進む手とは併用できません。",
   booster: "唯一の純粋な前進アイテム。メテオやお邪魔メテオを飛び越えられるので、進路が塞がれた局面の突破口になります。実際に2マス進むまで効果が残るのが強みです。",
-  holo: "相手がCOREへ入る一歩手前のマスに置くのが最も効きます。破壊できないため、確実に手数を奪えます。",
+  holo: "相手がCOREへ入る一歩手前のマスに置くのが最も効きます。ただし完全な不動物ではなく、隣接するメテオの爆風を受けると残り時間が削られます。大メテオを至近距離で当てられると一気に消えるため、爆風の届かない位置を選ぶのが確実です。",
   orbit: "盤面をまとめて回すので、相手の有利な配置ごとずらせます。自分のメテオやPULSE装置も一緒に動く点に注意が必要です。",
-  blast: "メテオを消費せずに爆風だけを起こせます。COREに近い相手を弾き飛ばす、逆転向けの一手です。",
+  blast: "手持ちのメテオを消費せずに、大メテオと同じ爆風だけを起こせます。COREに近い相手を弾き飛ばす、逆転向けの一手です。お邪魔メテオを削る手段としても有効です。",
   pulse: "範囲内の探査機は自力移動ができなくなります。相手の前進を丸ごと止められる、最も直接的な妨害手段です。",
   recall: "盤上に置いた自分のメテオを回収して手札に戻します。終盤に弾切れを起こさないための立て直し用です。",
-  gravity: "真剣タイマン限定の自動イベント。一定巡ごとに全員がCOREへ寄るため、長引く試合に強制的に決着をつけます。",
+  gravity: "真剣タイマン限定の自動イベントです。",
 };

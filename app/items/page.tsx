@@ -82,7 +82,6 @@ export default async function ItemsPage() {
           持ち込むアイテムではなく、ランク戦で自動的に発生するイベントです。
           {itemDetail("gravity", balance)}
         </p>
-        <p>{ITEM_TACTICS.gravity}</p>
       </section>
 
       <nav className="doc-next">

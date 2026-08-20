@@ -576,6 +576,6 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .doc-next a{color:#78dcf5}
 .doc-cta{padding:14px 30px;border:1px solid #e47835;background:linear-gradient(100deg,#9b3f16,#f08c3d);color:#fff !important;text-decoration:none;font-weight:800;letter-spacing:.16em}
 .doc-cta:hover{box-shadow:0 0 24px rgba(246,119,42,.4)}
-.title-links{display:flex;gap:14px}
-.title-links a{color:#78dcf5;text-decoration:none}
-.title-links a:hover{text-decoration:underline}
+.play-guide-links,.rule-links{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px}
+.play-guide-links a,.rule-links a{color:#78dcf5;text-decoration:none}
+.play-guide-links a:hover,.rule-links a:hover{text-decoration:underline}
