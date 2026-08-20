@@ -33,7 +33,7 @@ export default function BalancePage() {
   const authHeaders = (token = adminToken) => token ? { authorization: `Bearer ${token}` } : undefined;
   const load = async (token = adminToken) => {
     const headers = authHeaders(token);
-    const [balanceResponse, siteResponse] = await Promise.all([fetch("/api/balance?draft=1", { cache: "no-store", headers }), fetch("/api/site-config?draft=1", { cache: "no-store", headers })]);
+    const [balanceResponse, siteResponse] = await Promise.all([fetch("/api/admin-proxy?resource=balance&draft=1", { cache: "no-store", headers }), fetch("/api/admin-proxy?resource=site-config&draft=1", { cache: "no-store", headers })]);
     const [balanceData, siteData] = await Promise.all([balanceResponse.json(), siteResponse.json()]);
     const authenticated = balanceResponse.ok && siteResponse.ok && Boolean(balanceData.admin) && Boolean(siteData.admin);
     setAdmin(authenticated);
@@ -58,7 +58,7 @@ export default function BalancePage() {
 
   const postBalance = async (action: string, balance?: BalanceConfig) => {
     setMessage("保存中…");
-    const response = await fetch("/api/balance", { method: "POST", headers: { "content-type": "application/json", ...authHeaders() }, body: JSON.stringify({ action, balance }) });
+    const response = await fetch("/api/admin-proxy?resource=balance", { method: "POST", headers: { "content-type": "application/json", ...authHeaders() }, body: JSON.stringify({ action, balance }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "更新できませんでした");
     setRevision(data.revision ?? revision);
@@ -68,7 +68,7 @@ export default function BalancePage() {
 
   const postSite = async (action: string, config?: SiteConfig) => {
     setSiteMessage("保存中…");
-    const response = await fetch("/api/site-config", { method: "POST", headers: { "content-type": "application/json", ...authHeaders() }, body: JSON.stringify({ action, config }) });
+    const response = await fetch("/api/admin-proxy?resource=site-config", { method: "POST", headers: { "content-type": "application/json", ...authHeaders() }, body: JSON.stringify({ action, config }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "更新できませんでした");
     setSiteRevision(data.revision ?? siteRevision);
