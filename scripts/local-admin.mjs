@@ -89,8 +89,14 @@ const helper = createServer(async (request, response) => {
 });
 
 helper.listen(4317, "127.0.0.1");
-const dev = spawn(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "admin:dev"], { cwd: root, stdio: "inherit" });
-setTimeout(() => spawn("cmd", ["/c", "start", "", "http://localhost:3000/balance"], { detached: true, stdio: "ignore" }).unref(), 2500);
+const vinextCli = join(root, "node_modules", "vinext", "dist", "cli.js");
+const dev = spawn(process.execPath, [vinextCli, "dev"], { cwd: root, stdio: "inherit" });
+setTimeout(() => {
+  const browser = process.platform === "win32"
+    ? spawn("C:\\Windows\\System32\\cmd.exe", ["/c", "start", "", "http://localhost:3000/balance"], { detached: true, stdio: "ignore" })
+    : spawn("xdg-open", ["http://localhost:3000/balance"], { detached: true, stdio: "ignore" });
+  browser.unref();
+}, 2500);
 
 function stop() {
   helper.close();
