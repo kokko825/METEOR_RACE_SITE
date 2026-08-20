@@ -19,6 +19,8 @@ export default function BalancePage() {
   const [draft, setDraft] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [siteDraft, setSiteDraft] = useState<SiteConfig>(DEFAULT_SITE_CONFIG);
   const [admin, setAdmin] = useState<boolean | null>(null);
+  const [adminToken, setAdminToken] = useState("");
+  const [loginMessage, setLoginMessage] = useState("管理トークンを入力してください");
   const [revision, setRevision] = useState(0);
   const [siteRevision, setSiteRevision] = useState(0);
   const [message, setMessage] = useState("読み込み中…");
@@ -28,10 +30,17 @@ export default function BalancePage() {
   const warnings = balanceWarnings(draft);
   const visibleBalanceFields = useMemo(() => BALANCE_FIELDS.filter((field) => field.group === tab), [tab]);
 
-  const load = async () => {
-    const [balanceResponse, siteResponse] = await Promise.all([fetch("/api/balance?draft=1", { cache: "no-store" }), fetch("/api/site-config?draft=1", { cache: "no-store" })]);
+  const authHeaders = (token = adminToken) => token ? { authorization: `Bearer ${token}` } : undefined;
+  const load = async (token = adminToken) => {
+    const headers = authHeaders(token);
+    const [balanceResponse, siteResponse] = await Promise.all([fetch("/api/balance?draft=1", { cache: "no-store", headers }), fetch("/api/site-config?draft=1", { cache: "no-store", headers })]);
     const [balanceData, siteData] = await Promise.all([balanceResponse.json(), siteResponse.json()]);
-    setAdmin(balanceResponse.ok && siteResponse.ok && Boolean(balanceData.admin) && Boolean(siteData.admin));
+    const authenticated = balanceResponse.ok && siteResponse.ok && Boolean(balanceData.admin) && Boolean(siteData.admin);
+    setAdmin(authenticated);
+    if (authenticated) {
+      sessionStorage.setItem("meteor-race-admin-token", token);
+      setLoginMessage("");
+    } else if (token) setLoginMessage("管理トークンが違います");
     if (balanceResponse.ok) { setDraft(normalizeBalance(balanceData.draft)); setRevision(balanceData.revision ?? 0); setMessage("下書きを編集中"); }
     else setMessage(balanceData.error ?? "管理者として読み込めませんでした");
     if (siteResponse.ok) { setSiteDraft(normalizeSiteConfig(siteData.draft)); setSiteRevision(siteData.revision ?? 0); setSiteMessage("下書きを編集中"); }
@@ -41,13 +50,15 @@ export default function BalancePage() {
   useEffect(() => {
     // Loading the external D1 draft is the synchronization purpose of this effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
+    const savedToken = sessionStorage.getItem("meteor-race-admin-token") ?? "";
+    setAdminToken(savedToken);
+    void load(savedToken);
     return () => previewAudio.current?.pause();
   }, []);
 
   const postBalance = async (action: string, balance?: BalanceConfig) => {
     setMessage("保存中…");
-    const response = await fetch("/api/balance", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, balance }) });
+    const response = await fetch("/api/balance", { method: "POST", headers: { "content-type": "application/json", ...authHeaders() }, body: JSON.stringify({ action, balance }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "更新できませんでした");
     setRevision(data.revision ?? revision);
@@ -57,7 +68,7 @@ export default function BalancePage() {
 
   const postSite = async (action: string, config?: SiteConfig) => {
     setSiteMessage("保存中…");
-    const response = await fetch("/api/site-config", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, config }) });
+    const response = await fetch("/api/site-config", { method: "POST", headers: { "content-type": "application/json", ...authHeaders() }, body: JSON.stringify({ action, config }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "更新できませんでした");
     setSiteRevision(data.revision ?? siteRevision);
@@ -92,10 +103,10 @@ export default function BalancePage() {
     void audio.play().catch(() => setSiteMessage("音源を再生できません。URL・形式・CORS設定を確認してください"));
   };
 
-  if (admin === false) return <main className="balance-admin"><h1>OPERATIONS STUDIO</h1><p>{message}</p><Link href="/">ゲームへ戻る</Link></main>;
+  if (admin === false) return <main className="balance-admin admin-login"><section><small>METEOR RACE / ADMIN</small><h1>OPERATIONS STUDIO</h1><p>ゲームバランス・AI・音楽・デザインを管理します。</p><label>管理トークン<input type="password" autoComplete="current-password" value={adminToken} onChange={(event) => setAdminToken(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void load(adminToken)} /></label><button type="button" disabled={!adminToken} onClick={() => void load(adminToken)}>管理画面へ入る</button><p role="status">{loginMessage}</p><Link href="/">ゲームへ戻る</Link></section></main>;
 
   return <main className="balance-admin">
-    <header><div><small>METEOR RACE / ADMIN</small><h1>OPERATIONS STUDIO</h1><p>{TAB_COPY[tab].description}</p></div><div className="studio-header-status"><span>BALANCE r{revision}</span><span>SITE r{siteRevision}</span><Link href="/">ゲームへ戻る</Link></div></header>
+    <header><div><small>METEOR RACE / ADMIN</small><h1>OPERATIONS STUDIO</h1><p>{TAB_COPY[tab].description}</p></div><div className="studio-header-status"><span>BALANCE r{revision}</span><span>SITE r{siteRevision}</span><button type="button" onClick={() => { sessionStorage.removeItem("meteor-race-admin-token"); setAdminToken(""); setAdmin(false); setLoginMessage("ログアウトしました"); }}>ログアウト</button><Link href="/">ゲームへ戻る</Link></div></header>
     <nav className="balance-tabs" aria-label="編集する分野">{(Object.keys(TAB_COPY) as StudioTab[]).map((key) => <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{TAB_COPY[key].label}</button>)}</nav>
     <section className="studio-toolbar"><div><b>{isBalanceTab ? message : siteMessage}</b><small>変更は下書き保存だけでは公開されません</small></div><button onClick={() => void (isBalanceTab ? postBalance("save_draft", draft) : postSite("save_draft", siteDraft))}>下書き保存</button>{isBalanceTab && <button onClick={() => void postBalance("save_draft", draft).then(() => window.open("/?balance=draft", "_blank"))}>AILABで試す</button>}<button className="publish" onClick={() => void publishCurrent()}>公開する</button><button className="rollback" onClick={() => void rollbackCurrent()}>直前版へ戻す</button><button onClick={exportBundle}>全設定バックアップ</button><button onClick={() => fileRef.current?.click()}>バックアップ読込</button><input ref={fileRef} hidden type="file" accept=".json,application/json" onChange={(event) => event.target.files?.[0] && void importBundle(event.target.files[0])}/></section>
 
