@@ -39,9 +39,12 @@ export default async function ItemsPage() {
     <main className="doc-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB) }} />
 
-      <nav className="doc-breadcrumb" aria-label="パンくずリスト">
-        <a href="/">METEOR RACE</a> <span aria-hidden="true">›</span> <span>アイテム一覧</span>
-      </nav>
+      <div className="doc-topbar">
+        <a className="doc-back" href="/">← 戻る</a>
+        <nav className="doc-breadcrumb" aria-label="パンくずリスト">
+          <a href="/">METEOR RACE</a> <span aria-hidden="true">›</span> <span>アイテム一覧</span>
+        </nav>
+      </div>
 
       <header className="doc-header">
         <small>ITEM LIST</small>
