@@ -73,10 +73,24 @@ blastGame = {
 };
 blastGame = applyUseItem(blastGame, "blast");
 blastGame = applyBlastSwitch(blastGame, { r: 7, c: 7 });
-assert.ok(samePos(blastGame.probes.blue, { r: 5, c: 7 }), "BLAST pushes a probe by one square");
+assert.ok(samePos(blastGame.probes.blue, { r: 4, c: 7 }), "BLAST pushes an adjacent probe 2 squares, exactly like a large meteor");
 assert.equal(blastGame.meteors.length, 1, "BLAST never destroys or recovers meteors");
 assert.equal(blastGame.immobilizedMoves?.blue, 0, "BLAST does not apply PULSE immobilization");
 assert.equal(blastGame.pulseDevices?.length, 0, "BLAST does not leave a PULSE generator");
+
+// The other half of the large-meteor falloff: 2 squares at range 1, 1 at range 2.
+let blastFalloff = initialGameState(15, "red", 2, false, 0, [], "item");
+blastFalloff = {
+  ...blastFalloff,
+  phase: "place",
+  turnCount: 2,
+  probes: { ...blastFalloff.probes, red: { r: 12, c: 7 }, blue: { r: 5, c: 7 } },
+  itemHands: { red: ["blast"], blue: [] },
+};
+blastFalloff = applyUseItem(blastFalloff, "blast");
+blastFalloff = applyBlastSwitch(blastFalloff, { r: 7, c: 7 });
+assert.ok(samePos(blastFalloff.probes.blue, { r: 4, c: 7 }), "BLAST pushes a probe 2 squares away only 1 square");
+assert.ok(samePos(blastFalloff.probes.red, { r: 12, c: 7 }), "BLAST leaves probes outside its radius alone");
 
 let deviceGame = initialGameState(15, "red", 2, false, 0, [], "item");
 deviceGame = {
@@ -321,6 +335,10 @@ assert.equal(pulseDuration.pulseDevices?.length, 0, "PULSE expires after exactly
 let holoDuration = initialGameState(15, "red", 4, false, 0, [], "item");
 holoDuration = { ...holoDuration, phase: "switch", turnCount: 4, pendingSwitches: [{ kind: "holo", player: "red" }] };
 holoDuration = applyHoloSwitch(holoDuration, { r: 6, c: 6 });
-assert.equal(Math.ceil((holoDuration.obstacles[0].turns ?? 0) / 4), 2, "HOLO remains round-based and starts at two displayed rounds");
+assert.equal(
+  Math.ceil((holoDuration.obstacles[0].turns ?? 0) / 4),
+  DEFAULT_BALANCE.holoRounds,
+  "HOLO remains round-based and starts at the configured number of displayed rounds",
+);
 
 console.log("item-battle: all checks passed");

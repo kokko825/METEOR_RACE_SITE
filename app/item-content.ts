@@ -40,7 +40,7 @@ export const ITEM_DETAILS: Record<ItemKind, string> = {
   orbit: "選んだリングを90度回転させ、盤上の配置をまとめて動かします。",
   blast: "指定地点に回収効果のないメテオ爆風を発生させます。",
   pulse: "装置を置き、2巡のあいだ周囲の自力移動を封じます。",
-  recall: "自分の通常メテオをすべて回収し、ホロメテオを消去します。",
+  recall: "盤上にある自分の通常メテオを手札に戻します。自分が置いたホロメテオも同時に盤上から取り除かれますが、こちらは手札には戻りません。",
   gravity: "全探査機をCORE方向へ1マス引き寄せます。",
 };
 
@@ -66,7 +66,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig): [string
     case "orbit": return ["回転：90度", "選択したリング上の配置を移動"];
     case "blast": return [`範囲：中心＋外周${balance.blastRadius}マス`, "爆風だけを指定地点に発生"];
     case "pulse": return [`範囲：中心＋外周${balance.pulseRadius}マス`, "2巡の間、自力移動を封じる"];
-    case "recall": return ["対象：自分の全メテオ", "通常は回収、ホロは消滅"];
+    case "recall": return ["対象：盤上の自分のメテオ", "通常は手札へ、ホロは取り除くだけ"];
     case "gravity": return [`周期：${balance.rankedGravityRounds}巡`, "盤上の全探査機をCORE方向へ1マス移動"];
   }
 }
@@ -79,6 +79,6 @@ export const ITEM_TACTICS: Record<ItemKind, string> = {
   orbit: "盤面をまとめて回すので、相手の有利な配置ごとずらせます。自分のメテオやPULSE装置も一緒に動く点に注意が必要です。",
   blast: "手持ちのメテオを消費せずに、大メテオと同じ爆風だけを起こせます。COREに近い相手を弾き飛ばす、逆転向けの一手です。お邪魔メテオを削る手段としても有効です。",
   pulse: "範囲内の探査機は自力移動ができなくなります。相手の前進を丸ごと止められる、最も直接的な妨害手段です。",
-  recall: "盤上に置いた自分のメテオを回収して手札に戻します。終盤に弾切れを起こさないための立て直し用です。",
+  recall: "盤上に置いた自分の通常メテオを手札に戻せるので、終盤の弾切れを防げます。自分のホロメテオも一緒に消える点に注意してください。",
   gravity: "真剣タイマン限定の自動イベントです。",
 };

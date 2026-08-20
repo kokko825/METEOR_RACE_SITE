@@ -25,10 +25,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
   itemSameMax: 2,
   shieldRounds: 1,
   boosterUses: 1,
-  holoRounds: 2,
+  holoRounds: 4,
   holoUnlimited: 0,
   pulseRadius: 1,
-  blastRadius: 1,
+  // BLAST is specified as the large-meteor blast, and a large meteor's radius
+  // is a hard-coded 2 in applyMeteor. Keep these two in step.
+  blastRadius: 2,
   emptyMeteorBonusMoves: 1,
   rankedGravityRounds: 5,
   aiProgressWeight: 100,
