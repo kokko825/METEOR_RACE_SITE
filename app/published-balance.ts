@@ -7,7 +7,7 @@ import { readPublishedConfig } from "./versioned-config";
  *
  * The guide pages quote tunable numbers ("1巡の間", "外周1マス"), so they read
  * the published balance rather than the compiled defaults — otherwise the
- * documentation silently lies the first time someone tunes a value in /balance.
+ * documentation stays aligned when the published values are tuned in code.
  * A D1 hiccup falls back to the defaults instead of failing the page: stale
  * numbers on a content page beat a 500.
  */

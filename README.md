@@ -23,8 +23,8 @@
 - `app/game-rules.ts`：ゲーム状態とルール解決
 - `app/ai-engine.ts`：AI判断
 - `app/api/rooms/route.ts`：オンラインルーム
-- `app/balance-config.ts` / `app/api/balance/route.ts` / `app/balance/page.tsx`：ゲームバランスの外部化（下書き/公開/直前版復元、`/balance` で管理）
-- `app/site-config.ts` / `app/api/site-config/route.ts`：広告枠・インタラクティブミュージックの外部化（同じ管理画面の「サイト設定」タブ）
+- `app/balance-config.ts` / `app/api/balance/route.ts`：ゲームバランス設定と公開値の読み込み
+- `app/site-config.ts` / `app/api/site-config/route.ts`：広告枠・インタラクティブミュージック設定の読み込み
 - `app/components/ad-slot.tsx`：広告レディな表示枠（`site-config` でON/OFFするまで何も描画しない）
 - `app/music-engine.ts`：インタラクティブミュージックのクロスフェード・エンジン（トラックURL未設定時はプロシージャル生成で自動フォールバック）
 - `tests/game-rules.test.ts`：ルール回帰テスト
@@ -59,8 +59,7 @@ npm run build
 1. このフォルダ（`C:\Users\user\Documents\MeteorRace`）でターミナルを開く
 2. `npx wrangler login` を実行 → ブラウザが開くのでCloudflareアカウントで認証を許可
 3. `npx wrangler d1 create meteor-race-db` を実行し、出力された `database_id` を `wrangler.jsonc` の `d1_databases[0].database_id` に貼り付ける
-4. 管理者アクセス用のシークレットを設定：`npx wrangler secret put BALANCE_ADMIN_TOKEN`（ランダムな長い文字列を求められたら入力。これが `/balance` 管理画面のパスワード代わりになります）
-5. `npx vinext deploy` を実行 → `*.workers.dev` のURLが発行され、これだけでもう公開状態になります
+4. `npx vinext deploy` を実行 → `*.workers.dev` のURLが発行され、これだけでもう公開状態になります
 
 ### C. 独自ドメインをWorkerに接続する
 
@@ -89,7 +88,7 @@ npm run build
 
 **月額0円運用のため**：無料枠を超えそうになったら自動課金ではなく、機能縮退（新規オンライン対戦の受付停止など）を検討してください。詳細は [FREE_SITE_OPERATION_PLAN.md](./FREE_SITE_OPERATION_PLAN.md) を参照。
 
-広告・音楽の設定は `/balance` 管理画面の「サイト設定」タブから、デプロイ後にいつでも調整できます（コード変更・再デプロイ不要）。
+広告・音楽・バランスは各設定ファイルを編集し、テスト後にGitHubへ反映します。ブラウザ上およびPC内の専用管理画面は使用しません。
 
 <!-- Cloudflare Workers Builds connectivity test: 2026-08-18T02:14:21Z -->
 <!-- build fix verification: 2026-08-18T02:23:44Z -->

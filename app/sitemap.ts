@@ -1,9 +1,8 @@
 import { SITE_URL, CONTENT_LAST_MODIFIED } from "./site-url";
 
 /**
- * Served at /sitemap.xml. Lists the public pages only — /balance is the admin
- * console and /api/* are data endpoints, neither of which should be crawled
- * (see robots.ts, which disallows both).
+ * Served at /sitemap.xml. Lists public pages only; /api/* contains data
+ * endpoints and is excluded by robots.ts.
  */
 export default function sitemap() {
   return [

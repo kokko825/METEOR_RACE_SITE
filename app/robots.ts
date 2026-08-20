@@ -14,10 +14,8 @@ export default function robots() {
       {
         userAgent: "*",
         allow: "/",
-        // The admin console and the JSON endpoints have nothing to index, and
-        // crawling them just burns crawl budget on pages that 403 or return
-        // machine-readable state.
-        disallow: ["/api/", "/balance"],
+        // JSON endpoints have nothing useful for search engines to index.
+        disallow: ["/api/"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
