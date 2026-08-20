@@ -1521,6 +1521,7 @@ function Game() {
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
             <h1>METEOR<br/><span>RACE</span></h1>
+            <b className="title-reading">メテオレース</b>
             <p>BLAST YOUR WAY TO THE CORE</p>
           </div>
           <nav>

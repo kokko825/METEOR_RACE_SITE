@@ -2,13 +2,21 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SITE_URL } from "./site-url";
 
+/**
+ * The katakana reading leads the description on purpose: it is the term a
+ * Japanese player is most likely to type, and the page's own visible copy is
+ * almost entirely Latin, so the title and description are where that spelling
+ * has to appear for Google to connect the query to this site.
+ */
 const DESCRIPTION =
-  "メテオの爆風で相手を吹き飛ばし、中央のCOREを目指す2〜4人用のオンライン戦略ボードゲーム。7種類のアイテムを駆使したCPU対戦・オンライン対戦・ランク戦が、インストール不要・登録不要・無料でブラウザからすぐ遊べます。";
+  "「メテオレース」はメテオの爆風で相手を吹き飛ばし、中央のCOREを目指す2〜4人用のオンライン戦略ボードゲーム。7種類のアイテムを駆使したCPU対戦・オンライン対戦・ランク戦が、インストール不要・登録不要・無料でブラウザからすぐ遊べます。";
+
+const TITLE = "METEOR RACE（メテオレース） — 無料ブラウザ戦略ボードゲーム";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "METEOR RACE — ブラウザで遊べる無料の戦略ボードゲーム",
+    default: TITLE,
     template: "%s | METEOR RACE",
   },
   description: DESCRIPTION,
@@ -36,13 +44,13 @@ export const metadata: Metadata = {
     locale: "ja_JP",
     url: SITE_URL,
     siteName: "METEOR RACE",
-    title: "METEOR RACE — ブラウザで遊べる無料の戦略ボードゲーム",
+    title: TITLE,
     description: DESCRIPTION,
     images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "METEOR RACE の対戦画面" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "METEOR RACE — ブラウザで遊べる無料の戦略ボードゲーム",
+    title: TITLE,
     description: DESCRIPTION,
     images: ["/og-image.jpg"],
   },
