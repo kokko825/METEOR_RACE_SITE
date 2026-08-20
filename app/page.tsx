@@ -56,6 +56,7 @@ import {
 } from "./game-rules";
 import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
+import { ITEM_ICONS, itemDetail, itemEffectFacts } from "./item-content";
 import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 
 type Mode = "human" | "cpu" | "lab" | "online";
@@ -1529,7 +1530,13 @@ function Game() {
             <button type="button" onClick={() => setEntryStage("play")}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
           </nav>
-          <footer><span>Version 112</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer>
+            <span>Version 112</span>
+            {/* Real links, not SPA state changes: these are the crawl path to the
+                guide pages, which is the only way search engines reach them. */}
+            <span className="title-links"><a href="/guide">遊び方</a><a href="/items">アイテム一覧</a></span>
+            <span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span>
+          </footer>
           <AdSlot position="title" />
         </section>
       )}
@@ -2345,8 +2352,9 @@ function Game() {
             <p>BOOSTER / SHIELD / HOLO / ORBIT / BLAST / PULSE / RECALL。移動後、メテオ配置の代わりに1個使用します。</p>
             <p><b>真剣タイマン</b> 1対1専用のガチ対戦。毎日8:00–9:00と20:00–21:00（日本時間）のみ参加できます。5巡ごとにORBITAL GRAVITYが発動します。レートはサーバー側で管理され、途中退出すると減点されます。</p>
             <p><b>RANK</b> IRON → BRONZE → SILVER → GOLD → PLATINUM → DIAMOND → ORBIT。順位とTEAM勝敗でレートが増減します。</p>
-            <p><b>SHIELD</b> 次に受ける爆風を1回防ぎます。</p>
-            <p><b>BOOSTER</b> 取得後2回、縦横へ最大2マス移動できます。</p>
+            <p><b>SHIELD</b> {itemDetail("shield", balance)}</p>
+            <p><b>BOOSTER</b> {itemDetail("booster", balance)}</p>
+            <p><a href="/items">全アイテムの効果を見る</a> / <a href="/guide">遊び方をもっと詳しく</a></p>
           </div>
         </details>
         <details className="history-panel">
@@ -2356,42 +2364,6 @@ function Game() {
       </section>
     </main>
   );
-}
-
-const ITEM_ICONS: Record<ItemKind, string> = {
-  shield: "⬡",
-  booster: "▲",
-  holo: "▣",
-  orbit: "↻",
-  blast: "✹",
-  pulse: "ϟ",
-  recall: "↩",
-  gravity: "◎",
-};
-
-const ITEM_DETAILS: Record<ItemKind, string> = {
-  shield: "次に受ける爆風を防ぐ防御フィールド。自分の爆風も無効になります。",
-  booster: "縦横へ最大2マス前進。途中のメテオを飛び越えてCOREへ到達できます。",
-  holo: "2巡残るホロメテオを配置し、相手の進路を封鎖します。",
-  orbit: "選んだリングを90度回転させ、盤上の配置をまとめて動かします。",
-  blast: "指定地点に回収効果のないメテオ爆風を発生させます。",
-  pulse: "装置を置き、2巡のあいだ周囲の自力移動を封じます。",
-  recall: "自分の通常メテオをすべて回収し、ホロメテオを消去します。",
-  gravity: "全探査機をCORE方向へ1マス引き寄せます。",
-};
-
-function itemDetail(kind: ItemKind, balance: BalanceConfig): string {
-  switch (kind) {
-    case "shield": return `${balance.shieldRounds}巡の間、次に受ける爆風を防ぎます。自分の爆風も無効になります。`;
-    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオやお邪魔メテオを飛び越えてCOREへ到達できます（PULSEデバイスは飛び越えられません）。2マス移動で実際に使うまで効果は持続します。`;
-    case "holo": return balance.holoUnlimited
-      ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"
-      : `${balance.holoRounds}巡残るホロメテオを配置し、相手の進路を妨害します。`;
-    case "blast": return `指定地点と外周${balance.blastRadius}マスに、回収効果のないメテオ爆風を発生させます。`;
-    case "pulse": return `装置を置き、外周${balance.pulseRadius}マス以内の自力移動を2巡封じます。`;
-    case "gravity": return `${balance.rankedGravityRounds}巡ごとに、全探査機をCORE方向へ1マス引き寄せます。`;
-    default: return ITEM_DETAILS[kind];
-  }
 }
 
 const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
@@ -2405,18 +2377,6 @@ const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
   gravity: "PULL TO CORE",
 };
 
-function itemEffectFacts(kind: ItemKind, balance: BalanceConfig): [string, string] {
-  switch (kind) {
-    case "shield": return [`有効：${balance.shieldRounds}巡`, "敵と自分の爆風を無効化"];
-    case "booster": return [`使用：${balance.boosterUses}回`, "縦横2マス進みメテオを飛び越える"];
-    case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, "破壊不能の障害物として設置"];
-    case "orbit": return ["回転：90度", "選択したリング上の配置を移動"];
-    case "blast": return [`範囲：中心＋外周${balance.blastRadius}マス`, "爆風だけを指定地点に発生"];
-    case "pulse": return [`範囲：中心＋外周${balance.pulseRadius}マス`, "2巡の間、自力移動を封じる"];
-    case "recall": return ["対象：自分の全メテオ", "通常は回収、ホロは消滅"];
-    case "gravity": return [`周期：${balance.rankedGravityRounds}巡`, "盤上の全探査機をCORE方向へ1マス移動"];
-  }
-}
 
 function ItemIcon({ kind }: { kind: ItemKind }) {
   return <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>;

@@ -58,6 +58,16 @@ async function readRow(tableName: string, defaults: unknown): Promise<VersionedR
   return row;
 }
 
+/**
+ * Read just the published value, for server components that render config-driven
+ * copy (the guide pages) and have no Request to authenticate against.
+ * Throws if D1 is unreachable — callers decide the fallback.
+ */
+export async function readPublishedConfig<T>(spec: VersionedConfigSpec<T>): Promise<T> {
+  const row = await readRow(spec.tableName, spec.defaults);
+  return spec.normalize(JSON.parse(row.published_json));
+}
+
 export async function handleVersionedConfigGet<T>(request: Request, spec: VersionedConfigSpec<T>): Promise<Response> {
   let row: VersionedRow;
   try {
