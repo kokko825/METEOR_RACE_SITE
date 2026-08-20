@@ -1630,7 +1630,7 @@ function Game() {
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("play"); }}>ルールガイド</button><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("rule"); }}>対戦設定</button><a href="/privacy">プライバシー</a><a href="/terms">利用規約</a><span>{APP_VERSION_LABEL}</span></nav>
+              <nav><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("play"); }}>ルールガイド</button><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("rule"); }}>対戦設定</button><a href="/balance">管理者画面</a><a href="/privacy">プライバシー</a><a href="/terms">利用規約</a><span>{APP_VERSION_LABEL}</span></nav>
             </section>
           </aside>
         </div>
