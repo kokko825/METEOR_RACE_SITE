@@ -14,8 +14,13 @@ function unavailable() {
   return Response.json({ error: "ローカル管理ツール専用です" }, { status: 404 });
 }
 
+function isLocalRequest(request: Request) {
+  const host = new URL(request.url).hostname.toLowerCase();
+  return host === "localhost" || host === "127.0.0.1";
+}
+
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV !== "development") return unavailable();
+  if (!isLocalRequest(request)) return unavailable();
   const target = targetUrl(request);
   if (!target) return Response.json({ error: "対象が正しくありません" }, { status: 400 });
   const response = await fetch(target, {
@@ -26,7 +31,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") return unavailable();
+  if (!isLocalRequest(request)) return unavailable();
   const target = targetUrl(request);
   if (!target) return Response.json({ error: "対象が正しくありません" }, { status: 400 });
   const response = await fetch(target, {
