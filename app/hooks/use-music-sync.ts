@@ -40,6 +40,12 @@ export function useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, redu
           fanfareUrl: config.musicFanfareUrl,
           waitingUrl: config.musicWaitingUrl,
           gameStartSeUrl: config.musicGameStartSeUrl,
+          battleTrackBaseUrls: {
+            meteor: config.musicMeteorBaseUrl,
+            orbit: config.musicOrbitBaseUrl,
+            zero_gravity: config.musicZeroGravityBaseUrl,
+            cosmic_error: config.musicCosmicErrorBaseUrl,
+          },
           crossfadeMs: config.musicCrossfadeMs,
           bpm: config.musicBpm,
         });

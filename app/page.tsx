@@ -8,6 +8,7 @@ import { playBoom as playBoomSfx, playItemSound as playItemSoundSfx } from "./sf
 import { useLocalSettings } from "./hooks/use-local-settings";
 import { useProfile } from "./hooks/use-profile";
 import { useMusicSync } from "./hooks/use-music-sync";
+import { useSiteTheme } from "./hooks/use-site-theme";
 import {
   PLAYER_ORDER,
   activeObstacles,
@@ -107,6 +108,7 @@ type OnlineRoom = {
 
 
 function Game() {
+  useSiteTheme();
   const [entryStage, setEntryStage] = useState<"title" | "rule" | "play" | "match" | "setup" | null>("title");
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");

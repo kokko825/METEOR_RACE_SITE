@@ -41,24 +41,33 @@ export const DEFAULT_BALANCE: BalanceConfig = {
 };
 
 export const BALANCE_FIELDS = [
-  { key: "meteorSmallStart", externalKey: "meteor.small.start", label: "小メテオ初期数", min: 0, max: 5, unit: "個" },
-  { key: "meteorLargeStart", externalKey: "meteor.large.start", label: "大メテオ初期数", min: 0, max: 3, unit: "個" },
-  { key: "itemHandTotal", externalKey: "item.hand.total", label: "アイテム持込総数", min: 1, max: 6, unit: "個" },
-  { key: "itemSameMax", externalKey: "item.hand.same_max", label: "同一アイテム上限", min: 1, max: 3, unit: "個" },
-  { key: "shieldRounds", externalKey: "item.shield.rounds", label: "シールド継続", min: 1, max: 3, unit: "巡" },
-  { key: "boosterUses", externalKey: "item.booster.uses", label: "ブースター使用回数", min: 1, max: 99, unit: "回" },
-  { key: "holoRounds", externalKey: "item.holo.rounds", label: "お邪魔継続", min: 1, max: 99, unit: "巡" },
-  { key: "holoUnlimited", externalKey: "item.holo.unlimited", label: "ホロメテオ無制限", min: 0, max: 1, unit: "0=OFF / 1=ON" },
-  { key: "blastRadius", externalKey: "item.blast.radius", label: "BLAST効果範囲", min: 1, max: 4, unit: "マス" },
-  { key: "pulseRadius", externalKey: "item.pulse.radius", label: "PULSE効果範囲", min: 1, max: 4, unit: "マス" },
-  { key: "emptyMeteorBonusMoves", externalKey: "meteor.empty.bonus_moves", label: "全消費ボーナス移動", min: 0, max: 1, unit: "回" },
-  { key: "rankedGravityRounds", externalKey: "ranked.gravity.rounds", label: "軌道収束の発生周期", min: 3, max: 99, unit: "巡" },
-  { key: "aiProgressWeight", externalKey: "ai.weight.progress", label: "AI 前進評価", min: 25, max: 200, unit: "%" },
-  { key: "aiDenialWeight", externalKey: "ai.weight.denial", label: "AI 妨害評価", min: 25, max: 200, unit: "%" },
-  { key: "aiResourceWeight", externalKey: "ai.weight.resource", label: "AI 資源温存評価", min: 25, max: 200, unit: "%" },
-  { key: "aiRetreatPenalty", externalKey: "ai.penalty.retreat", label: "AI 後退への減点", min: 25, max: 200, unit: "%" },
-  { key: "aiCreativity", externalKey: "ai.creativity", label: "AI 行動の揺らぎ", min: 0, max: 60, unit: "%" },
+  { key: "meteorSmallStart", group: "meteor", externalKey: "meteor.small.start", label: "小メテオ初期数", min: 0, max: 5, unit: "個" },
+  { key: "meteorLargeStart", group: "meteor", externalKey: "meteor.large.start", label: "大メテオ初期数", min: 0, max: 3, unit: "個" },
+  { key: "emptyMeteorBonusMoves", group: "meteor", externalKey: "meteor.empty.bonus_moves", label: "全消費ボーナス移動", min: 0, max: 1, unit: "回" },
+  { key: "rankedGravityRounds", group: "meteor", externalKey: "ranked.gravity.rounds", label: "軌道収束の発生周期", min: 3, max: 99, unit: "巡" },
+  { key: "itemHandTotal", group: "item", externalKey: "item.hand.total", label: "アイテム持込総数", min: 1, max: 6, unit: "個" },
+  { key: "itemSameMax", group: "item", externalKey: "item.hand.same_max", label: "同一アイテム上限", min: 1, max: 3, unit: "個" },
+  { key: "shieldRounds", group: "item", externalKey: "item.shield.rounds", label: "SHIELD継続", min: 1, max: 3, unit: "巡" },
+  { key: "boosterUses", group: "item", externalKey: "item.booster.uses", label: "BOOSTER使用回数", min: 1, max: 99, unit: "回" },
+  { key: "holoRounds", group: "item", externalKey: "item.holo.rounds", label: "HOLO継続", min: 1, max: 99, unit: "巡" },
+  { key: "holoUnlimited", group: "item", externalKey: "item.holo.unlimited", label: "HOLO無制限", min: 0, max: 1, unit: "0=OFF / 1=ON" },
+  { key: "blastRadius", group: "item", externalKey: "item.blast.radius", label: "BLAST効果範囲", min: 1, max: 4, unit: "マス" },
+  { key: "pulseRadius", group: "item", externalKey: "item.pulse.radius", label: "PULSE効果範囲", min: 1, max: 4, unit: "マス" },
+  { key: "aiProgressWeight", group: "ai", externalKey: "ai.weight.progress", label: "前進評価", min: 25, max: 200, unit: "%" },
+  { key: "aiDenialWeight", group: "ai", externalKey: "ai.weight.denial", label: "妨害評価", min: 25, max: 200, unit: "%" },
+  { key: "aiResourceWeight", group: "ai", externalKey: "ai.weight.resource", label: "資源温存評価", min: 25, max: 200, unit: "%" },
+  { key: "aiRetreatPenalty", group: "ai", externalKey: "ai.penalty.retreat", label: "後退への減点", min: 25, max: 200, unit: "%" },
+  { key: "aiCreativity", group: "ai", externalKey: "ai.creativity", label: "行動の揺らぎ", min: 0, max: 60, unit: "%" },
 ] as const;
+
+export type BalanceGroup = (typeof BALANCE_FIELDS)[number]["group"];
+
+export const AI_PRESETS = {
+  balanced: { label: "バランス型", description: "前進と必要な妨害を両立する標準設定", values: { aiProgressWeight: 100, aiDenialWeight: 100, aiResourceWeight: 100, aiRetreatPenalty: 100, aiCreativity: 22 } },
+  racer: { label: "前進型", description: "停滞を避け、COREへ向かう展開を増やす", values: { aiProgressWeight: 125, aiDenialWeight: 82, aiResourceWeight: 92, aiRetreatPenalty: 125, aiCreativity: 18 } },
+  tactician: { label: "戦術型", description: "布石と資源管理を重視しつつ妨害過多を防ぐ", values: { aiProgressWeight: 105, aiDenialWeight: 108, aiResourceWeight: 125, aiRetreatPenalty: 115, aiCreativity: 14 } },
+  lively: { label: "多様型", description: "好手を守りながら行動の種類を増やす", values: { aiProgressWeight: 110, aiDenialWeight: 92, aiResourceWeight: 90, aiRetreatPenalty: 110, aiCreativity: 34 } },
+} as const;
 
 export function normalizeBalance(input?: Partial<BalanceConfig> | null): BalanceConfig {
   const next = { ...DEFAULT_BALANCE, ...(input ?? {}) };
