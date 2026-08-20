@@ -101,6 +101,15 @@ async function loadBuffer(context: AudioContext, url: string): Promise<AudioBuff
   }
 }
 
+async function loadStemBuffer(context: AudioContext, baseUrl: string, stem: StemName): Promise<AudioBuffer | null> {
+  const root = baseUrl.replace(/\/?$/, "/");
+  for (const extension of ["ogg", "mp3", "wav"]) {
+    const buffer = await loadBuffer(context, `${root}${stem}.${extension}`);
+    if (buffer) return buffer;
+  }
+  return null;
+}
+
 /** Procedural placeholder for one battle stem, themed per spec section 6. */
 function startProceduralStem(context: AudioContext, destination: AudioNode, stem: StemName, bpm: number): LoopHandle {
   const beat = 60 / bpm;
@@ -373,7 +382,7 @@ export class MusicManager {
       const gain = this.context.createGain();
       gain.gain.value = stem === "base" ? 1 : 0;
       gain.connect(this.master);
-      const buffer = baseUrl ? await loadBuffer(this.context, `${baseUrl}${stem}.ogg`) : null;
+      const buffer = baseUrl ? await loadStemBuffer(this.context, baseUrl, stem) : null;
       if (buffer) this.stemBuffers[stem] = buffer;
       if (this.scene !== "battle" || !this.context) return;
       const loop = buffer

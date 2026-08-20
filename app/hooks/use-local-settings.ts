@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect -- one-time hydration from browser storage */
 
 import { useEffect, useState } from "react";
 import type { BattleTrackChoice } from "../music-engine";

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect -- restore local admin session on mount */
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
@@ -6,6 +7,15 @@ import { AI_PRESETS, BALANCE_FIELDS, DEFAULT_BALANCE, balanceWarnings, normalize
 import { DEFAULT_SITE_CONFIG, SITE_CONFIG_THEME_COLOR_FIELDS, SITE_CONFIG_THEME_NUMBER_FIELDS, SITE_CONFIG_TOGGLE_FIELDS, SITE_CONFIG_TRACK_FIELDS, normalizeSiteConfig, type SiteConfig } from "../site-config";
 
 type StudioTab = BalanceGroup | "music" | "design";
+const LOCAL_AUDIO_HELPER = "http://127.0.0.1:4317";
+const SIMPLE_AUDIO_SLOTS = ["title", "fanfare", "waiting", "game-start"] as const;
+const BATTLE_AUDIO_TRACKS = [
+  { id: "meteor", label: "METEOR", field: "musicMeteorBaseUrl" },
+  { id: "orbit", label: "ORBIT", field: "musicOrbitBaseUrl" },
+  { id: "zero_gravity", label: "ZERO GRAVITY", field: "musicZeroGravityBaseUrl" },
+  { id: "cosmic_error", label: "COSMIC ERROR", field: "musicCosmicErrorBaseUrl" },
+] as const;
+const BATTLE_STEMS = ["base", "pulse", "rhythm", "tension", "final"] as const;
 const TAB_COPY: Record<StudioTab, { label: string; description: string }> = {
   meteor: { label: "ゲーム", description: "メテオ数・追加移動・真剣タイマンの収束周期" },
   item: { label: "アイテム", description: "持込数・継続巡・効果範囲" },
@@ -49,7 +59,6 @@ export default function BalancePage() {
 
   useEffect(() => {
     // Loading the external D1 draft is the synchronization purpose of this effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     const savedToken = sessionStorage.getItem("meteor-race-admin-token") ?? "";
     setAdminToken(savedToken);
     void load(savedToken);
@@ -99,8 +108,29 @@ export default function BalancePage() {
   };
   const previewTrack = (value: string, folder = false) => {
     previewAudio.current?.pause(); const url = value.trim(); if (!url) return;
-    const audio = new Audio(folder ? `${url.replace(/\/?$/, "/")}base.ogg` : url); audio.volume = 0.55; previewAudio.current = audio;
-    void audio.play().catch(() => setSiteMessage("音源を再生できません。URL・形式・CORS設定を確認してください"));
+    const candidates = folder ? ["ogg", "mp3", "wav"].map((extension) => `${url.replace(/\/?$/, "/")}base.${extension}`) : [url];
+    const tryNext = (index: number) => {
+      if (index >= candidates.length) { setSiteMessage("音源を再生できません。URL・形式を確認してください"); return; }
+      const audio = new Audio(candidates[index]); audio.volume = 0.55; previewAudio.current = audio;
+      audio.addEventListener("error", () => tryNext(index + 1), { once: true });
+      void audio.play().catch(() => tryNext(index + 1));
+    };
+    tryNext(0);
+  };
+  const uploadAudio = async (slot: string, file: File, targetField: keyof SiteConfig) => {
+    setSiteMessage(`${file.name} をPC内へ保存中…`);
+    const dataUrl = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file); });
+    const response = await fetch(`${LOCAL_AUDIO_HELPER}/upload`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slot, fileName: file.name, dataUrl }) });
+    const data = await response.json();
+    if (!response.ok) { setSiteMessage(data.error ?? "音源を保存できませんでした"); return; }
+    setSiteDraft(normalizeSiteConfig({ ...siteDraft, [targetField]: data.baseUrl ?? data.url }));
+    setSiteMessage(`${file.name} を保存しました。下書き保存後に試聴できます`);
+  };
+  const publishAudioFiles = async () => {
+    setSiteMessage("音源ファイルをGitHubへ公開中…");
+    const response = await fetch(`${LOCAL_AUDIO_HELPER}/publish`, { method: "POST" });
+    const data = await response.json();
+    setSiteMessage(response.ok ? data.message : (data.error ?? "音源を公開できませんでした"));
   };
 
   if (admin === false) return <main className="balance-admin admin-login"><section><small>METEOR RACE / ADMIN</small><h1>OPERATIONS STUDIO</h1><p>ゲームバランス・AI・音楽・デザインを管理します。</p><label>管理トークン<input type="password" autoComplete="current-password" value={adminToken} onChange={(event) => setAdminToken(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void load(adminToken)} /></label><button type="button" disabled={!adminToken} onClick={() => void load(adminToken)}>管理画面へ入る</button><p role="status">{loginMessage}</p><Link href="/">ゲームへ戻る</Link></section></main>;
@@ -114,7 +144,7 @@ export default function BalancePage() {
     {tab === "ai" && <section className="studio-presets"><header><b>安全プリセット</b><span>選択後も各数値を微調整できます</span></header>{Object.entries(AI_PRESETS).map(([key, preset]) => <button key={key} onClick={() => setDraft(normalizeBalance({ ...draft, ...preset.values }))}><strong>{preset.label}</strong><small>{preset.description}</small></button>)}</section>}
     {isBalanceTab && <section className="balance-grid" aria-label={`${TAB_COPY[tab].label}の調整値`}>{visibleBalanceFields.map((field) => <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span><input type="number" min={field.min} max={field.max} value={draft[field.key]} onChange={(event) => setDraft(normalizeBalance({ ...draft, [field.key]: Number(event.target.value) }))}/><i>{field.unit} / {field.min}～{field.max}</i></label>)}</section>}
 
-    {tab === "music" && <><section className="balance-grid">{SITE_CONFIG_TOGGLE_FIELDS.filter((field) => field.key === "musicEnabled" || field.key === "musicCrossfadeMs" || field.key === "musicBpm").map((field) => <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span>{field.max === 1 ? <input className="studio-toggle" type="checkbox" checked={Boolean(siteDraft[field.key])} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: event.target.checked ? 1 : 0 }))}/> : <input type="number" min={field.min} max={field.max} value={siteDraft[field.key]} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: Number(event.target.value) }))}/>}<i>{field.unit}</i></label>)}</section><section className="site-tracks">{SITE_CONFIG_TRACK_FIELDS.map((field, index) => { const value = String(siteDraft[field.key]); const folder = index >= 4; return <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span><input type="text" placeholder={folder ? "/music/battle/meteor/ のように入力" : "空欄なら自動生成音"} value={value} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: event.target.value }))}/><button type="button" disabled={!value} onClick={() => previewTrack(value, folder)}>試聴</button></label>; })}</section><aside className="balance-note"><b>5ステム音源</b><p>各フォルダに base.ogg / pulse.ogg / rhythm.ogg / tension.ogg / final.ogg を置きます。試聴はbase.oggを再生します。空欄にすると自動生成BGMへ戻ります。</p></aside></>}
+    {tab === "music" && <><section className="balance-grid">{SITE_CONFIG_TOGGLE_FIELDS.filter((field) => field.key === "musicEnabled" || field.key === "musicCrossfadeMs" || field.key === "musicBpm").map((field) => <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span>{field.max === 1 ? <input className="studio-toggle" type="checkbox" checked={Boolean(siteDraft[field.key])} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: event.target.checked ? 1 : 0 }))}/> : <input type="number" min={field.min} max={field.max} value={siteDraft[field.key]} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: Number(event.target.value) }))}/>}<i>{field.unit}</i></label>)}</section><section className="site-tracks">{SITE_CONFIG_TRACK_FIELDS.map((field, index) => { const value = String(siteDraft[field.key]); const folder = index >= 4; return <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span><input type="text" placeholder={folder ? "/music/battle/meteor/ のように入力" : "空欄なら自動生成音"} value={value} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: event.target.value }))}/><button type="button" disabled={!value} onClick={() => previewTrack(value, folder)}>試聴</button>{index < 4 && <input className="audio-file-input" type="file" accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg" aria-label={`${field.label}を選択`} onChange={(event) => event.target.files?.[0] && void uploadAudio(SIMPLE_AUDIO_SLOTS[index], event.target.files[0], field.key)}/>}</label>; })}</section><section className="audio-stem-manager"><header><div><b>戦闘BGM 4曲 × 5ステム</b><p>各枠でMP3・WAV・OGGを直接選べます。</p></div><button type="button" onClick={() => void publishAudioFiles()}>音源ファイルをサイトへ公開</button></header>{BATTLE_AUDIO_TRACKS.map((track) => <article key={track.id}><h3>{track.label}</h3><div>{BATTLE_STEMS.map((stem) => <label key={stem}><span>{stem.toUpperCase()}</span><input type="file" accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg" onChange={(event) => event.target.files?.[0] && void uploadAudio(`${track.id}:${stem}`, event.target.files[0], track.field)}/></label>)}</div></article>)}</section><aside className="balance-note"><b>音源の反映順</b><p>音源を選択 → 下書き保存 → 試聴 → 「音源ファイルをサイトへ公開」 → 「公開する」の順です。空欄なら自動生成BGMへ戻ります。</p></aside></>}
 
     {tab === "design" && <div className="design-studio"><section className="theme-controls">{SITE_CONFIG_THEME_COLOR_FIELDS.map((field) => <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span><input type="color" value={String(siteDraft[field.key])} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: event.target.value }))}/><input type="text" value={String(siteDraft[field.key])} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: event.target.value }))}/></label>)}{SITE_CONFIG_THEME_NUMBER_FIELDS.map((field) => <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span><input type="range" min={field.min} max={field.max} value={Number(siteDraft[field.key])} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: Number(event.target.value) }))}/><output>{siteDraft[field.key]}{field.unit}</output></label>)}{SITE_CONFIG_TOGGLE_FIELDS.filter((field) => field.key === "adsEnabled" || field.key === "adSlotTitle" || field.key === "adSlotResult" || field.key === "adSlotSettings").map((field) => <label key={field.key}><span><b>{field.label}</b><code>{field.externalKey}</code></span><input className="studio-toggle" type="checkbox" checked={Boolean(siteDraft[field.key])} onChange={(event) => setSiteDraft(normalizeSiteConfig({ ...siteDraft, [field.key]: event.target.checked ? 1 : 0 }))}/><output>{siteDraft[field.key] ? "ON" : "OFF"}</output></label>)}</section><section className="theme-preview" style={{ "--preview-accent": siteDraft.themeAccent, "--preview-warm": siteDraft.themeWarm, "--preview-bg": siteDraft.themeBackground, "--preview-text": siteDraft.themeText, "--preview-glow": siteDraft.themeGlow / 100, "--preview-panel": siteDraft.themePanelOpacity / 100 } as CSSProperties}><small>LIVE PREVIEW</small><h2>METEOR <span>RACE</span></h2><div><b>CURRENT TURN</b><strong>RED</strong></div><button>GAME START</button><p>公開前に色・発光・読みやすさを確認できます。</p></section></div>}
   </main>;

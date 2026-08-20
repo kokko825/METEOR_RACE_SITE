@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SITE_URL } from "../site-url";
 import { getPublishedBalance } from "../published-balance";
 import {
@@ -40,9 +41,9 @@ export default async function ItemsPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB) }} />
 
       <div className="doc-topbar">
-        <a className="doc-back" href="/">← 戻る</a>
+        <Link className="doc-back" href="/">← 戻る</Link>
         <nav className="doc-breadcrumb" aria-label="パンくずリスト">
-          <a href="/">METEOR RACE</a> <span aria-hidden="true">›</span> <span>アイテム一覧</span>
+          <Link href="/">METEOR RACE</Link> <span aria-hidden="true">›</span> <span>アイテム一覧</span>
         </nav>
       </div>
 
@@ -88,7 +89,7 @@ export default async function ItemsPage() {
       </section>
 
       <nav className="doc-next">
-        <a className="doc-cta" href="/">ゲームを始める</a>
+        <Link className="doc-cta" href="/">ゲームを始める</Link>
         <a href="/guide">遊び方・ルールを見る</a>
       </nav>
     </main>

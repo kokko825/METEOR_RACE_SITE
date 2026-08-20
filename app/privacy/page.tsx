@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <main className="doc-page">
-      <div className="doc-topbar"><a className="doc-back" href="/">← 戻る</a></div>
+      <div className="doc-topbar"><Link className="doc-back" href="/">← 戻る</Link></div>
       <header className="doc-header"><small>PRIVACY POLICY</small><h1>プライバシーポリシー</h1><p className="doc-lead">METEOR RACEは、遊ぶために必要な情報だけを取り扱います。</p></header>
       <section className="doc-section"><h2>保存する情報</h2><p>ニックネーム、端末ごとに発行するPLAYER ID、対戦結果、レート、ルーム参加情報、お問い合わせ内容を保存することがあります。メールアドレスの登録はありません。</p></section>
       <section className="doc-section"><h2>利用目的</h2><p>オンライン対戦の同期、本人のプロフィールとレートの識別、不具合調査、お問い合わせ対応、ゲーム品質の改善に利用します。</p></section>

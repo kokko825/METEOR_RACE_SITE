@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "利用規約",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <main className="doc-page">
-      <div className="doc-topbar"><a className="doc-back" href="/">← 戻る</a></div>
+      <div className="doc-topbar"><Link className="doc-back" href="/">← 戻る</Link></div>
       <header className="doc-header"><small>TERMS OF USE</small><h1>利用規約</h1><p className="doc-lead">楽しく公平な対戦環境を守るための基本ルールです。</p></header>
       <section className="doc-section"><h2>利用条件</h2><p>本サービスは無料で利用できます。通信環境や対応ブラウザによって、一部機能が利用できない場合があります。</p></section>
       <section className="doc-section"><h2>禁止事項</h2><p>不正な通信、レートや対戦結果の改ざん、他の利用者への迷惑行為、サービスへ過度な負荷を与える行為、権利を侵害する内容の送信を禁止します。</p></section>

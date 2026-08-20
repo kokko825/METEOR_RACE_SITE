@@ -931,7 +931,7 @@ function Game() {
     if (mode === "online") void submitOnlineAction("switch_recall", undefined, undefined, false, undefined, undefined, undefined, meteorId);
     commit(next);
   };
-  const useItem = (kind: ItemKind) => {
+  const activateItem = (kind: ItemKind) => {
     if (!canControl || !canUseItem(game, kind)) return;
     try {
       if (kind === "shield" || kind === "booster" || kind === "recall" || kind === "gravity") showSwitchFx(kind, game.turn);
@@ -1399,7 +1399,7 @@ function Game() {
       } else if (decision.type === "meteor") {
         placeMeteor(decision.target, decision.size, decision.useCapsule);
       } else if (decision.type === "item") {
-        useItem(decision.kind);
+        activateItem(decision.kind);
       } else if (decision.type === "pass") {
         passPlacement();
       } else if (decision.type === "holo") {
@@ -1891,7 +1891,7 @@ function Game() {
                     key={`${kind}-${index}`}
                     className={`meteor-choice item-choice ${kind}`}
                     disabled={!canUseItem(game, kind)}
-                    onClick={() => useItem(kind)}
+                    onClick={() => activateItem(kind)}
                     title="使用すると、この手番はメテオを配置できません"
                   >
                     <ItemIcon kind={kind} />
