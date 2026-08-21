@@ -31,7 +31,7 @@ function fetchSiteConfig(): Promise<SiteConfig> {
 
 /**
  * Reserved slot for a future ad network. Renders nothing until both the
- * global switch and this specific slot are enabled in the site-config admin
+ * global switch and this specific slot are enabled in site-presentation config
  * panel, so it is safe to leave mounted everywhere ahead of time.
  */
 export function AdSlot({ position }: { position: AdPosition }) {

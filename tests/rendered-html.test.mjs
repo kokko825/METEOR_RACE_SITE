@@ -13,16 +13,20 @@ test("ships the METEOR RACE application shell and entry flow", async () => {
   assert.doesNotMatch(page, /SkeletonPreview|codex-preview/);
 });
 
-test("keeps tunable values in versioned configuration modules", async () => {
-  const [balance, site, theme] = await Promise.all([
+test("keeps human-editable values separate from application logic", async () => {
+  const [balance, site, editableBalance, editableSite, theme] = await Promise.all([
     read("../app/balance-config.ts"),
     read("../app/site-config.ts"),
+    read("../config/game-balance.ts"),
+    read("../config/site-presentation.ts"),
     read("../app/hooks/use-site-theme.ts"),
   ]);
   assert.match(balance, /AI_PRESETS/);
   assert.match(balance, /group: "ai"/);
   assert.match(site, /musicMeteorBaseUrl/);
   assert.match(site, /themeAccent/);
+  assert.match(editableBalance, /rankedGravityRounds: 5/);
+  assert.match(editableSite, /musicTitleUrl/);
   assert.match(theme, /--panel-opacity/);
 });
 
@@ -31,17 +35,15 @@ test("does not ship a browser-based administration screen", async () => {
   await assert.rejects(read("../app/api/admin-proxy/route.ts"), { code: "ENOENT" });
 });
 
-test("retains safe draft, publish and rollback operations", async () => {
-  const [balanceApi, siteApi, versioned] = await Promise.all([
+test("serves read-only configuration from Git-versioned files", async () => {
+  const [balanceApi, siteApi] = await Promise.all([
     read("../app/api/balance/route.ts"),
     read("../app/api/site-config/route.ts"),
-    read("../app/versioned-config.ts"),
   ]);
   for (const source of [balanceApi, siteApi]) {
-    assert.match(source, /handleVersionedConfigPost/);
+    assert.match(source, /export async function GET/);
+    assert.doesNotMatch(source, /export async function POST/);
   }
-  assert.match(versioned, /save_draft/);
-  assert.match(versioned, /publish/);
-  assert.match(versioned, /rollback/);
-  assert.match(versioned, /revision/);
+  await assert.rejects(read("../app/versioned-config.ts"), { code: "ENOENT" });
+  await assert.rejects(read("../app/admin-auth.ts"), { code: "ENOENT" });
 });

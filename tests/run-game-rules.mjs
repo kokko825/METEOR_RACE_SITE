@@ -5,7 +5,7 @@ import ts from "typescript";
 
 const root = process.cwd();
 const output = path.join(root, ".rules-test-fast");
-for (const file of ["app/balance-config.ts", "app/game-rules.ts", "tests/game-rules.test.ts"]) {
+for (const file of ["config/game-balance.ts", "app/balance-config.ts", "app/game-rules.ts", "tests/game-rules.test.ts"]) {
   const destination = path.join(output, file.replace(/\.ts$/, ".js"));
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   const source = fs.readFileSync(path.join(root, file), "utf8");

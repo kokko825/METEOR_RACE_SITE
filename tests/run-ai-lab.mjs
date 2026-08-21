@@ -7,7 +7,7 @@ const root = process.cwd();
 const output = path.join(root, ".ai-lab-fast");
 fs.mkdirSync(path.join(output, "app"), { recursive: true });
 fs.mkdirSync(path.join(output, "tests"), { recursive: true });
-for (const file of ["app/balance-config.ts", "app/game-rules.ts", "app/ai-engine.ts", "tests/ai-lab-simulation.ts"]) {
+for (const file of ["config/game-balance.ts", "app/balance-config.ts", "app/game-rules.ts", "app/ai-engine.ts", "tests/ai-lab-simulation.ts"]) {
   const source = fs.readFileSync(path.join(root, file), "utf8");
   const code = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },

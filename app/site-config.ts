@@ -1,3 +1,5 @@
+import { SITE_PRESENTATION } from "../config/site-presentation";
+
 export type SiteConfig = {
   adsEnabled: number;
   adSlotTitle: number;
@@ -22,29 +24,7 @@ export type SiteConfig = {
   themePanelOpacity: number;
 };
 
-export const DEFAULT_SITE_CONFIG: SiteConfig = {
-  adsEnabled: 0,
-  adSlotTitle: 0,
-  adSlotResult: 0,
-  adSlotSettings: 0,
-  musicEnabled: 1,
-  musicCrossfadeMs: 400,
-  musicBpm: 120,
-  musicTitleUrl: "",
-  musicFanfareUrl: "",
-  musicWaitingUrl: "",
-  musicGameStartSeUrl: "",
-  musicMeteorBaseUrl: "",
-  musicOrbitBaseUrl: "",
-  musicZeroGravityBaseUrl: "",
-  musicCosmicErrorBaseUrl: "",
-  themeAccent: "#63dfff",
-  themeWarm: "#ff9248",
-  themeBackground: "#03070d",
-  themeText: "#e8f7ff",
-  themeGlow: 100,
-  themePanelOpacity: 86,
-};
+export const DEFAULT_SITE_CONFIG: SiteConfig = { ...SITE_PRESENTATION };
 
 export const SITE_CONFIG_TOGGLE_FIELDS = [
   { key: "adsEnabled", externalKey: "ads.enabled", label: "広告全体スイッチ", min: 0, max: 1, unit: "0=OFF / 1=ON" },

@@ -19,6 +19,9 @@
 
 ## 主なファイル
 
+- `config/game-balance.ts`：人が編集するゲームバランスとAI調整値
+- `config/site-presentation.ts`：人が編集する色・広告・音楽設定
+- `public/music/`：完成したBGM・SEの配置場所
 - `app/page.tsx`：ゲーム画面、演出、オンライン同期
 - `app/game-rules.ts`：ゲーム状態とルール解決
 - `app/ai-engine.ts`：AI判断
@@ -42,7 +45,7 @@ npm run build
 
 ## 独自公開手順（ChatGPT Sites非依存）
 
-現状はどちらもプレイヤー・管理者の認証をヘッダーのフォールバックで既に吸収しているため、コード変更なしで以下の手順だけで独自公開できます。**すべてあなた自身のブラウザ・アカウント操作が必要です**（Claude Codeが代行できるのはコードとpushだけ）。
+公開コードはCloudflare Workers向けに構成済みです。初めて別環境へ複製する場合だけ、以下のCloudflare側設定が必要です。
 
 ### A. Cloudflareにドメインを追加する
 
@@ -88,7 +91,7 @@ npm run build
 
 **月額0円運用のため**：無料枠を超えそうになったら自動課金ではなく、機能縮退（新規オンライン対戦の受付停止など）を検討してください。詳細は [FREE_SITE_OPERATION_PLAN.md](./FREE_SITE_OPERATION_PLAN.md) を参照。
 
-広告・音楽・バランスは各設定ファイルを編集し、テスト後にGitHubへ反映します。ブラウザ上およびPC内の専用管理画面は使用しません。
+広告・音楽・バランスは `config/` の2ファイルを編集し、`npm run check` が成功してからGitHubへ反映します。ブラウザ上およびPC内の専用管理画面は使用しません。音源の置き方は `public/music/README.md` を参照してください。
 
 <!-- Cloudflare Workers Builds connectivity test: 2026-08-18T02:14:21Z -->
 <!-- build fix verification: 2026-08-18T02:23:44Z -->

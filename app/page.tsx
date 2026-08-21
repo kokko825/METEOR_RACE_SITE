@@ -217,8 +217,7 @@ function Game() {
   } = useProfile(setNickname);
   const rankRating = isItemVariant(variant) ? itemRankRating : classicRankRating;
   useEffect(() => {
-    const draft = new URLSearchParams(window.location.search).get("balance") === "draft";
-    fetch(`/api/balance${draft ? "?draft=1" : ""}`, { cache: "no-store" })
+    fetch("/api/balance", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((data) => {
         const loaded = normalizeBalance(data.balance);

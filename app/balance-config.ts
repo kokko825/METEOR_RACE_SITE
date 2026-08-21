@@ -1,3 +1,5 @@
+import { GAME_BALANCE } from "../config/game-balance";
+
 export type BalanceConfig = {
   meteorSmallStart: number;
   meteorLargeStart: number;
@@ -18,27 +20,7 @@ export type BalanceConfig = {
   aiCreativity: number;
 };
 
-export const DEFAULT_BALANCE: BalanceConfig = {
-  meteorSmallStart: 2,
-  meteorLargeStart: 1,
-  itemHandTotal: 3,
-  itemSameMax: 2,
-  shieldRounds: 1,
-  boosterUses: 1,
-  holoRounds: 4,
-  holoUnlimited: 0,
-  pulseRadius: 1,
-  // BLAST is specified as the large-meteor blast, and a large meteor's radius
-  // is a hard-coded 2 in applyMeteor. Keep these two in step.
-  blastRadius: 2,
-  emptyMeteorBonusMoves: 1,
-  rankedGravityRounds: 5,
-  aiProgressWeight: 100,
-  aiDenialWeight: 100,
-  aiResourceWeight: 100,
-  aiRetreatPenalty: 100,
-  aiCreativity: 22,
-};
+export const DEFAULT_BALANCE: BalanceConfig = { ...GAME_BALANCE };
 
 export const BALANCE_FIELDS = [
   { key: "meteorSmallStart", group: "meteor", externalKey: "meteor.small.start", label: "小メテオ初期数", min: 0, max: 5, unit: "個" },

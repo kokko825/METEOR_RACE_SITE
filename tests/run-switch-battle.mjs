@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import ts from "typescript";
 const root = process.cwd();
 const output = path.join(root, ".switch-test-fast");
-for (const file of ["app/balance-config.ts", "app/game-rules.ts", "tests/switch-battle.test.ts"]) {
+for (const file of ["config/game-balance.ts", "app/balance-config.ts", "app/game-rules.ts", "tests/switch-battle.test.ts"]) {
   const destination = path.join(output, file.replace(/\.ts$/, ".js"));
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   const code = ts.transpileModule(fs.readFileSync(path.join(root, file), "utf8"), {
