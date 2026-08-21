@@ -39,7 +39,10 @@
 npm install
 npm run dev
 npm run build
+npm run check
 ```
+
+`npm run check` は設定値検査、Lint、TypeScript、ルール、アイテム戦、AI完走、画面構成、公開ビルドをまとめて確認します。全モードの長時間AI評価は `npm run test:ai`、20試合のアイテムAI統計は `npm run test:switch-ai` です。
 
 このリポジトリは `C:\Users\user\Documents\MeteorRace` を正本として、ChatGPT Sites（Codexの作業フォルダ）から独立して育てる前提で構成されています。
 

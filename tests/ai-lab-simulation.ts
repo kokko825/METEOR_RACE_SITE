@@ -178,7 +178,7 @@ import {
   let state = initialGameState(15, "red", 4, false, 0, [], "item");
   state.turnCount = 8;
   state.phase = "place";
-  state.itemHands.red = ["recall"];
+  state.itemHands!.red = ["recall"];
   state.inventory.red = { small: 0, large: 0 };
   state.meteors = [{ r: 13, c: 1, owner: "red", size: "large", id: 99 }];
   const use = chooseAiDecision(state, "hard", () => 0);
@@ -192,7 +192,7 @@ import {
   const state = initialGameState(15, "red", 2, false, 0, [], "item");
   state.turnCount = 5;
   state.phase = "place";
-  state.itemHands.red = ["orbit"];
+  state.itemHands!.red = ["orbit"];
   state.inventory.red = { small: 0, large: 0 };
   const decision = chooseAiDecision(state, "hard", () => 0);
   assert.notDeepEqual(

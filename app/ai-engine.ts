@@ -8,7 +8,6 @@ import {
   applyHoloSwitch,
   applyOrbitSwitch,
   applyPulseSwitch,
-  applyRecallItem,
   applyUseItem,
   canUseItem,
   applyPass,

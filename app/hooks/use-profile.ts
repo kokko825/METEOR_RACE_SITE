@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect -- hydrate cached rating before server refresh */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Device identity + 真剣タイマン rating, sourced from /api/profile (server
@@ -16,7 +16,7 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
   const [classicRankRating, setClassicRankRating] = useState(1200);
   const [itemRankRating, setItemRankRating] = useState(1200);
 
-  const refreshProfile = () => {
+  const refreshProfile = useCallback(() => {
     let playerId = window.localStorage.getItem("meteor-race-player-id");
     if (!playerId) {
       playerId = `player:${crypto.randomUUID()}`;
@@ -34,7 +34,7 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
         if (Number.isFinite(data.itemRating)) setItemRankRating(data.itemRating);
       })
       .catch(() => setProfileEmail("未連携"));
-  };
+  }, [onNicknameFromServer]);
 
   useEffect(() => {
     // Offline-first cache: paint immediately from localStorage, then
@@ -46,7 +46,7 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
     else if (Number.isFinite(legacyRank) && legacyRank >= 0) setClassicRankRating(legacyRank);
     if (Number.isFinite(storedItem) && storedItem >= 0) setItemRankRating(storedItem);
     void refreshProfile();
-  }, []);
+  }, [refreshProfile]);
 
   return {
     profileEmail, publicPlayerId,

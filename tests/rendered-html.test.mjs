@@ -47,3 +47,13 @@ test("serves read-only configuration from Git-versioned files", async () => {
   await assert.rejects(read("../app/versioned-config.ts"), { code: "ENOENT" });
   await assert.rejects(read("../app/admin-auth.ts"), { code: "ENOENT" });
 });
+
+test("keeps online room settings authoritative and bounded", async () => {
+  const rooms = await read("../app/api/rooms/route.ts");
+  assert.match(rooms, /body\.humanCount/);
+  assert.match(rooms, /body\.aiCount/);
+  assert.match(rooms, /\[9, 11, 13, 15\]/);
+  assert.match(rooms, /slice\(0, room\.max_players\)/);
+  assert.doesNotMatch(rooms, /max_players = 4/);
+  assert.doesNotMatch(rooms, /balance_settings/);
+});

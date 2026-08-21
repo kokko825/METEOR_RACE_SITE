@@ -7,7 +7,6 @@ import {
   applyGravity,
   applyOrbitSwitch,
   applyPulseSwitch,
-  applyRecallItem,
   applySetupItem,
   applyUseItem,
   confirmSetupItems,

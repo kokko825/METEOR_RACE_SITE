@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { chooseAiDecision } from "../app/ai-engine";
-import { applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, confirmSetupItems, finishTurn, initialGameState, legalMoves, type GameState } from "../app/game-rules";
+import { activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, confirmSetupItems, finishTurn, initialGameState, legalMoves, type GameState } from "../app/game-rules";
 
 const itemUses: Record<string, number> = {};
 const itemUsesByPlayer: Record<string, Record<string, number>> = {};
@@ -9,7 +9,7 @@ const orbitEffects = { resolutions: 0, zeroRelationshipChange: 0, meteorPressure
 const manhattan = (a: { r: number; c: number }, b: { r: number; c: number }) =>
   Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
 function orbitRelations(state: GameState) {
-  const players = ["red", "blue", "green", "yellow"].slice(0, state.playerCount) as GameState["turn"][];
+  const players = activePlayers(state);
   const assets = [...state.meteors, ...(state.obstacles ?? [])];
   return players.flatMap((player) => assets.map((asset) => manhattan(state.probes[player], asset)));
 }
@@ -36,7 +36,7 @@ function step(state: GameState, random: () => number): GameState {
   if (d.type === "orbit") {
     const player = state.pendingSwitches?.[0]?.player ?? state.turn;
     const rivals = (["red", "blue", "green", "yellow"] as GameState["turn"][])
-      .slice(0, state.playerCount)
+      .filter((candidate) => activePlayers(state).includes(candidate))
       .filter((candidate) => candidate !== player);
     const beforeRelations = orbitRelations(state);
     const ownedBefore = state.meteors.filter((meteor) => meteor.owner === player);

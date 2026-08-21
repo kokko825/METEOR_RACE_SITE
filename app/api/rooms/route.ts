@@ -48,20 +48,7 @@ async function ensureSchema() {
 }
 
 async function publishedBalance() {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS balance_settings (
-    id INTEGER PRIMARY KEY CHECK (id = 1), published_json TEXT NOT NULL,
-    draft_json TEXT NOT NULL, previous_json TEXT NOT NULL,
-    revision INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL
-  )`).run();
-  const defaults = JSON.stringify(DEFAULT_BALANCE);
-  await env.DB.prepare(`INSERT OR IGNORE INTO balance_settings
-    (id, published_json, draft_json, previous_json, revision, updated_at)
-    VALUES (1, ?, ?, ?, 1, ?)`)
-    .bind(defaults, defaults, defaults, Date.now())
-    .run();
-  const row = await env.DB.prepare("SELECT published_json FROM balance_settings WHERE id = 1")
-    .first<{ published_json: string }>();
-  return normalizeBalance(row ? JSON.parse(row.published_json) : DEFAULT_BALANCE);
+  return normalizeBalance(DEFAULT_BALANCE);
 }
 
 function emailFrom(request: Request) {
@@ -189,13 +176,25 @@ export async function POST(request: Request) {
       : body.variant === "team" || body.variant === "item" || body.variant === "team-item"
         ? body.variant
         : "classic";
-    const playerCount = 2;
-    const requestedSize = body.size === 11 ? 11 : 9;
-    const size = playerCount > 2 && requestedSize === 9 ? 11 : requestedSize;
+    const requestedHumans = Math.max(1, Math.min(4, Math.round(body.humanCount ?? 2)));
+    const requestedAi = Math.max(0, Math.min(3, Math.round(body.aiCount ?? 0)));
+    const playerCount = createRanked
+      ? 2
+      : isTeamVariant(createVariant)
+        ? 4
+        : Math.max(2, Math.min(4, requestedHumans + requestedAi));
+    const humanCount = createRanked ? 2 : Math.min(requestedHumans, playerCount);
+    const requestedSize = [9, 11, 13, 15].includes(body.size ?? 9) ? body.size! : 9;
+    const minimumSize = createVariant === "team" || createVariant === "team-item"
+      ? 13
+      : createVariant === "item" || playerCount > 2
+        ? 11
+        : 9;
+    const size = Math.max(requestedSize, minimumSize);
     const allowedPlayers: Player[] = ["red", "blue", "green", "yellow"].slice(0, playerCount) as Player[];
-    const first: Player = allowedPlayers[0];
+    const first: Player = body.first && allowedPlayers.includes(body.first) ? body.first : allowedPlayers[0];
     const humanSeats = [allowedPlayers[0]];
-    const botPlayers = createRanked ? [] : [allowedPlayers[1]];
+    const botPlayers = createRanked ? [] : allowedPlayers.slice(humanCount);
     const layoutOffset =
       playerCount === 3 ? crypto.getRandomValues(new Uint8Array(1))[0] % 4 : 0;
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -207,7 +206,7 @@ export async function POST(request: Request) {
         .bind(
           code,
           email,
-          4,
+          humanCount,
           JSON.stringify(humanSeats),
           JSON.stringify({
             ...initialGameState(
@@ -255,9 +254,7 @@ export async function POST(request: Request) {
     const leavingRole = seats[leavingIndex] ?? null;
     const remaining = memberEmails
       .map((member, index) => ({ member, seat: seats[index] ?? null }))
-      .filter((entry): entry is { member: string; seat: Player | null } =>
-        Boolean(entry.member) && entry.member !== email,
-      );
+      .filter((entry) => entry.member !== null && entry.member !== email);
     if (!remaining.length) {
       await env.DB.prepare("DELETE FROM game_rooms WHERE code = ?").bind(code).run();
       return json({ left: true });
@@ -332,15 +329,16 @@ export async function POST(request: Request) {
         room = (await roomByCode(code))!;
         return json(roomPayload(room, email));
       }
-      const openSlot = memberEmails.slice(0, 4).findIndex((member) => !member);
-      if (openSlot < 0) return json(roomPayload(room, email));
+      if (room.status !== "waiting") return json({ error: "この対戦はすでに開始しています" }, 409);
+      const openSlot = memberEmails.slice(0, room.max_players).findIndex((member) => !member);
+      if (openSlot < 0) return json({ error: "ルームの参加枠が埋まっています" }, 409);
       const column = ["host_email", "guest_email", "player3_email", "player4_email"][openSlot];
       const state = JSON.parse(room.state_json);
       const names = [...(state.roomMemberNames ?? [])];
       names[openSlot] = normalizeNickname(body.nickname, email);
       state.roomMemberNames = names;
       const result = await env.DB.prepare(
-        `UPDATE game_rooms SET ${column} = ?, state_json = ?, max_players = 4, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
+        `UPDATE game_rooms SET ${column} = ?, state_json = ?, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
       )
         .bind(email, JSON.stringify(state), Date.now(), code)
         .run();
@@ -465,11 +463,12 @@ export async function POST(request: Request) {
       }
     ).roomPreferredRoles = preferredRoles;
     const result = await env.DB.prepare(
-      "UPDATE game_rooms SET state_json = ?, seat_order_json = ?, max_players = 4, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
+      "UPDATE game_rooms SET state_json = ?, seat_order_json = ?, max_players = ?, version = version + 1, status = 'playing', updated_at = ? WHERE code = ? AND version = ?",
     )
       .bind(
         JSON.stringify(nextState),
         JSON.stringify(humanSeats),
+        humanCount,
         Date.now(),
         code,
         room.version,

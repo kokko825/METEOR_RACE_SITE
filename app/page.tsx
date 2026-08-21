@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
 import { rankTier } from "./duel-rating";
@@ -41,7 +41,6 @@ import {
   orthogonallyAdjacent,
   playerName,
   resetSetupItems,
-  resolveCoreArrivals,
   samePos,
   teamOf,
   viewToBoardPos,
@@ -118,7 +117,6 @@ function Game() {
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
-  const [history, setHistory] = useState<GameState[]>([]);
   const [mode, setMode] = useState<Mode>("human");
   const [setupMode, setSetupMode] = useState<Mode>("human");
   const [needsNewGame, setNeedsNewGame] = useState(false);
@@ -346,7 +344,6 @@ function Game() {
       setSize(data.state.size);
       setFirst(data.state.startingPlayer);
       setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
-      setHistory([]);
       setOnline({
         code: data.code,
         role: data.role,
@@ -385,7 +382,6 @@ function Game() {
       setSize(data.state.size);
       setFirst(data.state.startingPlayer);
       setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
-      setHistory([]);
       setOnline({
         code: data.code,
         role: data.role,
@@ -553,7 +549,6 @@ function Game() {
       setGame(data.state);
       setVariant(data.state.variant ?? "classic");
       setRankedMode(Boolean(data.state.ranked));
-      setHistory([]);
       setBlastFx(null);
       setIsAnimating(false);
       setOnline((current) => ({
@@ -577,29 +572,31 @@ function Game() {
   };
 
   const commit = (next: GameState) => {
-    setHistory((h) => [...h, game]);
     setGame(next);
   };
 
-  const playBoom = () => playBoomSfx(soundEnabled, masterVolume, sfxVolume);
+  const playBoom = useCallback(
+    () => playBoomSfx(soundEnabled, masterVolume, sfxVolume),
+    [soundEnabled, masterVolume, sfxVolume],
+  );
 
-  const playItemSound = (kind: ItemKind) => {
+  const playItemSound = useCallback((kind: ItemKind) => {
     if (soundEnabled) getMusicManager().dispatch({ type: "ITEM_GET", kind });
     playItemSoundSfx(kind, soundEnabled, masterVolume, sfxVolume);
-  };
+  }, [soundEnabled, masterVolume, sfxVolume]);
 
-  const showSwitchFx = (kind: ItemKind, player: Player) => {
+  const showSwitchFx = useCallback((kind: ItemKind, player: Player) => {
     playItemSound(kind);
     setSwitchFx({ kind, player, nonce: Date.now() });
     window.setTimeout(() => setSwitchFx((current) => current?.kind === kind && current.player === player ? null : current), kind === "gravity" ? 1550 : 1050);
-  };
+  }, [playItemSound]);
 
   useEffect(() => {
     const pulse = game.rankedGravityPulse ?? 0;
     if (!pulse || pulse <= playedRankedGravity.current) return;
     playedRankedGravity.current = pulse;
     showSwitchFx("gravity", game.turn);
-  }, [game.rankedGravityPulse]);
+  }, [game.rankedGravityPulse, game.turn, showSwitchFx]);
 
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
@@ -681,7 +678,6 @@ function Game() {
         void submitOnlineAction("meteor", target, chosenSize, capsule);
         return;
       }
-      const before = game.probes;
       const probes = resolution.state.probes;
       setIsAnimating(true);
       setBlastFx({
@@ -708,7 +704,6 @@ function Game() {
         setBlastFx(null);
         setIsAnimating(false);
       }, Math.max(140, Math.round(2020 * effectScale)));
-      void before;
       return;
     } catch {
       return;
@@ -1015,7 +1010,6 @@ function Game() {
         setActiveFirst(data.state.startingPlayer);
         setBlastFx(null);
         setIsAnimating(false);
-        setHistory([]);
         setMode("online");
         setNeedsNewGame(false);
         recordedOutcome.current = "";
@@ -1044,7 +1038,6 @@ function Game() {
     }
     setBlastFx(null);
     setIsAnimating(false);
-    setHistory([]);
     const configuredPlayerCount =
       setupMode === "cpu" || setupMode === "lab"
         ? aiPlayerCount
@@ -1099,7 +1092,6 @@ function Game() {
     getMusicManager().dispatch({ type: "NEW_GAME" });
     setBlastFx(null);
     setIsAnimating(false);
-    setHistory([]);
     recordedOutcome.current = "";
     recordedRankOutcome.current = "";
     const players = activePlayers(game);
@@ -1122,13 +1114,6 @@ function Game() {
         Boolean(game.ranked),
       ),
     );
-  };
-
-  const undo = () => {
-    const previous = history.at(-1);
-    if (!previous) return;
-    setGame(previous);
-    setHistory((h) => h.slice(0, -1));
   };
 
   const validBasePlacement = (r: number, c: number) =>
@@ -1269,7 +1254,6 @@ function Game() {
           setRankedMode(Boolean(data.state.ranked));
           setFirst(data.state.startingPlayer);
           setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
-          setHistory([]);
           setOnline((current) => ({
             ...current,
             status: data.status,
@@ -1299,7 +1283,7 @@ function Game() {
       }
     }, pollInterval);
     return () => window.clearInterval(poll);
-  }, [mode, online.code, online.version, online.pending, online.status, isAnimating]);
+  }, [mode, online.code, online.version, online.pending, online.status, online.isHost, online.joinedPlayers, isAnimating, playBoom, playItemSound]);
 
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
@@ -1341,7 +1325,7 @@ function Game() {
     if (recordedRankOutcome.current === key) return;
     recordedRankOutcome.current = key;
     void refreshProfile();
-  }, [game.ranked, game.phase, game.winner, game.turnCount, game.log.length, game.finishOrder, mode]);
+  }, [game.ranked, game.phase, game.winner, game.turnCount, game.log.length, game.finishOrder, mode, refreshProfile]);
 
   useEffect(() => {
     if (mode !== "lab" || !aiRunning || game.phase !== "over") return;
@@ -1349,7 +1333,6 @@ function Game() {
       const players = activePlayers(game);
       const nextFirst = players[stats.games % players.length];
       setActiveFirst(nextFirst);
-      setHistory([]);
       recordedOutcome.current = "";
       recordedRankOutcome.current = "";
       const nextOffset = players.length === 3 ? ((game.layoutOffset ?? 0) + 1) % 4 : 0;
@@ -1368,7 +1351,7 @@ function Game() {
       );
     }, Math.max(120, aiSpeed));
     return () => window.clearTimeout(timer);
-  }, [mode, aiRunning, game, aiSpeed, stats.games]);
+  }, [mode, aiRunning, game, aiSpeed, stats.games, activeBalance]);
 
   useEffect(() => {
     if (
@@ -1417,6 +1400,9 @@ function Game() {
       return;
     }, game.phase === "setup" ? 30 : game.bonusMove ? Math.max(420, aiSpeed) : aiSpeed);
     return () => window.clearTimeout(timer);
+  // Action helpers intentionally use the current game snapshot from this effect.
+  // Adding every inline dispatcher would recreate the timer without changing its decision input.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     game,
     mode,
@@ -1464,9 +1450,7 @@ function Game() {
       ? "red"
       : mode === "online"
         ? online.role
-        : mode === "local"
-          ? game.turn
-          : null;
+        : null;
   const turnMemberIndex =
     mode === "online" ? online.memberRoles.indexOf(game.turn) : -1;
   const turnDisplayName =

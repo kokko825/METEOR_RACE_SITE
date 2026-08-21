@@ -8,7 +8,7 @@
 ## 変更手順
 
 1. 数値または文字列を変更する
-2. `npm run check` を実行する
+2. `npm run check` を実行する（範囲外や矛盾した設定はここでエラーになります）
 3. エラーがなければGitHubへ反映する
 
 値の意味と安全範囲は `app/balance-config.ts` と `app/site-config.ts` にあります。

@@ -4,10 +4,14 @@ import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
 const root = process.cwd();
-const output = path.join(root, ".ai-lab-fast");
-fs.mkdirSync(path.join(output, "app"), { recursive: true });
-fs.mkdirSync(path.join(output, "tests"), { recursive: true });
-for (const file of ["config/game-balance.ts", "app/balance-config.ts", "app/game-rules.ts", "app/ai-engine.ts", "tests/ai-lab-simulation.ts"]) {
+const output = path.join(root, ".config-test-fast");
+for (const file of [
+  "config/game-balance.ts",
+  "config/site-presentation.ts",
+  "app/balance-config.ts",
+  "app/site-config.ts",
+  "tests/config-validation.test.ts",
+]) {
   const destination = path.join(output, file.replace(/\.ts$/, ".js"));
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   const source = fs.readFileSync(path.join(root, file), "utf8");
@@ -16,4 +20,4 @@ for (const file of ["config/game-balance.ts", "app/balance-config.ts", "app/game
   }).outputText.replace(/from "(\.[^"]+)(?<!\.js)"/g, 'from "$1.js"');
   fs.writeFileSync(destination, code);
 }
-await import(`${pathToFileURL(path.join(output, "tests/ai-lab-simulation.js")).href}?t=${Date.now()}`);
+await import(`${pathToFileURL(path.join(output, "tests/config-validation.test.js")).href}?t=${Date.now()}`);
