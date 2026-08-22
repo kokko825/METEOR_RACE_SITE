@@ -347,7 +347,8 @@ export async function POST(request: Request) {
       state.roomMemberNames = names;
       const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
       if (room.status === "waiting") {
-        seats[openSlot] = PLAYER_ORDER.find((player) => !seats.includes(player)) ?? null;
+        const available = PLAYER_ORDER.filter((player) => !seats.includes(player));
+        seats[openSlot] = available.length ? available[crypto.getRandomValues(new Uint8Array(1))[0] % available.length] : null;
       } else {
         seats[openSlot] = null;
       }
@@ -421,6 +422,25 @@ export async function POST(request: Request) {
     const target = targetRoles.find((role) => !seats.includes(role));
     if (!target) return json({ error: "移動先のチームが満員です" }, 409);
     seats[memberIndex] = target;
+    await env.DB.prepare("UPDATE game_rooms SET seat_order_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+      .bind(JSON.stringify(seats), Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
+  }
+
+  if (body.action === "swap_role") {
+    if (room.status === "playing") return json({ error: "座席交換は待機中に行ってください" }, 409);
+    const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
+    const memberIndex = members.indexOf(email);
+    if (memberIndex < 0) return json({ error: "ルームに参加していません" }, 403);
+    const targetRole = PLAYER_ORDER.includes(body.targetRole as Player) ? body.targetRole as Player : null;
+    if (!targetRole) return json({ error: "入れ替える座席を選んでください" }, 400);
+    const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
+    const currentRole = seats[memberIndex];
+    if (!currentRole) return json({ error: "観戦者は座席交換できません" }, 409);
+    const occupiedIndex = seats.findIndex((role, index) => index !== memberIndex && role === targetRole);
+    seats[memberIndex] = targetRole;
+    if (occupiedIndex >= 0) seats[occupiedIndex] = currentRole;
     await env.DB.prepare("UPDATE game_rooms SET seat_order_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
       .bind(JSON.stringify(seats), Date.now(), code).run();
     room = (await roomByCode(code))!;

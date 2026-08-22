@@ -642,13 +642,13 @@ function Game() {
     setNeedsNewGame(true);
   };
 
-  const switchOwnTeam = async () => {
-    if (!online.code || !online.role || !isTeamVariant(variant)) return;
+  const swapOwnRole = async (targetRole: Player) => {
+    if (!online.code || !online.role || targetRole === online.role) return;
     try {
-      const data = await roomRequest({ action: "switch_team", code: online.code });
+      const data = await roomRequest({ action: "swap_role", code: online.code, targetRole });
       setOnline((current) => ({ ...current, ...data, pending: false, error: "" }));
     } catch (error) {
-      setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "チームを移動できませんでした" }));
+      setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "座席を入れ替えできませんでした" }));
     }
   };
 
@@ -1287,6 +1287,9 @@ function Game() {
     (mode === "cpu" && game.turn !== "red") ||
     ((mode === "human" || (mode === "online" && online.isHost)) &&
       (game.botPlayers ?? []).includes(game.turn));
+  const humanSetupComplete = game.phase !== "setup" || activePlayers(game)
+    .filter((player) => !(game.botPlayers ?? []).includes(player))
+    .every((player) => Boolean(game.setupConfirmed?.[player]));
 
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
@@ -1501,6 +1504,7 @@ function Game() {
       !isAiTurn ||
       !aiRunning ||
       !canControl ||
+      (game.phase === "setup" && !humanSetupComplete) ||
       (needsNewGame && mode !== "online") ||
       isAnimating ||
       game.phase === "over"
@@ -1558,6 +1562,7 @@ function Game() {
     isAnimating,
     moves,
     mid,
+    humanSetupComplete,
   ]);
 
   const winRates = Object.fromEntries(
@@ -1606,6 +1611,7 @@ function Game() {
     online.role ? online.memberRoles.indexOf(online.role) : -1;
   const ownDisplayName =
     ownMemberIndex >= 0 ? online.memberNames[ownMemberIndex] : nickname.trim();
+  const lobbyAiRoles = PLAYER_ORDER.filter((player) => !online.memberRoles.includes(player)).slice(0, onlineAiCount);
   const canSeeLoadout = (player: Player) => {
     if (game.phase !== "setup") return true;
     if (mode === "online") return online.role === player;
@@ -1687,7 +1693,7 @@ function Game() {
     <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       {entryStage === "title" && (
         <section className="title-screen" aria-label="METEOR RACE タイトル画面">
-          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📖 <span>MANUAL</span></button>
+          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📕 <span>MANUAL</span></button>
           <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
@@ -1707,7 +1713,7 @@ function Game() {
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
-          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📖 <span>MANUAL</span></button>
+          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📕 <span>MANUAL</span></button>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>← BACK</button><div><small>{entryStage === "play" ? "RULE GUIDE" : "GAME START"}</small><b>{entryStage === "play" ? "HOW TO PLAY" : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>COREへ先に到達せよ</h2><p>毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。</p></article><article><b>02</b><strong>PLACE</strong><p>小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。</p></article><article><b>03</b><strong>METEOR</strong><p>小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。</p></article><article><b>GOAL</b><strong>CORE</strong><p>移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。</p></article></div>
 <nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>GAME START</button></div>}
@@ -1729,7 +1735,7 @@ function Game() {
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
-        <button className="manual-trigger" type="button" aria-label="マニュアルを開く" aria-expanded={manualOpen} onClick={() => setManualOpen(true)}>📖 <span>MANUAL</span></button>
+        <button className="manual-trigger" type="button" aria-label={manualOpen ? "マニュアルを閉じる" : "マニュアルを開く"} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>MANUAL</span></button>
       </header>
 
       {settingsOpen && (
@@ -2131,7 +2137,7 @@ function Game() {
         <>
           {mode === "online" && online.code && chatOpen && !chatMuted && (
             <aside className="comms-panel" aria-label="ルームチャット">
-              <header><div><small>ROOM {online.code}</small><strong>COMMS</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
+              <header><div><small>ROOM {online.code}</small><strong>CHAT</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
               <div className="comms-log" aria-live="polite">
                 {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
               </div>
@@ -2151,7 +2157,7 @@ function Game() {
                 {mode === "online" && online.code && <button type="button" className={chatOpen ? "active" : ""} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>◫</button>}
                 {mode === "online" && online.code && <button type="button" className={chatMuted ? "active danger" : ""} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
                 {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={online.joinLocked ? "active danger" : ""} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
-                <button type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📖</button>
+                <button type="button" aria-label={manualOpen ? "マニュアルを閉じる" : "マニュアルを開く"} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"}</button>
               </div>
             </div>
           </footer>
@@ -2388,11 +2394,11 @@ function Game() {
                     className={online.memberRoles[index] ?? "spectator"}
                   >
                     <b>{name}{index === 0 ? " / LEADER" : ""}</b><small>{online.memberRoles[index] ? playerName(online.memberRoles[index]!) : "WATCH"}</small>
-                    {online.isHost && online.status !== "playing" && <span className="member-actions"><select aria-label={`${name}の座席`} value={online.memberRoles[index] ?? "watch"} onChange={(event)=>event.target.value==="watch"?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",event.target.value as Player)}><option value="watch">観戦</option>{PLAYER_ORDER.map((player)=><option key={player} value={player}>{isTeamVariant(variant)?`${teamOf(player)==="sun"?"TEAM A":"TEAM B"} / `:""}{playerName(player)}</option>)}</select>{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
-                    {isTeamVariant(variant)&&index===ownMemberIndex&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void switchOwnTeam()}>反対チームへ移動</button>}
+                    {online.isHost && online.status !== "playing" && <span className="member-actions"><button type="button" onClick={()=>online.memberRoles[index]?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",PLAYER_ORDER.find((player)=>!online.memberRoles.includes(player))??"blue")}>{online.memberRoles[index]?"観戦へ":"選手へ"}</button>{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
+                    {isTeamVariant(variant)&&index!==ownMemberIndex&&online.memberRoles[index]&&online.role&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void swapOwnRole(online.memberRoles[index]!)}>このメンバーと入れ替え</button>}
                   </div>
                 ))}
-                {Array.from({length:onlineAiCount},(_,index)=><div key={`cpu-${index}`} className={`cpu-member ${isTeamVariant(variant)?index%2===0?"red":"blue":"spectator"}`}><b>CPU {index+1}</b><small>{isTeamVariant(variant)?index%2===0?"RED TEAM":"BLUE TEAM":"AI PLAYER"}</small><i>AI</i></div>)}
+                {lobbyAiRoles.map((role,index)=><div key={`cpu-${index}`} className={`cpu-member ${role}`}><b>CPU {index+1}</b><small>{isTeamVariant(variant)?teamOf(role)==="sun"?"RED TEAM":"BLUE TEAM":playerName(role)}</small><i>AI</i>{online.role&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void swapOwnRole(role)}>CPUと入れ替え</button>}</div>)}
               </div>
             )}
             {online.code && online.isHost && (
