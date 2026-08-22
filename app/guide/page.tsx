@@ -14,6 +14,13 @@ export const metadata: Metadata = {
     title: "メテオレースの遊び方・ルール解説",
     description:
       "探査機の移動、メテオの配置、爆風による吹き飛ばし、COREへの到達条件まで、メテオレースのルールを初めての人向けに解説します。",
+    images: [],
+  },
+  twitter: {
+    card: "summary",
+    title: "メテオレースの遊び方・ルール解説",
+    description: "探査機の移動、メテオ配置、爆風、COREへの到達条件を初心者向けに解説します。",
+    images: [],
   },
 };
 

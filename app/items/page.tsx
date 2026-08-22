@@ -21,6 +21,13 @@ export const metadata: Metadata = {
     title: "メテオレース アイテム一覧・効果解説",
     description:
       "SHIELD・BOOSTER・HOLO・ORBIT・BLAST・PULSE・RECALLの7種類のアイテム効果と使いどころを解説します。",
+    images: [],
+  },
+  twitter: {
+    card: "summary",
+    title: "メテオレース アイテム一覧・効果解説",
+    description: "全7種類の持ち込みアイテムの効果と実戦での使いどころを解説します。",
+    images: [],
   },
 };
 

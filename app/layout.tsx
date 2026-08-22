@@ -67,7 +67,8 @@ export const metadata: Metadata = {
  */
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
-  "@type": "VideoGame",
+  // Google requires a software-app type alongside VideoGame for app rich results.
+  "@type": ["VideoGame", "WebApplication"],
   name: "METEOR RACE",
   alternateName: "メテオレース",
   url: SITE_URL,
@@ -75,6 +76,7 @@ const STRUCTURED_DATA = {
   inLanguage: "ja",
   genre: ["Strategy", "Board Game", "Turn-Based Strategy"],
   gamePlatform: "Web Browser",
+  browserRequirements: "Requires a modern browser with JavaScript enabled",
   applicationCategory: "GameApplication",
   operatingSystem: "Any (modern web browser)",
   playMode: ["SinglePlayer", "MultiPlayer"],

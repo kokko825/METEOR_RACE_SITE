@@ -30,6 +30,22 @@ test("keeps human-editable values separate from application logic", async () => 
   assert.match(theme, /--panel-opacity/);
 });
 
+test("keeps the public game discoverable by search engines", async () => {
+  const [page, layout, guide, items] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/layout.tsx"),
+    read("../app/guide/page.tsx"),
+    read("../app/items/page.tsx"),
+  ]);
+  assert.match(layout, /\["VideoGame", "WebApplication"\]/);
+  assert.match(layout, /price: "0"/);
+  assert.match(page, /無料オンライン戦略ボードゲーム/);
+  assert.match(page, /href="\/guide"/);
+  assert.match(page, /href="\/items"/);
+  assert.match(guide, /alternates: \{ canonical: "\/guide" \}/);
+  assert.match(items, /alternates: \{ canonical: "\/items" \}/);
+});
+
 test("does not ship a browser-based administration screen", async () => {
   await assert.rejects(read("../app/balance/page.tsx"), { code: "ENOENT" });
   await assert.rejects(read("../app/api/admin-proxy/route.ts"), { code: "ENOENT" });

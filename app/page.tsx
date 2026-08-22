@@ -1540,11 +1540,13 @@ function Game() {
             <h1>METEOR<br/><span>RACE</span></h1>
             <b className="title-reading">メテオレース</b>
             <p>BLAST YOUR WAY TO THE CORE</p>
+            <p className="title-description">メテオの爆風でCOREを目指す、登録・インストール不要の無料オンライン戦略ボードゲーム。CPU戦と2〜4人対戦に対応。</p>
           </div>
           <nav>
             <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>GAME START <span>▶</span></button>
             <button type="button" onClick={() => setEntryStage("play")}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
+            <div className="title-resource-links"><a href="/guide">遊び方・ルール</a><a href="/items">アイテム効果一覧</a></div>
           </nav>
           <footer><span>ONLINE READY</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
           <AdSlot position="title" />
@@ -2361,7 +2363,7 @@ function Game() {
             <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
             {/* Opened in a new tab so consulting the rules mid-match neither
                 abandons the match nor silences the BGM. */}
-            <p className="rule-links"><a href="/guide" target="_blank" rel="noopener">遊び方を別タブで開く<span aria-hidden="true"> ↗</span></a><a href="/items" target="_blank" rel="noopener">アイテム一覧を別タブで開く<span aria-hidden="true"> ↗</span></a></p>
+            <p className="rule-links"><a href="/guide">遊び方を詳しく見る</a><a href="/items">アイテム一覧を見る</a></p>
           </div>
         </details>
         <details className="history-panel">
