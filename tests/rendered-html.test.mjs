@@ -69,7 +69,9 @@ test("keeps online room settings authoritative and bounded", async () => {
   assert.match(rooms, /body\.humanCount/);
   assert.match(rooms, /body\.aiCount/);
   assert.match(rooms, /\[9, 11, 13, 15\]/);
-  assert.match(rooms, /slice\(0, room\.max_players\)/);
+  assert.match(rooms, /body\.action === "manage_member"/);
+  assert.match(rooms, /room\.status === "waiting"/);
+  assert.match(rooms, /seats\[openSlot\] = null/);
   assert.doesNotMatch(rooms, /max_players = 4/);
   assert.doesNotMatch(rooms, /balance_settings/);
 });

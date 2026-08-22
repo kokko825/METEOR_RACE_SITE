@@ -99,13 +99,12 @@ async function roomByCode(code: string) {
 
 function roomPayload(room: RoomRow, email: string) {
   const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
-  const seats = JSON.parse(room.seat_order_json) as Player[];
+  const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
   const state = JSON.parse(room.state_json);
   const memberIndex = memberEmails.indexOf(email);
   const role: Player | null = memberIndex >= 0 ? seats[memberIndex] ?? null : null;
-  const joinedPlayers = memberEmails
-    .slice(0, 4)
-    .filter(Boolean).length;
+  const roomCount = memberEmails.filter(Boolean).length;
+  const joinedPlayers = memberEmails.filter((member, index) => Boolean(member && seats[index])).length;
   return {
     code: room.code,
     role,
@@ -113,6 +112,8 @@ function roomPayload(room: RoomRow, email: string) {
     version: room.version,
     maxPlayers: 4,
     joinedPlayers,
+    roomCount,
+    spectatorCount: roomCount - joinedPlayers,
     memberNames: memberEmails
       .map((member, index) =>
         member
@@ -168,6 +169,9 @@ export async function POST(request: Request) {
     setupActor?: Player;
     ranked?: boolean;
     locked?: boolean;
+    targetIndex?: number;
+    targetRole?: Player | null;
+    memberAction?: "seat" | "spectate" | "kick";
   };
   if (body.action === "create") {
     if (!(await withinRateLimit(request, "rooms-create", 10, 300))) return rateLimitedResponse();
@@ -208,7 +212,7 @@ export async function POST(request: Request) {
         .bind(
           code,
           email,
-          humanCount,
+          4,
           JSON.stringify(humanSeats),
           JSON.stringify({
             ...initialGameState(
@@ -333,23 +337,59 @@ export async function POST(request: Request) {
       }
       const waitingState = JSON.parse(room.state_json);
       if (waitingState.roomJoinLocked) return json({ error: "このルームは参加受付を締め切っています" }, 409);
-      if (room.status !== "waiting") return json({ error: "この対戦はすでに開始しています" }, 409);
-      const openSlot = memberEmails.slice(0, room.max_players).findIndex((member) => !member);
+      const openSlot = memberEmails.findIndex((member) => !member);
       if (openSlot < 0) return json({ error: "ルームの参加枠が埋まっています" }, 409);
       const column = ["host_email", "guest_email", "player3_email", "player4_email"][openSlot];
       const state = JSON.parse(room.state_json);
       const names = [...(state.roomMemberNames ?? [])];
       names[openSlot] = normalizeNickname(body.nickname, email);
       state.roomMemberNames = names;
+      const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
+      if (room.status === "waiting") {
+        seats[openSlot] = PLAYER_ORDER.find((player) => !seats.includes(player)) ?? null;
+      } else {
+        seats[openSlot] = null;
+      }
       const result = await env.DB.prepare(
-        `UPDATE game_rooms SET ${column} = ?, state_json = ?, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
+        `UPDATE game_rooms SET ${column} = ?, seat_order_json = ?, state_json = ?, version = version + 1, updated_at = ? WHERE code = ? AND ${column} IS NULL`,
       )
-        .bind(email, JSON.stringify(state), Date.now(), code)
+        .bind(email, JSON.stringify(seats), JSON.stringify(state), Date.now(), code)
         .run();
       room = (await roomByCode(code))!;
       if (result.meta.changes) return json(roomPayload(room, email));
     }
     return json({ error: "入室が重なりました。もう一度お試しください" }, 409);
+  }
+
+  if (body.action === "manage_member") {
+    if (email !== room.host_email) return json({ error: "ルームリーダーだけが変更できます" }, 403);
+    if (room.status === "playing") return json({ error: "メンバー変更は待機中に行ってください" }, 409);
+    const targetIndex = Math.max(0, Math.min(3, Number(body.targetIndex ?? -1)));
+    if (targetIndex === 0 && body.memberAction === "kick") return json({ error: "ルームリーダーは退出操作を使用してください" }, 400);
+    const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
+    if (!members[targetIndex]) return json({ error: "メンバーが見つかりません" }, 404);
+    const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
+    const state = JSON.parse(room.state_json);
+    if (body.memberAction === "kick") {
+      const remaining = members.map((member, index) => ({ member, role: seats[index] ?? null, name: state.roomMemberNames?.[index] ?? null })).filter((entry, index) => Boolean(entry.member) && index !== targetIndex);
+      state.roomMemberNames = remaining.map((entry) => entry.name);
+      await env.DB.prepare("UPDATE game_rooms SET host_email = ?, guest_email = ?, player3_email = ?, player4_email = ?, seat_order_json = ?, state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+        .bind(remaining[0].member, remaining[1]?.member ?? null, remaining[2]?.member ?? null, remaining[3]?.member ?? null, JSON.stringify(remaining.map((entry) => entry.role)), JSON.stringify(state), Date.now(), code).run();
+      room = (await roomByCode(code))!;
+      return json(roomPayload(room, email));
+    } else if (body.memberAction === "spectate") {
+      seats[targetIndex] = null;
+    } else {
+      const requested = PLAYER_ORDER.includes(body.targetRole as Player) ? body.targetRole as Player : null;
+      if (!requested) return json({ error: "座席を選択してください" }, 400);
+      const occupied = seats.findIndex((seat, index) => index !== targetIndex && seat === requested);
+      if (occupied >= 0) seats[occupied] = null;
+      seats[targetIndex] = requested;
+    }
+    await env.DB.prepare("UPDATE game_rooms SET seat_order_json = ?, state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+      .bind(JSON.stringify(seats), JSON.stringify(state), Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
   }
 
   if (body.action === "toggle_lock") {
@@ -384,6 +424,14 @@ export async function POST(request: Request) {
     return json(roomPayload(room, email));
   }
 
+  if (body.action === "return_lobby") {
+    if (email !== room.host_email) return json({ error: "ルームリーダーだけが仕切り直せます" }, 403);
+    await env.DB.prepare("UPDATE game_rooms SET status = 'waiting', version = version + 1, updated_at = ? WHERE code = ?")
+      .bind(Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
+  }
+
   if (body.action === "new_game") {
     if (email !== room.host_email) {
       return json({ error: "ルームリーダーだけが設定を変更できます" }, 403);
@@ -399,7 +447,8 @@ export async function POST(request: Request) {
       room.player3_email,
       room.player4_email,
     ];
-    const joinedPlayers = memberEmails.slice(0, 4).filter(Boolean).length;
+    const currentSeats = JSON.parse(room.seat_order_json) as Array<Player | null>;
+    const joinedPlayers = memberEmails.filter((member, index) => Boolean(member && currentSeats[index])).length;
     let humanCount = Math.max(
       1,
       Math.min(joinedPlayers, Number(body.humanCount ?? joinedPlayers)),
@@ -422,12 +471,14 @@ export async function POST(request: Request) {
     }
     const players = isTeamVariant(variant) ? 4 : humanCount + aiCount;
     const playerList: Player[] = PLAYER_ORDER.slice(0, players);
-    const previousSeats = JSON.parse(room.seat_order_json) as Player[];
+    const previousSeats = currentSeats;
     const preferredRoles: Array<Player | null> = [
       ...(previous.roomPreferredRoles ?? previousSeats),
     ];
     const humanSeats: Player[] = [];
-    for (let index = 0; index < humanCount; index += 1) {
+    const activeMemberIndices = memberEmails.map((member, index) => member && previousSeats[index] ? index : -1).filter((index) => index >= 0).slice(0, humanCount);
+    for (let seatIndex = 0; seatIndex < activeMemberIndices.length; seatIndex += 1) {
+      const index = activeMemberIndices[seatIndex];
       const preferredRole = preferredRoles[index] ?? previousSeats[index];
       if (
         preferredRole &&
@@ -438,7 +489,7 @@ export async function POST(request: Request) {
       } else {
         humanSeats.push(playerList.find((player) => !humanSeats.includes(player))!);
       }
-      preferredRoles[index] = humanSeats[index];
+      preferredRoles[index] = humanSeats[seatIndex];
     }
     const botPlayers = playerList.filter((player) => !humanSeats.includes(player));
     const requestedSize =
@@ -483,7 +534,7 @@ export async function POST(request: Request) {
     )
       .bind(
         JSON.stringify(nextState),
-        JSON.stringify(humanSeats),
+        JSON.stringify(memberEmails.map((member, index) => member && activeMemberIndices.includes(index) ? preferredRoles[index] : null)),
         humanCount,
         Date.now(),
         code,

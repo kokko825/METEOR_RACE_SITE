@@ -99,6 +99,8 @@ type OnlineRoom = {
   version: number;
   maxPlayers: number;
   joinedPlayers: number;
+  roomCount?: number;
+  spectatorCount?: number;
   memberNames: string[];
   memberRoles: Array<Player | null>;
   error: string;
@@ -360,6 +362,8 @@ function Game() {
         version: data.version,
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
+        roomCount: data.roomCount,
+        spectatorCount: data.spectatorCount,
         memberNames: data.memberNames ?? [],
         memberRoles: data.memberRoles ?? [],
         error: "",
@@ -399,6 +403,8 @@ function Game() {
         version: data.version,
         maxPlayers: data.maxPlayers,
         joinedPlayers: data.joinedPlayers,
+        roomCount: data.roomCount,
+        spectatorCount: data.spectatorCount,
         memberNames: data.memberNames ?? [],
         memberRoles: data.memberRoles ?? [],
         error: "",
@@ -585,6 +591,31 @@ function Game() {
 
   const commit = (next: GameState) => {
     setGame(next);
+  };
+
+  const returnOnlineLobby = async () => {
+    if (!online.code || !online.isHost) return;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({ action: "return_lobby", code: online.code });
+      setOnline((current) => ({ ...current, ...data, pending: false, error: "" }));
+      setNeedsNewGame(true);
+    } catch (error) {
+      setOnline((current) => ({ ...current, pending: false, error: error instanceof Error ? error.message : "待機ルームへ戻れませんでした" }));
+    }
+  };
+
+  const manageRoomMember = async (targetIndex: number, memberAction: "seat" | "spectate" | "kick", targetRole?: Player) => {
+    if (!online.code || !online.isHost) return;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({ action: "manage_member", code: online.code, targetIndex, memberAction, targetRole });
+      setOnline((current) => ({ ...current, ...data, pending: false, error: "" }));
+      setOnlinePlayerCount(Math.max(1, data.joinedPlayers) as 1 | 2 | 3 | 4);
+      setNeedsNewGame(true);
+    } catch (error) {
+      setOnline((current) => ({ ...current, pending: false, error: error instanceof Error ? error.message : "メンバーを変更できませんでした" }));
+    }
   };
 
   const playerRequestHeaders = () => {
@@ -1313,6 +1344,8 @@ function Game() {
             role: data.role,
             maxPlayers: data.maxPlayers,
             joinedPlayers: data.joinedPlayers,
+            roomCount: data.roomCount,
+            spectatorCount: data.spectatorCount,
             memberNames: data.memberNames ?? current.memberNames,
             memberRoles: data.memberRoles ?? current.memberRoles,
             isHost: Boolean(data.isHost),
@@ -1577,6 +1610,17 @@ function Game() {
     }
   };
 
+  useEffect(() => {
+    if (!nickname.trim()) return;
+    const timer = window.setTimeout(() => {
+      void saveProfile();
+      if (online.code) void updateNickname();
+    }, 450);
+    return () => window.clearTimeout(timer);
+  // Nickname edits are intentionally the only trigger; room/version polling must not resubmit it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nickname]);
+
   const sendContact = async () => {
     if (contactMessage.trim().length < 10) {
       setContactStatus("内容を10文字以上で入力してください");
@@ -1609,7 +1653,7 @@ function Game() {
     <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       {entryStage === "title" && (
         <section className="title-screen" aria-label="METEOR RACE タイトル画面">
-          <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
+          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>▣ <span>MANUAL</span></button>
           <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
@@ -1620,9 +1664,8 @@ function Game() {
           </div>
           <nav>
             <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>GAME START <span>▶</span></button>
-            <button type="button" onClick={() => setEntryStage("play")}>HOW TO PLAY</button>
             <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
-            <div className="title-resource-links"><a href="/guide">遊び方・ルール</a><a href="/items">アイテム効果一覧</a></div>
+            <a className="title-privacy" href="/privacy">PRIVACY POLICY</a>
           </nav>
           <footer><span>ONLINE READY</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
           <AdSlot position="title" />
@@ -1630,7 +1673,7 @@ function Game() {
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
-          <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
+          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>▣ <span>MANUAL</span></button>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>← BACK</button><div><small>{entryStage === "play" ? "RULE GUIDE" : "GAME START"}</small><b>{entryStage === "play" ? "HOW TO PLAY" : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>COREへ先に到達せよ</h2><p>毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。</p></article><article><b>02</b><strong>PLACE</strong><p>小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。</p></article><article><b>03</b><strong>METEOR</strong><p>小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。</p></article><article><b>GOAL</b><strong>CORE</strong><p>移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。</p></article></div>
 <nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>GAME START</button></div>}
@@ -1662,8 +1705,7 @@ function Game() {
             <section>
               <h3>ACCOUNT</h3>
               <label>ニックネーム<input maxLength={16} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="PLAYER" /></label>
-              <button className="profile-save" type="button" onClick={() => void saveProfile()}>プロフィールを保存</button>
-              <p role="status">{profileStatus}</p>
+              <p role="status">{profileStatus || "入力すると自動保存されます"}</p>
               <dl><div><dt>アカウント方式</dt><dd>{profileEmail}</dd></div><div><dt>PLAYER ID</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
               <p>メールアドレス登録はありません。ニックネームとPLAYER IDはこの端末に保存され、他のプレイヤーにはニックネームだけが表示されます。対戦中の変更は次の試合から反映されます。</p>
             </section>
@@ -1703,12 +1745,12 @@ function Game() {
             <header><div><small>METEOR RACE / MANUAL</small><h2>ルール・アイテム一覧</h2></div><div className="manual-now"><small>NOW</small><strong>{game.message}</strong></div><button type="button" aria-label="閉じる" onClick={() => setManualOpen(false)}>×</button></header>
             <div className="manual-onepage">
               <section className="manual-rules"><header><small>01</small><h3>DETAIL RULES</h3></header><div className="manual-rule-grid">
-                <article><b>MISSION</b><p>探査機を縦横へ1マス動かし、盤面中央のCOREへ最初に到達すると勝利。斜め移動はできません。</p></article>
-                <article><b>TURN</b><p>移動後にメテオを1個配置。先攻の初手だけ配置できず、配置パスは各プレイヤー1回です。</p></article>
-                <article><b>METEOR</b><p>小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。爆風でCOREへ入っても勝利です。</p></article>
-                <article><b>ITEM</b><p>対戦前に3個選択。同種は2個まで。移動後、メテオ配置の代わりに1個使用します。</p></article>
-                <article><b>MODES</b><p>CLASSIC、ITEM、2 VS 2に対応。盤面はルールに応じて9×9から15×15を使用します。</p></article>
-                <article><b>RANKED</b><p>1対1専用。CLASSICとITEMで別レート。5巡ごとに全員をCOREへ引くGRAVITYが発生します。</p></article>
+                <article><span>⌖</span><b>MISSION</b><p>探査機を縦横へ1マス動かし、盤面中央のCOREへ最初に到達すると勝利。</p><em>↓</em></article>
+                <article><span>✥</span><b>MOVE</b><p>光るマスから進行先を選択。斜め移動はできません。</p><em>↓</em></article>
+                <article><span>◆</span><b>METEOR</b><p>移動後に1個配置。小は周囲1マス、大は中心ほど強く吹き飛ばします。</p><em>↓</em></article>
+                <article><span>✦</span><b>BLAST</b><p>爆風は敵の妨害だけでなく、自分をCOREへ進める推進力になります。</p><em>↓</em></article>
+                <article><span>⬢</span><b>ITEM</b><p>ITEM戦は対戦前に3個選択。同種は2個まで、配置の代わりに使用。</p><em>↓</em></article>
+                <article><span>◎</span><b>CORE</b><p>移動・爆風・アイテムのどの方法でも、先に中央へ入れば勝利です。</p></article>
               </div></section>
               <section className="manual-items"><header><small>02</small><h3>ITEM ARCHIVE</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance)}</p></div></article>)}</div></section>
             </div>
@@ -2306,52 +2348,12 @@ function Game() {
             )}
             {online.code && online.isHost && (
               <div className="online-count" aria-label="オンライン対戦の人数">
-                <span>次のゲームに参加する人間</span>
-                <div className="player-count-buttons">
-                  {([1, 2, 3, 4] as const).map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      className={onlinePlayerCount === count ? "selected" : ""}
-                      aria-pressed={onlinePlayerCount === count}
-                      disabled={count > online.joinedPlayers || count + onlineAiCount > 4}
-                      onClick={() => {
-                        setOnlinePlayerCount(count);
-                        if (count + onlineAiCount > 2 && size === 9) setSize(11);
-                        setNeedsNewGame(true);
-                      }}
-                    >
-                      <b>{count}人</b>
-                      <small>{count <= online.joinedPlayers ? "参加" : "未入室"}</small>
-                    </button>
-                  ))}
-                </div>
+                <span>ROOM CAPACITY</span><strong>{online.roomCount ?? online.memberNames.length}人入室 · {online.joinedPlayers}人参加 · {online.spectatorCount ?? 0}人観戦</strong>
               </div>
             )}
             {online.code && online.isHost && (
               <div className="online-count" aria-label="オンライン追加AI人数">
-                <span>次のゲームに追加するAI</span>
-                <div className="player-count-buttons">
-                  {([0, 1, 2, 3] as const).map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      disabled={
-                        onlinePlayerCount + count > 4 ||
-                        (onlinePlayerCount === 1 && count === 0)
-                      }
-                      className={onlineAiCount === count ? "selected" : ""}
-                      onClick={() => {
-                        setOnlineAiCount(count);
-                        if (onlinePlayerCount + count > 2 && size === 9) setSize(11);
-                        setNeedsNewGame(true);
-                      }}
-                    >
-                      <b>{count}体</b>
-                      <small>AI</small>
-                    </button>
-                  ))}
-                </div>
+                <span>AI MEMBERS</span><div className="ai-stepper"><button type="button" disabled={onlineAiCount === 0} onClick={() => { setOnlineAiCount((onlineAiCount - 1) as 0|1|2|3); setNeedsNewGame(true); }}>− AI</button><b>{onlineAiCount}体</b><button type="button" disabled={onlinePlayerCount + onlineAiCount >= 4} onClick={() => { const next=Math.min(3,onlineAiCount+1) as 0|1|2|3; setOnlineAiCount(next); if(onlinePlayerCount+next>2&&size===9)setSize(11); setNeedsNewGame(true); }}>＋ AI</button></div>
               </div>
             )}
             <input
@@ -2361,15 +2363,7 @@ function Game() {
               aria-label="ニックネーム"
               maxLength={16}
             />
-            {online.code && (
-              <button
-                type="button"
-                onClick={() => void updateNickname()}
-                disabled={online.pending || !nickname.trim()}
-              >
-                名前を変更
-              </button>
-            )}
+            {online.code && <small className="nickname-live">入力後、自動で全員の画面へ反映</small>}
             <input
               value={roomCodeInput}
               onChange={(event) =>
@@ -2389,21 +2383,19 @@ function Game() {
                 SAME ROOM REMATCH
               </button>
             )}
+            {online.code && online.isHost && online.status !== "waiting" && <button type="button" onClick={() => void returnOnlineLobby()} disabled={online.pending}>設定を変えて仕切り直す</button>}
             {online.code && <code>{online.code}</code>}
             {online.code && (
               <div className="room-members" aria-label="ルームメンバー">
                 <span>MEMBERS</span>
                 {online.memberNames.map((name, index) => (
-                  <b
+                  <div
                     key={`${name}-${index}`}
                     className={online.memberRoles[index] ?? "spectator"}
                   >
-                    {name}
-                    {online.memberRoles[index]
-                      ? ` / ${playerName(online.memberRoles[index]!)}`
-                      : " / WATCH"}
-                    {index === 0 ? " / LEADER" : ""}
-                  </b>
+                    <b>{name}{index === 0 ? " / LEADER" : ""}</b><small>{online.memberRoles[index] ? playerName(online.memberRoles[index]!) : "WATCH"}</small>
+                    {online.isHost && online.status !== "playing" && <span className="member-actions"><select aria-label={`${name}の座席`} value={online.memberRoles[index] ?? "watch"} onChange={(event)=>event.target.value==="watch"?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",event.target.value as Player)}><option value="watch">観戦</option>{PLAYER_ORDER.map((player)=><option key={player} value={player}>{isTeamVariant(variant)?`${teamOf(player)==="sun"?"TEAM A":"TEAM B"} / `:""}{playerName(player)}</option>)}</select>{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
+                  </div>
                 ))}
               </div>
             )}
