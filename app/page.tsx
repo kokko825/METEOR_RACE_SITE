@@ -512,6 +512,8 @@ function Game() {
     setOnline((current) => ({ ...current, pending: true, error: "" }));
     try {
       await roomRequest({ action: "leave", code });
+    } catch {
+      // Local navigation must still succeed when the room server is unavailable.
     } finally {
       setOnline({
         code: "",
@@ -529,6 +531,8 @@ function Game() {
       });
       setRoomCodeInput("");
       setNeedsNewGame(true);
+      setSetupMode("online");
+      setEntryStage("rule");
     }
   };
 
@@ -2374,7 +2378,7 @@ function Game() {
               </div>
             )}
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
-            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, 16))} placeholder="NICKNAME" aria-label="ニックネーム" maxLength={16}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label="ルームコード" maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button></>}
+            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, 16))} placeholder="NICKNAME" aria-label="ニックネーム" maxLength={16}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label="ルームコード" maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>← ゲームモードへ戻る</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>
             )}

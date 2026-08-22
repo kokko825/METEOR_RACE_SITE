@@ -89,6 +89,9 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(page, /QUICK_CHAT_MESSAGES/);
   assert.match(page, /toggleRoomLock/);
   assert.match(page, /CPU \{index\+1\}/);
+  assert.match(page, /setEntryStage\("rule"\)/);
+  assert.match(page, /online-main-return/);
+  assert.match(page, /ゲームモードへ戻る/);
   assert.match(rooms, /roomJoinLocked/);
   assert.match(chat, /room_chat_messages/);
   assert.match(chat, /QUICK_MESSAGES/);
