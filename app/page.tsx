@@ -1653,7 +1653,7 @@ function Game() {
     <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       {entryStage === "title" && (
         <section className="title-screen" aria-label="METEOR RACE タイトル画面">
-          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>▣ <span>MANUAL</span></button>
+          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📖 <span>MANUAL</span></button>
           <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
@@ -1673,7 +1673,7 @@ function Game() {
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
-          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>▣ <span>MANUAL</span></button>
+          <button className="title-settings title-manual" type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📖 <span>MANUAL</span></button>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>← BACK</button><div><small>{entryStage === "play" ? "RULE GUIDE" : "GAME START"}</small><b>{entryStage === "play" ? "HOW TO PLAY" : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>COREへ先に到達せよ</h2><p>毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。</p></article><article><b>02</b><strong>PLACE</strong><p>小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。</p></article><article><b>03</b><strong>METEOR</strong><p>小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。</p></article><article><b>GOAL</b><strong>CORE</strong><p>移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。</p></article></div>
 <nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>GAME START</button></div>}
@@ -1683,7 +1683,7 @@ function Game() {
         </section>
       )}
       <header className="topbar">
-        <button className="game-back" type="button" onClick={() => setEntryStage("rule")}>← 戻る</button>
+        <button className="game-back" type="button" onClick={() => mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{mode === "online" && online.code ? online.status === "waiting" ? "← ルーム退出" : online.isHost ? "← 待機ルーム" : "← 対戦退出" : "← 戻る"}</button>
         <div className="brand">
           <span className="brand-mark">✦</span>
           <div>
@@ -1695,7 +1695,7 @@ function Game() {
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
-        <button className="manual-trigger" type="button" aria-label="マニュアルを開く" aria-expanded={manualOpen} onClick={() => setManualOpen(true)}>▣ <span>MANUAL</span></button>
+        <button className="manual-trigger" type="button" aria-label="マニュアルを開く" aria-expanded={manualOpen} onClick={() => setManualOpen(true)}>📖 <span>MANUAL</span></button>
       </header>
 
       {settingsOpen && (
@@ -1744,14 +1744,12 @@ function Game() {
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
             <header><div><small>METEOR RACE / MANUAL</small><h2>ルール・アイテム一覧</h2></div><div className="manual-now"><small>NOW</small><strong>{game.message}</strong></div><button type="button" aria-label="閉じる" onClick={() => setManualOpen(false)}>×</button></header>
             <div className="manual-onepage">
-              <section className="manual-rules"><header><small>01</small><h3>DETAIL RULES</h3></header><div className="manual-rule-grid">
-                <article><span>⌖</span><b>MISSION</b><p>探査機を縦横へ1マス動かし、盤面中央のCOREへ最初に到達すると勝利。</p><em>↓</em></article>
-                <article><span>✥</span><b>MOVE</b><p>光るマスから進行先を選択。斜め移動はできません。</p><em>↓</em></article>
-                <article><span>◆</span><b>METEOR</b><p>移動後に1個配置。小は周囲1マス、大は中心ほど強く吹き飛ばします。</p><em>↓</em></article>
-                <article><span>✦</span><b>BLAST</b><p>爆風は敵の妨害だけでなく、自分をCOREへ進める推進力になります。</p><em>↓</em></article>
-                <article><span>⬢</span><b>ITEM</b><p>ITEM戦は対戦前に3個選択。同種は2個まで、配置の代わりに使用。</p><em>↓</em></article>
-                <article><span>◎</span><b>CORE</b><p>移動・爆風・アイテムのどの方法でも、先に中央へ入れば勝利です。</p></article>
-              </div></section>
+              <section className="manual-rules"><header><small>01</small><h3>TURN LOOP</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
+                <article><span>01</span><i>✥</i><div><b>MOVE</b><p>探査機を縦横へ1マス移動</p></div></article><em>↓</em>
+                <article><span>02</span><i>◆</i><div><b>METEOR</b><p>小または大メテオを1個配置</p></div></article><em>↓</em>
+                <article><span>03</span><i>{ITEM_ICONS.shield}</i><div><b>ITEM</b><p>アイテム戦ではメテオ配置の代わりに使用可能</p></div></article>
+                <strong>↺ 次のプレイヤーのMOVEへ</strong>
+              </div><div className="manual-notes"><p>※ 斜め移動はできません。</p><p>※ BLASTは相手を妨害するだけでなく、自分を進める推進力にもなります。</p><p>※ 移動・爆風・アイテムのどの方法でもCOREへ入れば到達です。</p><p>※ 先攻の最初の手番だけメテオを配置できません。</p></div></div></section>
               <section className="manual-items"><header><small>02</small><h3>ITEM ARCHIVE</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance)}</p></div></article>)}</div></section>
             </div>
           </aside>
@@ -1759,12 +1757,15 @@ function Game() {
       )}
 
       <section className="game-layout">
-        <aside className={`player-card red-card ${(game.phase === "over" ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>
+        <div className="player-stack left-stack">
+          <aside className={`player-card red-card ${(game.phase === "over" ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
           <ProbeIcon color="red" teamMode={isTeamVariant(game.variant)} />
           <InventoryPanel inventory={game.inventory.red} color="red" items={canSeeLoadout("red") ? game.itemHands?.red ?? [] : []} loadoutHidden={!canSeeLoadout("red")} />
-        </aside>
+          </aside>
+          {activePlayers(game).includes("green") && <aside className={`player-card green-card ${(game.phase === "over" ? game.winner === "green" : game.turn === "green") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("green", 3)}</span><h2>GREEN</h2><ProbeIcon color="green" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.green} color="green" items={canSeeLoadout("green") ? game.itemHands?.green ?? [] : []} loadoutHidden={!canSeeLoadout("green")} /></aside>}
+        </div>
 
         <section className="arena">
           {switchFx && (
@@ -2081,35 +2082,16 @@ function Game() {
           </div>
         </section>
 
-        <aside className={`player-card blue-card ${(game.phase === "over" ? game.winner === "blue" : game.turn === "blue") ? "active" : ""}`}>
+        <div className="player-stack right-stack">
+          <aside className={`player-card blue-card ${(game.phase === "over" ? game.winner === "blue" : game.turn === "blue") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
           <ProbeIcon color="blue" teamMode={isTeamVariant(game.variant)} />
           <InventoryPanel inventory={game.inventory.blue} color="blue" items={canSeeLoadout("blue") ? game.itemHands?.blue ?? [] : []} loadoutHidden={!canSeeLoadout("blue")} />
-        </aside>
+          </aside>
+          {activePlayers(game).includes("yellow") && <aside className={`player-card yellow-card ${(game.phase === "over" ? game.winner === "yellow" : game.turn === "yellow") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("yellow", 4)}</span><h2>YELLOW</h2><ProbeIcon color="yellow" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.yellow} color="yellow" items={canSeeLoadout("yellow") ? game.itemHands?.yellow ?? [] : []} loadoutHidden={!canSeeLoadout("yellow")} /></aside>}
+        </div>
       </section>
-      {activePlayers(game).length > 2 && (
-        <section className="extra-players" aria-label="追加プレイヤー">
-          {PLAYER_ORDER.filter(
-            (player) =>
-              player !== "red" &&
-              player !== "blue" &&
-              activePlayers(game).includes(player),
-          ).map((player, index) => (
-            <aside
-              key={player}
-              className={`player-card compact ${player}-card ${
-                (game.phase === "over" ? game.winner === player : game.turn === player) ? "active" : ""
-              }`}
-            >
-              <span className="eyebrow">{displayNameForPlayer(player, index + 3)}</span>
-              <h2>{playerName(player)}</h2>
-              <ProbeIcon color={player} teamMode={isTeamVariant(game.variant)} />
-              <InventoryPanel inventory={game.inventory[player]} color={player} items={canSeeLoadout(player) ? game.itemHands?.[player] ?? [] : []} loadoutHidden={!canSeeLoadout(player)} />
-            </aside>
-          ))}
-        </section>
-      )}
 
       {!entryStage && !onlineLobbyOnly && (
         <>
@@ -2135,7 +2117,7 @@ function Game() {
                 {mode === "online" && online.code && <button type="button" className={chatOpen ? "active" : ""} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>◫</button>}
                 {mode === "online" && online.code && <button type="button" className={chatMuted ? "active danger" : ""} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
                 {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={online.joinLocked ? "active danger" : ""} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
-                <button type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>?</button>
+                <button type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>📖</button>
               </div>
             </div>
           </footer>
@@ -2351,11 +2333,6 @@ function Game() {
                 <span>ROOM CAPACITY</span><strong>{online.roomCount ?? online.memberNames.length}人入室 · {online.joinedPlayers}人参加 · {online.spectatorCount ?? 0}人観戦</strong>
               </div>
             )}
-            {online.code && online.isHost && (
-              <div className="online-count" aria-label="オンライン追加AI人数">
-                <span>AI MEMBERS</span><div className="ai-stepper"><button type="button" disabled={onlineAiCount === 0} onClick={() => { setOnlineAiCount((onlineAiCount - 1) as 0|1|2|3); setNeedsNewGame(true); }}>− AI</button><b>{onlineAiCount}体</b><button type="button" disabled={onlinePlayerCount + onlineAiCount >= 4} onClick={() => { const next=Math.min(3,onlineAiCount+1) as 0|1|2|3; setOnlineAiCount(next); if(onlinePlayerCount+next>2&&size===9)setSize(11); setNeedsNewGame(true); }}>＋ AI</button></div>
-              </div>
-            )}
             <input
               value={nickname}
               onChange={(event) => setNickname(event.target.value.slice(0, 16))}
@@ -2363,7 +2340,6 @@ function Game() {
               aria-label="ニックネーム"
               maxLength={16}
             />
-            {online.code && <small className="nickname-live">入力後、自動で全員の画面へ反映</small>}
             <input
               value={roomCodeInput}
               onChange={(event) =>
@@ -2397,6 +2373,11 @@ function Game() {
                     {online.isHost && online.status !== "playing" && <span className="member-actions"><select aria-label={`${name}の座席`} value={online.memberRoles[index] ?? "watch"} onChange={(event)=>event.target.value==="watch"?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",event.target.value as Player)}><option value="watch">観戦</option>{PLAYER_ORDER.map((player)=><option key={player} value={player}>{isTeamVariant(variant)?`${teamOf(player)==="sun"?"TEAM A":"TEAM B"} / `:""}{playerName(player)}</option>)}</select>{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
                   </div>
                 ))}
+              </div>
+            )}
+            {online.code && online.isHost && (
+              <div className="online-count ai-members-card" aria-label="オンライン追加AI人数">
+                <div><span>AI MEMBERS</span><small>空席へCPU探査機を追加</small></div><div className="ai-stepper"><button type="button" disabled={onlineAiCount === 0} onClick={() => { setOnlineAiCount((onlineAiCount - 1) as 0|1|2|3); setNeedsNewGame(true); }}>−</button><b>{onlineAiCount}<small> AI</small></b><button type="button" disabled={onlinePlayerCount + onlineAiCount >= 4} onClick={() => { const next=Math.min(3,onlineAiCount+1) as 0|1|2|3; setOnlineAiCount(next); if(onlinePlayerCount+next>2&&size===9)setSize(11); setNeedsNewGame(true); }}>＋</button></div>
               </div>
             )}
             {online.code && online.isHost && (
