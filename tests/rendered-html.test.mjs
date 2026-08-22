@@ -80,7 +80,7 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
     read("../app/api/rooms/route.ts"),
     read("../app/api/chat/route.ts"),
   ]);
-  assert.match(page, /MISSION CODEX/);
+  assert.match(page, /METEOR RACE \/ MANUAL/);
   assert.match(page, /battle-hud/);
   assert.match(page, /QUICK_CHAT_MESSAGES/);
   assert.match(page, /toggleRoomLock/);

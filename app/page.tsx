@@ -56,7 +56,7 @@ import {
 } from "./game-rules";
 import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
-import { ITEM_ICONS, itemDetail, itemEffectFacts } from "./item-content";
+import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, itemEffectFacts } from "./item-content";
 import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 
@@ -1652,8 +1652,7 @@ function Game() {
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
-        <button className="manual-trigger" type="button" aria-label="探査マニュアルを開く" aria-expanded={manualOpen} onClick={() => setManualOpen(true)}>▣ <span>CODEX</span></button>
-        <button className="settings-gear" type="button" aria-label="設定を開く" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>⚙</button>
+        <button className="manual-trigger" type="button" aria-label="マニュアルを開く" aria-expanded={manualOpen} onClick={() => setManualOpen(true)}>▣ <span>MANUAL</span></button>
       </header>
 
       {settingsOpen && (
@@ -1700,13 +1699,19 @@ function Game() {
 
       {manualOpen && (
         <div className="manual-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setManualOpen(false)}>
-          <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="探査マニュアル">
-            <header><div><small>MISSION CODEX</small><h2>探査マニュアル</h2></div><button type="button" aria-label="閉じる" onClick={() => setManualOpen(false)}>×</button></header>
-            <section><h3>MISSION</h3><p>探査機を縦横へ1マス動かし、盤面中央のCOREへ最初に到達すると勝利です。斜め移動はできません。</p></section>
-            <section><h3>METEOR</h3><p>移動後に小2個・大1個からメテオを配置します。小は周囲1マス、大は距離に応じて最大2マス吹き飛ばします。爆風は自分を進める推進力にもなります。</p></section>
-            <section><h3>ITEM</h3><p>ITEMルールでは移動後、メテオの代わりに持ち込みアイテムを使用できます。盤面上で対象を選ぶアイテムは、確定前なら戻れます。</p></section>
-            <section className="manual-current"><h3>NOW</h3><strong>{game.message}</strong><p>{game.phase === "move" ? "光っている移動可能マスを選択してください。" : game.phase === "place" ? "メテオまたはアイテムを選択してください。" : game.phase === "setup" ? "持ち込みアイテムを3個選択して確定してください。" : "対戦結果を確認してください。"}</p></section>
-            <nav><a href="/guide">完全なルール</a><a href="/items">全アイテム効果</a></nav>
+          <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
+            <header><div><small>METEOR RACE / MANUAL</small><h2>ルール・アイテム一覧</h2></div><div className="manual-now"><small>NOW</small><strong>{game.message}</strong></div><button type="button" aria-label="閉じる" onClick={() => setManualOpen(false)}>×</button></header>
+            <div className="manual-onepage">
+              <section className="manual-rules"><header><small>01</small><h3>DETAIL RULES</h3></header><div className="manual-rule-grid">
+                <article><b>MISSION</b><p>探査機を縦横へ1マス動かし、盤面中央のCOREへ最初に到達すると勝利。斜め移動はできません。</p></article>
+                <article><b>TURN</b><p>移動後にメテオを1個配置。先攻の初手だけ配置できず、配置パスは各プレイヤー1回です。</p></article>
+                <article><b>METEOR</b><p>小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。爆風でCOREへ入っても勝利です。</p></article>
+                <article><b>ITEM</b><p>対戦前に3個選択。同種は2個まで。移動後、メテオ配置の代わりに1個使用します。</p></article>
+                <article><b>MODES</b><p>CLASSIC、ITEM、2 VS 2に対応。盤面はルールに応じて9×9から15×15を使用します。</p></article>
+                <article><b>RANKED</b><p>1対1専用。CLASSICとITEMで別レート。5巡ごとに全員をCOREへ引くGRAVITYが発生します。</p></article>
+              </div></section>
+              <section className="manual-items"><header><small>02</small><h3>ITEM ARCHIVE</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance)}</p></div></article>)}</div></section>
+            </div>
           </aside>
         </div>
       )}
@@ -2076,7 +2081,8 @@ function Game() {
             </aside>
           )}
           <footer className="battle-hud" aria-label="対戦HUD">
-            <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label="プロフィール設定を開く">
+            <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label="設定を開く">
+              <span className="hud-settings-icon" aria-hidden="true">⚙</span>
               <i className={online.role ?? game.turn} aria-hidden="true" />
               <span><small>PILOT / PROBE ID</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
             </button>
@@ -2087,8 +2093,7 @@ function Game() {
                 {mode === "online" && online.code && <button type="button" className={chatOpen ? "active" : ""} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>◫</button>}
                 {mode === "online" && online.code && <button type="button" className={chatMuted ? "active danger" : ""} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
                 {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={online.joinLocked ? "active danger" : ""} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
-                <button type="button" aria-label="探査マニュアルを開く" onClick={() => setManualOpen(true)}>?</button>
-                <button type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
+                <button type="button" aria-label="マニュアルを開く" onClick={() => setManualOpen(true)}>?</button>
               </div>
             </div>
           </footer>
