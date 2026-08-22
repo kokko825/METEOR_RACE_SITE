@@ -172,6 +172,7 @@ export async function POST(request: Request) {
     targetIndex?: number;
     targetRole?: Player | null;
     memberAction?: "seat" | "spectate" | "kick";
+    teamEnabled?: boolean;
   };
   if (body.action === "create") {
     if (!(await withinRateLimit(request, "rooms-create", 10, 300))) return rateLimitedResponse();
@@ -388,6 +389,40 @@ export async function POST(request: Request) {
     }
     await env.DB.prepare("UPDATE game_rooms SET seat_order_json = ?, state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
       .bind(JSON.stringify(seats), JSON.stringify(state), Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
+  }
+
+  if (body.action === "assign_teams") {
+    if (email !== room.host_email) return json({ error: "ルームリーダーだけがチーム戦を変更できます" }, 403);
+    if (room.status === "playing") return json({ error: "チーム変更は待機中に行ってください" }, 409);
+    const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
+    const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
+    const assigned: Player[] = ["red", "blue", "yellow", "green"];
+    let activeIndex = 0;
+    for (let index = 0; index < members.length; index += 1) {
+      if (members[index] && seats[index]) seats[index] = body.teamEnabled ? assigned[activeIndex++] : PLAYER_ORDER[activeIndex++];
+    }
+    await env.DB.prepare("UPDATE game_rooms SET seat_order_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+      .bind(JSON.stringify(seats), Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
+  }
+
+  if (body.action === "switch_team") {
+    if (room.status === "playing") return json({ error: "チーム変更は待機中に行ってください" }, 409);
+    const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
+    const memberIndex = members.indexOf(email);
+    if (memberIndex < 0) return json({ error: "ルームに参加していません" }, 403);
+    const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
+    const current = seats[memberIndex];
+    if (!current) return json({ error: "観戦者はチーム移動できません" }, 409);
+    const targetRoles: Player[] = current === "red" || current === "yellow" ? ["blue", "green"] : ["red", "yellow"];
+    const target = targetRoles.find((role) => !seats.includes(role));
+    if (!target) return json({ error: "移動先のチームが満員です" }, 409);
+    seats[memberIndex] = target;
+    await env.DB.prepare("UPDATE game_rooms SET seat_order_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+      .bind(JSON.stringify(seats), Date.now(), code).run();
     room = (await roomByCode(code))!;
     return json(roomPayload(room, email));
   }

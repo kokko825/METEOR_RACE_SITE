@@ -618,6 +618,40 @@ function Game() {
     }
   };
 
+  const setRoomTeamMode = async (enabled: boolean) => {
+    const nextVariant: GameVariant = enabled ? (isItemVariant(variant) ? "team-item" : "team") : (isItemVariant(variant) ? "item" : "classic");
+    setVariant(nextVariant);
+    if (enabled) setSize((current) => current === 15 ? 15 : 13);
+    else if (size === 13 || size === 15) setSize(isItemVariant(nextVariant) ? 11 : 9);
+    setNeedsNewGame(true);
+    if (!online.code || !online.isHost) return;
+    try {
+      const data = await roomRequest({ action: "assign_teams", code: online.code, teamEnabled: enabled });
+      setOnline((current) => ({ ...current, ...data, pending: false, error: "" }));
+      setOnlinePlayerCount(Math.max(1, data.joinedPlayers) as 1 | 2 | 3 | 4);
+    } catch (error) {
+      setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "チームを変更できませんでした" }));
+    }
+  };
+
+  const toggleRoomItemMode = () => {
+    const enabled = !isItemVariant(variant);
+    setVariant(isTeamVariant(variant) ? (enabled ? "team-item" : "team") : (enabled ? "item" : "classic"));
+    if (enabled && size === 9) setSize(11);
+    if (!enabled && !isTeamVariant(variant) && size > 11) setSize(9);
+    setNeedsNewGame(true);
+  };
+
+  const switchOwnTeam = async () => {
+    if (!online.code || !online.role || !isTeamVariant(variant)) return;
+    try {
+      const data = await roomRequest({ action: "switch_team", code: online.code });
+      setOnline((current) => ({ ...current, ...data, pending: false, error: "" }));
+    } catch (error) {
+      setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "チームを移動できませんでした" }));
+    }
+  };
+
   const playerRequestHeaders = () => {
     let playerId = window.localStorage.getItem("meteor-race-player-id");
     if (!playerId) {
@@ -2333,24 +2367,8 @@ function Game() {
                 <span>ROOM CAPACITY</span><strong>{online.roomCount ?? online.memberNames.length}人入室 · {online.joinedPlayers}人参加 · {online.spectatorCount ?? 0}人観戦</strong>
               </div>
             )}
-            <input
-              value={nickname}
-              onChange={(event) => setNickname(event.target.value.slice(0, 16))}
-              placeholder="NICKNAME"
-              aria-label="ニックネーム"
-              maxLength={16}
-            />
-            <input
-              value={roomCodeInput}
-              onChange={(event) =>
-                setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))
-              }
-              placeholder="ROOM CODE"
-              aria-label="ルームコード"
-              maxLength={6}
-            />
-            <button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button>
-            <button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button>
+            {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
+            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, 16))} placeholder="NICKNAME" aria-label="ニックネーム" maxLength={16}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label="ルームコード" maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>
             )}
@@ -2362,8 +2380,8 @@ function Game() {
             {online.code && online.isHost && online.status !== "waiting" && <button type="button" onClick={() => void returnOnlineLobby()} disabled={online.pending}>設定を変えて仕切り直す</button>}
             {online.code && <code>{online.code}</code>}
             {online.code && (
-              <div className="room-members" aria-label="ルームメンバー">
-                <span>MEMBERS</span>
+              <div className={`room-members ${isTeamVariant(variant)?"team-room-members":""}`} aria-label="ルームメンバー">
+                <span>MEMBERS</span>{isTeamVariant(variant)&&<><strong className="team-heading red-team">RED TEAM</strong><strong className="team-heading blue-team">BLUE TEAM</strong></>}
                 {online.memberNames.map((name, index) => (
                   <div
                     key={`${name}-${index}`}
@@ -2371,8 +2389,10 @@ function Game() {
                   >
                     <b>{name}{index === 0 ? " / LEADER" : ""}</b><small>{online.memberRoles[index] ? playerName(online.memberRoles[index]!) : "WATCH"}</small>
                     {online.isHost && online.status !== "playing" && <span className="member-actions"><select aria-label={`${name}の座席`} value={online.memberRoles[index] ?? "watch"} onChange={(event)=>event.target.value==="watch"?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",event.target.value as Player)}><option value="watch">観戦</option>{PLAYER_ORDER.map((player)=><option key={player} value={player}>{isTeamVariant(variant)?`${teamOf(player)==="sun"?"TEAM A":"TEAM B"} / `:""}{playerName(player)}</option>)}</select>{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
+                    {isTeamVariant(variant)&&index===ownMemberIndex&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void switchOwnTeam()}>反対チームへ移動</button>}
                   </div>
                 ))}
+                {Array.from({length:onlineAiCount},(_,index)=><div key={`cpu-${index}`} className={`cpu-member ${isTeamVariant(variant)?index%2===0?"red":"blue":"spectator"}`}><b>CPU {index+1}</b><small>{isTeamVariant(variant)?index%2===0?"RED TEAM":"BLUE TEAM":"AI PLAYER"}</small><i>AI</i></div>)}
               </div>
             )}
             {online.code && online.isHost && (

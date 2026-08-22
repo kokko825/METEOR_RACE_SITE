@@ -70,6 +70,8 @@ test("keeps online room settings authoritative and bounded", async () => {
   assert.match(rooms, /body\.aiCount/);
   assert.match(rooms, /\[9, 11, 13, 15\]/);
   assert.match(rooms, /body\.action === "manage_member"/);
+  assert.match(rooms, /body\.action === "assign_teams"/);
+  assert.match(rooms, /body\.action === "switch_team"/);
   assert.match(rooms, /room\.status === "waiting"/);
   assert.match(rooms, /seats\[openSlot\] = null/);
   assert.doesNotMatch(rooms, /max_players = 4/);
@@ -86,6 +88,7 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(page, /battle-hud/);
   assert.match(page, /QUICK_CHAT_MESSAGES/);
   assert.match(page, /toggleRoomLock/);
+  assert.match(page, /CPU \{index\+1\}/);
   assert.match(rooms, /roomJoinLocked/);
   assert.match(chat, /room_chat_messages/);
   assert.match(chat, /QUICK_MESSAGES/);
