@@ -124,6 +124,7 @@ function roomPayload(room: RoomRow, email: string) {
       .map((member, index) => (member ? seats[index] ?? null : null))
       .filter((_, index) => Boolean(memberEmails[index])),
     isHost: email === room.host_email,
+    joinLocked: Boolean(state.roomJoinLocked),
     state,
   };
 }
@@ -166,6 +167,7 @@ export async function POST(request: Request) {
     meteorId?: number;
     setupActor?: Player;
     ranked?: boolean;
+    locked?: boolean;
   };
   if (body.action === "create") {
     if (!(await withinRateLimit(request, "rooms-create", 10, 300))) return rateLimitedResponse();
@@ -329,6 +331,8 @@ export async function POST(request: Request) {
         room = (await roomByCode(code))!;
         return json(roomPayload(room, email));
       }
+      const waitingState = JSON.parse(room.state_json);
+      if (waitingState.roomJoinLocked) return json({ error: "このルームは参加受付を締め切っています" }, 409);
       if (room.status !== "waiting") return json({ error: "この対戦はすでに開始しています" }, 409);
       const openSlot = memberEmails.slice(0, room.max_players).findIndex((member) => !member);
       if (openSlot < 0) return json({ error: "ルームの参加枠が埋まっています" }, 409);
@@ -346,6 +350,18 @@ export async function POST(request: Request) {
       if (result.meta.changes) return json(roomPayload(room, email));
     }
     return json({ error: "入室が重なりました。もう一度お試しください" }, 409);
+  }
+
+  if (body.action === "toggle_lock") {
+    if (email !== room.host_email) return json({ error: "ルームリーダーだけが変更できます" }, 403);
+    if (room.status !== "waiting") return json({ error: "参加受付は待機中だけ変更できます" }, 409);
+    const state = JSON.parse(room.state_json);
+    state.roomJoinLocked = Boolean(body.locked);
+    await env.DB.prepare(
+      "UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?",
+    ).bind(JSON.stringify(state), Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
   }
 
   if (body.action === "nickname") {

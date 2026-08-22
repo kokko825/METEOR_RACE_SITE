@@ -73,3 +73,18 @@ test("keeps online room settings authoritative and bounded", async () => {
   assert.doesNotMatch(rooms, /max_players = 4/);
   assert.doesNotMatch(rooms, /balance_settings/);
 });
+
+test("ships the fixed battle HUD, manual, chat and room lock controls", async () => {
+  const [page, rooms, chat] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/api/rooms/route.ts"),
+    read("../app/api/chat/route.ts"),
+  ]);
+  assert.match(page, /MISSION CODEX/);
+  assert.match(page, /battle-hud/);
+  assert.match(page, /QUICK_CHAT_MESSAGES/);
+  assert.match(page, /toggleRoomLock/);
+  assert.match(rooms, /roomJoinLocked/);
+  assert.match(chat, /room_chat_messages/);
+  assert.match(chat, /QUICK_MESSAGES/);
+});

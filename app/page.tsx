@@ -104,7 +104,11 @@ type OnlineRoom = {
   error: string;
   pending: boolean;
   isHost: boolean;
+  joinLocked?: boolean;
 };
+
+type ChatMessage = { id: string; nickname: string; message: string; createdAt: number };
+const QUICK_CHAT_MESSAGES = ["よろしく！", "ナイス！", "しまった！", "考え中…", "もう一戦！", "GG！"] as const;
 
 
 function Game() {
@@ -126,6 +130,11 @@ function Game() {
   const [aiRunning, setAiRunning] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMuted, setChatMuted] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatPending, setChatPending] = useState(false);
   const settingsCloseRef = useRef<HTMLButtonElement>(null);
   const settingsTriggerRef = useRef<HTMLElement | null>(null);
   const {
@@ -356,6 +365,7 @@ function Game() {
         error: "",
         pending: false,
         isHost: Boolean(data.isHost),
+        joinLocked: Boolean(data.joinLocked),
       });
       setOnlinePlayerCount(1);
       setOnlineAiCount(1);
@@ -394,6 +404,7 @@ function Game() {
         error: "",
         pending: false,
         isHost: Boolean(data.isHost),
+        joinLocked: Boolean(data.joinLocked),
       });
       setOnlinePlayerCount(
         activePlayers(data.state).filter(
@@ -508,6 +519,7 @@ function Game() {
         error: "",
         pending: false,
         isHost: false,
+        joinLocked: false,
       });
       setRoomCodeInput("");
       setNeedsNewGame(true);
@@ -573,6 +585,46 @@ function Game() {
 
   const commit = (next: GameState) => {
     setGame(next);
+  };
+
+  const playerRequestHeaders = () => {
+    let playerId = window.localStorage.getItem("meteor-race-player-id");
+    if (!playerId) {
+      playerId = `player:${crypto.randomUUID()}`;
+      window.localStorage.setItem("meteor-race-player-id", playerId);
+    }
+    return { "Content-Type": "application/json", "x-meteor-player-id": playerId };
+  };
+
+  const toggleRoomLock = async () => {
+    if (!online.code || !online.isHost || online.status !== "waiting") return;
+    setOnline((current) => ({ ...current, pending: true, error: "" }));
+    try {
+      const data = await roomRequest({ action: "toggle_lock", code: online.code, locked: !online.joinLocked });
+      setGame(data.state);
+      setOnline((current) => ({ ...current, version: data.version, joinLocked: Boolean(data.joinLocked), pending: false }));
+    } catch (error) {
+      setOnline((current) => ({ ...current, pending: false, error: error instanceof Error ? error.message : "参加受付を変更できませんでした" }));
+    }
+  };
+
+  const sendQuickChat = async (message: typeof QUICK_CHAT_MESSAGES[number]) => {
+    if (!online.code || chatPending || chatMuted) return;
+    setChatPending(true);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: playerRequestHeaders(),
+        body: JSON.stringify({ code: online.code, nickname: ownDisplayName || nickname || "PLAYER", message }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "送信できませんでした");
+      setChatMessages((current) => [...current.filter((item) => item.id !== data.message.id), data.message].slice(-40));
+    } catch (error) {
+      setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "チャットを送信できませんでした" }));
+    } finally {
+      setChatPending(false);
+    }
   };
 
   const playBoom = useCallback(
@@ -1264,6 +1316,7 @@ function Game() {
             memberNames: data.memberNames ?? current.memberNames,
             memberRoles: data.memberRoles ?? current.memberRoles,
             isHost: Boolean(data.isHost),
+            joinLocked: Boolean(data.joinLocked),
             error: "",
           }));
           if (online.isHost && data.joinedPlayers > online.joinedPlayers) {
@@ -1284,6 +1337,29 @@ function Game() {
     }, pollInterval);
     return () => window.clearInterval(poll);
   }, [mode, online.code, online.version, online.pending, online.status, online.isHost, online.joinedPlayers, isAnimating, playBoom, playItemSound]);
+
+  useEffect(() => {
+    if (mode !== "online" || !online.code || chatMuted) {
+      setChatMessages([]);
+      return;
+    }
+    let active = true;
+    const loadChat = async () => {
+      try {
+        const response = await fetch(`/api/chat?code=${encodeURIComponent(online.code)}`, {
+          headers: playerRequestHeaders(),
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (active && response.ok) setChatMessages(data.messages ?? []);
+      } catch {
+        // Chat is optional; a temporary failure must never interrupt the match.
+      }
+    };
+    void loadChat();
+    const timer = window.setInterval(loadChat, document.hidden ? 6000 : 2200);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [mode, online.code, chatMuted]);
 
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
@@ -1530,7 +1606,7 @@ function Game() {
   };
 
   return (
-    <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
+    <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       {entryStage === "title" && (
         <section className="title-screen" aria-label="METEOR RACE タイトル画面">
           <button className="title-settings" type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
@@ -1576,6 +1652,7 @@ function Game() {
           ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
+        <button className="manual-trigger" type="button" aria-label="探査マニュアルを開く" aria-expanded={manualOpen} onClick={() => setManualOpen(true)}>▣ <span>CODEX</span></button>
         <button className="settings-gear" type="button" aria-label="設定を開く" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>⚙</button>
       </header>
 
@@ -1617,6 +1694,19 @@ function Game() {
               {contactStatus && <p role="status">{contactStatus}</p>}
               <nav><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("play"); }}>ルールガイド</button><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("rule"); }}>対戦設定</button><a href="/privacy">プライバシー</a><a href="/terms">利用規約</a><span>{APP_VERSION_LABEL}</span></nav>
             </section>
+          </aside>
+        </div>
+      )}
+
+      {manualOpen && (
+        <div className="manual-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setManualOpen(false)}>
+          <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="探査マニュアル">
+            <header><div><small>MISSION CODEX</small><h2>探査マニュアル</h2></div><button type="button" aria-label="閉じる" onClick={() => setManualOpen(false)}>×</button></header>
+            <section><h3>MISSION</h3><p>探査機を縦横へ1マス動かし、盤面中央のCOREへ最初に到達すると勝利です。斜め移動はできません。</p></section>
+            <section><h3>METEOR</h3><p>移動後に小2個・大1個からメテオを配置します。小は周囲1マス、大は距離に応じて最大2マス吹き飛ばします。爆風は自分を進める推進力にもなります。</p></section>
+            <section><h3>ITEM</h3><p>ITEMルールでは移動後、メテオの代わりに持ち込みアイテムを使用できます。盤面上で対象を選ぶアイテムは、確定前なら戻れます。</p></section>
+            <section className="manual-current"><h3>NOW</h3><strong>{game.message}</strong><p>{game.phase === "move" ? "光っている移動可能マスを選択してください。" : game.phase === "place" ? "メテオまたはアイテムを選択してください。" : game.phase === "setup" ? "持ち込みアイテムを3個選択して確定してください。" : "対戦結果を確認してください。"}</p></section>
+            <nav><a href="/guide">完全なルール</a><a href="/items">全アイテム効果</a></nav>
           </aside>
         </div>
       )}
@@ -1972,6 +2062,37 @@ function Game() {
             </aside>
           ))}
         </section>
+      )}
+
+      {!entryStage && !onlineLobbyOnly && (
+        <>
+          {mode === "online" && online.code && chatOpen && !chatMuted && (
+            <aside className="comms-panel" aria-label="ルームチャット">
+              <header><div><small>ROOM {online.code}</small><strong>COMMS</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
+              <div className="comms-log" aria-live="polite">
+                {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
+              </div>
+              <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
+            </aside>
+          )}
+          <footer className="battle-hud" aria-label="対戦HUD">
+            <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label="プロフィール設定を開く">
+              <i className={online.role ?? game.turn} aria-hidden="true" />
+              <span><small>PILOT / PROBE ID</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
+            </button>
+            <div className="hud-mission"><small>{game.phase === "over" ? "MISSION COMPLETE" : `${turnDisplayName} / ${game.phase.toUpperCase()}`}</small><strong>{game.message}</strong>{mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}{game.phase === "over" && mode === "online" && online.role && <button type="button" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}</div>
+            <div className="hud-tools">
+              <label className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label>
+              <div className="hud-icons">
+                {mode === "online" && online.code && <button type="button" className={chatOpen ? "active" : ""} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>◫</button>}
+                {mode === "online" && online.code && <button type="button" className={chatMuted ? "active danger" : ""} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
+                {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={online.joinLocked ? "active danger" : ""} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
+                <button type="button" aria-label="探査マニュアルを開く" onClick={() => setManualOpen(true)}>?</button>
+                <button type="button" aria-label="設定を開く" onClick={() => setSettingsOpen(true)}>⚙</button>
+              </div>
+            </div>
+          </footer>
+        </>
       )}
 
       <section className="control-strip" id="match-setup">
