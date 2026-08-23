@@ -1704,7 +1704,7 @@ function Game() {
             <h1>METEOR<br/><span>RACE</span></h1>
             <b className="title-reading">メテオレース</b>
             <p>BLAST YOUR WAY TO THE CORE</p>
-            <p className="title-description">メテオの爆風でCOREを目指す、登録・インストール不要の無料オンライン戦略ボードゲーム。CPU戦と2〜4人対戦に対応。</p>
+            <p className="title-description">メテオの爆風でCOREを目指す、登録・インストール不要の無料オンライン戦略ボードゲームです。CPU戦と2〜4人対戦に対応しています。</p>
           </div>
           <nav>
             <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>GAME START <span>▶</span></button>

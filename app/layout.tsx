@@ -9,15 +9,15 @@ import { SITE_URL } from "./site-url";
  * has to appear for Google to connect the query to this site.
  */
 const DESCRIPTION =
-  "「メテオレース」はメテオの爆風で相手を吹き飛ばし、中央のCOREを目指す2〜4人用のオンライン戦略ボードゲーム。7種類のアイテムを駆使したCPU対戦・オンライン対戦・ランク戦が、インストール不要・登録不要・無料でブラウザからすぐ遊べます。";
+  "「メテオレース」はメテオの爆風で相手を吹き飛ばし、中央のCOREを目指す2〜4人用のオンライン戦略ボードゲームです。7種類のアイテムを駆使したCPU対戦・オンライン対戦・ランク戦を、インストール不要・登録不要でブラウザからすぐに遊べます。";
 
-const TITLE = "METEOR RACE（メテオレース） — 無料ブラウザ戦略ボードゲーム";
+const TITLE = "メテオレース | METEOR RACE";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: TITLE,
-    template: "%s | METEOR RACE",
+    template: "%s | メテオレース | METEOR RACE",
   },
   description: DESCRIPTION,
   applicationName: "METEOR RACE",

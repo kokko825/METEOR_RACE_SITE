@@ -39,6 +39,7 @@ test("keeps the public game discoverable by search engines", async () => {
   ]);
   assert.match(layout, /\["VideoGame", "WebApplication"\]/);
   assert.match(layout, /price: "0"/);
+  assert.match(layout, /const TITLE = "メテオレース \| METEOR RACE"/);
   assert.match(page, /無料オンライン戦略ボードゲーム/);
   assert.match(page, /href="\/guide"/);
   assert.match(page, /href="\/items"/);
