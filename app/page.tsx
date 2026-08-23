@@ -580,7 +580,15 @@ function Game() {
       setVariant(data.state.variant ?? "classic");
       setRankedMode(Boolean(data.state.ranked));
       setBlastFx(null);
+      setSwitchFx(null);
+      setOrbitFx(null);
+      setPulseFx(null);
+      setSelectedOrbitRing(null);
+      setHoveredOrbitRing(null);
       setIsAnimating(false);
+      setNeedsNewGame(false);
+      recordedOutcome.current = "";
+      recordedRankOutcome.current = "";
       setOnline((current) => ({
         ...current,
         status: data.status,
@@ -1232,7 +1240,13 @@ function Game() {
   const restartCurrentGame = () => {
     getMusicManager().dispatch({ type: "NEW_GAME" });
     setBlastFx(null);
+    setSwitchFx(null);
+    setOrbitFx(null);
+    setPulseFx(null);
+    setSelectedOrbitRing(null);
+    setHoveredOrbitRing(null);
     setIsAnimating(false);
+    setNeedsNewGame(false);
     recordedOutcome.current = "";
     recordedRankOutcome.current = "";
     const players = activePlayers(game);

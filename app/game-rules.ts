@@ -233,14 +233,20 @@ export function initialGameState(
     green: slots[(offset + 2) % 4],
     yellow: slots[(offset + 3) % 4],
   };
+  const activeBotPlayers = botPlayers.filter((player) => players.includes(player));
+  // Item loadout is chosen by human players first. The actual battle starter is
+  // kept in startingPlayer and restored after everyone confirms their loadout.
+  const setupTurn = isItemVariant(variant)
+    ? players.find((player) => !activeBotPlayers.includes(player)) ?? first
+    : first;
   return {
     size,
     balance: normalizeBalance(balance),
     variant,
     players,
-    turn: first,
+    turn: setupTurn,
     startingPlayer: first,
-    botPlayers: botPlayers.filter((player) => players.includes(player)),
+    botPlayers: activeBotPlayers,
     playerTurns: { red: 0, blue: 0, green: 0, yellow: 0 },
     passAvailable: { red: true, blue: true, green: true, yellow: true },
     layoutOffset: offset,
@@ -272,8 +278,15 @@ export function initialGameState(
     selected: "small",
     winner: null,
     finishOrder: [],
-    message: `${playerName(first)}：探査機を1マス移動`,
-    log: [`ゲーム開始 — ${playerName(first)}が先攻`],
+    message: isItemVariant(variant)
+      ? `${playerName(setupTurn)}：アイテムを3個選択`
+      : `${playerName(first)}：探査機を1マス移動`,
+    log: [
+      `ゲーム開始 — ${playerName(first)}が先攻`,
+      ...(isItemVariant(variant) && setupTurn !== first
+        ? [`アイテム選択は${playerName(setupTurn)}から開始`]
+        : []),
+    ],
     nextMeteorId: 1,
     nextPulseDeviceId: 1,
     repetitions: {},

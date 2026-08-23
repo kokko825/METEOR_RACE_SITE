@@ -5,10 +5,12 @@ import {
   applyMove,
   applyObstacle,
   applyPass,
+  applySetupItem,
   activePlayers,
   boardToViewDelta,
   coreWinner,
   finishTurn,
+  confirmSetupItems,
   initialGameState,
   legalMoves,
   samePos,
@@ -31,6 +33,23 @@ for (let slot = 0; slot < 4; slot += 1) {
     home,
     `perspective ${slot} must place its home probe at the bottom`,
   );
+}
+
+{
+  let rematch = initialGameState(11, "blue", 2, false, 0, ["blue"], "item");
+  assert.equal(rematch.startingPlayer, "blue", "AI can remain the next battle starter");
+  assert.equal(rematch.turn, "red", "human chooses the rematch loadout before the AI");
+  rematch = applySetupItem(rematch, "shield", "red");
+  rematch = applySetupItem(rematch, "booster", "red");
+  rematch = applySetupItem(rematch, "orbit", "red");
+  rematch = confirmSetupItems(rematch, "red");
+  assert.equal(rematch.turn, "blue", "AI loadout starts after the human confirms");
+  rematch = applySetupItem(rematch, "blast", "blue");
+  rematch = applySetupItem(rematch, "pulse", "blue");
+  rematch = applySetupItem(rematch, "recall", "blue");
+  rematch = confirmSetupItems(rematch, "blue");
+  assert.equal(rematch.phase, "move");
+  assert.equal(rematch.turn, "blue", "the original AI starter moves first after setup");
 }
 
 assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 0), { r: -2, c: 1 });
