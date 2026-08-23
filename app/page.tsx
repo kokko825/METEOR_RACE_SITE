@@ -1721,30 +1721,30 @@ function Game() {
     <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
-          <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>MANUAL</span></button>
+          <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
           <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
             <h1>METEOR<br/><span>RACE</span></h1>
-            <b className="title-reading">メテオレース</b>
-            <p>BLAST YOUR WAY TO THE CORE</p>
+            {language === "ja" && <b className="title-reading">メテオレース</b>}
+            <p>{t("titleTagline")}</p>
             <p className="title-description">{t("titleDescription")}</p>
           </div>
           <nav>
-            <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>GAME START <span>▶</span></button>
-            <button type="button" onClick={() => setSettingsOpen(true)}>SETTINGS</button>
-            <a className="title-privacy" href="/privacy">PRIVACY POLICY</a>
+            <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")} <span>▶</span></button>
+            <button type="button" onClick={() => setSettingsOpen(true)}>{t("settingsLabel")}</button>
+            <a className="title-privacy" href="/privacy">{t("privacyLabel")}</a>
           </nav>
-          <footer><span>ONLINE READY</span><span>{nickname.trim() || "GUEST PLAYER"} · {rankTier(rankRating)} {rankRating}</span></footer>
+          <footer><span>{t("onlineReady")}</span><span>{nickname.trim() || t("guestPlayer")} · {rankTier(rankRating)} {rankRating}</span></footer>
           <AdSlot position="title" />
         </section>
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
-          <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>MANUAL</span></button>
-          <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>← BACK</button><div><small>{entryStage === "play" ? "RULE GUIDE" : "GAME START"}</small><b>{entryStage === "play" ? "HOW TO PLAY" : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
+          <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
+          <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>{t("back")}</button><div><small>{entryStage === "play" ? t("ruleGuide") : t("gameStart")}</small><b>{entryStage === "play" ? t("howToPlay") : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>COREへ先に到達せよ</h2><p>毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。</p></article><article><b>02</b><strong>PLACE</strong><p>小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。</p></article><article><b>03</b><strong>METEOR</strong><p>小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。</p></article><article><b>GOAL</b><strong>CORE</strong><p>移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。</p></article></div>
-<nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>GAME START</button></div>}
+<nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")}</button></div>}
           {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>{t("choosePlayStyle")}</h2><p>{t("chooseOpponent")}</p><h3>PLAY STYLE</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>SINGLE</strong><span>{t("cpuBattle")}</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>LOCAL</strong><span>{t("localBattle")}</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>ONLINE</strong><span>{t("onlineBattle")}</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>{t("next")}</button></div>}
           {entryStage === "match" && <div className="entry-panel compact-flow"><h2>{setupMode === "online" ? "オンライン対戦" : "対戦設定"}</h2><p>{setupMode === "cpu" ? "SINGLE" : setupMode === "human" ? "LOCAL" : "ONLINE"}</p>{setupMode === "online" ? <><h3>ONLINE TYPE</h3><div className="rank-choice"><button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}><strong>CASUAL ROOM</strong><span>ホストがルールを自由に設定</span></button><button className={rankedMode ? "selected" : "locked"} disabled={!rankedOpen} onClick={() => { setRankedMode(true); setVariant(isItemVariant(variant) ? "item" : "classic"); setOnlinePlayerCount(2); setOnlineAiCount(0); }}><strong>{rankedOpen ? "真剣タイマン" : "🔒 真剣タイマン受付終了"}</strong><span>{rankedOpen ? "1対1・開催中" : RANKED_SCHEDULE_LABEL}</span></button></div>{rankedMode && <><h3>真剣タイマン ルール</h3><div className="choice-row"><button className={!isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>CLASSIC 真剣タイマン</strong><span>{rankTier(classicRankRating)} {classicRankRating}</span></button><button className={isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>ITEM 真剣タイマン</strong><span>{rankTier(itemRankRating)} {itemRankRating}</span></button></div></>}<p className={rankedOpen ? "rank-window open" : "rank-window"}>{rankedMode ? "1対1固定。CLASSICとITEMは別々のレートです。" : "ルーム作成後、ホストがゲーム・盤面・人数・AI数を設定できます。"}</p></> : <><h3>RULE</h3><div className="choice-row"><button className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>CLASSIC</strong><span>メテオ中心の基本ルール</span></button><button className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>ITEM</strong><span>アイテム持ち込み戦</span></button></div><h3>MATCH TYPE</h3><div className="choice-row"><button className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>FREE FOR ALL</strong><span>個人戦</span></button><button className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>チーム戦</span></button></div><div className="entry-settings"><label>BOARD SIZE<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? "PLAYERS" : "CPU ADD"}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>AI LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div></>}<button className="entry-confirm" onClick={() => { applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? "ONLINE LOBBYへ" : "BATTLE START"}</button></div>}
           <footer><span>RULE + PLAY STYLE</span><i /><span>MATCH SETUP</span></footer>
@@ -1756,37 +1756,37 @@ function Game() {
           <span className="brand-mark">✦</span>
           <div>
             <h1>METEOR RACE</h1>
-            <p>BLAST YOUR WAY TO THE CORE</p>
+            <p>{t("titleTagline")}</p>
           </div>
         </div>
         <div className="round">
-          ROUND {Math.floor(game.turnCount / activePlayers(game).length) + 1}
+          {t("round")} {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
         </div>
-        <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>MANUAL</span></button>
+        <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
       </header>
 
       {settingsOpen && (
         <div className="settings-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}>
           <aside className="settings-drawer" role="dialog" aria-modal="true" aria-label={t("settings")}>
-            <header><div><small>METEOR RACE</small><h2>SETTINGS</h2></div><button ref={settingsCloseRef} type="button" aria-label={t("closeSettings")} onClick={() => setSettingsOpen(false)}>×</button></header>
+            <header><div><small>METEOR RACE</small><h2>{t("settingsLabel")}</h2></div><button ref={settingsCloseRef} type="button" aria-label={t("closeSettings")} onClick={() => setSettingsOpen(false)}>×</button></header>
             <section>
-              <h3>LANGUAGE / 言語</h3>
+              <h3>{t("languageHeading")}</h3>
               <div className="language-switch" role="group" aria-label={t("displayLanguage")}>
-                <button type="button" className={language === "ja" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={language === "ja"} onClick={() => setLanguage("ja")}>日本語</button>
-                <button type="button" className={language === "en" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={language === "en"} onClick={() => setLanguage("en")}>English</button>
+                <button type="button" className={language === "ja" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={language === "ja"} onClick={() => setLanguage("ja")}>{t("japaneseLanguage")}</button>
+                <button type="button" className={language === "en" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={language === "en"} onClick={() => setLanguage("en")}>{t("englishLanguage")}</button>
               </div>
               <p>{t("languageSaved")}</p>
             </section>
             <section>
-              <h3>ACCOUNT</h3>
+              <h3>{t("accountHeading")}</h3>
               <label>{t("nickname")}<input maxLength={16} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="PLAYER" /></label>
               <p role="status">{profileStatus || t("autoSave")}</p>
               <dl><div><dt>{t("accountType")}</dt><dd>{profileEmail}</dd></div><div><dt>PLAYER ID</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
               <p>{t("accountNote")}</p>
             </section>
             <section>
-              <h3>SOUND</h3>
+              <h3>{t("soundHeading")}</h3>
               <label>{t("masterVolume")} <b>{masterVolume}</b><input type="range" min="0" max="100" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /></label>
               <label>BGM <b>{bgmVolume}</b><input type="range" min="0" max="100" value={bgmVolume} onChange={(event) => setBgmVolume(Number(event.target.value))} /></label>
               <label>{t("soundEffects")} <b>{sfxVolume}</b><input type="range" min="0" max="100" value={sfxVolume} onChange={(event) => setSfxVolume(Number(event.target.value))} /></label>
@@ -1799,12 +1799,12 @@ function Game() {
               </label>
             </section>
             <section>
-              <h3>DISPLAY</h3>
+              <h3>{t("displayHeading")}</h3>
               <button type="button" className={reducedMotion ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setReducedMotion((value) => !value)}>{t("reduceMotion")} {reducedMotion ? "ON" : "OFF"}</button>
             </section>
             <AdSlot position="settings" />
             <section>
-              <h3>CONTACT</h3>
+              <h3>{t("contactHeading")}</h3>
               <select value={contactType} onChange={(event) => setContactType(event.target.value)}><option>不具合報告</option><option>ご意見・要望</option><option>アカウントについて</option><option>その他</option></select>
               <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
@@ -1820,13 +1820,13 @@ function Game() {
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
             <header><div><small>METEOR RACE / MANUAL</small><h2>{t("rulesAndItems")}</h2></div><div className="manual-now"><small>NOW</small><strong>{displayGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
             <div className="manual-onepage">
-              <section className="manual-rules"><header><small>01</small><h3>TURN LOOP</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
+              <section className="manual-rules"><header><small>01</small><h3>{t("turnLoopHeading")}</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
                 <article><span>01</span><i>✥</i><div><b>MOVE</b><p>{t("manualMove")}</p></div></article><em>↓</em>
                 <article><span>02</span><i>◆</i><div><b>METEOR</b><p>{t("manualMeteor")}</p></div></article><em>↓</em>
                 <article><span>03</span><i>{ITEM_ICONS.shield}</i><div><b>ITEM</b><p>{t("manualItem")}</p></div></article>
                 <strong>{t("manualNext")}</strong>
               </div><div className="manual-notes"><p>{t("noDiagonal")}</p><p>{t("blastPropulsion")}</p><p>{t("anyCoreArrival")}</p><p>{t("firstTurnRule")}</p></div></div></section>
-              <section className="manual-items"><header><small>02</small><h3>ITEM ARCHIVE</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance, language)}</p></div></article>)}</div></section>
+              <section className="manual-items"><header><small>02</small><h3>{t("itemArchiveHeading")}</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance, language)}</p></div></article>)}</div></section>
             </div>
           </aside>
         </div>

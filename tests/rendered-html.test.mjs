@@ -113,11 +113,12 @@ test("offers a persistent Japanese and English language switch", async () => {
     read("../app/hooks/use-local-settings.ts"),
     read("../config/ui-copy.ts"),
   ]);
-  assert.match(page, /LANGUAGE \/ 言語/);
-  assert.match(page, />日本語</);
-  assert.match(page, />English</);
+  assert.match(page, /t\("languageHeading"\)/);
+  assert.match(page, /t\("japaneseLanguage"\)/);
+  assert.match(page, /t\("englishLanguage"\)/);
   assert.match(settings, /meteor-race-language/);
   assert.match(settings, /document\.documentElement\.lang = language/);
   assert.match(page, /uiText\(language, key\)/);
   assert.match(copy, /titleDescription/);
+  assert.match(copy, /japaneseLanguage: \{ ja: "日本語", en: "Japanese" \}/);
 });
