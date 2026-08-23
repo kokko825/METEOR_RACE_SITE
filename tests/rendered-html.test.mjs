@@ -132,3 +132,11 @@ test("keeps the board square and lets narrow phones scroll without fixed-control
   assert.match(css, /\.hud-mode \.board,[\s\S]*?aspect-ratio: 1/);
   assert.match(css, /\.battle-hud \{[\s\S]*?position: sticky/);
 });
+
+test("gives BOOSTER and BLAST distinct item colors", async () => {
+  const css = await read("../app/globals.css");
+  assert.match(css, /--item-booster: #ffd43b/);
+  assert.match(css, /--item-blast: #ff3b30/);
+  assert.match(css, /item-choice\.booster \{ --item-color:var\(--item-booster\)/);
+  assert.match(css, /item-choice\.blast \{ --item-color:var\(--item-blast\)/);
+});
