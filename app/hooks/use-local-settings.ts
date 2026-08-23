@@ -4,6 +4,8 @@
 import { useEffect, useState } from "react";
 import type { BattleTrackChoice } from "../music-engine";
 
+export type SiteLanguage = "ja" | "en";
+
 /**
  * Client-only display/sound preferences, persisted to localStorage.
  * Owns the nickname value too (even though it can also be updated from the
@@ -17,6 +19,7 @@ export function useLocalSettings() {
   const [sfxVolume, setSfxVolume] = useState(80);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [battleTrack, setBattleTrack] = useState<BattleTrackChoice>("random");
+  const [language, setLanguage] = useState<SiteLanguage>("ja");
 
   useEffect(() => {
     setNickname(window.localStorage.getItem("meteor-race-nickname") ?? "");
@@ -26,6 +29,7 @@ export function useLocalSettings() {
     setReducedMotion(window.localStorage.getItem("meteor-race-reduced-motion") === "1");
     const storedTrack = window.localStorage.getItem("meteor-race-battle-track");
     if (storedTrack) setBattleTrack(storedTrack as BattleTrackChoice);
+    if (window.localStorage.getItem("meteor-race-language") === "en") setLanguage("en");
   }, []);
   useEffect(() => { window.localStorage.setItem("meteor-race-nickname", nickname); }, [nickname]);
   useEffect(() => { window.localStorage.setItem("meteor-race-master-volume", String(masterVolume)); }, [masterVolume]);
@@ -33,6 +37,10 @@ export function useLocalSettings() {
   useEffect(() => { window.localStorage.setItem("meteor-race-sfx-volume", String(sfxVolume)); }, [sfxVolume]);
   useEffect(() => { window.localStorage.setItem("meteor-race-reduced-motion", reducedMotion ? "1" : "0"); }, [reducedMotion]);
   useEffect(() => { window.localStorage.setItem("meteor-race-battle-track", battleTrack); }, [battleTrack]);
+  useEffect(() => {
+    window.localStorage.setItem("meteor-race-language", language);
+    document.documentElement.lang = language;
+  }, [language]);
 
   return {
     nickname, setNickname,
@@ -41,5 +49,6 @@ export function useLocalSettings() {
     sfxVolume, setSfxVolume,
     reducedMotion, setReducedMotion,
     battleTrack, setBattleTrack,
+    language, setLanguage,
   };
 }

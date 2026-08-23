@@ -97,3 +97,15 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(chat, /room_chat_messages/);
   assert.match(chat, /QUICK_MESSAGES/);
 });
+
+test("offers a persistent Japanese and English language switch", async () => {
+  const [page, settings] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/hooks/use-local-settings.ts"),
+  ]);
+  assert.match(page, /LANGUAGE \/ 言語/);
+  assert.match(page, />日本語</);
+  assert.match(page, />English</);
+  assert.match(settings, /meteor-race-language/);
+  assert.match(settings, /document\.documentElement\.lang = language/);
+});
