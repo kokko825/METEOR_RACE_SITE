@@ -53,21 +53,8 @@ export type MusicAssetConfig = {
   crossfadeMs: number;
 };
 
-/**
- * Battle track stem locations, per spec section 15 (/music/battle/<track>/{base,pulse,rhythm,tension,final}.ogg).
- * Left empty until real files exist in public/music/battle/<id>/ — fill in
- * here once they're produced; missing/failed files fall back to the
- * procedural stems automatically, so this can be updated incrementally.
- */
-export const BATTLE_TRACK_BASE_URLS: Partial<Record<BattleTrackId, string>> = {
-  // meteor: "/music/battle/meteor/",
-  // orbit: "/music/battle/orbit/",
-  // zero_gravity: "/music/battle/zero_gravity/",
-  // cosmic_error: "/music/battle/cosmic_error/",
-};
-
 export const DEFAULT_MUSIC_ASSETS: MusicAssetConfig = {
-  battleTrackBaseUrls: BATTLE_TRACK_BASE_URLS,
+  battleTrackBaseUrls: {},
   titleUrl: "",
   fanfareUrl: "",
   waitingUrl: "",

@@ -11,6 +11,7 @@ export const SITE_PRESENTATION = {
   musicEnabled: 1,
   musicCrossfadeMs: 400,
   musicBpm: 120,
+  musicBeatsPerBar: 4,
   musicTitleUrl: "",
   musicFanfareUrl: "",
   musicWaitingUrl: "",

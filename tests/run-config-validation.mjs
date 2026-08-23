@@ -8,6 +8,9 @@ const output = path.join(root, ".config-test-fast");
 for (const file of [
   "config/game-balance.ts",
   "config/site-presentation.ts",
+  "config/ai-strategy.ts",
+  "config/ui-behavior.ts",
+  "config/ui-copy.ts",
   "app/balance-config.ts",
   "app/site-config.ts",
   "tests/config-validation.test.ts",

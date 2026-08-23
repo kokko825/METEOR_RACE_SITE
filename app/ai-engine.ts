@@ -24,6 +24,7 @@ import {
   type Pos,
 } from "./game-rules";
 import { normalizeBalance } from "./balance-config";
+import { AI_STRATEGY } from "../config/ai-strategy";
 
 export type AiDifficulty = "easy" | "normal" | "hard";
 export type AiDecision =
@@ -67,11 +68,11 @@ function terminalValue(state: GameState, player: Player) {
   // and play for the 120-turn draw.
   if (!isTeamVariant(state.variant)) {
     const rank = state.finishOrder?.indexOf(player) ?? -1;
-    if (rank >= 0) return 1_000_000 - rank * 100_000;
+    if (rank >= 0) return AI_STRATEGY.score.win - rank * AI_STRATEGY.score.rankStep;
   }
   if (state.phase !== "over") return null;
   if (state.winner === "draw") return -900;
-  return wonBy(state, player) ? 1_000_000 : -1_000_000;
+  return wonBy(state, player) ? AI_STRATEGY.score.win : -AI_STRATEGY.score.win;
 }
 
 function personality(player: Player) {
@@ -81,16 +82,7 @@ function personality(player: Player) {
   return { progress: 1.02, denial: 1.02, resources: 1.05 };
 }
 
-const itemReserveValue: Record<ItemKind, number> = {
-  shield: 22,
-  booster: 24,
-  holo: 20,
-  orbit: 24,
-  blast: 22,
-  pulse: 22,
-  recall: 18,
-  gravity: 0,
-};
+const itemReserveValue: Record<ItemKind, number> = { ...AI_STRATEGY.items.reserve };
 
 function positionValue(state: GameState, player: Player) {
   const terminal = terminalValue(state, player);
@@ -121,20 +113,20 @@ function positionValue(state: GameState, player: Player) {
   const rivalProgress = Math.max(...rivals.map(progress));
   const rivalPressure = rivals.reduce((sum, p) => sum + progress(p), 0) / Math.max(1, rivals.length);
   let score =
-    friendProgress * 620 * style.progress -
-    rivalProgress * 510 * style.denial -
-    rivalPressure * 120;
+    friendProgress * AI_STRATEGY.score.ownProgress * style.progress -
+    rivalProgress * AI_STRATEGY.score.rivalProgress * style.denial -
+    rivalPressure * AI_STRATEGY.score.rivalPressure;
 
   for (const p of players) {
     const sign = allied(state, p, player) ? 1 : -1;
     const inv = state.inventory[p];
     score +=
       sign *
-      (inv.small * 18 +
-        inv.large * 34 +
-        (state.capsuleMeteors?.[p] ?? 0) * 15 +
-        (state.shield?.[p] ? 26 : 0) +
-        (state.boosterMoves?.[p] ?? 0) * 8) *
+      (inv.small * AI_STRATEGY.score.smallMeteor +
+        inv.large * AI_STRATEGY.score.largeMeteor +
+        (state.capsuleMeteors?.[p] ?? 0) * AI_STRATEGY.score.capsuleMeteor +
+        (state.shield?.[p] ? AI_STRATEGY.score.activeShield : 0) +
+        (state.boosterMoves?.[p] ?? 0) * AI_STRATEGY.score.boosterMove) *
       (sign > 0 ? style.resources : style.denial);
     // legalMoves(state, p) is well-defined for any player regardless of whose
     // turn it actually is, so score everyone's current mobility every time —
@@ -144,7 +136,7 @@ function positionValue(state: GameState, player: Player) {
     // where the turn had moved on (the common case for PULSE, whose whole
     // point is to matter on a *later* turn), a fully locked rival scored
     // identically to a fully free one.
-    score += sign * Math.min(legalMoves(state, p).length, 5) * 3;
+    score += sign * Math.min(legalMoves(state, p).length, 5) * AI_STRATEGY.score.mobility;
     const heldItemValue = (state.itemHands?.[p] ?? []).reduce(
       (sum, kind) => sum + itemReserveValue[kind],
       0,
@@ -301,20 +293,24 @@ function earlyPlacementStrategyBonus(state: GameState, placement: Placement, nex
   );
   const openingCycle = state.turnCount < activePlayers(state).length;
   const openingHarassmentPenalty =
-    openingCycle && rivalSetback > 0 && ownAdvance <= 0 ? 2_500 : 0;
+    openingCycle && rivalSetback > 0 && ownAdvance <= 0 ? AI_STRATEGY.placement.openingHarassment : 0;
 
   // Until somebody enters the four-cell CORE zone, direct blast harassment is
   // usually less interesting than racing or building a future gate. A surviving
   // route blocker is exempt because it creates a readable strategic problem
   // without immediately sending a distant rival backwards.
-  const remoteHarassmentPenalty = rivalSetback > 0 && ownAdvance <= 0 ? rivalSetback * 620 : 0;
-  const quietGateBonus = isFutureGate && survivesAsObstacle && rivalSetback === 0 ? 120 : 0;
+  const remoteHarassmentPenalty = rivalSetback > 0 && ownAdvance <= 0
+    ? rivalSetback * AI_STRATEGY.placement.remoteHarassmentPerCell
+    : 0;
+  const quietGateBonus = isFutureGate && survivesAsObstacle && rivalSetback === 0
+    ? AI_STRATEGY.placement.quietGate
+    : 0;
 
   return (
-    ownAdvance * 90 +
-    (isFutureGate && survivesAsObstacle ? 46 : 0) +
+    ownAdvance * AI_STRATEGY.placement.ownAdvance +
+    (isFutureGate && survivesAsObstacle ? AI_STRATEGY.placement.futureGate : 0) +
     quietGateBonus -
-    rivalSetback * 70 -
+    rivalSetback * AI_STRATEGY.placement.rivalSetback -
     openingHarassmentPenalty -
     remoteHarassmentPenalty
   );
@@ -380,8 +376,8 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
         // let multiplayer AIs continue racing until a real one-turn threat.
         const multiplayer = activePlayers(state).length >= 4;
         penalty += resources > 0
-          ? (multiplayer ? 520 : 4_500)
-          : (multiplayer ? 220 : 1_800);
+          ? (multiplayer ? AI_STRATEGY.pacing.multiplayerWarningWithMeteor : AI_STRATEGY.pacing.duelWarningWithMeteor)
+          : (multiplayer ? AI_STRATEGY.pacing.multiplayerWarningEmpty : AI_STRATEGY.pacing.duelWarningEmpty);
       }
     }
   }
@@ -401,10 +397,13 @@ function scoreResult(
     // HARD still needs to close the race. Once a match has had enough time to
     // develop, steadily increase the value of the AI's own forward progress so
     // perfect-looking defensive exchanges do not repeat indefinitely.
-    const overtime = Math.max(0, state.turnCount - activePlayers(state).length * 2);
+    const overtime = Math.max(
+      0,
+      state.turnCount - activePlayers(state).length * AI_STRATEGY.pacing.overtimeStartsAfterRounds,
+    );
     const span = Math.max(1, state.size - 1);
     const ownProgress = (span * 2 - coreDistance(state, player)) / (span * 2);
-    score += overtime * ownProgress * 22;
+    score += overtime * ownProgress * AI_STRATEGY.pacing.overtimeProgress;
   }
   if (previous) {
     for (const candidate of activePlayers(state)) {
@@ -413,7 +412,7 @@ function scoreResult(
         previous.shield?.[candidate] &&
         !state.shield?.[candidate]
       ) {
-        score -= 150;
+        score -= AI_STRATEGY.items.shieldLossPenalty;
       }
     }
   }
@@ -537,8 +536,8 @@ function targetedItemOptions(
       const tactical = kind === "holo"
         ? routeBlockPressure(next, player) - routeBlockPressure(state, player)
         : kind === "pulse"
-          ? mobilitySwing(state, next, player) * 14
-          : mobilitySwing(state, next, player) * 5;
+          ? mobilitySwing(state, next, player) * AI_STRATEGY.items.pulseMobility
+          : mobilitySwing(state, next, player) * AI_STRATEGY.items.blastMobility;
       return [{ choice: { target, next }, value: scoreResult(next, player, difficulty, state) + tactical }];
     } catch {
       return [];
@@ -560,7 +559,7 @@ function itemUseValue(state: GameState, kind: ItemKind, player: Player, difficul
   const pending = applyUseItem(state, kind);
   if (kind === "orbit") {
     const best = orbitOptions(pending, player, difficulty)[0];
-    return best && best.choice.gain >= 4
+    return best && best.choice.gain >= AI_STRATEGY.items.orbitMinimumGain
       ? scoreResult(best.choice.next, player, difficulty, state)
       : undefined;
   }
@@ -617,13 +616,19 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
   // worth a tempo. A large penalty removes routine retreating while still
   // allowing a forced defensive retreat or a move-plus-blast win to outweigh it.
   const retreatScale = normalizeBalance(state.balance).aiRetreatPenalty / 100;
-  const retreatPenalty = (isItemVariant(state.variant) ? backwardSteps * 95 : backwardSteps * 260) * retreatScale;
+  const retreatPenalty = (
+    isItemVariant(state.variant)
+      ? backwardSteps * AI_STRATEGY.pacing.itemRetreatPenalty
+      : backwardSteps * AI_STRATEGY.pacing.classicRetreatPenalty
+  ) * retreatScale;
   const inwardSteps = Math.max(
     0,
     coreDistance(state, player) -
       coreDistance({ ...state, probes: { ...state.probes, [player]: move } }, player),
   );
-  const developmentBonus = earlyItemDevelopment(state, player) ? inwardSteps * 34 : 0;
+  const developmentBonus = earlyItemDevelopment(state, player)
+    ? inwardSteps * AI_STRATEGY.pacing.earlyAdvanceBonus
+    : 0;
   let next = applyMove(state, move);
   if (next.phase === "place" && next.turn === player) {
     const placed = bestPlacement(next, player, difficulty);
@@ -732,8 +737,8 @@ export function chooseAiDecision(
           const tactical = pending.kind === "holo"
             ? routeBlockPressure(next, pending.player) - routeBlockPressure(state, pending.player)
             : pending.kind === "pulse"
-              ? mobilitySwing(state, next, pending.player) * 14
-              : mobilitySwing(state, next, pending.player) * 5;
+              ? mobilitySwing(state, next, pending.player) * AI_STRATEGY.items.pulseMobility
+              : mobilitySwing(state, next, pending.player) * AI_STRATEGY.items.blastMobility;
           return [{ choice: target, value: scoreResult(next, pending.player, difficulty, state) + tactical }];
         } catch { return []; }
       });
@@ -791,7 +796,11 @@ export function chooseAiDecision(
     });
   }
   const passValue = ranked.find((entry) => entry.choice === "pass")?.value ?? -1_000_000;
-  const itemThreshold = difficulty === "easy" ? -4 : difficulty === "normal" ? 2 : 5;
+  const itemThreshold = difficulty === "easy"
+    ? AI_STRATEGY.items.useThresholdEasy
+    : difficulty === "normal"
+      ? AI_STRATEGY.items.useThresholdNormal
+      : AI_STRATEGY.items.useThresholdHard;
   const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
   for (const kind of usableItems) {
     const value = itemUseValue(state, kind, player, difficulty);

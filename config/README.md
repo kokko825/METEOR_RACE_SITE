@@ -4,6 +4,19 @@
 
 - `game-balance.ts`：メテオ、アイテム、AI、ランク戦周期
 - `site-presentation.ts`：色、広告、BGMのURLと再生設定
+- `ai-strategy.ts`：AIの細かな判断重み（上級調整）
+- `ui-behavior.ts`：AI表示速度と演出タイミング
+- `ui-copy.ts`：日本語・英語の画面文章
+
+## どこを変更するか
+
+- アイテム個数・効果範囲・継続巡数 → `game-balance.ts`
+- AIを前進型／妨害型へ寄せる → まず `game-balance.ts` の `ai...Weight`
+- AIの個別判断を細かく変える → `ai-strategy.ts`
+- BGMやSEを差し替える → `site-presentation.ts` と `public/music/`
+- 基本色や発光を変える → `site-presentation.ts`
+- 日本語・英語の文章を直す → `ui-copy.ts`
+- AIの画面上の待ち時間を変える → `ui-behavior.ts`
 
 ## 変更手順
 

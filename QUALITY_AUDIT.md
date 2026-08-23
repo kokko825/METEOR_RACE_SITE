@@ -1,5 +1,20 @@
 # METEOR RACE 品質監査
 
+## 2026-08-24 保守性監査
+
+通常の調整で `app/` の処理本文を編集しなくて済むよう、設定を `config/` に集約しました。
+
+| 観点 | 評価 | 編集場所 |
+|---|---:|---|
+| バランス調整 | 4.8 / 5 | `config/game-balance.ts` |
+| 音楽・SE交換 | 4.7 / 5 | `config/site-presentation.ts`, `public/music/` |
+| AI判断調整 | 4.6 / 5 | `config/game-balance.ts`, `config/ai-strategy.ts` |
+| 見た目調整 | 4.4 / 5 | `config/site-presentation.ts`, `app/globals.css` |
+| 言語切替・文章修正 | 4.4 / 5 | `config/ui-copy.ts` |
+| 演出・AI表示速度 | 4.7 / 5 | `config/ui-behavior.ts` |
+
+設定値の範囲、日英文章の欠落、AIの重大な重み関係は `npm run check` で検査します。
+
 最終監査: 2026-08-21 / Version 1.1.4
 
 ## 今回解消した問題

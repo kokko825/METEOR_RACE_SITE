@@ -16,6 +16,7 @@ export const GAME_BALANCE = {
   blastRadius: 2,
   emptyMeteorBonusMoves: 1,
   rankedGravityRounds: 5,
+  matchTurnLimit: 120,
   aiProgressWeight: 100,
   aiDenialWeight: 100,
   aiResourceWeight: 100,

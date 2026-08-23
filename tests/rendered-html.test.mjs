@@ -14,12 +14,16 @@ test("ships the METEOR RACE application shell and entry flow", async () => {
 });
 
 test("keeps human-editable values separate from application logic", async () => {
-  const [balance, site, editableBalance, editableSite, theme] = await Promise.all([
+  const [balance, site, editableBalance, editableSite, theme, ai, uiBehavior, copy, configGuide] = await Promise.all([
     read("../app/balance-config.ts"),
     read("../app/site-config.ts"),
     read("../config/game-balance.ts"),
     read("../config/site-presentation.ts"),
     read("../app/hooks/use-site-theme.ts"),
+    read("../config/ai-strategy.ts"),
+    read("../config/ui-behavior.ts"),
+    read("../config/ui-copy.ts"),
+    read("../config/README.md"),
   ]);
   assert.match(balance, /AI_PRESETS/);
   assert.match(balance, /group: "ai"/);
@@ -28,19 +32,24 @@ test("keeps human-editable values separate from application logic", async () => 
   assert.match(editableBalance, /rankedGravityRounds: 5/);
   assert.match(editableSite, /musicTitleUrl/);
   assert.match(theme, /--panel-opacity/);
+  assert.match(ai, /multiplayerWarningWithMeteor/);
+  assert.match(uiBehavior, /aiDefaultDelayMs/);
+  assert.match(copy, /titleDescription/);
+  assert.match(configGuide, /どこを変更するか/);
 });
 
 test("keeps the public game discoverable by search engines", async () => {
-  const [page, layout, guide, items] = await Promise.all([
+  const [page, layout, guide, items, copy] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/layout.tsx"),
     read("../app/guide/page.tsx"),
     read("../app/items/page.tsx"),
+    read("../config/ui-copy.ts"),
   ]);
   assert.match(layout, /\["VideoGame", "WebApplication"\]/);
   assert.match(layout, /price: "0"/);
   assert.match(layout, /const TITLE = "メテオレース \| METEOR RACE"/);
-  assert.match(page, /無料オンライン戦略ボードゲーム/);
+  assert.match(copy, /無料オンライン戦略ボードゲーム/);
   assert.match(page, /href="\/guide"/);
   assert.match(page, /href="\/items"/);
   assert.match(guide, /alternates: \{ canonical: "\/guide" \}/);
@@ -99,13 +108,16 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
 });
 
 test("offers a persistent Japanese and English language switch", async () => {
-  const [page, settings] = await Promise.all([
+  const [page, settings, copy] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/hooks/use-local-settings.ts"),
+    read("../config/ui-copy.ts"),
   ]);
   assert.match(page, /LANGUAGE \/ 言語/);
   assert.match(page, />日本語</);
   assert.match(page, />English</);
   assert.match(settings, /meteor-race-language/);
   assert.match(settings, /document\.documentElement\.lang = language/);
+  assert.match(page, /uiText\(language, key\)/);
+  assert.match(copy, /titleDescription/);
 });

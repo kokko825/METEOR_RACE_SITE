@@ -13,6 +13,7 @@ export type BalanceConfig = {
   blastRadius: number;
   emptyMeteorBonusMoves: number;
   rankedGravityRounds: number;
+  matchTurnLimit: number;
   aiProgressWeight: number;
   aiDenialWeight: number;
   aiResourceWeight: number;
@@ -27,6 +28,7 @@ export const BALANCE_FIELDS = [
   { key: "meteorLargeStart", group: "meteor", externalKey: "meteor.large.start", label: "大メテオ初期数", min: 0, max: 3, unit: "個" },
   { key: "emptyMeteorBonusMoves", group: "meteor", externalKey: "meteor.empty.bonus_moves", label: "全消費ボーナス移動", min: 0, max: 1, unit: "回" },
   { key: "rankedGravityRounds", group: "meteor", externalKey: "ranked.gravity.rounds", label: "軌道収束の発生周期", min: 3, max: 99, unit: "巡" },
+  { key: "matchTurnLimit", group: "meteor", externalKey: "match.turn_limit", label: "引き分けまでの最大手番", min: 40, max: 999, unit: "手" },
   { key: "itemHandTotal", group: "item", externalKey: "item.hand.total", label: "アイテム持込総数", min: 1, max: 6, unit: "個" },
   { key: "itemSameMax", group: "item", externalKey: "item.hand.same_max", label: "同一アイテム上限", min: 1, max: 3, unit: "個" },
   { key: "shieldRounds", group: "item", externalKey: "item.shield.rounds", label: "SHIELD継続", min: 1, max: 3, unit: "巡" },

@@ -2,13 +2,13 @@
 
 探査機とメテオの爆風を使い、盤面中央のCOREを目指すターン制対戦ゲームです。
 
-公開版: https://meteor-race-latest.kou4desu.chatgpt.site/
+公開版: https://meteorrace.follnest.com/
 
 ## 最終版の内容
 
 - CLASSIC：2〜4人対戦
 - 2 VS 2 TEAM：RED＋YELLOW 対 BLUE＋GREEN
-- ITEM 15×15：SHIELD、BOOSTER、使い捨てメテオ
+- ITEM：11×11・13×13・15×15、7種類の持込アイテム
 - ローカル対戦、VS AI、AI LAB、オンラインルーム
 - AI難易度：EASY、NORMAL、HARD
 - 盤面、人数、モードに応じたAI評価
@@ -21,6 +21,9 @@
 
 - `config/game-balance.ts`：人が編集するゲームバランスとAI調整値
 - `config/site-presentation.ts`：人が編集する色・広告・音楽設定
+- `config/ai-strategy.ts`：AIの細かな判断重み（上級調整）
+- `config/ui-behavior.ts`：AI表示速度と演出タイミング
+- `config/ui-copy.ts`：日本語・英語の画面文章
 - `public/music/`：完成したBGM・SEの配置場所
 - `app/page.tsx`：ゲーム画面、演出、オンライン同期
 - `app/game-rules.ts`：ゲーム状態とルール解決

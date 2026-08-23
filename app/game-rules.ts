@@ -483,7 +483,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     [key]: (turnDraft.repetitions[key] ?? 0) + 1,
   };
   const drawByRepeat = repetitions[key] >= 3;
-  const drawByLimit = nextCount >= 120;
+  const drawByLimit = nextCount >= gameBalance(turnDraft).matchTurnLimit;
   if (rankedGravityTriggered) {
     const core = { r: Math.floor(turnDraft.size / 2), c: Math.floor(turnDraft.size / 2) };
     const reached = activePlayers(turnDraft).filter((player) => samePos(turnDraft.probes[player], core));

@@ -8,6 +8,7 @@ export type SiteConfig = {
   musicEnabled: number;
   musicCrossfadeMs: number;
   musicBpm: number;
+  musicBeatsPerBar: number;
   musicTitleUrl: string;
   musicFanfareUrl: string;
   musicWaitingUrl: string;
@@ -34,6 +35,7 @@ export const SITE_CONFIG_TOGGLE_FIELDS = [
   { key: "musicEnabled", externalKey: "music.enabled", label: "インタラクティブミュージック", min: 0, max: 1, unit: "0=OFF / 1=ON" },
   { key: "musicCrossfadeMs", externalKey: "music.crossfade_ms", label: "音楽クロスフェード時間", min: 100, max: 3000, unit: "ミリ秒" },
   { key: "musicBpm", externalKey: "music.bpm", label: "戦闘BGMのBPM（小節頭切替の基準）", min: 60, max: 200, unit: "BPM" },
+  { key: "musicBeatsPerBar", externalKey: "music.beats_per_bar", label: "戦闘BGMの1小節の拍数", min: 2, max: 12, unit: "拍" },
 ] as const satisfies ReadonlyArray<{
   key: keyof SiteConfig;
   externalKey: string;
@@ -44,11 +46,9 @@ export const SITE_CONFIG_TOGGLE_FIELDS = [
 }>;
 
 /**
- * Shared, single-instance music assets (title theme / fanfare / waiting BGM /
- * game-start SE). Per-battle-track 5-stem file sets are NOT here — with 4
- * tracks × 5 stems that's too many fields for a hand-edited admin grid, so
- * those live as a code-level config (see app/music-engine.ts) edited when
- * real music files are dropped into public/music/.
+ * Shared music assets. Each battle track points at a folder containing
+ * base/pulse/rhythm/tension/final files; all paths are edited in
+ * config/site-presentation.ts rather than inside the playback engine.
  */
 export const SITE_CONFIG_TRACK_FIELDS = [
   { key: "musicTitleUrl", externalKey: "music.title_url", label: "タイトルBGM URL" },

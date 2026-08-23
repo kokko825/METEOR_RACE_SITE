@@ -48,6 +48,7 @@ export function useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, redu
           },
           crossfadeMs: config.musicCrossfadeMs,
           bpm: config.musicBpm,
+          beatsPerBar: config.musicBeatsPerBar,
         });
       })
       .catch(() => {});

@@ -1,5 +1,7 @@
 # METEOR RACE AI仕様書
 
+AIの調整値は `config/game-balance.ts`（基本傾向）と `config/ai-strategy.ts`（詳細判断）を正本とし、`app/ai-engine.ts` は判断処理だけを担当する。
+
 最終仕様日：2026-08-12  
 仕様基準：公開サイト Version 75
 
