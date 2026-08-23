@@ -81,6 +81,17 @@ function personality(player: Player) {
   return { progress: 1.02, denial: 1.02, resources: 1.05 };
 }
 
+const itemReserveValue: Record<ItemKind, number> = {
+  shield: 22,
+  booster: 24,
+  holo: 20,
+  orbit: 24,
+  blast: 22,
+  pulse: 22,
+  recall: 18,
+  gravity: 0,
+};
+
 function positionValue(state: GameState, player: Player) {
   const terminal = terminalValue(state, player);
   if (terminal !== null) return terminal;
@@ -127,6 +138,11 @@ function positionValue(state: GameState, player: Player) {
     // point is to matter on a *later* turn), a fully locked rival scored
     // identically to a fully free one.
     score += sign * Math.min(legalMoves(state, p).length, 5) * 3;
+    const heldItemValue = (state.itemHands?.[p] ?? []).reduce(
+      (sum, kind) => sum + itemReserveValue[kind],
+      0,
+    );
+    score += sign * heldItemValue * (sign > 0 ? style.resources : style.denial);
   }
 
   // Board meteors are useful only when they shape a route or are plausibly recoverable.
@@ -462,6 +478,82 @@ function orbitOptions(state: GameState, player: Player, difficulty: AiDifficulty
   return options.sort((a, b) => b.value - a.value);
 }
 
+function switchCandidateCells(state: GameState) {
+  const cells: Pos[] = [];
+  for (let r = 0; r < state.size; r += 1) {
+    for (let c = 0; c < state.size; c += 1) cells.push({ r, c });
+  }
+  return cells;
+}
+
+function mobilitySwing(before: GameState, after: GameState, player: Player) {
+  return activePlayers(before).reduce((sum, candidate) => {
+    const sign = allied(before, candidate, player) ? 1 : -1;
+    return sum + sign * (probeMobility(after, candidate) - probeMobility(before, candidate));
+  }, 0);
+}
+
+function targetedItemOptions(
+  state: GameState,
+  kind: "holo" | "blast" | "pulse",
+  player: Player,
+  difficulty: AiDifficulty,
+) {
+  const pending = applyUseItem(state, kind);
+  return switchCandidateCells(pending).flatMap((target) => {
+    try {
+      const next = kind === "holo"
+        ? applyHoloSwitch(pending, target)
+        : kind === "blast"
+          ? applyBlastSwitch(pending, target)
+          : applyPulseSwitch(pending, target);
+      const tactical = kind === "holo"
+        ? routeBlockPressure(next, player) - routeBlockPressure(state, player)
+        : kind === "pulse"
+          ? mobilitySwing(state, next, player) * 14
+          : mobilitySwing(state, next, player) * 5;
+      return [{ choice: { target, next }, value: scoreResult(next, player, difficulty, state) + tactical }];
+    } catch {
+      return [];
+    }
+  }).sort((a, b) => b.value - a.value);
+}
+
+function boosterFollowupValue(state: GameState, player: Player, difficulty: AiDifficulty) {
+  const probe: GameState = { ...state, turn: player, phase: "move", bonusMove: false };
+  const moves = legalMoves(probe, player);
+  if (!moves.length) return -80;
+  return Math.max(...moves.map((move) => scoreResult(applyMove(probe, move), player, difficulty, state)));
+}
+
+function itemUseValue(state: GameState, kind: ItemKind, player: Player, difficulty: AiDifficulty) {
+  if (kind === "holo" || kind === "blast" || kind === "pulse") {
+    return targetedItemOptions(state, kind, player, difficulty)[0]?.value;
+  }
+  const pending = applyUseItem(state, kind);
+  if (kind === "orbit") {
+    const best = orbitOptions(pending, player, difficulty)[0];
+    return best && best.choice.gain >= 4
+      ? scoreResult(best.choice.next, player, difficulty, state)
+      : undefined;
+  }
+  if (kind === "booster") return boosterFollowupValue(pending, player, difficulty);
+  if (kind === "shield") {
+    const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
+    const danger = Math.min(...rivals.map((candidate) => distance(state.probes[player], state.probes[candidate])));
+    const urgency = coreDistance(state, player) <= 4 || danger <= 3 ? 18 : 0;
+    return scoreResult(pending, player, difficulty, state) + urgency;
+  }
+  if (kind === "recall") {
+    const recovered = state.meteors
+      .filter((meteor) => meteor.owner === player && !meteor.consumable)
+      .reduce((sum, meteor) => sum + (meteor.size === "large" ? 30 : 16), 0);
+    const exhausted = state.inventory[player].small + state.inventory[player].large === 0 ? 24 : 0;
+    return scoreResult(pending, player, difficulty, state) + recovered + exhausted;
+  }
+  return scoreResult(pending, player, difficulty, state);
+}
+
 function bestPlacement(
   state: GameState,
   player: Player,
@@ -587,10 +679,8 @@ export function chooseAiDecision(
       })
       .sort((a, b) => b.value - a.value);
     if (!ranked.length) return { type: "skip" };
-    const nearBest = ranked.filter((entry) => ranked[0].value - entry.value <= 12).slice(0, 4);
-    const selected = random() < 0.55
-      ? nearBest[0]
-      : nearBest[1 + Math.floor(random() * Math.max(1, nearBest.length - 1))] ?? nearBest[0];
+    const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
+    if (!selected) return { type: "skip" };
     return {
       type: "setup",
       kind: selected.choice,
@@ -600,45 +690,21 @@ export function chooseAiDecision(
   if (state.phase === "switch") {
     const pending = state.pendingSwitches?.[0];
     if (!pending) return { type: "skip" };
-    const candidateKeys = new Set<string>();
-    const anchors: Pos[] = [centerOf(state), ...activePlayers(state).map((p) => state.probes[p]), ...state.meteors];
-    for (const anchor of anchors) for (let dr = -2; dr <= 2; dr += 1) for (let dc = -2; dc <= 2; dc += 1) {
-      const r = anchor.r + dr, c = anchor.c + dc;
-      if (r >= 0 && c >= 0 && r < state.size && c < state.size) candidateKeys.add(`${r},${c}`);
-    }
-    const cells = [...candidateKeys].map((key) => {
-      const [r, c] = key.split(",").map(Number); return { r, c };
-    });
-    if (pending.kind === "holo") {
-      const rivals = activePlayers(state).filter((p) => !allied(state, p, pending.player));
-      const ranked = cells.flatMap((target) => {
+    if (pending.kind === "holo" || pending.kind === "blast" || pending.kind === "pulse") {
+      const ranked = switchCandidateCells(state).flatMap((target) => {
         try {
-          applyHoloSwitch(state, target);
-          const center = centerOf(state);
-          const routeBlock = Math.max(...rivals.map((p) => {
-            const rival = state.probes[p];
-            const ahead = distance(target, center) < distance(rival, center) ? 80 : 0;
-            return Math.max(0, 5 - distance(rival, target)) * 35 + ahead;
-          }));
-          return [{ choice: target, value: routeBlock }];
+          const next = pending.kind === "holo"
+            ? applyHoloSwitch(state, target)
+            : pending.kind === "blast"
+              ? applyBlastSwitch(state, target)
+              : applyPulseSwitch(state, target);
+          const tactical = pending.kind === "holo"
+            ? routeBlockPressure(next, pending.player) - routeBlockPressure(state, pending.player)
+            : pending.kind === "pulse"
+              ? mobilitySwing(state, next, pending.player) * 14
+              : mobilitySwing(state, next, pending.player) * 5;
+          return [{ choice: target, value: scoreResult(next, pending.player, difficulty, state) + tactical }];
         } catch { return []; }
-      });
-      const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
-      return selected ? { type: "holo", target: selected.choice } : { type: "skip" };
-    }
-    if (pending.kind === "blast" || pending.kind === "pulse") {
-      const radius = pending.kind === "blast" ? state.balance?.blastRadius ?? 1 : state.balance?.pulseRadius ?? 1;
-      const ranked = cells.flatMap((target) => {
-        try {
-          const next = pending.kind === "blast" ? applyBlastSwitch(state, target) : applyPulseSwitch(state, target);
-          const rivals = activePlayers(state).filter((p) => !allied(state, p, pending.player));
-          const pushes = rivals.reduce((score, p) => {
-            const range = distance(state.probes[p], target);
-            return score + (pending.kind === "blast" && range >= 1 && range <= radius ? (radius - range + 1) * 120 : 0);
-          }, 0);
-          return [{ choice: target, value: scoreResult(next, pending.player, difficulty, state) + pushes * 0.15 }];
-        }
-        catch { return []; }
       });
       const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
       return selected ? { type: pending.kind, target: selected.choice } : { type: "skip" };
@@ -693,42 +759,15 @@ export function chooseAiDecision(
         (earlyItemDevelopment(state, player) ? 18 : 5),
     });
   }
-  const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
-  const nearestRivalCore = Math.min(...rivals.map((candidate) => coreDistance(state, candidate)));
-  const ownedMeteors = state.meteors.filter((meteor) => meteor.owner === player && !meteor.consumable);
-  const ownedHolos = activeObstacles(state).filter((holo) => holo.owner === player);
-  const recallValues = [
-    ...ownedMeteors.map((meteor) => recallMeteorValue(state, player, meteor)),
-    ...ownedHolos.map((holo) => 55 + Math.max(0, 5 - distance(holo, state.probes[player])) * 8),
-  ];
-  const recallOpportunity = recallValues.length
-    ? Math.max(...recallValues)
-    : -100;
-  const itemBonuses: Partial<Record<ItemKind, number>> = {
-    shield: coreDistance(state, player) <= 3 || nearestRivalCore <= 2 ? 42 : 8,
-    booster: coreDistance(state, player) <= 5 ? 34 : 10,
-    blast: nearestRivalCore <= 3 ? 40 : 15,
-    pulse: nearestRivalCore <= 3 ? 40 : 15,
-    holo: nearestRivalCore <= 4 ? 38 : 9,
-    recall: recallOpportunity + 18,
-    gravity: coreDistance(state, player) > 2 ? 22 : -30,
-  };
+  const passValue = ranked.find((entry) => entry.choice === "pass")?.value ?? -1_000_000;
+  const itemThreshold = difficulty === "easy" ? -4 : difficulty === "normal" ? 2 : 5;
   const usableItems = [...new Set(state.itemHands?.[player] ?? [])].filter((kind) => canUseItem(state, kind));
   for (const kind of usableItems) {
-    const next = applyUseItem(state, kind);
-    if (kind === "orbit") {
-      const best = orbitOptions(next, player, difficulty)[0];
-      // ORBIT is scarce: preserve it unless the best ring produces a clear tactical swing.
-      if (!best || best.choice.gain < 4) continue;
-      ranked.push({
-        choice: { target: { r: -1, c: -1 }, size: "small", useCapsule: false, itemKind: kind } as Placement & { itemKind: ItemKind },
-        value: scoreResult(best.choice.next, player, difficulty, state) - 4,
-      });
-      continue;
-    }
+    const value = itemUseValue(state, kind, player, difficulty);
+    if (value === undefined || value < passValue + itemThreshold) continue;
     ranked.push({
       choice: { target: { r: -1, c: -1 }, size: "small", useCapsule: false, itemKind: kind } as Placement & { itemKind: ItemKind },
-      value: scoreResult(next, player, difficulty, state) + (itemBonuses[kind] ?? 0),
+      value,
     });
   }
   const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);

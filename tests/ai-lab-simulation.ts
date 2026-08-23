@@ -17,6 +17,7 @@ import {
   confirmSetupItems,
   finishTurn,
   initialGameState,
+  legalMoves,
   type GameState,
   type GameVariant,
   type Player,
@@ -186,6 +187,40 @@ import {
   state = applyUseItem(state, "recall");
   assert.equal(state.meteors.length, 0, "RECALL should immediately recover all owned normal meteors");
   assert.equal(state.inventory.red.large, 1, "the recovered large meteor should return to inventory");
+}
+
+{
+  const state = initialGameState(15, "red", 2, false, 0, [], "item");
+  state.turnCount = 5;
+  state.phase = "place";
+  state.itemHands!.red = ["shield"];
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.notDeepEqual(
+    decision,
+    { type: "item", kind: "shield" },
+    "AI should preserve SHIELD while it is far from CORE and under no immediate pressure",
+  );
+}
+
+{
+  let state = initialGameState(15, "red", 2, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.probes = { ...state.probes, red: { r: 11, c: 7 }, blue: { r: 8, c: 7 } };
+  state.itemHands!.red = ["pulse"];
+  state.inventory.red = { small: 0, large: 0 };
+  const use = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(use, { type: "item", kind: "pulse" }, "AI should use PULSE against a near-CORE rival");
+  state = applyUseItem(state, "pulse");
+  const target = chooseAiDecision(state, "hard", () => 0);
+  assert.equal(target.type, "pulse", "AI should select a PULSE target");
+  if (target.type === "pulse") {
+    const next = applyPulseSwitch(state, target.target);
+    assert.ok(
+      legalMoves(next, "blue").length < legalMoves(state, "blue").length,
+      "PULSE target should actually reduce rival mobility",
+    );
+  }
 }
 
 {
