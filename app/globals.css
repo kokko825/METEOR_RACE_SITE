@@ -723,3 +723,137 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 @media(max-width:560px){.hud-mode>.topbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}.hud-mode .topbar .round{order:initial;width:auto;max-width:100%;margin:0;justify-self:center;padding:5px 8px;font-size:8px;text-align:center}.hud-mode .topbar .round b,.hud-mode .topbar .round em{margin-top:2px;font-size:6px}.hud-mode .game-back{white-space:nowrap}}
 .hud-mode .action-panel{width:100%;justify-self:stretch}.hud-mode .action-panel:empty{display:none}
 .language-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px}.language-switch .drawer-toggle{width:100%;font-weight:800;letter-spacing:.08em}
+
+/* Responsive priority: desktop and tablet stay screen-fitted; phones may scroll so the board never deforms. */
+@media (min-width: 901px) {
+  .hud-mode { overflow: hidden; }
+}
+
+@media (min-width: 561px) and (max-width: 900px) {
+  .hud-mode { overflow: hidden; }
+  .hud-mode > .game-layout { min-height: 0; }
+  .hud-mode .board,
+  .arena:has(.item-selection-overlay) .board {
+    width: min(100%, calc(100dvh - 340px));
+    max-height: none;
+    aspect-ratio: 1;
+    flex: none;
+  }
+}
+
+@media (max-width: 560px) {
+  html, body { overflow-x: hidden; }
+
+  .hud-mode {
+    width: 100%;
+    height: auto;
+    min-height: 100dvh;
+    padding: max(8px, env(safe-area-inset-top)) 8px 0;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .hud-mode > .topbar {
+    position: sticky;
+    z-index: 70;
+    top: 0;
+    height: auto;
+    min-height: 54px;
+    padding: 6px 0;
+    background: rgba(3, 13, 20, .97);
+    backdrop-filter: blur(8px);
+  }
+
+  .hud-mode > .game-layout {
+    height: auto;
+    min-height: 0;
+    margin-top: 8px;
+    grid-template-areas: "arena arena" "left right";
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+    overflow: visible;
+  }
+
+  .hud-mode .arena {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    overflow: visible;
+    place-items: stretch;
+  }
+
+  .hud-mode .board,
+  .arena:has(.item-selection-overlay) .board {
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    aspect-ratio: 1;
+    flex: none;
+  }
+
+  .player-stack,
+  .player-stack:has(> .player-card:nth-child(2)),
+  .hud-mode .player-stack,
+  .hud-mode .player-stack:has(> .player-card:nth-child(2)) {
+    width: 100%;
+    height: auto;
+    min-height: 70px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+
+  .hud-mode .player-stack > .player-card,
+  .hud-mode .player-stack:has(> .player-card:nth-child(2)) > .player-card {
+    height: auto;
+    min-height: 70px;
+    overflow: hidden;
+  }
+
+  .battle-hud {
+    position: sticky;
+    z-index: 80;
+    bottom: 0;
+    width: calc(100% + 16px);
+    height: auto;
+    min-height: 70px;
+    margin: 12px -8px 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .comms-panel {
+    left: 8px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    width: calc(100vw - 16px);
+    max-height: min(430px, 55dvh);
+  }
+
+  .shell.online-lobby-only {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .shell.online-lobby-only .control-strip {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .shell.online-lobby-only .online-panel {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .arena:has(.item-selection-overlay) .action-panel {
+    position: relative;
+    z-index: 18;
+    inset: auto;
+    width: 100%;
+    transform: none;
+    margin-top: 6px;
+  }
+
+  button, select, input, textarea { touch-action: manipulation; }
+}
