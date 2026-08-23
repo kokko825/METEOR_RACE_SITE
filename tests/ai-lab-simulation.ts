@@ -281,6 +281,7 @@ const allScenarios: Array<{ variant: GameVariant; size: number; count: number }>
   { variant: "classic", size: 11, count: 4 },
   { variant: "team", size: 13, count: 4 },
   { variant: "team", size: 15, count: 4 },
+  { variant: "item", size: 13, count: 2 },
   { variant: "item", size: 15, count: 4 },
   { variant: "team-item", size: 15, count: 4 },
 ];

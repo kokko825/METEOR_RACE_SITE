@@ -97,9 +97,16 @@ function positionValue(state: GameState, player: Player) {
   if (terminal !== null) return terminal;
   const players = activePlayers(state);
   const configured = normalizeBalance(state.balance);
-  const styleBase =
-    players.length === 2 || isItemVariant(state.variant) || isTeamVariant(state.variant)
-      ? { progress: 1, denial: 1, resources: 1 }
+  const teamMates = players.filter((candidate) => allied(state, candidate, player));
+  const teamRunner = teamMates.reduce((best, candidate) =>
+    coreDistance(state, candidate) < coreDistance(state, best) ? candidate : best,
+  player);
+  const styleBase = isTeamVariant(state.variant)
+    ? teamRunner === player
+      ? { progress: 1.14, denial: 0.92, resources: 1 }
+      : { progress: 0.98, denial: 1.1, resources: 1.06 }
+    : players.length === 2
+      ? { progress: 1.04, denial: 0.98, resources: 1 }
       : personality(player);
   const style = {
     progress: styleBase.progress * configured.aiProgressWeight / 100,
@@ -373,8 +380,8 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
         // let multiplayer AIs continue racing until a real one-turn threat.
         const multiplayer = activePlayers(state).length >= 4;
         penalty += resources > 0
-          ? (multiplayer ? 1_350 : 4_500)
-          : (multiplayer ? 550 : 1_800);
+          ? (multiplayer ? 520 : 4_500)
+          : (multiplayer ? 220 : 1_800);
       }
     }
   }
@@ -394,10 +401,10 @@ function scoreResult(
     // HARD still needs to close the race. Once a match has had enough time to
     // develop, steadily increase the value of the AI's own forward progress so
     // perfect-looking defensive exchanges do not repeat indefinitely.
-    const overtime = Math.max(0, state.turnCount - activePlayers(state).length * 4);
+    const overtime = Math.max(0, state.turnCount - activePlayers(state).length * 2);
     const span = Math.max(1, state.size - 1);
     const ownProgress = (span * 2 - coreDistance(state, player)) / (span * 2);
-    score += overtime * ownProgress * 14;
+    score += overtime * ownProgress * 22;
   }
   if (previous) {
     for (const candidate of activePlayers(state)) {
@@ -478,12 +485,32 @@ function orbitOptions(state: GameState, player: Player, difficulty: AiDifficulty
   return options.sort((a, b) => b.value - a.value);
 }
 
-function switchCandidateCells(state: GameState) {
-  const cells: Pos[] = [];
-  for (let r = 0; r < state.size; r += 1) {
-    for (let c = 0; c < state.size; c += 1) cells.push({ r, c });
+function switchCandidateCells(state: GameState, kind?: "holo" | "blast" | "pulse") {
+  const keys = new Set<string>();
+  if (kind === "blast" || kind === "pulse") {
+    const radius = kind === "blast"
+      ? normalizeBalance(state.balance).blastRadius
+      : normalizeBalance(state.balance).pulseRadius;
+    for (const player of activePlayers(state)) {
+      const probe = state.probes[player];
+      for (let dr = -radius; dr <= radius; dr += 1) {
+        for (let dc = -radius; dc <= radius; dc += 1) {
+          if (Math.abs(dr) + Math.abs(dc) > radius) continue;
+          const r = probe.r + dr;
+          const c = probe.c + dc;
+          if (r >= 0 && c >= 0 && r < state.size && c < state.size) keys.add(`${r},${c}`);
+        }
+      }
+    }
+  } else {
+    for (let r = 0; r < state.size; r += 1) {
+      for (let c = 0; c < state.size; c += 1) keys.add(`${r},${c}`);
+    }
   }
-  return cells;
+  return [...keys].map((key) => {
+    const [r, c] = key.split(",").map(Number);
+    return { r, c };
+  });
 }
 
 function mobilitySwing(before: GameState, after: GameState, player: Player) {
@@ -500,7 +527,7 @@ function targetedItemOptions(
   difficulty: AiDifficulty,
 ) {
   const pending = applyUseItem(state, kind);
-  return switchCandidateCells(pending).flatMap((target) => {
+  return switchCandidateCells(pending, kind).flatMap((target) => {
     try {
       const next = kind === "holo"
         ? applyHoloSwitch(pending, target)
@@ -679,7 +706,11 @@ export function chooseAiDecision(
       })
       .sort((a, b) => b.value - a.value);
     if (!ranked.length) return { type: "skip" };
-    const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
+    // Even EASY should assemble a coherent loadout. Its in-match choices may
+    // be loose, but starting with three low-synergy items creates a colour/turn
+    // bias before play begins rather than an understandable difficulty gap.
+    const setupDifficulty = difficulty === "easy" ? "normal" : difficulty;
+    const selected = selectWithDifficulty(ranked, setupDifficulty, random, true, creativity);
     if (!selected) return { type: "skip" };
     return {
       type: "setup",
@@ -691,7 +722,7 @@ export function chooseAiDecision(
     const pending = state.pendingSwitches?.[0];
     if (!pending) return { type: "skip" };
     if (pending.kind === "holo" || pending.kind === "blast" || pending.kind === "pulse") {
-      const ranked = switchCandidateCells(state).flatMap((target) => {
+      const ranked = switchCandidateCells(state, pending.kind).flatMap((target) => {
         try {
           const next = pending.kind === "holo"
             ? applyHoloSwitch(state, target)
