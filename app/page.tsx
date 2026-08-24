@@ -2229,9 +2229,9 @@ function Game() {
             <div className="hud-tools">
               <label className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label>
               <div className="hud-icons">
-                {mode === "online" && online.code && <button type="button" className={chatOpen ? "active" : ""} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>◫</button>}
-                {mode === "online" && online.code && <button type="button" className={chatMuted ? "active danger" : ""} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
-                {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={online.joinLocked ? "active danger" : ""} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
+                {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""}`} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>CHAT</button>}
+                {mode === "online" && online.code && <button type="button" className={`chat-mute ${chatMuted ? "active danger" : ""}`} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
+                {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={`room-lock ${online.joinLocked ? "active danger" : ""}`} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
               </div>
             </div>
           </footer>

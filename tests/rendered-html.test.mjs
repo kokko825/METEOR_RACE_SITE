@@ -89,11 +89,12 @@ test("keeps online room settings authoritative and bounded", async () => {
 });
 
 test("ships the fixed battle HUD, manual, chat and room lock controls", async () => {
-  const [page, rooms, chat, moderation] = await Promise.all([
+  const [page, rooms, chat, moderation, css] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/api/rooms/route.ts"),
     read("../app/api/chat/route.ts"),
     read("../app/chat-moderation.ts"),
+    read("../app/globals.css"),
   ]);
   assert.match(page, /METEOR RACE \/ MANUAL/);
   assert.match(page, /battle-hud/);
@@ -109,6 +110,8 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(chat, /containsBlockedChatLanguage/);
   assert.match(moderation, /normalize\("NFKC"\)/);
   assert.match(page, /className="free-comms"/);
+  assert.match(page, /chat-toggle/);
+  assert.doesNotMatch(css, /nth-last-child\(2\)\{display:none\}/);
 });
 
 test("offers a persistent Japanese and English language switch", async () => {
