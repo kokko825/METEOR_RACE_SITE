@@ -152,5 +152,7 @@ test("renders player inventory as a compact icon grid on every device", async ()
   assert.doesNotMatch(page, /<small>\{kind\.toUpperCase\(\)\}<\/small>/);
   assert.match(css, /\.inventory \{ display:grid; grid-template-columns:repeat\(3/);
   assert.match(css, /\.hud-mode \.inventory \{[\s\S]*?grid-template-columns: repeat\(5/);
-  assert.match(css, /3–4 player cards stack vertically on phones/);
+  assert.match(css, /Phone HUD: each side uses one full-width card per row/);
+  assert.match(css, /grid-row: auto/);
+  assert.match(css, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 });
