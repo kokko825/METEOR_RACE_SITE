@@ -104,7 +104,8 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(page, /ゲームモードへ戻る/);
   assert.match(rooms, /roomJoinLocked/);
   assert.match(chat, /room_chat_messages/);
-  assert.match(chat, /QUICK_MESSAGES/);
+  assert.match(chat, /FREE_CHAT_MAX_LENGTH/);
+  assert.match(page, /className="free-comms"/);
 });
 
 test("offers a persistent Japanese and English language switch", async () => {

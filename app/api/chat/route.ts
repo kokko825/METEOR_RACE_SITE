@@ -3,7 +3,11 @@ import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 
 export const dynamic = "force-dynamic";
 
-const QUICK_MESSAGES = ["よろしく！", "ナイス！", "しまった！", "考え中…", "もう一戦！", "GG！"] as const;
+const FREE_CHAT_MAX_LENGTH = 80;
+
+function cleanMessage(value: string) {
+  return value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+}
 
 function playerIdFrom(request: Request) {
   const authenticated = request.headers.get("cf-access-authenticated-user-email") ??
@@ -57,9 +61,10 @@ export async function POST(request: Request) {
   const playerId = playerIdFrom(request);
   const body = await request.json() as { code?: string; nickname?: string; message?: string };
   const code = body.code?.trim().toUpperCase() ?? "";
-  const message = body.message?.trim() ?? "";
+  const message = cleanMessage(body.message ?? "");
   if (!playerId || !/^[A-Z2-9]{6}$/.test(code)) return response({ error: "チャットを送信できません" }, 400);
-  if (!QUICK_MESSAGES.includes(message as typeof QUICK_MESSAGES[number])) return response({ error: "定型メッセージを選んでください" }, 400);
+  if (!message) return response({ error: "メッセージを入力してください" }, 400);
+  if (message.length > FREE_CHAT_MAX_LENGTH) return response({ error: `${FREE_CHAT_MAX_LENGTH}文字以内で入力してください` }, 400);
   await ensureSchema();
   if (!(await roomMember(code, playerId))) return response({ error: "ルームに参加していません" }, 403);
   const nickname = (body.nickname?.trim() || "PLAYER").slice(0, 16);

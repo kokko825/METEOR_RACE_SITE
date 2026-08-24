@@ -140,6 +140,7 @@ function Game() {
   const [chatMuted, setChatMuted] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatPending, setChatPending] = useState(false);
+  const [chatDraft, setChatDraft] = useState("");
   const settingsCloseRef = useRef<HTMLButtonElement>(null);
   const settingsTriggerRef = useRef<HTMLElement | null>(null);
   const {
@@ -693,24 +694,29 @@ function Game() {
     }
   };
 
-  const sendQuickChat = async (message: typeof QUICK_CHAT_MESSAGES[number]) => {
+  const sendChat = async (message: string) => {
     if (!online.code || chatPending || chatMuted) return;
+    const normalizedMessage = message.replace(/\s+/g, " ").trim();
+    if (!normalizedMessage || normalizedMessage.length > 80) return;
     setChatPending(true);
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: playerRequestHeaders(),
-        body: JSON.stringify({ code: online.code, nickname: ownDisplayName || nickname || "PLAYER", message }),
+        body: JSON.stringify({ code: online.code, nickname: ownDisplayName || nickname || "PLAYER", message: normalizedMessage }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "送信できませんでした");
       setChatMessages((current) => [...current.filter((item) => item.id !== data.message.id), data.message].slice(-40));
+      setChatDraft("");
     } catch (error) {
       setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "チャットを送信できませんでした" }));
     } finally {
       setChatPending(false);
     }
   };
+
+  const sendQuickChat = (message: typeof QUICK_CHAT_MESSAGES[number]) => sendChat(message);
 
   const playBoom = useCallback(
     () => playBoomSfx(soundEnabled, masterVolume, sfxVolume),
@@ -2206,6 +2212,10 @@ function Game() {
               <div className="comms-log" aria-live="polite">
                 {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
               </div>
+              <form className="free-comms" onSubmit={(event) => { event.preventDefault(); void sendChat(chatDraft); }}>
+                <input aria-label="自由チャット" maxLength={80} value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} placeholder="メッセージを入力（80文字まで）" disabled={chatPending} />
+                <button type="submit" disabled={chatPending || !chatDraft.trim()}>SEND</button>
+              </form>
               <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
             </aside>
           )}
