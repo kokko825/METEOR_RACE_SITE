@@ -11,7 +11,7 @@
     {
       "name": "CONTACT_EMAIL",
       "allowed_destination_addresses": [
-        "follnest.info+Meteorrace@gmail.com"
+        "follnest.info@gmail.com"
       ]
     }
   ],
