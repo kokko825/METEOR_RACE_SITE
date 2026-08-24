@@ -34,7 +34,7 @@ async function notifyContact(report: {
   createdAt: number;
 }) {
   const binding = (env as Env & { CONTACT_EMAIL?: SendEmail }).CONTACT_EMAIL;
-  if (!binding) return;
+  if (!binding) return false;
   const sentAt = new Date(report.createdAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
   await binding.send({
     from: CONTACT_SENDER,
@@ -58,6 +58,7 @@ async function notifyContact(report: {
       "この報告はD1のcontact_messagesにも保存されています。",
     ].join("\n"),
   });
+  return true;
 }
 
 export async function POST(request: Request) {
@@ -81,12 +82,16 @@ export async function POST(request: Request) {
     .bind(id, playerId, email, nickname, category, message, siteVersion, roomCode, createdAt)
     .run();
   const reference = id.slice(0, 8).toUpperCase();
+  let notification: "sent" | "not_configured" | "failed" = "not_configured";
   try {
-    await notifyContact({ reference, category, message, nickname, playerId, siteVersion, roomCode, createdAt });
+    notification = await notifyContact({ reference, category, message, nickname, playerId, siteVersion, roomCode, createdAt })
+      ? "sent"
+      : "not_configured";
   } catch (error) {
     // The database copy is authoritative. A mail outage must never discard or
     // reject a report that was already accepted from the player.
     console.error("Contact notification email failed", error);
+    notification = "failed";
   }
-  return Response.json({ ok: true, reference });
+  return Response.json({ ok: true, reference, notification });
 }
