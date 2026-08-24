@@ -2204,21 +2204,22 @@ function Game() {
         </div>
       </section>
 
+      {!entryStage && mode === "online" && online.code && chatOpen && !chatMuted && (
+        <aside className="comms-panel" aria-label="ルームチャット">
+          <header><div><small>ROOM {online.code}</small><strong>CHAT</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
+          <div className="comms-log" aria-live="polite">
+            {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
+          </div>
+          <form className="free-comms" onSubmit={(event) => { event.preventDefault(); void sendChat(chatDraft); }}>
+            <input aria-label="自由チャット" maxLength={80} value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} placeholder="メッセージを入力（80文字まで）" disabled={chatPending} />
+            <button type="submit" disabled={chatPending || !chatDraft.trim()}>SEND</button>
+          </form>
+          <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
+        </aside>
+      )}
+
       {!entryStage && !onlineLobbyOnly && (
         <>
-          {mode === "online" && online.code && chatOpen && !chatMuted && (
-            <aside className="comms-panel" aria-label="ルームチャット">
-              <header><div><small>ROOM {online.code}</small><strong>CHAT</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
-              <div className="comms-log" aria-live="polite">
-                {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
-              </div>
-              <form className="free-comms" onSubmit={(event) => { event.preventDefault(); void sendChat(chatDraft); }}>
-                <input aria-label="自由チャット" maxLength={80} value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} placeholder="メッセージを入力（80文字まで）" disabled={chatPending} />
-                <button type="submit" disabled={chatPending || !chatDraft.trim()}>SEND</button>
-              </form>
-              <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
-            </aside>
-          )}
           <footer className="battle-hud" aria-label="対戦HUD">
             <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label="設定を開く">
               <span className="hud-settings-icon" aria-hidden="true">⚙</span>
@@ -2503,6 +2504,7 @@ function Game() {
                 ルーム退出
               </button>
             )}
+            {online.code && <button type="button" className={`lobby-chat-toggle ${chatOpen ? "active" : ""}`} aria-label="待機ルームのチャットを開く" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>CHAT</button>}
             {online.error && <small>{online.error}</small>}
           </section>
         )}
