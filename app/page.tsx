@@ -2218,15 +2218,18 @@ function Game() {
         </aside>
       )}
 
-      {!entryStage && !onlineLobbyOnly && (
-        <>
-          <footer className="battle-hud" aria-label="対戦HUD">
+      <footer className="battle-hud global-hud" aria-label="共通操作バー">
             <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label="設定を開く">
               <span className="hud-settings-icon" aria-hidden="true">⚙</span>
               <i className={online.role ?? game.turn} aria-hidden="true" />
               <span><small>PILOT / PROBE ID</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
             </button>
-            <div className="hud-mission"><small>{game.phase === "over" ? "MISSION COMPLETE" : `${turnDisplayName} / ${game.phase.toUpperCase()}`}</small><strong>{displayGameMessage}</strong>{mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}{game.phase === "over" && mode === "online" && online.role && <button type="button" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}</div>
+            <div className="hud-mission">
+              <small>{entryStage === "title" ? "SYSTEM READY" : entryStage ? "MATCH CONFIGURATION" : onlineLobbyOnly ? "ONLINE WAITING ROOM" : game.phase === "over" ? "MISSION COMPLETE" : `${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
+              <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? "ONLINEの対戦方式を設定" : setupMode === "cpu" ? "SINGLEの対戦方式を設定" : "LOCALの対戦方式を設定") : onlineLobbyOnly ? (online.code ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}` : "ルームを作成または参加") : displayGameMessage}</strong>
+              {mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}
+              {!entryStage && game.phase === "over" && mode === "online" && online.role && <button type="button" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
+            </div>
             <div className="hud-tools">
               <label className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label>
               <div className="hud-icons">
@@ -2235,9 +2238,7 @@ function Game() {
                 {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={`room-lock ${online.joinLocked ? "active danger" : ""}`} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
               </div>
             </div>
-          </footer>
-        </>
-      )}
+      </footer>
 
       <section className="control-strip" id="match-setup">
         <div className={`settings in-game-settings ${mode === "online" && !rankedMode ? "casual-host-settings" : ""}`}>
@@ -2504,7 +2505,6 @@ function Game() {
                 ルーム退出
               </button>
             )}
-            {online.code && <button type="button" className={`lobby-chat-toggle ${chatOpen ? "active" : ""}`} aria-label="待機ルームのチャットを開く" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>CHAT</button>}
             {online.error && <small>{online.error}</small>}
           </section>
         )}

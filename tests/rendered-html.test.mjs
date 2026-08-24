@@ -116,7 +116,8 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(profile, /containsBlockedChatLanguage/);
   assert.match(page, /className="free-comms"/);
   assert.match(page, /chat-toggle/);
-  assert.match(page, /lobby-chat-toggle/);
+  assert.match(page, /global-hud/);
+  assert.doesNotMatch(page, /lobby-chat-toggle/);
   assert.doesNotMatch(css, /nth-last-child\(2\)\{display:none\}/);
 });
 

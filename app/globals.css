@@ -61,10 +61,10 @@ button { color: inherit; }
 
 .shell { width: min(1440px, 100%); margin: 0 auto; padding: 22px 30px 36px; }
 .shell.entry-active { width:100%; min-height:100dvh; padding:0; overflow:hidden; }
-.shell.entry-active > :not(.title-screen):not(.entry-flow):not(.settings-overlay):not(.manual-overlay) { display:none !important; }
+.shell.entry-active > :not(.title-screen):not(.entry-flow):not(.settings-overlay):not(.manual-overlay):not(.global-hud) { display:none !important; }
 .shell.online-lobby-only>.topbar,.shell.online-lobby-only>.game-layout,.shell.online-lobby-only>.extra-players{display:none!important}
 .shell.online-lobby-only .ai-lab-panel,.shell.online-lobby-only .rules,.shell.online-lobby-only .history-panel{display:none!important}
-.shell.online-lobby-only .control-strip{margin-top:0;padding-top:0;border-top:0;min-height:100dvh;display:grid;align-content:center}
+.shell.online-lobby-only .control-strip{margin-top:0;padding:0 0 76px;border-top:0;min-height:100dvh;display:grid;align-content:center}
 .shell.room-uncreated .in-game-settings,.shell.room-uncreated .settings-pending{display:none!important}
 .shell.online-lobby-only .online-panel{margin:0 auto;width:min(760px,100%);padding:clamp(18px,4vw,36px)}
 .topbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
@@ -642,7 +642,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .hud-mission{display:grid;align-content:center;justify-items:center;padding:8px 16px;text-align:center}.hud-mission strong{max-width:100%;overflow:hidden;color:#d9f4ff;font-size:12px;text-overflow:ellipsis;white-space:nowrap}.hud-mission button{margin-top:4px;padding:2px 9px;border:1px solid #30576a;background:transparent;color:#75dfff;font-size:8px;cursor:pointer}
 .hud-tools{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:8px 18px;border-left:1px solid #254452}.hud-volume{display:grid;grid-template-columns:34px minmax(72px,130px) 24px;align-items:center;gap:6px}.hud-volume button{border:0;background:transparent;color:#87dfff;font-size:15px;cursor:pointer}.hud-volume input{width:100%;accent-color:#63ddff}.hud-volume output{color:#6e9aac;font-size:9px}.hud-icons{display:flex;gap:5px}.hud-icons button{width:34px;height:34px;border:1px solid #31586a;background:#071923;color:#8cc9df;font-weight:900;cursor:pointer}.hud-icons .chat-toggle{width:auto;min-width:46px;padding:0 7px;font-size:8px;letter-spacing:.08em}.hud-icons button:hover,.hud-icons button.active{border-color:#6be2ff;color:#fff;box-shadow:0 0 12px rgba(70,216,255,.24)}.hud-icons button.danger{border-color:#ff6d64;color:#ff8179}
 .comms-panel{position:fixed;z-index:90;left:14px;bottom:88px;width:min(340px,calc(100vw - 28px));max-height:min(480px,65dvh);display:grid;grid-template-rows:auto minmax(90px,1fr) auto auto;border:1px solid #3a7187;background:rgba(3,15,23,.97);box-shadow:0 14px 48px rgba(0,0,0,.6);color:#c9e6f1}.comms-panel>header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #284a59}.comms-panel>header small{display:block;color:#5f93a7;font-size:8px;letter-spacing:.15em}.comms-panel>header strong{color:#70e4ff;letter-spacing:.18em}.comms-log{overflow:auto;padding:10px 12px}.comms-log p{display:grid;grid-template-columns:90px 1fr;gap:8px;margin:0 0 7px;font-size:11px}.comms-log b{overflow:hidden;color:#74cde8;text-overflow:ellipsis;white-space:nowrap}.comms-log span{overflow-wrap:anywhere;color:#dcecf2}.comms-log em{color:#668694;font-size:11px;font-style:normal}.free-comms{display:grid;grid-template-columns:minmax(0,1fr) 62px;gap:6px;padding:9px;border-top:1px solid #284a59}.free-comms input{min-width:0;height:38px;border:1px solid #315b6d;background:#04141d;color:#e8f8ff;padding:0 10px;font-size:12px}.free-comms input:focus{outline:1px solid #64dfff;border-color:#64dfff}.free-comms button{border:1px solid #54bdd9;background:#0b3c4c;color:#fff;font-size:9px;font-weight:900;letter-spacing:.12em}.free-comms button:disabled{opacity:.4}.quick-comms{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:9px;border-top:1px solid #284a59}.quick-comms button{min-height:34px;border:1px solid #2d5668;background:#071c27;color:#a9d2e1;font-size:10px;cursor:pointer}.quick-comms button:hover{border-color:#63dcff;color:#fff}
-.online-lobby-only .comms-panel{bottom:64px}.online-panel>.lobby-chat-toggle{position:fixed;z-index:89;left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));min-width:76px;border-color:#51cbe9;background:#0b3545;color:#dff8ff;font-weight:900;letter-spacing:.14em;box-shadow:0 8px 28px rgba(0,0,0,.45)}.online-panel>.lobby-chat-toggle.active{border-color:#8aeaff;background:#12617a;box-shadow:0 0 18px rgba(81,203,233,.25)}
+.online-lobby-only .comms-panel{bottom:88px}
 @media(max-width:900px){
   .hud-mode{padding:8px 10px 80px}
   .hud-mode>.game-layout{height:calc(100dvh - 146px);grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto;gap:6px;overflow:hidden}
@@ -991,6 +991,13 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .item-preview-flag.blast { --item-color: var(--item-blast); }
 .manual-item-grid article.booster > i { color: var(--item-booster); }
 .manual-item-grid article.blast > i { color: var(--item-blast); }
+
+/* One persistent utility bar across title, setup, lobby and battle screens. */
+.shell.entry-active .global-hud{z-index:950}
+.shell.entry-active .title-screen>footer{display:none}
+.shell.entry-active .entry-flow{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+.shell.online-lobby-only .control-strip{height:calc(100dvh - 76px)!important;min-height:0!important;padding-bottom:max(8px,env(safe-area-inset-bottom))!important}
+@media(max-width:760px){.shell.entry-active .title-screen nav{margin-bottom:82px}.shell.entry-active .entry-flow{padding-bottom:calc(82px + env(safe-area-inset-bottom))}}
 .item-board-snapshot.booster .snapshot-fx i:first-child {
   background: linear-gradient(#fff, var(--item-booster) 30%, transparent);
   filter: drop-shadow(0 0 7px var(--item-booster));
