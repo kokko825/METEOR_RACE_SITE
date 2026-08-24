@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
+import { containsBlockedChatLanguage } from "../../chat-moderation";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
   if (!playerId || !/^[A-Z2-9]{6}$/.test(code)) return response({ error: "チャットを送信できません" }, 400);
   if (!message) return response({ error: "メッセージを入力してください" }, 400);
   if (message.length > FREE_CHAT_MAX_LENGTH) return response({ error: `${FREE_CHAT_MAX_LENGTH}文字以内で入力してください` }, 400);
+  if (containsBlockedChatLanguage(message)) return response({ error: "送信できない表現が含まれています" }, 400);
   await ensureSchema();
   if (!(await roomMember(code, playerId))) return response({ error: "ルームに参加していません" }, 403);
   const nickname = (body.nickname?.trim() || "PLAYER").slice(0, 16);
