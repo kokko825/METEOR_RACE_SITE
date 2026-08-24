@@ -2083,14 +2083,16 @@ function Game() {
                   disabled={game.inventory[game.turn].small === 0}
                   onClick={() => setGame((g) => ({ ...g, selected: "small" }))}
                 >
-                  ● {t("smallMeteor")} <b>{game.inventory[game.turn].small}</b>
+                  <i className="placement-meteor-icon small" aria-hidden="true">●</i>
+                  <span>{t("smallMeteor")}</span> <b>{game.inventory[game.turn].small}</b>
                 </button>
                 <button
                   className={`meteor-choice large ${game.selected === "large" ? "selected" : ""}`}
                   disabled={game.inventory[game.turn].large === 0}
                   onClick={() => setGame((g) => ({ ...g, selected: "large" }))}
                 >
-                  ✦ {t("largeMeteor")} <b>{game.inventory[game.turn].large}</b>
+                  <i className="placement-meteor-icon large" aria-hidden="true">✦</i>
+                  <span>{t("largeMeteor")}</span> <b>{game.inventory[game.turn].large}</b>
                 </button>
                 <button
                   className="meteor-choice pass-choice"

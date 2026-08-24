@@ -136,7 +136,7 @@ test("keeps the board square and lets narrow phones scroll without fixed-control
 test("gives BOOSTER and BLAST distinct item colors", async () => {
   const css = await read("../app/globals.css");
   assert.match(css, /--item-booster: #ffd43b/);
-  assert.match(css, /--item-blast: #ff3b30/);
+  assert.match(css, /--item-blast: #ff7a24/);
   assert.match(css, /item-choice\.booster \{ --item-color:var\(--item-booster\)/);
   assert.match(css, /item-choice\.blast \{ --item-color:var\(--item-blast\)/);
 });
@@ -155,4 +155,8 @@ test("renders player inventory as a compact icon grid on every device", async ()
   assert.match(css, /Phone HUD: each side uses one full-width card per row/);
   assert.match(css, /grid-row: auto/);
   assert.match(css, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
+  assert.match(page, /placement-meteor-icon small/);
+  assert.match(page, /placement-meteor-icon large/);
+  assert.match(css, /Short landscape screens and browser zoom use the safe scrolling game flow too/);
+  assert.match(css, /Portrait tablets keep four players in two readable rows without overlap/);
 });
