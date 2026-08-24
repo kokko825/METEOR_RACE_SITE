@@ -119,6 +119,7 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(page, /global-hud/);
   assert.doesNotMatch(page, /lobby-chat-toggle/);
   assert.doesNotMatch(css, /nth-last-child\(2\)\{display:none\}/);
+  assert.match(css, /\.battle-hud\.global-hud\{position:fixed!important/);
 });
 
 test("offers a persistent Japanese and English language switch", async () => {
