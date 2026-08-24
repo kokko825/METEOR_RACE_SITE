@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ASSET_PATHS } from "../config/asset-paths";
 import "./globals.css";
 import { SITE_URL } from "./site-url";
 
@@ -46,17 +47,17 @@ export const metadata: Metadata = {
     siteName: "METEOR RACE",
     title: TITLE,
     description: DESCRIPTION,
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "METEOR RACE の対戦画面" }],
+    images: [{ url: ASSET_PATHS.branding.socialCard, width: 1200, height: 630, alt: "METEOR RACE の対戦画面" }],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/og-image.jpg"],
+    images: [ASSET_PATHS.branding.socialCard],
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: ASSET_PATHS.branding.favicon,
+    shortcut: ASSET_PATHS.branding.favicon,
   },
 };
 
@@ -81,8 +82,8 @@ const STRUCTURED_DATA = {
   operatingSystem: "Any (modern web browser)",
   playMode: ["SinglePlayer", "MultiPlayer"],
   numberOfPlayers: { "@type": "QuantitativeValue", minValue: 2, maxValue: 4 },
-  image: `${SITE_URL}/og-image.jpg`,
-  screenshot: `${SITE_URL}/og-image.jpg`,
+  image: `${SITE_URL}${ASSET_PATHS.branding.socialCard}`,
+  screenshot: `${SITE_URL}${ASSET_PATHS.branding.socialCard}`,
   offers: {
     "@type": "Offer",
     price: "0",

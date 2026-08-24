@@ -42,7 +42,7 @@ const LEVEL_STEMS: Record<number, StemName[]> = {
 };
 
 export type MusicAssetConfig = {
-  /** Root URL for a track's stems, e.g. "/music/battle/meteor/" with base.ogg etc underneath. Empty = procedural fallback. */
+  /** Root URL for a track's stems, e.g. "/assets/audio/music/battle/meteor-theme/". Empty = procedural fallback. */
   battleTrackBaseUrls: Partial<Record<BattleTrackId, string>>;
   titleUrl: string;
   fanfareUrl: string;

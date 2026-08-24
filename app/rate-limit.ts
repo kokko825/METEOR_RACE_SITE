@@ -14,9 +14,11 @@ async function ensureRateLimitSchema() {
   schemaEnsured = true;
 }
 
-function clientKey(request: Request): string {
-  // Set by Cloudflare at the edge; not something a client can spoof.
-  return request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+async function clientKey(request: Request): Promise<string> {
+  // Never persist a raw IP address. Only a short one-way digest is written to D1.
+  const ip = request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`meteor-race-rate-limit:${ip}`));
+  return Array.from(new Uint8Array(digest).slice(0, 12), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -30,7 +32,7 @@ export async function withinRateLimit(request: Request, bucket: string, limit: n
   const now = Date.now();
   const windowMs = windowSeconds * 1000;
   const windowStart = Math.floor(now / windowMs) * windowMs;
-  const key = `${bucket}:${clientKey(request)}:${windowStart}`;
+  const key = `${bucket}:${await clientKey(request)}:${windowStart}`;
   const row = await env.DB.prepare(
     `INSERT INTO rate_limits (bucket_key, window_start, count) VALUES (?, ?, 1)
      ON CONFLICT(bucket_key) DO UPDATE SET count = count + 1

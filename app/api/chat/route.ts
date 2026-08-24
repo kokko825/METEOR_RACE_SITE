@@ -1,10 +1,9 @@
 import { env } from "cloudflare:workers";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 import { containsBlockedChatLanguage } from "../../chat-moderation";
+import { COMMUNITY_SAFETY } from "../../../config/community-safety";
 
 export const dynamic = "force-dynamic";
-
-const FREE_CHAT_MAX_LENGTH = 80;
 
 function cleanMessage(value: string) {
   return value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
@@ -58,18 +57,18 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!(await withinRateLimit(request, "chat-post", 8, 20))) return rateLimitedResponse();
+  if (!(await withinRateLimit(request, "chat-post", COMMUNITY_SAFETY.chatPostLimit, COMMUNITY_SAFETY.chatPostWindowSeconds))) return rateLimitedResponse();
   const playerId = playerIdFrom(request);
   const body = await request.json() as { code?: string; nickname?: string; message?: string };
   const code = body.code?.trim().toUpperCase() ?? "";
   const message = cleanMessage(body.message ?? "");
   if (!playerId || !/^[A-Z2-9]{6}$/.test(code)) return response({ error: "チャットを送信できません" }, 400);
   if (!message) return response({ error: "メッセージを入力してください" }, 400);
-  if (message.length > FREE_CHAT_MAX_LENGTH) return response({ error: `${FREE_CHAT_MAX_LENGTH}文字以内で入力してください` }, 400);
+  if (message.length > COMMUNITY_SAFETY.chatMaxLength) return response({ error: `${COMMUNITY_SAFETY.chatMaxLength}文字以内で入力してください` }, 400);
   if (containsBlockedChatLanguage(message)) return response({ error: "送信できない表現が含まれています" }, 400);
   await ensureSchema();
   if (!(await roomMember(code, playerId))) return response({ error: "ルームに参加していません" }, 403);
-  const nickname = (body.nickname?.trim() || "PLAYER").slice(0, 16);
+  const nickname = (body.nickname?.trim() || "PLAYER").slice(0, COMMUNITY_SAFETY.nicknameMaxLength);
   if (containsBlockedChatLanguage(nickname)) return response({ error: "ニックネームに使用できない表現が含まれています" }, 400);
   const createdAt = Date.now();
   const id = crypto.randomUUID();
@@ -79,5 +78,7 @@ export async function POST(request: Request) {
   await env.DB.prepare(
     "DELETE FROM room_chat_messages WHERE room_code = ? AND id NOT IN (SELECT id FROM room_chat_messages WHERE room_code = ? ORDER BY created_at DESC LIMIT 80)",
   ).bind(code, code).run();
+  await env.DB.prepare("DELETE FROM room_chat_messages WHERE created_at < ?")
+    .bind(createdAt - COMMUNITY_SAFETY.chatRetentionDays * 86_400_000).run();
   return response({ message: { id, nickname, message, createdAt } }, 201);
 }

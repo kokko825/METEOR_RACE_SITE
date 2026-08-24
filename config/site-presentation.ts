@@ -1,6 +1,6 @@
 /**
  * 人が編集するサイト表示・音楽設定です。
- * 音源を使う場合は public/music/README.md の配置規則に従い、URLを入力します。
+ * 音源を使う場合は public/assets/audio/README.md の配置規則に従い、URLを入力します。
  * 空文字の音源は内蔵の仮BGMへ自動的に切り替わります。
  */
 export const SITE_PRESENTATION = {

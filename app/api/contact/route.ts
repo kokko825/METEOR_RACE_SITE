@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { EmailMessage } from "cloudflare:email";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
+import { COMMUNITY_SAFETY } from "../../../config/community-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -73,10 +74,10 @@ export async function POST(request: Request) {
   const playerId = clean(request.headers.get("x-meteor-player-id"), 90);
   if (!/^player:[a-z0-9-]{20,80}$/.test(playerId)) return Response.json({ error: "プレイヤー情報を確認できません" }, { status: 401 });
   const body = await request.json() as Record<string, unknown>;
-  const message = clean(body.message, 1200);
+  const message = clean(body.message, COMMUNITY_SAFETY.contactMaxLength);
   if (message.length < 10) return Response.json({ error: "内容を10文字以上で入力してください" }, { status: 400 });
   const category = clean(body.type, 30) || "その他";
-  const nickname = clean(body.nickname, 16);
+  const nickname = clean(body.nickname, COMMUNITY_SAFETY.nicknameMaxLength);
   const siteVersion = clean(body.version, 20) || "unknown";
   const roomCode = clean(body.roomCode, 12) || null;
   const email = clean(request.headers.get("cf-access-authenticated-user-email") ?? request.headers.get("oai-authenticated-user-email"), 160) || null;
@@ -88,6 +89,8 @@ export async function POST(request: Request) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(id, playerId, email, nickname, category, message, siteVersion, roomCode, createdAt)
     .run();
+  await env.DB.prepare("DELETE FROM contact_messages WHERE created_at < ?")
+    .bind(createdAt - COMMUNITY_SAFETY.contactRetentionDays * 86_400_000).run();
   const reference = id.slice(0, 8).toUpperCase();
   let notification: "sent" | "not_configured" | "failed" = "not_configured";
   try {

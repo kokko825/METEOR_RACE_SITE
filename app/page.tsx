@@ -62,6 +62,8 @@ import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
+import { getOrCreatePlayerId, playerRequestHeaders } from "./client-identity";
+import { COMMUNITY_SAFETY } from "../config/community-safety";
 
 type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
@@ -113,7 +115,7 @@ type OnlineRoom = {
 };
 
 type ChatMessage = { id: string; nickname: string; message: string; createdAt: number };
-const QUICK_CHAT_MESSAGES = ["よろしく！", "ナイス！", "しまった！", "考え中…", "もう一戦！", "GG！"] as const;
+const QUICK_CHAT_MESSAGES = COMMUNITY_SAFETY.quickChatMessages;
 
 
 function Game() {
@@ -330,14 +332,9 @@ function Game() {
   }, [variant, size]);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
-    let playerId = window.localStorage.getItem("meteor-race-player-id");
-    if (!playerId) {
-      playerId = `player:${crypto.randomUUID()}`;
-      window.localStorage.setItem("meteor-race-player-id", playerId);
-    }
     const response = await fetch("/api/rooms", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-meteor-player-id": playerId },
+      headers: playerRequestHeaders(true),
       body: JSON.stringify(payload),
     });
     const data = await response.json();
@@ -673,15 +670,6 @@ function Game() {
     }
   };
 
-  const playerRequestHeaders = () => {
-    let playerId = window.localStorage.getItem("meteor-race-player-id");
-    if (!playerId) {
-      playerId = `player:${crypto.randomUUID()}`;
-      window.localStorage.setItem("meteor-race-player-id", playerId);
-    }
-    return { "Content-Type": "application/json", "x-meteor-player-id": playerId };
-  };
-
   const toggleRoomLock = async () => {
     if (!online.code || !online.isHost || online.status !== "waiting") return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
@@ -702,7 +690,7 @@ function Game() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: playerRequestHeaders(),
+        headers: playerRequestHeaders(true),
         body: JSON.stringify({ code: online.code, nickname: ownDisplayName || nickname || "PLAYER", message: normalizedMessage }),
       });
       const data = await response.json();
@@ -1341,13 +1329,8 @@ function Game() {
     const poll = window.setInterval(async () => {
       if (isAnimating || online.pending) return;
       try {
-        let playerId = window.localStorage.getItem("meteor-race-player-id");
-        if (!playerId) {
-          playerId = `player:${crypto.randomUUID()}`;
-          window.localStorage.setItem("meteor-race-player-id", playerId);
-        }
         const response = await fetch(`/api/rooms?code=${encodeURIComponent(online.code)}`, {
-          headers: { "x-meteor-player-id": playerId },
+          headers: playerRequestHeaders(),
           cache: "no-store",
         });
         const data = await response.json();
@@ -1683,7 +1666,7 @@ function Game() {
   };
 
   const saveProfile = async () => {
-    const playerId = window.localStorage.getItem("meteor-race-player-id") ?? "";
+    const playerId = getOrCreatePlayerId();
     setProfileStatus("保存中…");
     try {
       const response = await fetch("/api/profile", {
@@ -1715,7 +1698,7 @@ function Game() {
       return;
     }
     setContactStatus("送信中…");
-    const playerId = window.localStorage.getItem("meteor-race-player-id") ?? "";
+    const playerId = getOrCreatePlayerId();
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
@@ -1832,7 +1815,7 @@ function Game() {
             <section>
               <h3>{t("contactHeading")}</h3>
               <select value={contactType} onChange={(event) => setContactType(event.target.value)}><option>不具合報告</option><option>ご意見・要望</option><option>アカウントについて</option><option>その他</option></select>
-              <textarea maxLength={1200} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
+              <textarea maxLength={COMMUNITY_SAFETY.contactMaxLength} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
               <nav><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("play"); }}>ルールガイド</button><button type="button" onClick={() => { setSettingsOpen(false); setEntryStage("rule"); }}>対戦設定</button><a href="/privacy">プライバシー</a><a href="/terms">利用規約</a><span>{APP_VERSION_LABEL}</span></nav>
@@ -2211,7 +2194,7 @@ function Game() {
             {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
           </div>
           <form className="free-comms" onSubmit={(event) => { event.preventDefault(); void sendChat(chatDraft); }}>
-            <input aria-label="自由チャット" maxLength={80} value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} placeholder="メッセージを入力（80文字まで）" disabled={chatPending} />
+            <input aria-label="自由チャット" maxLength={COMMUNITY_SAFETY.chatMaxLength} value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} placeholder={`メッセージを入力（${COMMUNITY_SAFETY.chatMaxLength}文字まで）`} disabled={chatPending} />
             <button type="submit" disabled={chatPending || !chatDraft.trim()}>SEND</button>
           </form>
           <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
@@ -2450,7 +2433,7 @@ function Game() {
               </div>
             )}
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
-            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, 16))} placeholder="NICKNAME" aria-label="ニックネーム" maxLength={16}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label="ルームコード" maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>← ゲームモードへ戻る</button></>}
+            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder="NICKNAME" aria-label="ニックネーム" maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label="ルームコード" maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>← ゲームモードへ戻る</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>
             )}

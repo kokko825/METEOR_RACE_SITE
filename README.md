@@ -24,7 +24,7 @@
 - `config/ai-strategy.ts`：AIの細かな判断重み（上級調整）
 - `config/ui-behavior.ts`：AI表示速度と演出タイミング
 - `config/ui-copy.ts`：日本語・英語の画面文章
-- `public/music/`：完成したBGM・SEの配置場所
+- `public/assets/`：ロゴ、画像、フォント、BGM、SEを用途別にまとめた素材置き場
 - `app/page.tsx`：ゲーム画面、演出、オンライン同期
 - `app/game-rules.ts`：ゲーム状態とルール解決
 - `app/ai-engine.ts`：AI判断
@@ -97,7 +97,7 @@ npm run check
 
 **月額0円運用のため**：無料枠を超えそうになったら自動課金ではなく、機能縮退（新規オンライン対戦の受付停止など）を検討してください。詳細は [FREE_SITE_OPERATION_PLAN.md](./FREE_SITE_OPERATION_PLAN.md) を参照。
 
-広告・音楽・バランスは `config/` の2ファイルを編集し、`npm run check` が成功してからGitHubへ反映します。ブラウザ上およびPC内の専用管理画面は使用しません。音源の置き方は `public/music/README.md` を参照してください。
+広告・音楽・バランス・安全設定は `config/` を編集し、`npm run check` が成功してからGitHubへ反映します。ブラウザ上およびPC内の専用管理画面は使用しません。素材の置き方は `public/assets/audio/README.md` と `config/README.md` を参照してください。
 
 <!-- Cloudflare Workers Builds connectivity test: 2026-08-18T02:14:21Z -->
 <!-- build fix verification: 2026-08-18T02:23:44Z -->

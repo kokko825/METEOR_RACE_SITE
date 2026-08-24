@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect -- hydrate cached rating before server refresh */
 
 import { useCallback, useEffect, useState } from "react";
+import { getOrCreatePlayerId, playerRequestHeaders } from "../client-identity";
 
 /**
  * Device identity + 真剣タイマン rating, sourced from /api/profile (server
@@ -17,12 +18,8 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
   const [itemRankRating, setItemRankRating] = useState(1200);
 
   const refreshProfile = useCallback(() => {
-    let playerId = window.localStorage.getItem("meteor-race-player-id");
-    if (!playerId) {
-      playerId = `player:${crypto.randomUUID()}`;
-      window.localStorage.setItem("meteor-race-player-id", playerId);
-    }
-    return fetch("/api/profile", { headers: { "x-meteor-player-id": playerId }, cache: "no-store" })
+    const playerId = getOrCreatePlayerId();
+    return fetch("/api/profile", { headers: playerRequestHeaders(), cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
         setProfileEmail(data.email ?? "未連携");
