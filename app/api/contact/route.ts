@@ -21,7 +21,7 @@ async function ensureSchema() {
 
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const CONTACT_DESTINATION = "follnest.info+Meteorrace@gmail.com";
-const CONTACT_SENDER = "support@follnest.com";
+const CONTACT_SENDER = "contact@follnest.com";
 
 async function notifyContact(report: {
   reference: string;
