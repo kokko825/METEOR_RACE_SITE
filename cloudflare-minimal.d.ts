@@ -21,6 +21,16 @@ interface Fetcher {
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }
 
+interface SendEmail {
+  send(message: {
+    from: string;
+    to?: string;
+    subject: string;
+    text: string;
+    replyTo?: string;
+  }): Promise<unknown>;
+}
+
 declare module "cloudflare:workers" {
   export const env: Env;
 }
