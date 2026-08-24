@@ -2222,7 +2222,6 @@ function Game() {
                 {mode === "online" && online.code && <button type="button" className={chatOpen ? "active" : ""} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>◫</button>}
                 {mode === "online" && online.code && <button type="button" className={chatMuted ? "active danger" : ""} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
                 {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={online.joinLocked ? "active danger" : ""} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
-                <button type="button" aria-label={manualOpen ? "マニュアルを閉じる" : "マニュアルを開く"} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"}</button>
               </div>
             </div>
           </footer>
