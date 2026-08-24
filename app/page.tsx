@@ -2679,26 +2679,14 @@ function InventoryPanel({
   return (
     <div className="inventory">
       <span>ARSENAL / 所持メテオ</span>
-      <div className="inventory-meteors">
-        <div className="meteor-slot" aria-label={`小メテオ 残り${inventory.small}個`} title={`SMALL METEOR ×${inventory.small}`}>
-          <i className={`mini-meteor ${color}`}>●</i><small>SMALL</small><b>×{inventory.small}</b>
-        </div>
-        <div className="meteor-slot" aria-label={`大メテオ 残り${inventory.large}個`} title={`LARGE METEOR ×${inventory.large}`}>
-          <i className={`mini-meteor large ${color}`}>✦</i><small>LARGE</small><b>×{inventory.large}</b>
-        </div>
+      <div className="inventory-slot meteor-slot" aria-label={`小メテオ 残り${inventory.small}個`} title={`SMALL METEOR ×${inventory.small}`}>
+        <i className={`mini-meteor ${color}`}>●</i><b>×{inventory.small}</b>
       </div>
-      {(loadoutHidden || itemCounts.length > 0) && <div className="inventory-items" aria-label="所持アイテム">
-        {loadoutHidden && (
-          <div className="inventory-slot loadout-hidden" aria-label="アイテム構成は戦闘開始まで非公開" title="SECRET LOADOUT">
-            <i>◆</i><b>?</b>
-          </div>
-        )}
-        {itemCounts.map(({ kind, count }) => (
-          <div key={kind} className={`inventory-slot inventory-item ${kind}`} aria-label={`${kind.toUpperCase()} 残り${count}個`} title={`${kind.toUpperCase()} ×${count}`}>
-            <ItemIcon kind={kind} /><b>×{count}</b>
-          </div>
-        ))}
-      </div>}
+      <div className="inventory-slot meteor-slot" aria-label={`大メテオ 残り${inventory.large}個`} title={`LARGE METEOR ×${inventory.large}`}>
+        <i className={`mini-meteor large ${color}`}>✦</i><b>×{inventory.large}</b>
+      </div>
+      {loadoutHidden && <div className="inventory-slot loadout-hidden" aria-label="アイテム構成は戦闘開始まで非公開" title="SECRET LOADOUT"><i>◆</i><b>?</b></div>}
+      {itemCounts.map(({ kind, count }) => <div key={kind} className={`inventory-slot inventory-item ${kind}`} aria-label={`${kind.toUpperCase()} 残り${count}個`} title={`${kind.toUpperCase()} ×${count}`}><ItemIcon kind={kind} /><b>×{count}</b></div>)}
     </div>
   );
 }

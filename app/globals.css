@@ -104,15 +104,10 @@ button { color: inherit; }
 .probe-portrait i { left:24px; transform:rotate(8deg); }
 .probe-portrait b { right:24px; transform:rotate(-8deg); }
 
-.inventory { display:grid; gap:5px; border-top:1px solid currentColor; padding-top:10px; position:relative; }
-.inventory > span { display:block; margin-bottom:2px; color:#6d8493; letter-spacing:.16em; font-size:7px; }
-.inventory-meteors { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px; }
-.inventory-meteors > .meteor-slot { min-width:0; min-height:31px; display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:center; gap:2px; padding:2px 3px; border:1px solid rgba(255,255,255,.08); }
-.inventory-meteors > .meteor-slot small { overflow:hidden; color:#9aafba; font-size:8px; letter-spacing:.08em; text-overflow:ellipsis; }
-.inventory-meteors > .meteor-slot b { color:#fff; font-size:10px; text-align:right; }
-.inventory-items { display:grid; grid-template-columns:repeat(3,minmax(30px,1fr)); gap:4px; padding-top:4px; border-top:1px dashed color-mix(in srgb,currentColor 28%,transparent); }
-.inventory-items > .inventory-slot { position:relative; min-width:0; min-height:38px; display:grid; place-items:center; padding:4px; border:1px solid color-mix(in srgb,currentColor 34%,rgba(255,255,255,.08)); border-radius:5px; background:color-mix(in srgb,currentColor 7%,rgba(2,11,17,.9)); box-shadow:inset 0 0 12px color-mix(in srgb,currentColor 6%,transparent); }
-.inventory-items > .inventory-slot > b { position:absolute; right:2px; bottom:1px; min-width:16px; padding:1px 3px; border-radius:8px; background:rgba(1,8,12,.88); color:#fff; font-size:8px; line-height:1.25; text-align:center; }
+.inventory { display:grid; grid-template-columns:repeat(3,minmax(34px,1fr)); gap:5px; border-top:1px solid currentColor; padding-top:10px; position:relative; }
+.inventory > span { grid-column:1/-1; display:block; margin-bottom:2px; color:#6d8493; letter-spacing:.16em; font-size:7px; }
+.inventory > .inventory-slot { position:relative; min-width:0; min-height:42px; display:grid; place-items:center; padding:5px; border:1px solid color-mix(in srgb,currentColor 34%,rgba(255,255,255,.08)); border-radius:5px; background:color-mix(in srgb,currentColor 7%,rgba(2,11,17,.9)); box-shadow:inset 0 0 12px color-mix(in srgb,currentColor 6%,transparent); }
+.inventory > .inventory-slot > b { position:absolute; right:3px; bottom:2px; min-width:16px; padding:1px 3px; border-radius:8px; background:rgba(1,8,12,.88); color:#fff; font-size:8px; line-height:1.25; text-align:center; }
 .inventory-item.shield { color:#65dcff; }
 .inventory-item.booster { color:var(--item-booster); }
 .inventory-item.holo { color:#d47cff; }
@@ -883,22 +878,31 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 
 @media (max-width: 900px) {
   .hud-mode .inventory {
+    grid-template-columns: repeat(5, minmax(24px, 1fr));
     gap: 3px;
     padding-top: 4px;
   }
   .hud-mode .inventory > span { margin:0; font-size:6px; }
-  .hud-mode .inventory-meteors { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .hud-mode .inventory-items { grid-template-columns:repeat(3,minmax(24px,1fr)); gap:3px; padding-top:2px; }
-  .hud-mode .inventory-items > .inventory-slot {
+  .hud-mode .inventory > .inventory-slot {
     min-height: 31px;
     grid-template-columns: 1fr;
     padding: 2px;
   }
-  .hud-mode .inventory-meteors > .meteor-slot { min-height:27px; grid-template-columns:14px minmax(0,1fr) auto; padding:1px 2px; }
-  .hud-mode .inventory-meteors > .meteor-slot small { font-size:6px; }
-  .hud-mode .inventory-meteors > .meteor-slot b { font-size:8px; }
-  .hud-mode .inventory .mini-meteor { font-size:11px; }
-  .hud-mode .inventory .mini-meteor.large { font-size:14px; }
   .hud-mode .inventory-item .item-icon { width:21px; height:21px; font-size:12px; }
-  .hud-mode .inventory-items > .inventory-slot > b { right:1px; bottom:1px; font-size:7px; }
+  .hud-mode .inventory > .inventory-slot > b { right:1px; bottom:1px; font-size:7px; }
+}
+
+@media (max-width: 560px) {
+  /* 3–4 player cards stack vertically on phones instead of being squeezed to half width. */
+  .hud-mode .player-stack,
+  .hud-mode .player-stack:has(> .player-card:nth-child(2)) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+  .hud-mode .player-stack:not(:has(> .player-card:nth-child(2))) > .player-card,
+  .hud-mode .player-stack:has(> .player-card:nth-child(2)) > .player-card {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+  }
 }

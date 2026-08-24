@@ -146,11 +146,11 @@ test("renders player inventory as a compact icon grid on every device", async ()
     read("../app/page.tsx"),
     read("../app/globals.css"),
   ]);
-  assert.match(page, /inventory-meteors/);
+  assert.match(page, /inventory-slot meteor-slot/);
   assert.match(page, /inventory-slot inventory-item/);
-  assert.match(page, /<small>SMALL<\/small>/);
+  assert.doesNotMatch(page, /<small>SMALL<\/small>/);
   assert.doesNotMatch(page, /<small>\{kind\.toUpperCase\(\)\}<\/small>/);
-  assert.match(css, /\.inventory-meteors \{ display:grid; grid-template-columns:repeat\(2/);
-  assert.match(css, /\.inventory-items \{ display:grid; grid-template-columns:repeat\(3/);
-  assert.match(css, /\.hud-mode \.inventory-meteors \{ grid-template-columns:repeat\(2/);
+  assert.match(css, /\.inventory \{ display:grid; grid-template-columns:repeat\(3/);
+  assert.match(css, /\.hud-mode \.inventory \{[\s\S]*?grid-template-columns: repeat\(5/);
+  assert.match(css, /3–4 player cards stack vertically on phones/);
 });
