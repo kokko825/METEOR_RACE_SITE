@@ -140,3 +140,16 @@ test("gives BOOSTER and BLAST distinct item colors", async () => {
   assert.match(css, /item-choice\.booster \{ --item-color:var\(--item-booster\)/);
   assert.match(css, /item-choice\.blast \{ --item-color:var\(--item-blast\)/);
 });
+
+test("renders player inventory as a compact icon grid on every device", async () => {
+  const [page, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(page, /inventory-slot meteor-slot/);
+  assert.match(page, /inventory-slot inventory-item/);
+  assert.doesNotMatch(page, /<small>SMALL<\/small>/);
+  assert.doesNotMatch(page, /<small>\{kind\.toUpperCase\(\)\}<\/small>/);
+  assert.match(css, /\.inventory \{ display:grid; grid-template-columns:repeat\(3/);
+  assert.match(css, /\.hud-mode \.inventory \{[\s\S]*?grid-template-columns: repeat\(5/);
+});
