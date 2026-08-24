@@ -1733,6 +1733,12 @@ function Game() {
 
   return (
     <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
+      <div className="phone-portrait-lock" role="status" aria-live="polite">
+        <i aria-hidden="true">↻</i>
+        <strong>端末を縦向きにしてください</strong>
+        <span>METEOR RACEはスマートフォンの縦画面に最適化されています。</span>
+        <small>PLEASE ROTATE YOUR DEVICE</small>
+      </div>
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
           <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>

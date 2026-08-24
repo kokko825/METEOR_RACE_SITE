@@ -124,13 +124,20 @@ test("offers a persistent Japanese and English language switch", async () => {
 });
 
 test("keeps the board square and lets narrow phones scroll without fixed-control overlap", async () => {
-  const css = await read("../app/globals.css");
+  const [page, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+  ]);
   assert.match(css, /@media \(min-width: 561px\) and \(max-width: 900px\)/);
   assert.match(css, /width: min\(100%, calc\(100dvh - 340px\)\)/);
   assert.match(css, /@media \(max-width: 560px\)/);
   assert.match(css, /\.hud-mode > \.game-layout \{[\s\S]*?height: auto/);
   assert.match(css, /\.hud-mode \.board,[\s\S]*?aspect-ratio: 1/);
   assert.match(css, /\.battle-hud \{[\s\S]*?position: sticky/);
+  assert.match(page, /phone-portrait-lock/);
+  assert.match(page, /端末を縦向きにしてください/);
+  assert.match(css, /orientation:landscape[\s\S]*?pointer:coarse/);
+  assert.match(css, /\.hud-mode>\.phone-portrait-lock/);
 });
 
 test("gives BOOSTER and BLAST distinct item colors", async () => {

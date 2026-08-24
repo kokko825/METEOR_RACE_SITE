@@ -726,6 +726,17 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 @media(max-width:560px){.hud-mode>.topbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}.hud-mode .topbar .round{order:initial;width:auto;max-width:100%;margin:0;justify-self:center;padding:5px 8px;font-size:8px;text-align:center}.hud-mode .topbar .round b,.hud-mode .topbar .round em{margin-top:2px;font-size:6px}.hud-mode .game-back{white-space:nowrap}}
 .hud-mode .action-panel{width:100%;justify-self:stretch}.hud-mode .action-panel:empty{display:none}
 .language-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px}.language-switch .drawer-toggle{width:100%;font-weight:800;letter-spacing:.08em}
+.phone-portrait-lock{display:none}
+
+/* Battles are portrait-only on short coarse-pointer phones; menus remain available in landscape. */
+@media (orientation:landscape) and (max-height:600px) and (max-width:950px) and (hover:none) and (pointer:coarse){
+  .hud-mode>.phone-portrait-lock{position:fixed;z-index:9999;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;padding:28px;text-align:center;background:radial-gradient(circle at 50% 45%,rgba(22,91,116,.32),transparent 38%),rgba(2,8,13,.985);color:#dff8ff}
+  .hud-mode>.phone-portrait-lock::before{content:"";position:absolute;inset:18px;border:1px solid rgba(99,223,255,.28);pointer-events:none}
+  .hud-mode>.phone-portrait-lock i{display:grid;width:76px;height:76px;place-items:center;border:2px solid #63dfff;border-radius:18px;color:#63dfff;font-size:48px;font-style:normal;line-height:1;box-shadow:0 0 28px rgba(99,223,255,.2);transform:rotate(-90deg)}
+  .hud-mode>.phone-portrait-lock strong{font-size:clamp(18px,4vw,28px);letter-spacing:.08em}
+  .hud-mode>.phone-portrait-lock span{color:#9db7c3;font-size:12px}
+  .hud-mode>.phone-portrait-lock small{margin-top:7px;color:#63dfff;font-size:9px;letter-spacing:.22em}
+}
 
 /* Responsive priority: desktop and tablet stay screen-fitted; phones may scroll so the board never deforms. */
 @media (min-width: 901px) {
