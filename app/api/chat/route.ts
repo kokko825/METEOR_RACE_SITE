@@ -70,6 +70,7 @@ export async function POST(request: Request) {
   await ensureSchema();
   if (!(await roomMember(code, playerId))) return response({ error: "ルームに参加していません" }, 403);
   const nickname = (body.nickname?.trim() || "PLAYER").slice(0, 16);
+  if (containsBlockedChatLanguage(nickname)) return response({ error: "ニックネームに使用できない表現が含まれています" }, 400);
   const createdAt = Date.now();
   const id = crypto.randomUUID();
   await env.DB.prepare(

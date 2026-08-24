@@ -89,12 +89,13 @@ test("keeps online room settings authoritative and bounded", async () => {
 });
 
 test("ships the fixed battle HUD, manual, chat and room lock controls", async () => {
-  const [page, rooms, chat, moderation, css] = await Promise.all([
+  const [page, rooms, chat, moderation, css, profile] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/api/rooms/route.ts"),
     read("../app/api/chat/route.ts"),
     read("../app/chat-moderation.ts"),
     read("../app/globals.css"),
+    read("../app/api/profile/route.ts"),
   ]);
   assert.match(page, /METEOR RACE \/ MANUAL/);
   assert.match(page, /battle-hud/);
@@ -105,10 +106,14 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(page, /online-main-return/);
   assert.match(page, /ゲームモードへ戻る/);
   assert.match(rooms, /roomJoinLocked/);
+  assert.match(rooms, /containsBlockedChatLanguage/);
   assert.match(chat, /room_chat_messages/);
   assert.match(chat, /FREE_CHAT_MAX_LENGTH/);
   assert.match(chat, /containsBlockedChatLanguage/);
+  assert.match(chat, /ニックネームに使用できない表現/);
   assert.match(moderation, /normalize\("NFKC"\)/);
+  assert.match(moderation, /Direct abuse, threats/);
+  assert.match(profile, /containsBlockedChatLanguage/);
   assert.match(page, /className="free-comms"/);
   assert.match(page, /chat-toggle/);
   assert.doesNotMatch(css, /nth-last-child\(2\)\{display:none\}/);

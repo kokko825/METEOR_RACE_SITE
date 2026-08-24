@@ -5,6 +5,7 @@ import { isRankedOpen } from "../../ranked-schedule";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 import { ratingDelta, ABANDON_PENALTY } from "../../duel-rating";
 import { applyDuelRatingChange } from "../../duel-rating-store";
+import { containsBlockedChatLanguage } from "../../chat-moderation";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,9 @@ function displayNameFromEmail(email: string) {
 
 function normalizeNickname(value: unknown, email: string) {
   const nickname = typeof value === "string" ? value.trim().slice(0, 16) : "";
-  return nickname || displayNameFromEmail(email);
+  const fallback = displayNameFromEmail(email);
+  if (nickname && !containsBlockedChatLanguage(nickname)) return nickname;
+  return containsBlockedChatLanguage(fallback) ? "PLAYER" : fallback;
 }
 
 function json(data: unknown, status = 200) {

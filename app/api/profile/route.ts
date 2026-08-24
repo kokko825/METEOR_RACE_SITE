@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { readDuelRating } from "../../duel-rating-store";
+import { containsBlockedChatLanguage } from "../../chat-moderation";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
   if (!current.key) return Response.json({ error: "プロフィールを識別できません" }, { status: 401 });
   const body = await request.json() as { nickname?: unknown };
   const nickname = typeof body.nickname === "string" ? body.nickname.trim().slice(0, 16) : "";
+  if (containsBlockedChatLanguage(nickname)) return Response.json({ error: "ニックネームに使用できない表現が含まれています" }, { status: 400 });
   await ensureProfileSchema();
   await env.DB.prepare(`INSERT INTO player_profiles (identity_key, nickname, updated_at) VALUES (?, ?, ?)
     ON CONFLICT(identity_key) DO UPDATE SET nickname = excluded.nickname, updated_at = excluded.updated_at`)
