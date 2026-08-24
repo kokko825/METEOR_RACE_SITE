@@ -1981,10 +1981,17 @@ function Game() {
                       />
                     </>
                   )}
-                  {pulseFx && distance(pos, pulseFx.target) <= pulseFx.radius && (
+                  {pulseFx?.kind === "blast" && samePos(pos, pulseFx.target) && (
+                    <span key={`${pulseFx.nonce}-blast-origin`} className="blast-origin-effect">
+                      <i className="blast-origin-flash" />
+                      <i className="blast-origin-wave wave-a" />
+                      <i className="blast-origin-wave wave-b" />
+                    </span>
+                  )}
+                  {pulseFx?.kind === "pulse" && distance(pos, pulseFx.target) <= pulseFx.radius && (
                     <span
                       key={`${pulseFx.nonce}-${r}-${c}`}
-                      className={`${pulseFx.kind === "blast" ? "blast-effect-cell" : "pulse-blast-cell"}${samePos(pos, pulseFx.target) ? " origin" : ""}`}
+                      className={`pulse-blast-cell${samePos(pos, pulseFx.target) ? " origin" : ""}`}
                       style={{ "--pulse-ring": distance(pos, pulseFx.target) } as React.CSSProperties}
                     >
                       <i /><i /><i />

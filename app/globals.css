@@ -265,7 +265,12 @@ button { color: inherit; }
 .pulse-blast-cell i:nth-child(3) { transform:rotate(calc(278deg + var(--pulse-ring) * 17deg)) scale(.65); }
 .pulse-blast-cell.origin { filter:brightness(1.45); }
 .pulse-field-cell { position:absolute; z-index:1; inset:5%; pointer-events:none; border:1px solid rgba(255,59,212,.72); background:rgba(255,40,205,.12); box-shadow:inset 0 0 10px rgba(255,59,212,.48),0 0 7px rgba(255,59,212,.35); animation:pulse-field-live 1.1s ease-in-out infinite alternate; }
-.blast-effect-cell { position:absolute; z-index:7; inset:0; pointer-events:none; border-radius:50%; background:radial-gradient(circle,rgba(255,244,190,.95) 0 12%,rgba(255,139,45,.7) 25%,rgba(255,56,20,.25) 48%,transparent 72%); box-shadow:0 0 20px rgba(255,92,35,.9); animation:pulse-cell-flash .78s ease-out calc(var(--pulse-ring) * 75ms) both; }
+.blast-origin-effect { position:absolute; z-index:7; inset:0; display:grid; place-items:center; overflow:visible; pointer-events:none; }
+.blast-origin-flash { position:absolute; width:62%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,#fff 0 12%,#ffe287 24%,#ff7a24 48%,rgba(255,67,20,.3) 68%,transparent 75%); box-shadow:0 0 18px #ff9b38,0 0 38px rgba(255,69,25,.85); animation:blast-origin-flash .72s ease-out both; }
+.blast-origin-wave { position:absolute; width:100%; aspect-ratio:1; border:clamp(2px,.32vw,5px) solid rgba(255,217,122,.92); border-radius:50%; box-shadow:0 0 16px rgba(255,122,36,.9),inset 0 0 13px rgba(255,216,123,.35); animation:blast-origin-wave .9s cubic-bezier(.1,.62,.18,1) .06s both; }
+.blast-origin-wave.wave-b { border-color:rgba(255,122,36,.74); animation-delay:.18s; }
+@keyframes blast-origin-flash { 0%{opacity:0;transform:scale(.08)} 25%{opacity:1;transform:scale(1.45)} 100%{opacity:0;transform:scale(2.7)} }
+@keyframes blast-origin-wave { 0%{opacity:0;transform:scale(.08)} 16%{opacity:1} 100%{opacity:0;transform:scale(5.05)} }
 .meteor-fall { z-index:7; animation:meteor-fall .72s cubic-bezier(.16,.74,.3,1.16) both; }
 .probe-motion.blast-lift { animation:probe-blast-lift .95s cubic-bezier(.18,.63,.24,1) .12s both; }
 .meteor-shatter { z-index:8; animation:meteor-shatter .88s ease-out both; }
@@ -319,7 +324,7 @@ button { color: inherit; }
 .extra-players .inventory { border-top:0; border-left:1px solid currentColor; padding:0 0 0 16px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .impact-flash,.shockwave,.meteor-fall,.probe-motion.blast-lift,.meteor-shatter { animation-duration:.01ms !important; animation-delay:0ms !important; }
+  .impact-flash,.shockwave,.blast-origin-flash,.blast-origin-wave,.meteor-fall,.probe-motion.blast-lift,.meteor-shatter { animation-duration:.01ms !important; animation-delay:0ms !important; }
 }
 
 .action-panel { min-height:61px; border:1px solid var(--line); border-top:0; background:rgba(6,15,24,.9); display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; padding:9px; }

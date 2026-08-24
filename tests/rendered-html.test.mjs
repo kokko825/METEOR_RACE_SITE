@@ -141,11 +141,18 @@ test("keeps the board square and lets narrow phones scroll without fixed-control
 });
 
 test("gives BOOSTER and BLAST distinct item colors", async () => {
-  const css = await read("../app/globals.css");
+  const [page, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+  ]);
   assert.match(css, /--item-booster: #ffd43b/);
   assert.match(css, /--item-blast: #ff7a24/);
   assert.match(css, /item-choice\.booster \{ --item-color:var\(--item-booster\)/);
   assert.match(css, /item-choice\.blast \{ --item-color:var\(--item-blast\)/);
+  assert.match(page, /blast-origin-effect/);
+  assert.doesNotMatch(page, /blast-effect-cell/);
+  assert.match(css, /@keyframes blast-origin-wave/);
+  assert.match(css, /transform:scale\(5\.05\)/);
 });
 
 test("renders player inventory as a compact icon grid on every device", async () => {
