@@ -10,9 +10,7 @@
   "send_email": [
     {
       "name": "CONTACT_EMAIL",
-      "allowed_destination_addresses": [
-        "follnest.info@gmail.com"
-      ]
+      "destination_address": "follnest.info@gmail.com"
     }
   ],
 
