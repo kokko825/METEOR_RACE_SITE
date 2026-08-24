@@ -21,7 +21,12 @@ type RoomRow = {
   state_json: string;
   version: number;
   status: string;
+  updated_at: number;
 };
+
+const WAITING_ROOM_TTL_MS = 30 * 60 * 1000;
+const PLAYING_ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+const ROOM_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 
 // A Worker isolate handles many requests in a row (e.g. every 500ms room-poll
 // tick from each connected client), so memoize this instead of re-running the
@@ -95,10 +100,24 @@ function shuffledPlayers(players: Player[]) {
 
 async function roomByCode(code: string) {
   return env.DB.prepare(
-    "SELECT code, host_email, guest_email, player3_email, player4_email, max_players, seat_order_json, state_json, version, status FROM game_rooms WHERE code = ?",
+    "SELECT code, host_email, guest_email, player3_email, player4_email, max_players, seat_order_json, state_json, version, status, updated_at FROM game_rooms WHERE code = ?",
   )
     .bind(code)
     .first<RoomRow>();
+}
+
+async function cleanupAbandonedRooms(now = Date.now()) {
+  await env.DB.prepare(
+    `DELETE FROM game_rooms
+     WHERE (status = 'waiting' AND updated_at < ?)
+        OR (status <> 'waiting' AND updated_at < ?)`,
+  )
+    .bind(now - WAITING_ROOM_TTL_MS, now - PLAYING_ROOM_TTL_MS)
+    .run();
+}
+
+function roomMemberEmails(room: RoomRow) {
+  return [room.host_email, room.guest_email, room.player3_email, room.player4_email];
 }
 
 function roomPayload(room: RoomRow, email: string) {
@@ -143,6 +162,21 @@ export async function GET(request: Request) {
   if (!code) return json({ error: "ルームコードが必要です" }, 400);
   const room = await roomByCode(code);
   if (!room) return json({ error: "ルームが見つかりません" }, 404);
+  const now = Date.now();
+  const memberIsPresent = roomMemberEmails(room).includes(email);
+  const ttl = room.status === "waiting" ? WAITING_ROOM_TTL_MS : PLAYING_ROOM_TTL_MS;
+  if (!memberIsPresent && room.updated_at < now - ttl) {
+    await env.DB.prepare("DELETE FROM game_rooms WHERE code = ? AND updated_at = ?")
+      .bind(code, room.updated_at)
+      .run();
+    return json({ error: "このルームの有効期限が切れました" }, 404);
+  }
+  if (memberIsPresent && room.updated_at < now - ROOM_HEARTBEAT_INTERVAL_MS) {
+    await env.DB.prepare("UPDATE game_rooms SET updated_at = ? WHERE code = ? AND updated_at = ?")
+      .bind(now, code, room.updated_at)
+      .run();
+    room.updated_at = now;
+  }
   return json(roomPayload(room, email));
 }
 
@@ -180,6 +214,7 @@ export async function POST(request: Request) {
   };
   if (body.action === "create") {
     if (!(await withinRateLimit(request, "rooms-create", 10, 300))) return rateLimitedResponse();
+    await cleanupAbandonedRooms();
     const liveBalance = await publishedBalance();
     const createRanked = Boolean(body.ranked) && isRankedOpen();
     const createVariant: GameVariant = createRanked

@@ -86,6 +86,10 @@ test("keeps online room settings authoritative and bounded", async () => {
   assert.match(rooms, /seats\[openSlot\] = null/);
   assert.doesNotMatch(rooms, /max_players = 4/);
   assert.doesNotMatch(rooms, /balance_settings/);
+  assert.match(rooms, /WAITING_ROOM_TTL_MS = 30 \* 60 \* 1000/);
+  assert.match(rooms, /PLAYING_ROOM_TTL_MS = 2 \* 60 \* 60 \* 1000/);
+  assert.match(rooms, /cleanupAbandonedRooms/);
+  assert.match(rooms, /ROOM_HEARTBEAT_INTERVAL_MS/);
 });
 
 test("ships the fixed battle HUD, manual, chat and room lock controls", async () => {
