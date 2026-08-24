@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { EmailMessage } from "cloudflare:email";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -36,12 +37,7 @@ async function notifyContact(report: {
   const binding = (env as Env & { CONTACT_EMAIL?: SendEmail }).CONTACT_EMAIL;
   if (!binding) return false;
   const sentAt = new Date(report.createdAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  await binding.send({
-    from: CONTACT_SENDER,
-    to: CONTACT_DESTINATION,
-    replyTo: CONTACT_SENDER,
-    subject: `[METEOR RACE ${report.reference}] ${report.category}`,
-    text: [
+  const body = [
       "METEOR RACEに新しいお問い合わせが届きました。",
       "",
       `受付番号: ${report.reference}`,
@@ -56,8 +52,19 @@ async function notifyContact(report: {
       report.message,
       "",
       "この報告はD1のcontact_messagesにも保存されています。",
-    ].join("\n"),
-  });
+    ].join("\r\n");
+  const raw = [
+    `From: METEOR RACE <${CONTACT_SENDER}>`,
+    `To: ${CONTACT_DESTINATION}`,
+    `Reply-To: ${CONTACT_SENDER}`,
+    `Subject: [METEOR RACE ${report.reference}] Contact report`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    body,
+  ].join("\r\n");
+  await binding.send(new EmailMessage(CONTACT_SENDER, CONTACT_DESTINATION, raw));
   return true;
 }
 

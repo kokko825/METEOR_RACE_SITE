@@ -22,15 +22,15 @@ interface Fetcher {
 }
 
 interface SendEmail {
-  send(message: {
-    from: string;
-    to?: string;
-    subject: string;
-    text: string;
-    replyTo?: string;
-  }): Promise<unknown>;
+  send(message: unknown): Promise<unknown>;
 }
 
 declare module "cloudflare:workers" {
   export const env: Env;
+}
+
+declare module "cloudflare:email" {
+  export class EmailMessage {
+    constructor(from: string, to: string, raw: string | ReadableStream);
+  }
 }
