@@ -160,8 +160,9 @@ test("keeps the board square and lets narrow phones scroll without fixed-control
   assert.match(page, /端末を縦向きにしてください/);
   assert.match(css, /orientation:landscape[\s\S]*?pointer:coarse/);
   assert.match(css, /\.hud-mode>\.phone-portrait-lock/);
-  assert.match(css, /@media \(min-width:901px\)[\s\S]*?\.hud-mode \.turn-callout \{ display:none; \}/);
-  assert.match(css, /calc\(100dvh - 248px\)/);
+  assert.match(css, /@media \(min-width:901px\)[\s\S]*?\.hud-mode \.turn-callout,[\s\S]*?\.hud-mode \.status \{ display:none; \}/);
+  assert.match(css, /minmax\(360px,720px\)/);
+  assert.match(css, /calc\(100dvh - 180px\)/);
   assert.match(css, /\.shell\.entry-active \.title-screen nav \{ margin-bottom:0; \}/);
 });
 
@@ -198,4 +199,16 @@ test("renders player inventory as a compact icon grid on every device", async ()
   assert.match(page, /placement-meteor-icon large/);
   assert.match(css, /Short landscape screens and browser zoom use the safe scrolling game flow too/);
   assert.match(css, /Portrait tablets keep four players in two readable rows without overlap/);
+});
+
+test("keeps final rankings and rematch controls above a dimmed board", async () => {
+  const [page, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(page, /className="result-overlay"/);
+  assert.match(page, /game\.phase === "over" \? " result-dim"/);
+  assert.match(page, /className="primary-action result-rematch"/);
+  assert.match(css, /\.board\.result-dim/);
+  assert.match(css, /\.result-overlay \{ position:absolute; z-index:45/);
 });

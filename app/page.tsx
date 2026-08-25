@@ -1894,7 +1894,7 @@ function Game() {
             </div>
           )}
           <div
-            className={`board turn-${displayAccent}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}`}
+            className={`board turn-${displayAccent}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}${game.phase === "over" ? " result-dim" : ""}`}
             data-perspective={perspectiveSlot}
             style={{
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
@@ -2034,6 +2034,29 @@ function Game() {
             })}
           </div>
 
+          {game.phase === "over" && (
+            <section className="result-overlay" role="dialog" aria-modal="true" aria-label="対戦結果">
+              <header><small>MATCH RESULT</small><strong>{displayGameMessage}</strong></header>
+              {(game.finishOrder?.length ?? 0) > 0 && (
+                <ol className="finish-ranking" aria-label="最終順位">
+                  {game.finishOrder?.map((player, index) => (
+                    <li key={player} className={player}>
+                      <b>{index + 1}位</b><span>{playerName(player)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <button
+                className="primary-action result-rematch"
+                onClick={mode === "online" ? rematchOnlineRoom : restartCurrentGame}
+                disabled={mode === "online" && online.pending}
+              >
+                同じメンバーでもう一度
+              </button>
+              <AdSlot position="result" />
+            </section>
+          )}
+
           <div className="action-panel">
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
@@ -2151,27 +2174,6 @@ function Game() {
               <div className={`bonus-move-callout ${game.turn}`} role="status">
                 BONUS MOVE <b>2 / 2</b>
               </div>
-            )}
-            {game.phase === "over" && (
-              <>
-                {(game.finishOrder?.length ?? 0) > 0 && (
-                  <ol className="finish-ranking" aria-label="最終順位">
-                    {game.finishOrder?.map((player, index) => (
-                      <li key={player} className={player}>
-                        <b>{index + 1}位</b><span>{playerName(player)}</span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                <button
-                  className="primary-action"
-                  onClick={mode === "online" ? rematchOnlineRoom : restartCurrentGame}
-                  disabled={mode === "online" && online.pending}
-                >
-                  同じメンバーでもう一度
-                </button>
-                <AdSlot position="result" />
-              </>
             )}
           </div>
         </section>

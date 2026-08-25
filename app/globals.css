@@ -369,6 +369,15 @@ button { color: inherit; }
 .finish-ranking li:first-child { border-color:#ffd66b; box-shadow:0 0 14px rgba(255,214,107,.16); }
 .finish-ranking .red { color:#ff8585; } .finish-ranking .blue { color:#83d8ff; }
 .finish-ranking .green { color:#82e6a6; } .finish-ranking .yellow { color:#ffe070; }
+.board.result-dim { filter:brightness(.2) saturate(.48); pointer-events:none; }
+.result-overlay { position:absolute; z-index:45; left:50%; top:50%; width:min(420px,calc(100% - 28px)); max-height:calc(100% - 32px); transform:translate(-50%,-50%); overflow:auto; display:grid; gap:10px; padding:18px; border:1px solid #4d9ab6; background:rgba(2,11,17,.96); box-shadow:0 18px 58px rgba(0,0,0,.76),0 0 34px rgba(65,205,246,.2); backdrop-filter:blur(7px); }
+.result-overlay>header { display:grid; gap:5px; padding-bottom:10px; border-bottom:1px solid #285366; text-align:center; }
+.result-overlay>header small { color:#6fdfff; font-size:9px; font-weight:800; letter-spacing:.24em; }
+.result-overlay>header strong { color:#fff; font-size:clamp(15px,2.2vw,22px); }
+.result-overlay .finish-ranking { width:100%; min-width:0; margin:0; }
+.result-overlay .finish-ranking li { min-height:40px; align-items:center; }
+.result-overlay .result-rematch { position:relative; z-index:2; width:100%; min-height:48px; border-color:#6fe3ff; background:linear-gradient(100deg,#0d536a,#147c99); color:#fff; font-weight:900; }
+@media(max-width:560px){.result-overlay{width:calc(100% - 16px);max-height:calc(100% - 16px);padding:12px;gap:7px}.result-overlay .finish-ranking{gap:3px}.result-overlay .finish-ranking li{min-height:34px;padding:5px 9px}.result-overlay .result-rematch{min-height:44px}}
 
 .control-strip { width:min(1060px,100%); margin:22px auto 0; border-top:1px solid var(--line); padding-top:15px; }
 .settings { display:flex; gap:9px; align-items:end; flex-wrap:wrap; }
@@ -1005,8 +1014,10 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
    more height to the board. Compact devices retain the board-top callout so
    the active player remains visible when the lower controls wrap or scroll. */
 @media (min-width:901px) {
-  .hud-mode .turn-callout { display:none; }
-  .hud-mode .board { width:min(100%,680px,max(360px,calc(100dvh - 248px))); }
+  .hud-mode .turn-callout,
+  .hud-mode .status { display:none; }
+  .hud-mode > .game-layout { grid-template-columns:minmax(125px,160px) minmax(360px,720px) minmax(125px,160px); }
+  .hud-mode .board { width:min(100%,720px,max(360px,calc(100dvh - 180px))); }
   .title-screen nav { align-self:center; margin-bottom:0; }
 }
 
