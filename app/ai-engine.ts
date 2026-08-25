@@ -338,9 +338,58 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
   if (state.phase === "over") return 0;
   const rivals = activePlayers(state).filter((p) => !allied(state, p, player));
   let penalty = 0;
+  const coordinatedFourPlayerDefense =
+    difficulty === "hard" &&
+    !isTeamVariant(state.variant) &&
+    activePlayers(state).length >= 4;
+  const immediateThreats = rivals.filter(
+    (rival) => coreDistance(state, rival) <= 2 && isImmediateWinAvailable(state, rival),
+  );
+
+  const hasCompetingFinishThreats = coordinatedFourPlayerDefense && immediateThreats.length > 1;
+  if (hasCompetingFinishThreats) {
+    const players = activePlayers(state);
+    const firstIndex = players.indexOf(state.turn);
+    const turnOffset = (candidate: Player) => {
+      const index = players.indexOf(candidate);
+      return (index - firstIndex + players.length) % players.length;
+    };
+    const earliestThreat = Math.min(...immediateThreats.map(turnOffset));
+    const defenders = players.filter((candidate) => {
+      const offset = turnOffset(candidate);
+      // A probe that can finish on its own next turn is not counted as a
+      // dependable defender of another leader. This prevents one remaining
+      // meteor from being promised to two different emergencies.
+      return offset < earliestThreat &&
+        !immediateThreats.includes(candidate) &&
+        !allied(state, candidate, player);
+    });
+    const defenseUnits = defenders.reduce((sum, defender) => {
+      const inventory = state.inventory[defender];
+      const meteorUnits = inventory.large > 0
+        ? 2
+        : inventory.small > 0 || (state.capsuleMeteors?.[defender] ?? 0) > 0
+          ? 1
+          : 0;
+      // A defender still receives only one placement phase. Defensive items
+      // are alternatives to a meteor, not extra actions, so use the stronger
+      // option instead of adding both and overstating the available response.
+      const hand = state.itemHands?.[defender] ?? [];
+      const itemUnits = hand.some((kind) =>
+        kind === "blast" || kind === "pulse" || kind === "holo" || kind === "orbit"
+      ) ? 2 : 0;
+      return sum + Math.max(meteorUnits, itemUnits);
+    }, 0);
+    const requiredUnits = immediateThreats.length * AI_STRATEGY.pacing.coordinatedThreatUnits;
+    const shortage = Math.max(0, requiredUnits - defenseUnits);
+    penalty += shortage > 0
+      ? shortage * AI_STRATEGY.pacing.coordinatedDefenseShortage
+      : immediateThreats.length * AI_STRATEGY.pacing.delegatedThreatRisk;
+  }
   for (const rival of rivals) {
     const rivalDistance = coreDistance(state, rival);
     if (rivalDistance <= 2 && isImmediateWinAvailable(state, rival)) {
+      if (hasCompetingFinishThreats) continue;
       const players = activePlayers(state);
       const firstIndex = players.indexOf(state.turn);
       const intervening: Player[] = [];

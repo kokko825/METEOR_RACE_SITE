@@ -22,6 +22,9 @@ export const AI_STRATEGY = {
   pacing: {
     multiplayerWarningWithMeteor: 210,
     multiplayerWarningEmpty: 90,
+    coordinatedThreatUnits: 2,
+    coordinatedDefenseShortage: 90_000,
+    delegatedThreatRisk: 160,
     duelWarningWithMeteor: 4_500,
     duelWarningEmpty: 1_800,
     overtimeStartsAfterRounds: 2,
