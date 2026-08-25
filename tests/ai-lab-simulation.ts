@@ -20,6 +20,7 @@ import {
   legalMoves,
   type GameState,
   type GameVariant,
+  type ItemKind,
   type Player,
 } from "../app/game-rules.js";
 
@@ -259,6 +260,14 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
   let moves = 0;
   let retreats = 0;
+  let meteorPlacements = 0;
+  let selfPropellingMeteors = 0;
+  let rivalSetbackMeteors = 0;
+  let rivalAdvancingMeteors = 0;
+  let quietSetups = 0;
+  let emptyBlasts = 0;
+  let passes = 0;
+  const itemUses: Partial<Record<ItemKind, number>> = {};
   const random = () => {
     seed = (Math.imul(seed >>> 0, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
@@ -276,13 +285,39 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
       const afterDistance =
         Math.abs(decision.target.r - mid) + Math.abs(decision.target.c - mid);
       moves += 1;
-      if (state.variant !== "item" && afterDistance > beforeDistance) retreats += 1;
+      if (afterDistance > beforeDistance) retreats += 1;
       state = applyMove(state, decision.target);
     }
     else if (decision.type === "meteor") {
+      const before = state;
+      const actor = state.turn;
+      const players = activePlayers(state);
+      const beforeDistances = Object.fromEntries(players.map((candidate) => [candidate, coreDistanceForTest(state, candidate)]));
       state = applyMeteor(state, decision.target, decision.size, decision.useCapsule).state;
-    } else if (decision.type === "item") state = applyUseItem(state, decision.kind);
-    else if (decision.type === "pass") state = applyPass(state);
+      const ownAdvance = beforeDistances[actor] - coreDistanceForTest(state, actor);
+      const rivalDeltas = players
+        .filter((candidate) => candidate !== actor)
+        .map((candidate) => coreDistanceForTest(state, candidate) - beforeDistances[candidate]);
+      const probeChanged = players.some((candidate) =>
+        before.probes[candidate].r !== state.probes[candidate].r || before.probes[candidate].c !== state.probes[candidate].c
+      );
+      const survived = state.meteors.some((meteor) =>
+        meteor.owner === actor && meteor.r === decision.target.r && meteor.c === decision.target.c
+      );
+      meteorPlacements += 1;
+      if (ownAdvance > 0) selfPropellingMeteors += 1;
+      if (rivalDeltas.some((delta) => delta > 0)) rivalSetbackMeteors += 1;
+      if (rivalDeltas.some((delta) => delta < 0)) rivalAdvancingMeteors += 1;
+      if (!probeChanged && survived) quietSetups += 1;
+      if (!probeChanged && !survived) emptyBlasts += 1;
+    } else if (decision.type === "item") {
+      itemUses[decision.kind] = (itemUses[decision.kind] ?? 0) + 1;
+      state = applyUseItem(state, decision.kind);
+    }
+    else if (decision.type === "pass") {
+      passes += 1;
+      state = applyPass(state);
+    }
     else if (decision.type === "holo") state = applyHoloSwitch(state, decision.target);
     else if (decision.type === "blast") state = applyBlastSwitch(state, decision.target);
     else if (decision.type === "pulse") state = applyPulseSwitch(state, decision.target);
@@ -291,7 +326,24 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     else state = finishTurn(state, "AI skip");
     guard += 1;
   }
-  return { state, moves, retreats };
+  return {
+    state,
+    moves,
+    retreats,
+    meteorPlacements,
+    selfPropellingMeteors,
+    rivalSetbackMeteors,
+    rivalAdvancingMeteors,
+    quietSetups,
+    emptyBlasts,
+    passes,
+    itemUses,
+  };
+}
+
+function coreDistanceForTest(state: GameState, player: Player) {
+  const mid = Math.floor(state.size / 2);
+  return Math.abs(state.probes[player].r - mid) + Math.abs(state.probes[player].c - mid);
 }
 
 const allScenarios: Array<{ variant: GameVariant; size: number; count: number }> = [
@@ -319,6 +371,14 @@ for (const difficulty of difficulties) {
     let turns = 0;
     let moves = 0;
     let retreats = 0;
+    let meteorPlacements = 0;
+    let selfPropellingMeteors = 0;
+    let rivalSetbackMeteors = 0;
+    let rivalAdvancingMeteors = 0;
+    let quietSetups = 0;
+    let emptyBlasts = 0;
+    let passes = 0;
+    const itemUses: Partial<Record<ItemKind, number>> = {};
     const outcomes: Array<{ winner: string; finishOrder: Player[]; active: Player[]; distances: Record<string, number>; coreBlockedBy: string[] }> = [];
     const games = Math.max(1, Number(process.env.AI_LAB_GAMES ?? 4));
     for (let index = 0; index < games; index += 1) {
@@ -348,6 +408,16 @@ for (const difficulty of difficulties) {
       turns += final.turnCount;
       moves += result.moves;
       retreats += result.retreats;
+      meteorPlacements += result.meteorPlacements;
+      selfPropellingMeteors += result.selfPropellingMeteors;
+      rivalSetbackMeteors += result.rivalSetbackMeteors;
+      rivalAdvancingMeteors += result.rivalAdvancingMeteors;
+      quietSetups += result.quietSetups;
+      emptyBlasts += result.emptyBlasts;
+      passes += result.passes;
+      for (const [kind, count] of Object.entries(result.itemUses)) {
+        itemUses[kind as ItemKind] = (itemUses[kind as ItemKind] ?? 0) + (count ?? 0);
+      }
       const mid = Math.floor(final.size / 2);
       outcomes.push({
         winner: final.winner ?? "draw",
@@ -368,10 +438,17 @@ for (const difficulty of difficulties) {
         games,
         wins,
         averageTurns: Math.round((turns / games) * 10) / 10,
-        retreatRate:
-          scenario.variant === "item" || moves === 0
-            ? null
-            : Math.round((retreats / moves) * 1000) / 10,
+        retreatRate: moves === 0 ? null : Math.round((retreats / moves) * 1000) / 10,
+        meteorActions: {
+          placements: meteorPlacements,
+          selfPropelling: selfPropellingMeteors,
+          rivalSetback: rivalSetbackMeteors,
+          rivalAdvancing: rivalAdvancingMeteors,
+          quietSetups,
+          emptyBlasts,
+          passes,
+        },
+        itemUses,
         outcomes,
       }),
     );
