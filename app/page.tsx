@@ -2095,7 +2095,11 @@ function Game() {
             </section>
           )}
 
-          <div className="action-panel">
+          <div
+            className="action-panel"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">{tf("selectItems", { total: balance.itemHandTotal, same: balance.itemSameMax })}</span>
