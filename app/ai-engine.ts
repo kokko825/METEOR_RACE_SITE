@@ -100,9 +100,10 @@ function positionValue(state: GameState, player: Player) {
     : players.length === 2
       ? { progress: 1.04, denial: 0.98, resources: 1 }
       : personality(player);
+  const freeForAllPacing = !isTeamVariant(state.variant) && players.length >= 4;
   const style = {
-    progress: styleBase.progress * configured.aiProgressWeight / 100,
-    denial: styleBase.denial * configured.aiDenialWeight / 100,
+    progress: styleBase.progress * configured.aiProgressWeight / 100 * (freeForAllPacing ? 1.1 : 1),
+    denial: styleBase.denial * configured.aiDenialWeight / 100 * (freeForAllPacing ? 0.94 : 1),
     resources: styleBase.resources * configured.aiResourceWeight / 100,
   };
   const friends = players.filter((p) => allied(state, p, player));
@@ -643,7 +644,10 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
       coreDistance({ ...state, probes: { ...state.probes, [player]: move } }, player),
   );
   const developmentBonus = earlyItemDevelopment(state, player)
-    ? inwardSteps * AI_STRATEGY.pacing.earlyAdvanceBonus
+    ? inwardSteps * (
+      AI_STRATEGY.pacing.earlyAdvanceBonus +
+      (isItemVariant(state.variant) ? AI_STRATEGY.pacing.itemForwardTempo : 0)
+    )
     : 0;
   let next = applyMove(state, move);
   if (next.phase === "place" && next.turn === player) {
