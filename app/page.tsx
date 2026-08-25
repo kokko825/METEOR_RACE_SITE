@@ -67,7 +67,7 @@ import { COMMUNITY_SAFETY } from "../config/community-safety";
 
 type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
-  stage: "probe" | "recover";
+  stage: "probe" | "recover" | "settle";
   target: Pos;
   owner: Player;
   size: MeteorSize;
@@ -87,6 +87,7 @@ type OnlineItemEffect = {
   clockwise?: boolean;
   target?: Pos;
   radius?: number;
+  pushed?: BlastFx["pushed"];
 };
 
 function pushForPerspective(
@@ -95,6 +96,18 @@ function pushForPerspective(
 ) {
   const delta = boardToViewDelta({ r: push.dr, c: push.dc }, perspectiveSlot);
   return { ...push, dr: delta.r, dc: delta.c };
+}
+
+function pushedProbesBetween(before: GameState, after: GameState): BlastFx["pushed"] {
+  return Object.fromEntries(
+    activePlayers(before)
+      .filter((player) => !samePos(before.probes[player], after.probes[player]))
+      .map((player) => [player, {
+        from: before.probes[player],
+        dr: after.probes[player].r - before.probes[player].r,
+        dc: after.probes[player].c - before.probes[player].c,
+      }]),
+  );
 }
 
 type OnlineRoom = {
@@ -1040,9 +1053,16 @@ function Game() {
   const resolveBlast = (target: Pos) => {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
     const next = applyBlastSwitch(game, target);
+    const pushed = pushedProbesBetween(game, next);
     showSwitchFx("blast", player);
     setPulseFx({ kind: "blast", target, radius: game.balance?.blastRadius ?? activeBalance.blastRadius, nonce: Date.now() });
     window.setTimeout(() => setPulseFx(null), 950);
+    setBlastFx({ stage: "settle", target, owner: player, size: "large", destroyedIds: [], pushed });
+    setIsAnimating(true);
+    window.setTimeout(() => {
+      setBlastFx(null);
+      setIsAnimating(false);
+    }, 950);
     if (mode === "online") void submitOnlineAction("switch_blast", target);
     commit(next);
   };
@@ -1394,6 +1414,21 @@ function Game() {
                 nonce: Date.now(),
               });
               window.setTimeout(() => setPulseFx(null), 950);
+            }
+            if (remoteItemEffect.kind === "blast" && remoteItemEffect.target && remoteItemEffect.pushed) {
+              setBlastFx({
+                stage: "settle",
+                target: remoteItemEffect.target,
+                owner: remoteItemEffect.player,
+                size: "large",
+                destroyedIds: [],
+                pushed: remoteItemEffect.pushed,
+              });
+              setIsAnimating(true);
+              window.setTimeout(() => {
+                setBlastFx(null);
+                setIsAnimating(false);
+              }, 950);
             }
           }
           setSize(data.state.size);
@@ -1921,6 +1956,12 @@ function Game() {
                 : null;
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
+              const probePush = probe ? blastFx?.pushed[probe] : undefined;
+              const probePushMatches = probePush && (
+                blastFx?.stage === "settle"
+                  ? samePos(pos, { r: probePush.from.r + probePush.dr, c: probePush.from.c + probePush.dc })
+                  : samePos(pos, probePush.from)
+              );
               const meteor = game.meteors.find((m) => samePos(m, pos));
               const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
               const pulseDevice = (game.pulseDevices ?? []).find((item) => samePos(item, pos));
@@ -1956,7 +1997,7 @@ function Game() {
                   aria-label={`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}${pulseDevice ? " 電磁パルス発生装置" : ""}`}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
-                  {blastFx && samePos(pos, blastFx.target) && (
+                  {blastFx && blastFx.stage !== "settle" && samePos(pos, blastFx.target) && (
                     <>
                       {blastFx.stage === "probe" && (
                         <>
@@ -2018,14 +2059,11 @@ function Game() {
                           : Math.atan2(mid - viewC, viewR - mid) * (180 / Math.PI)
                       }
                       push={
-                        blastFx?.pushed[probe] &&
-                        samePos(pos, blastFx.pushed[probe].from)
-                          ? pushForPerspective(
-                              blastFx.pushed[probe],
-                              perspectiveSlot,
-                            )
+                        probePushMatches
+                          ? pushForPerspective(probePush, perspectiveSlot)
                           : undefined
                       }
+                      settling={blastFx?.stage === "settle" && Boolean(probePushMatches)}
                     />
                   )}
                   {legal && <span className="move-pip" />}
@@ -2590,6 +2628,7 @@ function ProbeToken({
   isSelf = false,
   shieldTurns = 0,
   boost = 0,
+  settling = false,
 }: {
   player: Player;
   rotation: number;
@@ -2598,15 +2637,18 @@ function ProbeToken({
   isSelf?: boolean;
   shieldTurns?: number;
   boost?: number;
+  settling?: boolean;
 }) {
   return (
     <span
-      className={`probe-motion ${player}${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${push ? " blast-lift" : ""}`}
+      className={`probe-motion ${player}${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${push ? settling ? " blast-settle" : " blast-lift" : ""}`}
       style={
         push
           ? ({
               "--push-x": `${push.dc * 147}%`,
               "--push-y": `${push.dr * 147}%`,
+              "--push-from-x": `${push.dc * -147}%`,
+              "--push-from-y": `${push.dr * -147}%`,
             } as React.CSSProperties)
           : undefined
       }

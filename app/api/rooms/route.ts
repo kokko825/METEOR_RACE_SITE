@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, resetSetupItems, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 import { isRankedOpen } from "../../ranked-schedule";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
@@ -719,7 +719,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    let nextState;
+    let nextState: GameState & { onlineEffect?: unknown; onlineItemEffect?: unknown };
     let effect = null;
     let itemEffect = null;
     if (body.action === "setup_item" && body.itemKind) {
@@ -782,11 +782,21 @@ export async function POST(request: Request) {
       itemEffect = { kind: "holo", player: state.pendingSwitches?.[0]?.player ?? state.turn };
     } else if (body.action === "switch_blast" && body.target) {
       nextState = applyBlastSwitch(state, body.target);
+      const pushed = Object.fromEntries(
+        activePlayers(state)
+          .filter((player) => !samePos(state.probes[player], nextState.probes[player]))
+          .map((player) => [player, {
+            from: state.probes[player],
+            dr: nextState.probes[player].r - state.probes[player].r,
+            dc: nextState.probes[player].c - state.probes[player].c,
+          }]),
+      );
       itemEffect = {
         kind: "blast",
         player: state.pendingSwitches?.[0]?.player ?? state.turn,
         target: body.target,
         radius: state.balance?.blastRadius ?? 1,
+        pushed,
       };
     } else if (body.action === "switch_pulse" && body.target) {
       nextState = applyPulseSwitch(state, body.target);

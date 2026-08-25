@@ -212,3 +212,16 @@ test("keeps final rankings and rematch controls above a dimmed board", async () 
   assert.match(css, /\.board\.result-dim/);
   assert.match(css, /\.result-overlay \{ position:absolute; z-index:45/);
 });
+
+test("animates BLAST probe movement with lifted travel on every client", async () => {
+  const [page, rooms, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/api/rooms/route.ts"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(page, /stage: "settle"/);
+  assert.match(page, /pushedProbesBetween/);
+  assert.match(page, /blast-settle/);
+  assert.match(rooms, /radius: state\.balance\?\.blastRadius[\s\S]*?pushed/);
+  assert.match(css, /@keyframes probe-blast-settle/);
+});
