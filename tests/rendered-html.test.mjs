@@ -226,3 +226,11 @@ test("animates BLAST probe movement with lifted travel on every client", async (
   assert.match(rooms, /radius: state\.balance\?\.blastRadius[\s\S]*?pushed/);
   assert.match(css, /@keyframes probe-blast-settle/);
 });
+
+test("keeps desktop item-selection icons at their intended proportions", async () => {
+  const css = await read("../app/globals.css");
+  assert.match(css, /\.item-icon \{ width:22px; height:22px; min-width:22px;[\s\S]*?flex:0 0 22px/);
+  assert.match(css, /\.meteor-choice\.item-choice \{[\s\S]*?overflow:hidden/);
+  assert.match(css, /\.switch-setup-controls\{width:100%;display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.doesNotMatch(css, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+});
