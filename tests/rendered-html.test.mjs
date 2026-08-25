@@ -162,7 +162,8 @@ test("keeps the board square and lets narrow phones scroll without fixed-control
   assert.match(css, /\.hud-mode>\.phone-portrait-lock/);
   assert.match(css, /@media \(min-width:901px\)[\s\S]*?\.hud-mode \.turn-callout,[\s\S]*?\.hud-mode \.status \{ display:none; \}/);
   assert.match(css, /minmax\(360px,720px\)/);
-  assert.match(css, /calc\(100dvh - 180px\)/);
+  assert.match(css, /calc\(100dvh - 242px\)/);
+  assert.doesNotMatch(css, /calc\(100dvh - 180px\)/);
   assert.match(css, /\.shell\.entry-active \.title-screen nav \{ margin-bottom:0; \}/);
 });
 

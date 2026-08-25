@@ -1024,7 +1024,9 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
   .hud-mode .turn-callout,
   .hud-mode .status { display:none; }
   .hud-mode > .game-layout { grid-template-columns:minmax(125px,160px) minmax(360px,720px) minmax(125px,160px); }
-  .hud-mode .board { width:min(100%,720px,max(360px,calc(100dvh - 180px))); }
+  /* game-layout already ends above the 76px utility bar. Reserve another
+     61px for meteor/item controls so the square can never cover them. */
+  .hud-mode .board { width:min(100%,720px,calc(100dvh - 242px)); }
   .title-screen nav { align-self:center; margin-bottom:0; }
 }
 
