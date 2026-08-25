@@ -16,6 +16,8 @@ export const AI_STRATEGY = {
     activeShield: 26,
     boosterMove: 8,
     mobility: 3,
+    freeForAllRivalAdvance: 280,
+    freeForAllRivalFinish: 900_000,
   },
   pacing: {
     multiplayerWarningWithMeteor: 520,

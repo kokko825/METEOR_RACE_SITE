@@ -353,3 +353,14 @@ for (const boardSize of [11, 13, 15]) {
   assert.deepEqual(ranked.finishOrder, ["red", second, ranked.players[0]]);
   assert.equal(ranked.winner, "red");
 }
+
+{
+  const ranked = initialGameState(9, "red", 4, false, 0, [], "classic");
+  ranked.turnCount = 4;
+  ranked.phase = "place";
+  ranked.probes.blue = { r: 4, c: 5 };
+  const blastedGoal = applyMeteor(ranked, { r: 3, c: 5 }, "small").state;
+  assert.deepEqual(blastedGoal.finishOrder, ["blue"], "他人の爆風によるゴールも順位へ記録する");
+  assert.equal(blastedGoal.turn, "green", "他人をゴールさせても配置者へ連続手番を与えない");
+  assert.equal(blastedGoal.phase, "move");
+}

@@ -393,6 +393,22 @@ function scoreResult(
   const terminal = terminalValue(state, player);
   if (terminal !== null) return terminal;
   let score = positionValue(state, player) - threatPenalty(state, player, difficulty);
+  if (previous && !isTeamVariant(state.variant) && activePlayers(previous).length > 2) {
+    const rivals = activePlayers(previous).filter((candidate) => candidate !== player);
+    const newlyFinishedRivals = (state.finishOrder ?? []).filter(
+      (candidate) => candidate !== player && !(previous.finishOrder ?? []).includes(candidate),
+    );
+    const rivalAdvance = rivals.reduce((sum, rival) => {
+      if (newlyFinishedRivals.includes(rival)) return sum;
+      return sum + Math.max(0, coreDistance(previous, rival) - coreDistance(state, rival));
+    }, 0);
+    // Free-for-all rivals are never team-mates. Explicitly charge for pushing
+    // any of them toward CORE, even when the current leader does not change;
+    // otherwise the averaged pressure score can make accidental king-making
+    // look beneficial. A rival CORE arrival is treated as near-terminal loss.
+    score -= rivalAdvance * AI_STRATEGY.score.freeForAllRivalAdvance;
+    score -= newlyFinishedRivals.length * AI_STRATEGY.score.freeForAllRivalFinish;
+  }
   if (difficulty === "hard" && activePlayers(state).length >= 4) {
     // HARD still needs to close the race. Once a match has had enough time to
     // develop, steadily increase the value of the AI's own forward progress so

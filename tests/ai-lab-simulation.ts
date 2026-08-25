@@ -190,6 +190,24 @@ import {
 }
 
 {
+  for (const difficulty of ["easy", "normal", "hard"] as const) {
+    const state = initialGameState(11, "red", 4, false, 0, [], "classic");
+    state.turnCount = 4;
+    state.phase = "place";
+    state.probes.blue = { r: 4, c: 5 };
+    const decision = chooseAiDecision(state, difficulty, () => 0.99);
+    assert.ok(decision.type === "meteor" || decision.type === "pass");
+    const after = decision.type === "meteor"
+      ? applyMeteor(state, decision.target, decision.size, decision.useCapsule).state
+      : applyPass(state);
+    assert.ok(
+      !(after.finishOrder ?? []).includes("blue"),
+      `${difficulty} free-for-all AI must not blast a rival into CORE`,
+    );
+  }
+}
+
+{
   const state = initialGameState(15, "red", 2, false, 0, [], "item");
   state.turnCount = 5;
   state.phase = "place";

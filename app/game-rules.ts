@@ -168,16 +168,18 @@ export function resolveCoreArrivals(state: GameState, next: GameState, reached: 
       message: `${playerName(finalOrder[0] ?? first)} WIN!　順位が確定しました`,
     };
   }
-  let turn = remaining.includes(next.turn) ? next.turn : remaining[0];
-  if (!remaining.includes(next.turn)) {
-    const players = activePlayers(state);
-    const index = Math.max(0, players.indexOf(state.turn));
-    for (let offset = 1; offset <= players.length; offset += 1) {
-      const candidate = players[(index + offset) % players.length];
-      if (remaining.includes(candidate)) {
-        turn = candidate;
-        break;
-      }
+  // A CORE arrival can be caused by somebody else's blast. Regardless of who
+  // reached CORE, the current actor has completed their turn, so resume from
+  // the first unfinished player after that actor. Reusing `next.turn` here
+  // allowed the meteor placer to act twice when a rival was blasted into CORE.
+  const players = activePlayers(state);
+  const index = Math.max(0, players.indexOf(state.turn));
+  let turn = remaining[0];
+  for (let offset = 1; offset <= players.length; offset += 1) {
+    const candidate = players[(index + offset) % players.length];
+    if (remaining.includes(candidate)) {
+      turn = candidate;
+      break;
     }
   }
   return {
