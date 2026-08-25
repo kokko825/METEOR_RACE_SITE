@@ -13,6 +13,7 @@ import {
   confirmSetupItems,
   initialGameState,
   legalMoves,
+  rematchPlayerCount,
   samePos,
   viewToBoardPos,
   type GameState,
@@ -53,6 +54,18 @@ for (let slot = 0; slot < 4; slot += 1) {
 }
 
 assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 0), { r: -2, c: 1 });
+
+{
+  const completedFourPlayerGame = initialGameState(11, "red", 4, false, 0, [], "classic");
+  completedFourPlayerGame.players = ["yellow"];
+  completedFourPlayerGame.finishOrder = ["red", "blue", "green", "yellow"];
+  completedFourPlayerGame.phase = "over";
+  assert.equal(
+    rematchPlayerCount(completedFourPlayerGame),
+    4,
+    "再戦は順位確定後に残った手番人数ではなく元の4人を引き継ぐ",
+  );
+}
 assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 1), { r: 2, c: -1 });
 assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 2), { r: -1, c: -2 });
 assert.deepEqual(boardToViewDelta({ r: -2, c: 1 }, 3), { r: 1, c: 2 });

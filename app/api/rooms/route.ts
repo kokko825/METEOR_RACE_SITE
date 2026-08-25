@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 import { isRankedOpen } from "../../ranked-schedule";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
@@ -652,7 +652,7 @@ export async function POST(request: Request) {
     if (room.status !== "finished") return json({ error: "対局終了後に再戦できます" }, 409);
     const liveBalance = await publishedBalance();
     const previous = JSON.parse(room.state_json);
-    const players = previous.players?.length ?? room.max_players;
+    const players = rematchPlayerCount(previous, room.max_players);
     const playerList = PLAYER_ORDER.slice(0, players);
     const turnOrder =
       isTeamVariant(previous.variant ?? "classic")

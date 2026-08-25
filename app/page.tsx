@@ -40,6 +40,7 @@ import {
   meteorName,
   orthogonallyAdjacent,
   playerName,
+  rematchPlayerCount,
   resetSetupItems,
   samePos,
   teamOf,
@@ -1263,7 +1264,8 @@ function Game() {
     setNeedsNewGame(false);
     recordedOutcome.current = "";
     recordedRankOutcome.current = "";
-    const players = activePlayers(game);
+    const playerCount = rematchPlayerCount(game);
+    const players = PLAYER_ORDER.slice(0, playerCount);
     const nextFirst =
       players.length === 2
         ? players[(players.indexOf(game.startingPlayer ?? activeFirst) + 1) % 2]
@@ -1274,7 +1276,7 @@ function Game() {
       initialState(
         game.size,
         nextFirst,
-        players.length,
+        playerCount,
         Boolean(game.obstaclesEnabled),
         nextOffset,
         game.botPlayers ?? [],

@@ -69,6 +69,11 @@ export const isTeamVariant = (variant: GameVariant) => variant === "team" || var
 export const isItemVariant = (variant: GameVariant) => variant === "item" || variant === "team-item";
 export const activePlayers = (state: GameState): Player[] =>
   state.players?.length ? state.players : ["red", "blue"];
+export const rematchPlayerCount = (state: GameState, fallback = 2): number =>
+  Math.min(
+    4,
+    Math.max(2, fallback, activePlayers(state).length, state.finishOrder?.length ?? 0),
+  );
 const gameBalance = (state: GameState) => normalizeBalance(state.balance);
 export const activeObstacles = (state: GameState): ObstacleMeteor[] => {
   return state.obstacles ?? [];
