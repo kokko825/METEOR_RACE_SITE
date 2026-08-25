@@ -160,6 +160,9 @@ test("keeps the board square and lets narrow phones scroll without fixed-control
   assert.match(page, /端末を縦向きにしてください/);
   assert.match(css, /orientation:landscape[\s\S]*?pointer:coarse/);
   assert.match(css, /\.hud-mode>\.phone-portrait-lock/);
+  assert.match(css, /@media \(min-width:901px\)[\s\S]*?\.hud-mode \.turn-callout \{ display:none; \}/);
+  assert.match(css, /calc\(100dvh - 248px\)/);
+  assert.match(css, /\.shell\.entry-active \.title-screen nav \{ margin-bottom:0; \}/);
 });
 
 test("gives BOOSTER and BLAST distinct item colors", async () => {
