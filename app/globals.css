@@ -1108,3 +1108,43 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
     min-width: 0;
   }
 }
+
+/* Resized desktop windows use document flow instead of compressing the fixed
+   tactical HUD until controls overlap. Pointer capability keeps this separate
+   from the purpose-built phone and tablet layouts above. */
+@media (hover:hover) and (pointer:fine) and (max-width:1100px),
+       (hover:hover) and (pointer:fine) and (max-height:760px) {
+  html, body { overflow-x:hidden; overflow-y:auto; }
+  .shell.hud-mode {
+    width:100%;
+    height:auto;
+    min-height:100dvh;
+    padding:8px 12px 92px;
+    overflow:visible;
+  }
+  .hud-mode > .topbar {
+    position:sticky;
+    z-index:70;
+    top:0;
+    min-height:52px;
+    background:rgba(3,13,20,.97);
+  }
+  .hud-mode > .game-layout {
+    height:auto;
+    min-height:0;
+    overflow:visible;
+  }
+  .hud-mode .arena {
+    height:auto;
+    min-height:0;
+    overflow:visible;
+  }
+  .hud-mode .board,
+  .arena:has(.item-selection-overlay) .board {
+    width:min(100%,720px);
+    max-height:none;
+    flex:none;
+  }
+  .hud-mode .action-panel { position:relative; z-index:30; }
+  .battle-hud.global-hud { position:fixed!important; }
+}

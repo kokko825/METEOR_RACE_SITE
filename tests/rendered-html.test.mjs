@@ -236,3 +236,11 @@ test("keeps desktop item-selection icons at their intended proportions", async (
   assert.match(css, /\.switch-setup-controls\{width:100%;display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(css, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
 });
+
+test("falls back to a safe scrollable layout when a desktop window is resized", async () => {
+  const css = await read("../app/globals.css");
+  assert.match(css, /pointer:fine\) and \(max-width:1100px\)/);
+  assert.match(css, /pointer:fine\) and \(max-height:760px\)/);
+  assert.match(css, /\.shell\.hud-mode \{[\s\S]*?height:auto;[\s\S]*?overflow:visible/);
+  assert.match(css, /\.hud-mode \.board,[\s\S]*?width:min\(100%,720px\)/);
+});
