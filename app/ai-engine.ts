@@ -943,10 +943,28 @@ export function chooseAiDecision(
   if (state.phase === "move") {
     const moves = legalMoves(state, player);
     if (!moves.length) return { type: "skip" };
-    const ranked = moves.map((move) => ({
+    let ranked = moves.map((move) => ({
       choice: move,
       value: scoreMove(state, move, player, difficulty),
     }));
+    // EASY is allowed to miss tactics, but it should never look broken. When
+    // a sideways or forward move exists, keep voluntary retreats out of its
+    // random choice pool. Its lower strength still comes from shallow threat
+    // defence and wider selection among the remaining understandable moves.
+    const currentDistance = coreDistance(state, player);
+    const understandable = ranked.filter(({ choice }) =>
+        coreDistance({ ...state, probes: { ...state.probes, [player]: choice } }, player) <= currentDistance,
+    );
+    if (understandable.length && difficulty === "easy") {
+      ranked = understandable;
+    } else if (understandable.length && difficulty === "normal") {
+      const bestStable = Math.max(...understandable.map(({ value }) => value));
+      const provenRetreats = ranked.filter(({ choice, value }) =>
+        coreDistance({ ...state, probes: { ...state.probes, [player]: choice } }, player) > currentDistance &&
+        value >= bestStable + AI_STRATEGY.difficulty.normalRetreatProofMargin,
+      );
+      ranked = [...understandable, ...provenRetreats];
+    }
     ranked.sort((a, b) => b.value - a.value);
     const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);
     return selected ? { type: "move", target: selected.choice } : { type: "skip" };

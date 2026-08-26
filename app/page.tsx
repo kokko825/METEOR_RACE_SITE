@@ -48,10 +48,7 @@ import {
   type GameState,
   type GameVariant,
   type ItemKind,
-  type Meteor,
   type MeteorSize,
-  type ObstacleMeteor,
-  type PulseDevice,
   type Player,
   type Pos,
 } from "./game-rules";
@@ -65,6 +62,16 @@ import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
 import { getOrCreatePlayerId, playerRequestHeaders } from "./client-identity";
 import { COMMUNITY_SAFETY } from "../config/community-safety";
+import {
+  ITEM_DEMO_LABELS,
+  InventoryPanel,
+  ItemIcon,
+  MeteorIcon,
+  ObstacleIcon,
+  ProbeIcon,
+  ProbeToken,
+  PulseDeviceIcon,
+} from "./components/game-pieces";
 
 type Mode = "human" | "cpu" | "lab" | "online";
 type BlastFx = {
@@ -877,7 +884,7 @@ function Game() {
     const blastRadius = chosenSize === "small" ? 1 : 2;
     const destroyed = game.meteors.filter((m) => distance(m, target) <= blastRadius);
     const survivors = game.meteors.filter((m) => distance(m, target) > blastRadius);
-    const placed: Meteor = {
+    const placed = {
       ...target,
       owner: game.turn,
       size: chosenSize,
@@ -1793,7 +1800,7 @@ function Game() {
 <nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")}</button></div>}
           {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>{t("choosePlayStyle")}</h2><p>{t("chooseOpponent")}</p><h3>PLAY STYLE</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>SINGLE</strong><span>{t("cpuBattle")}</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>LOCAL</strong><span>{t("localBattle")}</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>ONLINE</strong><span>{t("onlineBattle")}</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>{t("next")}</button></div>}
           {entryStage === "match" && <div className="entry-panel compact-flow"><h2>{setupMode === "online" ? "オンライン対戦" : "対戦設定"}</h2><p>{setupMode === "cpu" ? "SINGLE" : setupMode === "human" ? "LOCAL" : "ONLINE"}</p>{setupMode === "online" ? <><h3>ONLINE TYPE</h3><div className="rank-choice"><button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}><strong>CASUAL ROOM</strong><span>ホストがルールを自由に設定</span></button><button className={rankedMode ? "selected" : "locked"} disabled={!rankedOpen} onClick={() => { setRankedMode(true); setVariant(isItemVariant(variant) ? "item" : "classic"); setOnlinePlayerCount(2); setOnlineAiCount(0); }}><strong>{rankedOpen ? "真剣タイマン" : "🔒 真剣タイマン受付終了"}</strong><span>{rankedOpen ? "1対1・開催中" : RANKED_SCHEDULE_LABEL}</span></button></div>{rankedMode && <><h3>真剣タイマン ルール</h3><div className="choice-row"><button className={!isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>CLASSIC 真剣タイマン</strong><span>{rankTier(classicRankRating)} {classicRankRating}</span></button><button className={isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>ITEM 真剣タイマン</strong><span>{rankTier(itemRankRating)} {itemRankRating}</span></button></div></>}<p className={rankedOpen ? "rank-window open" : "rank-window"}>{rankedMode ? "1対1固定。CLASSICとITEMは別々のレートです。" : "ルーム作成後、ホストがゲーム・盤面・人数・AI数を設定できます。"}</p></> : <><h3>RULE</h3><div className="choice-row"><button className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>CLASSIC</strong><span>メテオ中心の基本ルール</span></button><button className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>ITEM</strong><span>アイテム持ち込み戦</span></button></div><h3>MATCH TYPE</h3><div className="choice-row"><button className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>FREE FOR ALL</strong><span>個人戦</span></button><button className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>チーム戦</span></button></div><div className="entry-settings"><label>BOARD SIZE<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? "PLAYERS" : "CPU ADD"}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>AI LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div></>}<button className="entry-confirm" onClick={() => { applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? "ONLINE LOBBYへ" : "BATTLE START"}</button></div>}
-          <footer><span>RULE + PLAY STYLE</span><i /><span>MATCH SETUP</span></footer>
+          <footer><span>MODE SELECT</span><i /><span>MATCH SETUP</span></footer>
         </section>
       )}
       <header className="topbar">
@@ -2251,7 +2258,7 @@ function Game() {
             <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label="設定を開く">
               <span className="hud-settings-icon" aria-hidden="true">⚙</span>
               <i className={online.role ?? game.turn} aria-hidden="true" />
-              <span><small>PILOT / PROBE ID</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
+              <span><small>PROBE CONTROL</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
             </button>
             <div className="hud-mission">
               <small>{entryStage === "title" ? "SYSTEM READY" : entryStage ? "MATCH CONFIGURATION" : onlineLobbyOnly ? "ONLINE WAITING ROOM" : game.phase === "over" ? "MISSION COMPLETE" : `${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
@@ -2537,7 +2544,7 @@ function Game() {
             {online.error && <small>{online.error}</small>}
           </section>
         )}
-        <details className="ai-lab-panel">
+        {mode === "lab" && <details className="ai-lab-panel">
           <summary><span>AI STRATEGY LAB</span><strong>{strategicRead}</strong><small>OPEN DEBUG DATA</small></summary>
           <section className="ai-lab">
           <div className="lab-stat"><b>{stats.games}</b><span>対戦数</span></div>
@@ -2581,172 +2588,9 @@ function Game() {
             RESET DATA
           </button>
           </section>
-        </details>
-        <details className="rules" id="rules">
-          <summary>HOW TO PLAY</summary>
-          <div className="rule-grid">
-            {/* Mid-match quick reference only. Modes, ranks and per-item effects
-                now live on /guide and /items rather than being repeated here. */}
-            <p><b>MOVE</b> 縦横へ必ず1マス。移動不能時だけ省略できます。</p>
-            <p><b>PLACE</b> 先攻初手を除き、移動後にメテオを1個配置。配置パスは各色1回です。</p>
-            <p><b>METEOR</b> 小は周囲を1マス、大は近距離2・遠距離1マス吹き飛ばします。</p>
-            <p><b>WIN</b> 移動または爆風で中央のCOREへ入れば勝利です。</p>
-            {/* Opened in a new tab so consulting the rules mid-match neither
-                abandons the match nor silences the BGM. */}
-            <p className="rule-links"><a href="/guide">遊び方を詳しく見る</a><a href="/items">アイテム一覧を見る</a></p>
-          </div>
-        </details>
-        <details className="history-panel">
-          <summary>MISSION LOG</summary>
-          <ol>{game.log.slice().reverse().map((line, i) => <li key={`${line}-${i}`}>{line}</li>)}</ol>
-        </details>
+        </details>}
       </section>
     </main>
-  );
-}
-
-const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
-  shield: "BLAST BLOCKED",
-  booster: "2-MASS SELECT",
-  holo: "BLOCK 2 ROUNDS",
-  orbit: "RING ROTATE 90°",
-  blast: "AREA BLAST",
-  pulse: "MOVE LOCK 2 ROUNDS",
-  recall: "ALL METEORS RETURN",
-  gravity: "PULL TO CORE",
-};
-
-
-function ItemIcon({ kind }: { kind: ItemKind }) {
-  return <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>;
-}
-
-function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {
-  const teamClass = teamMode ? ` team-${teamOf(color)}` : "";
-  return <div className={`probe-portrait ${color}${teamClass}`}><span>▲</span><i /><b /></div>;
-}
-
-function ProbeToken({
-  player,
-  rotation,
-  push,
-  teamMode = false,
-  isSelf = false,
-  shieldTurns = 0,
-  boost = 0,
-  settling = false,
-}: {
-  player: Player;
-  rotation: number;
-  push?: { from: Pos; dr: number; dc: number };
-  teamMode?: boolean;
-  isSelf?: boolean;
-  shieldTurns?: number;
-  boost?: number;
-  settling?: boolean;
-}) {
-  return (
-    <span
-      className={`probe-motion ${player}${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${push ? settling ? " blast-settle" : " blast-lift" : ""}`}
-      style={
-        push
-          ? ({
-              "--push-x": `${push.dc * 147}%`,
-              "--push-y": `${push.dr * 147}%`,
-              "--push-from-x": `${push.dc * -147}%`,
-              "--push-from-y": `${push.dr * -147}%`,
-            } as React.CSSProperties)
-          : undefined
-      }
-    >
-      {(shieldTurns > 0 || boost > 0) && (
-        <span className="probe-effects" aria-label={`${shieldTurns > 0 ? `シールド${shieldTurns} ` : ""}${boost > 0 ? `ブースト${boost}` : ""}`}>
-          {shieldTurns > 0 && <span className="shield-effect"><b>{shieldTurns}</b></span>}
-          {boost > 0 && <span className="boost-effect"><i /><i /><b>{boost}</b></span>}
-        </span>
-      )}
-      <span
-        className={`probe-token ${player}${teamMode ? ` team-${teamOf(player)}` : ""}`}
-        style={{ "--probe-rotation": `${rotation}deg` } as React.CSSProperties}
-      >
-        <i>▲</i>
-      </span>
-    </span>
-  );
-}
-
-function MeteorIcon({
-  meteor,
-  falling = false,
-  destroyed = false,
-}: {
-  meteor: Meteor;
-  falling?: boolean;
-  destroyed?: boolean;
-}) {
-  return (
-    <span
-      className={[
-        "meteor-token",
-        meteor.owner,
-        meteor.size,
-        falling ? "meteor-fall" : "",
-        destroyed ? `meteor-shatter return-${meteor.owner}` : "",
-      ].join(" ")}
-    >
-      {meteor.size === "large" ? "✦" : "●"}
-      {destroyed && <i className="shard shard-a" />}
-      {destroyed && <i className="shard shard-b" />}
-      {destroyed && <i className="shard shard-c" />}
-    </span>
-  );
-}
-
-function ObstacleIcon({ obstacle, roundsLeft }: { obstacle: ObstacleMeteor; roundsLeft: number }) {
-  const roundsLabel = roundsLeft === -1 ? "∞" : String(roundsLeft);
-  return (
-    <span className={`obstacle-token ${obstacle.owner}`} title={roundsLeft === -1 ? "破壊不能のホロメテオ・無制限" : `ホロメテオ・残り${roundsLeft}巡（爆風で短縮）`}>
-      <i />
-      <b>{roundsLabel}</b>
-      <small>巡</small>
-    </span>
-  );
-}
-
-function PulseDeviceIcon({ device, roundsLeft }: { device: PulseDevice; roundsLeft: number }) {
-  return (
-    <span className={`pulse-device ${device.owner}`} title={`PULSE発生装置・残り${roundsLeft}巡`}>
-      <i /><b>PULSE</b><small>{roundsLeft}</small>
-    </span>
-  );
-}
-
-function InventoryPanel({
-  inventory,
-  color,
-  items,
-  loadoutHidden = false,
-}: {
-  inventory: Record<MeteorSize, number>;
-  color: Player;
-  items: ItemKind[];
-  loadoutHidden?: boolean;
-}) {
-  const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
-    .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
-    .filter(({ count }) => count > 0);
-  return (
-    <div className="inventory">
-      <span>ARSENAL / 所持メテオ</span>
-      <div className="inventory-slot meteor-slot" aria-label={`小メテオ 残り${inventory.small}個`} title={`SMALL METEOR ×${inventory.small}`}>
-        <i className={`mini-meteor ${color}`}>●</i><b>×{inventory.small}</b>
-      </div>
-      <div className="inventory-slot meteor-slot" aria-label={`大メテオ 残り${inventory.large}個`} title={`LARGE METEOR ×${inventory.large}`}>
-        <i className={`mini-meteor large ${color}`}>✦</i><b>×{inventory.large}</b>
-      </div>
-      {loadoutHidden && <div className="inventory-slot loadout-hidden" aria-label="アイテム構成は戦闘開始まで非公開" title="SECRET LOADOUT"><i>◆</i><b>?</b></div>}
-      {itemCounts.map(({ kind, count }) => <div key={kind} className={`inventory-slot inventory-item ${kind}`} aria-label={`${kind.toUpperCase()} 残り${count}個`} title={`${kind.toUpperCase()} ×${count}`}><ItemIcon kind={kind} /><b>×{count}</b></div>)}
-    </div>
   );
 }
 

@@ -32,6 +32,8 @@
 - `app/balance-config.ts` / `app/api/balance/route.ts`：ゲームバランス設定と公開値の読み込み
 - `app/site-config.ts` / `app/api/site-config/route.ts`：広告枠・インタラクティブミュージック設定の読み込み
 - `app/components/ad-slot.tsx`：広告レディな表示枠（`site-config` でON/OFFするまで何も描画しない）
+- `app/components/game-pieces.tsx`：探査機、メテオ、アイテム、所持欄の共通表示
+- `app/styles/responsive-safety.css`：タップ領域、フォーカス、スマホの安全なスクロール
 - `app/music-engine.ts`：インタラクティブミュージックのクロスフェード・エンジン（トラックURL未設定時はプロシージャル生成で自動フォールバック）
 - `tests/game-rules.test.ts`：ルール回帰テスト
 - `tests/ai-lab-simulation.ts`：AI局面テストと対戦シミュレーション
@@ -47,7 +49,7 @@ npm run check
 
 `npm run check` は設定値検査、Lint、TypeScript、ルール、アイテム戦、AI完走、画面構成、公開ビルドをまとめて確認します。全モードの長時間AI評価は `npm run test:ai`、20試合のアイテムAI統計は `npm run test:switch-ai` です。
 
-このリポジトリは `C:\Users\user\Documents\MeteorRace` を正本として、ChatGPT Sites（Codexの作業フォルダ）から独立して育てる前提で構成されています。
+公開版の正本は、このフォルダを接続したGitHubリポジトリ `kokko825/METEOR_RACE_SITE` の `main` ブランチです。ファイルの役割は [ARCHITECTURE.md](./ARCHITECTURE.md) にまとめています。
 
 ## 独自公開手順（ChatGPT Sites非依存）
 

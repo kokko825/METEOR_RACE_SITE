@@ -1,0 +1,53 @@
+/* Cross-device guarantees live here so late visual tweaks cannot silently
+   remove tap targets, keyboard focus, or the phone scroll fallback. */
+:where(button, a, input, select):focus-visible {
+  outline: 2px solid #b8f3ff;
+  outline-offset: 3px;
+}
+
+@media (pointer:coarse) {
+  button:not(.cell),
+  a.title-privacy,
+  .online-panel input,
+  .online-panel select {
+    min-height: 44px;
+  }
+}
+
+@media (max-width:560px) {
+  .manual-drawer {
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
+  .manual-onepage {
+    height:auto;
+    min-height:calc(100% - 50px);
+    grid-template-rows:auto auto;
+    overflow:visible;
+  }
+  .manual-onepage > section { min-height:330px; }
+  .manual-rule-grid p,
+  .manual-item-grid p,
+  .manual-turn-loop article p,
+  .manual-notes p { font-size:9px; line-height:1.4; }
+  .arena:has(.item-selection-overlay) .item-selection-overlay {
+    max-height:calc(100dvh - 215px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
+  .shell.online-lobby-only {
+    height:auto;
+    min-height:100dvh;
+    overflow-y:auto;
+  }
+  .shell.online-lobby-only .control-strip {
+    height:auto!important;
+    min-height:calc(100dvh - 76px)!important;
+    overflow:visible;
+  }
+  .shell.online-lobby-only .online-panel {
+    max-height:none;
+    overflow:visible;
+    margin-bottom:12px;
+  }
+}

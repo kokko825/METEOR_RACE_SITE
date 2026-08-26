@@ -185,14 +185,15 @@ test("gives BOOSTER and BLAST distinct item colors", async () => {
 });
 
 test("renders player inventory as a compact icon grid on every device", async () => {
-  const [page, css] = await Promise.all([
+  const [page, pieces, css] = await Promise.all([
     read("../app/page.tsx"),
+    read("../app/components/game-pieces.tsx"),
     read("../app/globals.css"),
   ]);
-  assert.match(page, /inventory-slot meteor-slot/);
-  assert.match(page, /inventory-slot inventory-item/);
-  assert.doesNotMatch(page, /<small>SMALL<\/small>/);
-  assert.doesNotMatch(page, /<small>\{kind\.toUpperCase\(\)\}<\/small>/);
+  assert.match(pieces, /inventory-slot meteor-slot/);
+  assert.match(pieces, /inventory-slot inventory-item/);
+  assert.doesNotMatch(pieces, /<small>SMALL<\/small>/);
+  assert.doesNotMatch(pieces, /<small>\{kind\.toUpperCase\(\)\}<\/small>/);
   assert.match(css, /\.inventory \{ display:grid; grid-template-columns:repeat\(3/);
   assert.match(css, /\.hud-mode \.inventory \{[\s\S]*?grid-template-columns: repeat\(5/);
   assert.match(css, /Phone HUD: each side uses one full-width card per row/);
@@ -217,14 +218,15 @@ test("keeps final rankings and rematch controls above a dimmed board", async () 
 });
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {
-  const [page, rooms, css] = await Promise.all([
+  const [page, pieces, rooms, css] = await Promise.all([
     read("../app/page.tsx"),
+    read("../app/components/game-pieces.tsx"),
     read("../app/api/rooms/route.ts"),
     read("../app/globals.css"),
   ]);
   assert.match(page, /stage: "settle"/);
   assert.match(page, /pushedProbesBetween/);
-  assert.match(page, /blast-settle/);
+  assert.match(pieces, /blast-settle/);
   assert.match(rooms, /radius: state\.balance\?\.blastRadius[\s\S]*?pushed/);
   assert.match(css, /@keyframes probe-blast-settle/);
 });
@@ -238,9 +240,29 @@ test("keeps desktop item-selection icons at their intended proportions", async (
 });
 
 test("falls back to a safe scrollable layout when a desktop window is resized", async () => {
-  const css = await read("../app/globals.css");
+  const [css, safety] = await Promise.all([
+    read("../app/globals.css"),
+    read("../app/styles/responsive-safety.css"),
+  ]);
   assert.match(css, /pointer:fine\) and \(max-width:1100px\)/);
   assert.match(css, /pointer:fine\) and \(max-height:760px\)/);
   assert.match(css, /\.shell\.hud-mode \{[\s\S]*?height:auto;[\s\S]*?overflow:visible/);
   assert.match(css, /\.hud-mode \.board,[\s\S]*?width:min\(100%,720px\)/);
+  assert.match(safety, /button:not\(\.cell\)/);
+  assert.match(safety, /min-height: 44px/);
+  assert.match(safety, /\.shell\.online-lobby-only[\s\S]*?overflow-y:auto/);
+});
+
+test("keeps diagnostics out of ordinary player screens and item labels in sync", async () => {
+  const [page, pieces, balance] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/components/game-pieces.tsx"),
+    read("../config/game-balance.ts"),
+  ]);
+  assert.match(page, /\{mode === "lab" && <details className="ai-lab-panel">/);
+  assert.doesNotMatch(page, /<summary>HOW TO PLAY<\/summary>/);
+  assert.doesNotMatch(page, /<summary>MISSION LOG<\/summary>/);
+  assert.match(balance, /holoRounds: 4/);
+  assert.doesNotMatch(pieces, /holo: "[^"]*\d+ ROUNDS"/);
+  assert.doesNotMatch(pieces, /pulse: "[^"]*\d+ ROUNDS"/);
 });

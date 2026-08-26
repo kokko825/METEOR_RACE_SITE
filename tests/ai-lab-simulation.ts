@@ -17,6 +17,7 @@ import {
   confirmSetupItems,
   finishTurn,
   initialGameState,
+  isItemVariant,
   legalMoves,
   type GameState,
   type GameVariant,
@@ -399,8 +400,10 @@ const allScenarios: Array<{ variant: GameVariant; size: number; count: number }>
   { variant: "classic", size: 11, count: 4 },
   { variant: "team", size: 13, count: 4 },
   { variant: "team", size: 15, count: 4 },
+  { variant: "item", size: 11, count: 2 },
   { variant: "item", size: 13, count: 2 },
   { variant: "item", size: 15, count: 4 },
+  { variant: "team-item", size: 13, count: 4 },
   { variant: "team-item", size: 15, count: 4 },
 ];
 const scenarioFilter = process.env.AI_LAB_SCENARIO;
@@ -479,14 +482,14 @@ for (const difficulty of difficulties) {
         ],
       });
     }
-    console.log(
-      JSON.stringify({
+    const retreatRate = moves === 0 ? null : Math.round((retreats / moves) * 1000) / 10;
+    const report = {
         difficulty,
         ...scenario,
         games,
         wins,
         averageTurns: Math.round((turns / games) * 10) / 10,
-        retreatRate: moves === 0 ? null : Math.round((retreats / moves) * 1000) / 10,
+        retreatRate,
         meteorActions: {
           placements: meteorPlacements,
           selfPropelling: selfPropellingMeteors,
@@ -497,8 +500,14 @@ for (const difficulty of difficulties) {
           passes,
         },
         itemUses,
-        outcomes,
-      }),
-    );
+        ...(process.env.AI_LAB_SUMMARY === "1" ? {} : { outcomes }),
+      };
+    if (process.env.AI_LAB_ASSERT_QUALITY === "1") {
+      assert.equal(emptyBlasts, 0, `${difficulty} ${scenario.variant}-${scenario.size} must not create empty blasts`);
+      assert.ok(report.averageTurns < 100, `${difficulty} ${scenario.variant}-${scenario.size} must finish before stalling`);
+      const retreatCeiling = isItemVariant(scenario.variant) ? 12 : difficulty === "easy" ? 8 : 10;
+      assert.ok(retreatRate !== null && retreatRate <= retreatCeiling, `${difficulty} ${scenario.variant}-${scenario.size} retreat rate ${retreatRate}% exceeds ${retreatCeiling}%`);
+    }
+    console.log(JSON.stringify(report));
   }
 }
