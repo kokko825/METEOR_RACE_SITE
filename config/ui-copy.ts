@@ -52,6 +52,12 @@ export const UI_COPY = {
   soundEffects: { ja: "効果音", en: "Sound effects" },
   muteAll: { ja: "一括ミュート", en: "Mute all" },
   reduceMotion: { ja: "演出短縮", en: "Reduce motion" },
+  playResearchHeading: { ja: "プレイ研究", en: "PLAY RESEARCH" },
+  strongPlaySharing: { ja: "匿名の好プレー提供", en: "Share anonymous strong plays" },
+  strongPlaySharingNote: {
+    ja: "勝者の中から、勝利に貢献した可能性が高い局面だけを保存します。名前、メール、チャット、PLAYER IDは送信しません。",
+    en: "Only high-impact positions from the winning side are saved. Nicknames, email, chat, and PLAYER IDs are never sent.",
+  },
   rulesAndItems: { ja: "ルール・アイテム一覧", en: "Rules & Items" },
   close: { ja: "閉じる", en: "Close" },
   manualMove: { ja: "探査機を縦横へ1マス移動", en: "Move your probe one orthogonal cell" },

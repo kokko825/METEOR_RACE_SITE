@@ -66,3 +66,18 @@ export const contactMessages = sqliteTable("contact_messages", {
   status: text("status").notNull().default("new"),
   createdAt: integer("created_at").notNull(),
 });
+
+export const strongPlays = sqliteTable("strong_plays", {
+  id: text("id").primaryKey(),
+  appVersion: text("app_version").notNull(),
+  difficulty: text("difficulty").notNull(),
+  variant: text("variant").notNull(),
+  boardSize: integer("board_size").notNull(),
+  playerCount: integer("player_count").notNull(),
+  winner: text("winner").notNull(),
+  actor: text("actor").notNull(),
+  category: text("category").notNull(),
+  score: integer("score").notNull(),
+  playJson: text("play_json").notNull(),
+  createdAt: integer("created_at").notNull(),
+});

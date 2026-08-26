@@ -52,6 +52,7 @@ tsconfig.tsbuildinfo
 .switch-ai-fast/
 .switch-test-fast/
 .config-test-fast/
+.strong-play-test-fast/
 
 # Local editor/agent tooling config (dev-server launch settings, etc.)
 .claude/

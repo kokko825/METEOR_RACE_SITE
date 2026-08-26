@@ -61,6 +61,11 @@ import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
 import { getOrCreatePlayerId, playerRequestHeaders } from "./client-identity";
+import {
+  STRONG_PLAY_MAX_PER_MATCH,
+  detectStrongPlay,
+  type StrongPlayCandidate,
+} from "./strong-play";
 import { COMMUNITY_SAFETY } from "../config/community-safety";
 import {
   ITEM_DEMO_LABELS,
@@ -174,6 +179,7 @@ function Game() {
     reducedMotion, setReducedMotion,
     battleTrack, setBattleTrack,
     language, setLanguage,
+    strongPlaySharing, setStrongPlaySharing,
   } = useLocalSettings();
   const t = (key: Parameters<typeof uiText>[1]) => uiText(language, key);
   const tf = (key: Parameters<typeof uiText>[1], values: Record<string, string | number>) =>
@@ -282,6 +288,10 @@ function Game() {
   }, []);
   const recordedOutcome = useRef("");
   const recordedRankOutcome = useRef("");
+  const previousStrongPlayState = useRef<GameState | null>(null);
+  const strongPlayCandidates = useRef<StrongPlayCandidate[]>([]);
+  const strongPlaySignatures = useRef(new Set<string>());
+  const recordedStrongPlayOutcome = useRef("");
   const playedRankedGravity = useRef(0);
   const playedOnlineEffect = useRef(0);
   const playedOnlineItemEffect = useRef(0);
@@ -323,6 +333,61 @@ function Game() {
     recordedOutcome.current = "";
     recordedRankOutcome.current = "";
   }, [variant, size, aiPlayerCount, aiDifficulty]);
+  useEffect(() => {
+    const before = previousStrongPlayState.current;
+    previousStrongPlayState.current = game;
+    if (!before) return;
+    if (game.turnCount < before.turnCount || (before.phase === "over" && game.phase !== "over")) {
+      strongPlayCandidates.current = [];
+      strongPlaySignatures.current.clear();
+      recordedStrongPlayOutcome.current = "";
+      return;
+    }
+    const bots = game.botPlayers ?? [];
+    const eligible = strongPlaySharing && mode !== "lab" && bots.length > 0 &&
+      (mode !== "online" || online.isHost);
+    if (!eligible) return;
+    const candidate = detectStrongPlay(before, game);
+    if (candidate && !bots.includes(candidate.actor)) {
+      const signature = [
+        candidate.actor, candidate.category, candidate.after.turnCount,
+        candidate.after.phase, candidate.after.meteors.length,
+        candidate.after.probes[candidate.actor].r, candidate.after.probes[candidate.actor].c,
+      ].join(":");
+      if (!strongPlaySignatures.current.has(signature)) {
+        strongPlaySignatures.current.add(signature);
+        strongPlayCandidates.current = [...strongPlayCandidates.current, candidate]
+          .sort((left, right) => right.score - left.score)
+          .slice(0, 24);
+      }
+    }
+    if (game.phase !== "over" || !game.winner || game.winner === "draw") return;
+    const outcomeKey = `${game.startingPlayer}-${game.turnCount}-${game.winner}-${game.log.length}`;
+    if (recordedStrongPlayOutcome.current === outcomeKey) return;
+    recordedStrongPlayOutcome.current = outcomeKey;
+    const winner = game.winner as Player;
+    const winningPlays = strongPlayCandidates.current
+      .filter((play) => play.actor === winner ||
+        (isTeamVariant(game.variant) && teamOf(play.actor) === teamOf(winner)))
+      .slice(0, STRONG_PLAY_MAX_PER_MATCH);
+    if (!winningPlays.length) return;
+    void fetch("/api/strong-plays", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      keepalive: true,
+      body: JSON.stringify({
+        schemaVersion: 1,
+        appVersion: APP_VERSION,
+        difficulty: aiDifficulty,
+        variant: game.variant,
+        boardSize: game.size,
+        playerCount: activePlayers(game).length,
+        winner,
+        turnCount: game.turnCount,
+        plays: winningPlays,
+      }),
+    }).catch(() => undefined);
+  }, [game, mode, aiDifficulty, strongPlaySharing, online.isHost]);
   const setupPlayerCount =
     isTeamVariant(variant)
       ? 4
@@ -1854,6 +1919,11 @@ function Game() {
             <section>
               <h3>{t("displayHeading")}</h3>
               <button type="button" className={reducedMotion ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setReducedMotion((value) => !value)}>{t("reduceMotion")} {reducedMotion ? "ON" : "OFF"}</button>
+            </section>
+            <section>
+              <h3>{t("playResearchHeading")}</h3>
+              <button type="button" className={strongPlaySharing ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={strongPlaySharing} onClick={() => setStrongPlaySharing((value) => !value)}>{t("strongPlaySharing")} {strongPlaySharing ? "ON" : "OFF"}</button>
+              <p>{t("strongPlaySharingNote")}</p>
             </section>
             <AdSlot position="settings" />
             <section>

@@ -18,8 +18,10 @@
     "test:switch-ai": "node tests/run-switch-ai.mjs",
     "test:config": "node tests/run-config-validation.mjs",
     "test:assets": "node scripts/validate-assets.mjs",
+    "test:strong-play": "node tests/run-strong-play.mjs",
+    "analyze:strong-plays": "node scripts/analyze-strong-plays.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run test:config && npm run test:assets && npm run test:rules && npm run test:switch && npm run test:ai:smoke && node --test tests/rendered-html.test.mjs && npm run build",
+    "check": "npm run lint && npm run typecheck && npm run test:config && npm run test:assets && npm run test:rules && npm run test:strong-play && npm run test:switch && npm run test:ai:smoke && node --test tests/rendered-html.test.mjs && npm run build",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --max-warnings 0",
     "db:generate": "drizzle-kit generate"
   },
