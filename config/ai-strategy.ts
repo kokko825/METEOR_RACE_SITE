@@ -34,6 +34,18 @@ export const AI_STRATEGY = {
     earlyAdvanceBonus: 34,
     itemForwardTempo: 42,
   },
+  difficulty: {
+    easyChoiceWidth: 9,
+    easyChoiceTolerance: 360,
+    normalChoiceWidth: 7,
+    normalChoiceTolerance: 240,
+    easyImmediateThreatPenalty: 600,
+    normalImmediateThreatPenalty: 30_000,
+    hardImmediateThreatPenalty: 180_000,
+    easyItemRetreatPenalty: 520,
+    easyDelegatedThreatRisk: 0,
+    normalDelegatedThreatRisk: 120,
+  },
   placement: {
     openingHarassment: 2_500,
     remoteHarassmentPerCell: 620,

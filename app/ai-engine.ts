@@ -439,6 +439,16 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
     activePlayers(state).length >= 4;
   const threatEtas = new Map(rivals.map((rival) => [rival, estimateAiFinishTurns(state, rival)]));
   const immediateThreats = rivals.filter((rival) => threatEtas.get(rival) === 1);
+  const immediateThreatPenalty = difficulty === "easy"
+    ? AI_STRATEGY.difficulty.easyImmediateThreatPenalty
+    : difficulty === "normal"
+      ? AI_STRATEGY.difficulty.normalImmediateThreatPenalty
+      : AI_STRATEGY.difficulty.hardImmediateThreatPenalty;
+  const delegatedRisk = difficulty === "easy"
+    ? AI_STRATEGY.difficulty.easyDelegatedThreatRisk
+    : difficulty === "normal"
+      ? AI_STRATEGY.difficulty.normalDelegatedThreatRisk
+      : AI_STRATEGY.pacing.delegatedThreatRisk;
 
   const hasCompetingFinishThreats = coordinatedFourPlayerDefense && immediateThreats.length > 1;
   if (hasCompetingFinishThreats) {
@@ -478,7 +488,7 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
     const shortage = Math.max(0, requiredUnits - defenseUnits);
     penalty += shortage > 0
       ? shortage * AI_STRATEGY.pacing.coordinatedDefenseShortage
-      : immediateThreats.length * AI_STRATEGY.pacing.delegatedThreatRisk;
+      : immediateThreats.length * delegatedRisk;
   }
   for (const rival of rivals) {
     const threatEta = threatEtas.get(rival) ?? 5;
@@ -505,7 +515,7 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
       }, 0);
       // One large meteor can take responsibility alone. Two small-only defenders
       // must temporarily cooperate; otherwise the current AI cannot delegate.
-      penalty += sharedStopPower >= 2 ? AI_STRATEGY.pacing.delegatedThreatRisk : 180_000;
+      penalty += sharedStopPower >= 2 ? delegatedRisk : immediateThreatPenalty;
       continue;
     }
     if (difficulty === "hard" && threatEta === 2) {
@@ -774,7 +784,9 @@ function scoreMove(state: GameState, move: Pos, player: Player, difficulty: AiDi
   const retreatScale = normalizeBalance(state.balance).aiRetreatPenalty / 100;
   const retreatPenalty = (
     isItemVariant(state.variant)
-      ? backwardSteps * AI_STRATEGY.pacing.itemRetreatPenalty
+      ? backwardSteps * (difficulty === "easy"
+        ? AI_STRATEGY.difficulty.easyItemRetreatPenalty
+        : AI_STRATEGY.pacing.itemRetreatPenalty)
       : backwardSteps * AI_STRATEGY.pacing.classicRetreatPenalty
   ) * retreatScale;
   const inwardSteps = Math.max(
@@ -817,16 +829,20 @@ function selectWithDifficulty<T>(
   if (!ranked.length) return undefined;
   if (ranked.length === 1) return ranked[0];
   if (difficulty === "hard") {
-    if (!creative || Math.abs(ranked[0].value) >= 900_000 || random() >= creativity / 100) return ranked[0];
-    const alternatives = ranked.slice(1, 5).filter((entry) => ranked[0].value - entry.value <= 18);
-    return alternatives[Math.floor(random() * alternatives.length)] ?? ranked[0];
+    return ranked[0];
   }
   const width = difficulty === "easy"
-    ? Math.min(5, ranked.length)
+    ? Math.min(AI_STRATEGY.difficulty.easyChoiceWidth, ranked.length)
     : creative
-      ? Math.min(3, ranked.length)
-      : Math.min(2, ranked.length);
-  const tolerance = difficulty === "easy" ? 70 : creative ? 24 : 12;
+      ? Math.min(AI_STRATEGY.difficulty.normalChoiceWidth, ranked.length)
+      : Math.min(Math.max(2, AI_STRATEGY.difficulty.normalChoiceWidth - 1), ranked.length);
+  const creativityScale = Math.max(0.5, Math.min(1.5, creativity / 22));
+  const baseTolerance = difficulty === "easy"
+    ? AI_STRATEGY.difficulty.easyChoiceTolerance
+    : creative
+      ? AI_STRATEGY.difficulty.normalChoiceTolerance
+      : Math.round(AI_STRATEGY.difficulty.normalChoiceTolerance * 0.75);
+  const tolerance = Math.round(baseTolerance * creativityScale);
   const safe = ranked.slice(0, width).filter((x) => ranked[0].value - x.value <= tolerance);
   return safe[Math.floor(random() * safe.length)] ?? ranked[0];
 }

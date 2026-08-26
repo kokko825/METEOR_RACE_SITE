@@ -320,7 +320,8 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     return seed / 4294967296;
   };
   while (state.phase !== "over" && guard < 260) {
-    const decision = chooseAiDecision(state, difficulty, random);
+    const seatDifficulty = process.env[`AI_LAB_${state.turn.toUpperCase()}_DIFFICULTY`] as AiDifficulty | undefined;
+    const decision = chooseAiDecision(state, seatDifficulty ?? difficulty, random);
     if (decision.type === "setup") {
       state = applySetupItem(state, decision.kind);
     } else if (decision.type === "confirm_setup") {
