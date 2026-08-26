@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chooseAiDecision, type AiDifficulty } from "../app/ai-engine.js";
+import { chooseAiDecision, estimateAiFinishTurns, type AiDifficulty } from "../app/ai-engine.js";
 import {
   applyBlastSwitch,
   applyHoloSwitch,
@@ -23,6 +23,24 @@ import {
   type ItemKind,
   type Player,
 } from "../app/game-rules.js";
+
+{
+  const state = initialGameState(9, "red", 2, false, 0, [], "classic");
+  state.turnCount = 3;
+  state.phase = "move";
+  state.probes.red = { r: 7, c: 4 };
+  state.inventory.red = { small: 0, large: 1 };
+  assert.equal(
+    estimateAiFinishTurns(state, "red"),
+    1,
+    "AI threat ETA should see move plus large-meteor propulsion as a one-turn finish",
+  );
+  state.immobilizedMoves = { red: 1, blue: 0, green: 0, yellow: 0 };
+  assert.ok(
+    estimateAiFinishTurns(state, "red") >= 2,
+    "AI threat ETA should not treat an immobilized probe as an immediate finisher",
+  );
+}
 
 {
   for (const difficulty of ["easy", "normal", "hard"] as const) {
