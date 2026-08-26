@@ -40,6 +40,35 @@ import {
     estimateAiFinishTurns(state, "red") >= 2,
     "AI threat ETA should not treat an immobilized probe as an immediate finisher",
   );
+
+  state.immobilizedMoves = { red: 0, blue: 0, green: 0, yellow: 0 };
+  state.turn = "blue";
+  state.shieldTurns = { red: 1, blue: 0, green: 0, yellow: 0 };
+  state.shield = { red: true, blue: false, green: false, yellow: false };
+  assert.equal(
+    estimateAiFinishTurns(state, "red"),
+    1,
+    "AI threat ETA should see a shield that expires before the probe's next turn",
+  );
+  state.shieldTurns.red = 2;
+  assert.ok(
+    estimateAiFinishTurns(state, "red") >= 2,
+    "AI threat ETA should preserve a shield that remains active on the probe's next turn",
+  );
+
+  state.shieldTurns.red = 0;
+  state.shield.red = false;
+  state.obstacles = [{ r: 6, c: 4, owner: "blue", id: 99, turns: 1 }];
+  assert.equal(
+    estimateAiFinishTurns(state, "red"),
+    1,
+    "AI threat ETA should ignore a HOLO that expires before the probe's next turn",
+  );
+  state.obstacles[0].turns = 2;
+  assert.ok(
+    estimateAiFinishTurns(state, "red") >= 2,
+    "AI threat ETA should keep a HOLO that still blocks the probe's next turn",
+  );
 }
 
 {

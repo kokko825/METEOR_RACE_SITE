@@ -348,8 +348,44 @@ function isImmediateWinAvailable(state: GameState, player: Player): boolean {
   return false;
 }
 
+function projectTimedEffectsToNextTurn(state: GameState, player: Player): GameState {
+  const players = activePlayers(state);
+  const currentIndex = players.indexOf(state.turn);
+  const playerIndex = players.indexOf(player);
+  if (currentIndex < 0 || playerIndex < 0) return state;
+  const elapsedTurns = (playerIndex - currentIndex + players.length) % players.length;
+  if (elapsedTurns === 0) return state;
+  const shieldTurns = Object.fromEntries(
+    (["red", "blue", "green", "yellow"] as Player[]).map((candidate) => [
+      candidate,
+      Math.max(0, (state.shieldTurns?.[candidate] ?? 0) - elapsedTurns),
+    ]),
+  ) as Record<Player, number>;
+  const obstacles = activeObstacles(state)
+    .map((obstacle) => obstacle.turns === -1
+      ? obstacle
+      : { ...obstacle, turns: Math.max(0, (obstacle.turns ?? 1) - elapsedTurns) })
+    .filter((obstacle) => obstacle.turns === -1 || (obstacle.turns ?? 0) > 0);
+  const pulseDevices = activePulseDevices(state)
+    .map((device) => {
+      const creationGrace = device.createdTurnCount === state.turnCount ? 1 : 0;
+      return { ...device, turns: Math.max(0, device.turns - Math.max(0, elapsedTurns - creationGrace)) };
+    })
+    .filter((device) => device.turns > 0);
+  return {
+    ...state,
+    shieldTurns,
+    shield: Object.fromEntries(
+      (["red", "blue", "green", "yellow"] as Player[]).map((candidate) => [candidate, shieldTurns[candidate] > 0]),
+    ) as Record<Player, boolean>,
+    obstacles,
+    pulseDevices,
+  };
+}
+
 /** Optimistic estimate measured in this probe's own turns, not board cells. */
 export function estimateAiFinishTurns(state: GameState, player: Player) {
+  state = projectTimedEffectsToNextTurn(state, player);
   if ((state.finishOrder ?? []).includes(player) || wonBy(state, player)) return 0;
   if (isImmediateWinAvailable(state, player)) return 1;
 
