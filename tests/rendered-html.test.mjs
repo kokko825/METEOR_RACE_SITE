@@ -266,3 +266,18 @@ test("keeps diagnostics out of ordinary player screens and item labels in sync",
   assert.doesNotMatch(pieces, /holo: "[^"]*\d+ ROUNDS"/);
   assert.doesNotMatch(pieces, /pulse: "[^"]*\d+ ROUNDS"/);
 });
+
+test("keeps strong-play research anonymous, verified and optional", async () => {
+  const [page, route, hook, privacy] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/api/strong-plays/route.ts"),
+    read("../app/hooks/use-local-settings.ts"),
+    read("../app/privacy/page.tsx"),
+  ]);
+  assert.match(page, /strongPlaySharing/);
+  assert.match(route, /verifyStrongPlayCandidate/);
+  assert.match(route, /JSON\.stringify\(play\)/);
+  assert.doesNotMatch(route, /x-meteor-player-id|nickname|email|roomCode|chat/i);
+  assert.match(hook, /if \(hydrated\) window\.localStorage\.setItem/);
+  assert.match(privacy, /AIが自動学習するためには使用せず/);
+});

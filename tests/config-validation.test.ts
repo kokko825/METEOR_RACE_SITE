@@ -16,6 +16,9 @@ assert.deepEqual(
 assert.ok(AI_STRATEGY.score.win > AI_STRATEGY.score.rankStep * 4, "AI win score must dominate rank steps");
 assert.ok(AI_STRATEGY.pacing.classicRetreatPenalty > AI_STRATEGY.pacing.itemRetreatPenalty, "classic retreat must remain less attractive than item-mode retreat");
 assert.ok(UI_BEHAVIOR.aiDefaultDelayMs >= UI_BEHAVIOR.aiMinimumDelayMs, "default AI delay must respect the minimum");
+for (const player of ["red", "blue", "green", "yellow"] as const) {
+  assert.equal(Object.keys(AI_STRATEGY.items.loadoutPersonality[player]).length, 8, `${player} must define every item preference`);
+}
 for (const [key, copy] of Object.entries(UI_COPY)) {
   assert.ok(copy.ja.trim() && copy.en.trim(), `UI_COPY.${key} must contain both Japanese and English`);
 }

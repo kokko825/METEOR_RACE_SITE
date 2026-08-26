@@ -881,7 +881,9 @@ export function chooseAiDecision(
           (kind === "booster" && own.includes("shield"))) ? 5 : 0;
         return {
           choice: kind,
-          value: base[kind] - duplicatePenalty + roleBalance + synergy,
+          value:
+            base[kind] - duplicatePenalty + roleBalance + synergy +
+            AI_STRATEGY.items.loadoutPersonality[player][kind],
         };
       })
       .sort((a, b) => b.value - a.value);

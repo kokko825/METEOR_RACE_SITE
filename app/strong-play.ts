@@ -1,4 +1,4 @@
-import { activePlayers, distance, isItemVariant, samePos, type GameState, type Player } from "./game-rules";
+import { activePlayers, distance, isItemVariant, isTeamVariant, samePos, teamOf, type GameState, type Player } from "./game-rules";
 
 export const STRONG_PLAY_RETENTION_DAYS = 90;
 export const STRONG_PLAY_MAX_PER_MATCH = 8;
@@ -9,6 +9,7 @@ export type StrongPlayCategory =
   | "escape"
   | "multi_pressure"
   | "advance_pressure"
+  | "self_propulsion"
   | "future_gate"
   | "item_swing";
 
@@ -18,6 +19,7 @@ export type StrongPlaySnapshot = {
   players: Player[];
   turn: Player;
   phase: GameState["phase"];
+  winner: GameState["winner"];
   turnCount: number;
   probes: GameState["probes"];
   inventory: GameState["inventory"];
@@ -58,6 +60,7 @@ export function strongPlaySnapshot(state: GameState): StrongPlaySnapshot {
     players: activePlayers(state),
     turn: state.turn,
     phase: state.phase,
+    winner: state.winner,
     turnCount: state.turnCount,
     probes: state.probes,
     inventory: state.inventory,
@@ -79,7 +82,8 @@ export function detectStrongPlay(before: GameState, after: GameState): StrongPla
   const players = activePlayers(before);
   const core = { r: Math.floor(before.size / 2), c: Math.floor(before.size / 2) };
   const ownProgress = distance(before.probes[actor], core) - distance(after.probes[actor], core);
-  const rivals = players.filter((player) => player !== actor);
+  const rivals = players.filter((player) => player !== actor &&
+    (!isTeamVariant(before.variant) || teamOf(player) !== teamOf(actor)));
   const rivalSetbacks = rivals.map((player) =>
     distance(after.probes[player], core) - distance(before.probes[player], core),
   );
@@ -94,7 +98,8 @@ export function detectStrongPlay(before: GameState, after: GameState): StrongPla
     distance(meteor, core) <= 2 &&
     rivals.every((player) => samePos(before.probes[player], after.probes[player])),
   );
-  const actorWon = after.phase === "over" && after.winner === actor;
+  const actorWon = after.phase === "over" && after.winner !== null && after.winner !== "draw" &&
+    (after.winner === actor || (isTeamVariant(after.variant) && teamOf(after.winner) === teamOf(actor)));
 
   let score = ownProgress * 24 + largestSetback * 18;
   const reasons: string[] = [];
@@ -119,6 +124,8 @@ export function detectStrongPlay(before: GameState, after: GameState): StrongPla
         ? "multi_pressure"
         : ownProgress > 0 && largestSetback > 0
           ? "advance_pressure"
+          : ownProgress >= 2
+            ? "self_propulsion"
           : newQuietGate
             ? "future_gate"
             : "item_swing";
@@ -130,4 +137,19 @@ export function detectStrongPlay(before: GameState, after: GameState): StrongPla
     before: strongPlaySnapshot(before),
     after: strongPlaySnapshot(after),
   };
+}
+
+/** Recalculate a submitted play and return only server-owned fields. */
+export function verifyStrongPlayCandidate(candidate: StrongPlayCandidate): StrongPlayCandidate | null {
+  try {
+    const recalculated = detectStrongPlay(
+      candidate.before as unknown as GameState,
+      candidate.after as unknown as GameState,
+    );
+    if (!recalculated || recalculated.actor !== candidate.actor ||
+      recalculated.category !== candidate.category || recalculated.score !== candidate.score) return null;
+    return recalculated;
+  } catch {
+    return null;
+  }
 }

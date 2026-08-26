@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 
-const allowedCategories = new Set(["finish", "escape", "multi_pressure", "advance_pressure", "future_gate", "item_swing"]);
+const allowedCategories = new Set(["finish", "escape", "multi_pressure", "advance_pressure", "self_propulsion", "future_gate", "item_swing"]);
 const categoryArg = process.argv.find((value) => value.startsWith("--category="))?.split("=")[1] ?? "";
 const daysArg = Number(process.argv.find((value) => value.startsWith("--days="))?.split("=")[1] ?? 30);
 if (categoryArg && !allowedCategories.has(categoryArg)) throw new Error("Unknown strong-play category");

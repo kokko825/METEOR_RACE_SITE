@@ -63,6 +63,12 @@ export const AI_STRATEGY = {
     useThresholdEasy: -4,
     useThresholdNormal: 2,
     useThresholdHard: 0,
+    loadoutPersonality: {
+      red: { shield: 2, booster: 8, holo: 0, orbit: 0, blast: 3, pulse: 0, recall: 0, gravity: 0 },
+      blue: { shield: 0, booster: 0, holo: 5, orbit: 0, blast: 3, pulse: 8, recall: 0, gravity: 0 },
+      green: { shield: 0, booster: 0, holo: 4, orbit: 9, blast: 0, pulse: 0, recall: 6, gravity: 0 },
+      yellow: { shield: 8, booster: 2, holo: 0, orbit: 0, blast: 0, pulse: 0, recall: 12, gravity: 0 },
+    },
     reserve: {
       shield: 22,
       booster: 24,

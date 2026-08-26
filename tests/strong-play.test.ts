@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { initialGameState, type GameState } from "../app/game-rules.js";
-import { detectStrongPlay, strongPlaySnapshot } from "../app/strong-play.js";
+import { detectStrongPlay, strongPlaySnapshot, verifyStrongPlayCandidate } from "../app/strong-play.js";
 
 const base = initialGameState(9, "red", 2, false, 0, ["blue"], "classic");
 base.turnCount = 4;
@@ -34,5 +34,19 @@ finished.phase = "over";
 finished.winner = "red";
 const finishPlay = detectStrongPlay(base, finished);
 assert.equal(finishPlay?.category, "finish");
+assert.ok(finishPlay && verifyStrongPlayCandidate(finishPlay));
+assert.equal(finishPlay && verifyStrongPlayCandidate({ ...finishPlay, score: finishPlay.score + 1 }), null, "tampered scores are rejected");
+
+const propulsion = structuredClone(base);
+propulsion.probes.red = { r: 6, c: 4 };
+assert.equal(detectStrongPlay(base, propulsion)?.category, "self_propulsion");
+
+const team = initialGameState(13, "red", 4, false, 0, ["blue", "green", "yellow"], "team");
+team.turnCount = 4;
+team.phase = "place";
+team.probes.yellow = { r: 6, c: 3 };
+const teammateSetback = structuredClone(team);
+teammateSetback.probes.yellow = { r: 6, c: 1 };
+assert.equal(detectStrongPlay(team, teammateSetback), null, "moving a teammate backward is never a strong play");
 
 console.log("strong-play: all checks passed");
