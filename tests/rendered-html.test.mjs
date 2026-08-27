@@ -145,6 +145,21 @@ test("offers a persistent Japanese and English language switch", async () => {
   assert.match(copy, /japaneseLanguage: \{ ja: "日本語", en: "Japanese" \}/);
 });
 
+test("localizes every player-facing label in match setup", async () => {
+  const [page, copy] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../config/ui-copy.ts"),
+  ]);
+  for (const key of [
+    "matchSetup", "onlineMatch", "casualRoomNote", "rankedDuel", "rankedClosed",
+    "rankedOpen", "rankedRules", "rankedClassic", "rankedItem", "rankedRateNote",
+    "casualLobbyNote", "classicRuleNote", "itemRuleNote", "freeForAll", "teamBattle",
+    "onlineLobby",
+  ]) assert.match(copy, new RegExp(`${key}: \\{ ja: ".+", en: ".+" \\}`));
+  assert.match(page, /setupMode === "online" \? t\("onlineMatch"\) : t\("matchSetup"\)/);
+  assert.match(page, /language === "en" \? "Daily 12:00–13:00 \/ 20:00–21:00 JST"/);
+});
+
 test("keeps the board square and lets narrow phones scroll without fixed-control overlap", async () => {
   const [page, css] = await Promise.all([
     read("../app/page.tsx"),
