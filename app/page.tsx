@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import Image from "next/image";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
 import { rankTier } from "./duel-rating";
@@ -68,7 +67,6 @@ import {
   type StrongPlayCandidate,
 } from "./strong-play";
 import { COMMUNITY_SAFETY } from "../config/community-safety";
-import { ASSET_PATHS } from "../config/asset-paths";
 import {
   ITEM_DEMO_LABELS,
   InventoryPanel,
@@ -1846,7 +1844,7 @@ function Game() {
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
           <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
-          <div className="title-orbit" aria-hidden="true"><i /><i /><Image unoptimized width={220} height={220} src={ASSET_PATHS.branding.meteorRaceMark} alt="" /></div>
+          <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
             <h1>METEOR<br/><span>RACE</span></h1>
@@ -1898,13 +1896,12 @@ function Game() {
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
         <div className="brand">
-          <Image unoptimized width={38} height={38} className="brand-mark" src={ASSET_PATHS.branding.meteorRaceMark} alt="" />
           <div>
             <h1>METEOR RACE</h1>
             <p>{t("titleTagline")}</p>
           </div>
         </div>
-        <div className="regula-console" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-label={`REGULA match progress ${regulaProgress}%`}><Image unoptimized width={31} height={31} src={ASSET_PATHS.branding.regulaMark} alt=""/><span><small>REGULA // MATCH CONTROL</small><i><b /></i><em>CORE APPROACH {regulaProgress}%</em></span></div>
+        <div className="regula-console" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-label={`REGULA match progress ${regulaProgress}%`}><span><small>REGULA // MATCH CONTROL</small><i><b /></i><em>CORE APPROACH {regulaProgress}%</em></span></div>
         <div className="round">
           {t("round")} {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
@@ -1967,7 +1964,7 @@ function Game() {
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
             <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{displayGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
             {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
-              <div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><Image unoptimized width={140} height={140} src={ASSET_PATHS.branding.regulaMark} alt=""/><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
+              <div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><strong>REGULA</strong><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
               <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div>
             </div> : <div className="manual-onepage">
               <section className="manual-rules"><header><small>01</small><h3>{t("turnLoopHeading")}</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
@@ -2358,7 +2355,7 @@ function Game() {
               <span><small>PROBE CONTROL</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
             </button>
             <div className="hud-mission">
-              <Image unoptimized width={17} height={17} className="hud-regula-mark" src={ASSET_PATHS.branding.regulaMark} alt=""/><small>{entryStage === "title" ? "REGULA NETWORK READY" : entryStage ? "REGULA / MATCH CONFIGURATION" : onlineLobbyOnly ? "REGULA / ONLINE WAITING ROOM" : game.phase === "over" ? "REGULA / MISSION COMPLETE" : `REGULA / ${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
+              <small>{entryStage === "title" ? "REGULA NETWORK READY" : entryStage ? "REGULA / MATCH CONFIGURATION" : onlineLobbyOnly ? "REGULA / ONLINE WAITING ROOM" : game.phase === "over" ? "REGULA / MISSION COMPLETE" : `REGULA / ${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
               <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? "ONLINEの対戦方式を設定" : setupMode === "cpu" ? "SINGLEの対戦方式を設定" : "LOCALの対戦方式を設定") : onlineLobbyOnly ? (online.code ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}` : "ルームを作成または参加") : displayGameMessage}</strong>
               {!entryStage && !onlineLobbyOnly && <i className="hud-regula-progress" aria-hidden="true"><b style={{ width: `${regulaProgress}%` }} /></i>}
               {mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}

@@ -177,18 +177,20 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
   assert.match(css, /@media\(max-width:700px\).*?\.manual-world/s);
 });
 
-test("uses official marks and REGULA match-control presentation", async () => {
+test("uses a provisional favicon and mark-free REGULA match-control presentation", async () => {
   const [page, assets, css] = await Promise.all([
     read("../app/page.tsx"),
     read("../config/asset-paths.ts"),
     read("../app/globals.css"),
   ]);
-  assert.match(assets, /favicon: "\/assets\/branding\/meteor-race-mark\.svg"/);
-  assert.match(assets, /regulaMark: "\/assets\/branding\/regula-mark\.svg"/);
+  assert.match(assets, /favicon: "\/assets\/branding\/meteor-race-favicon\.svg"/);
+  assert.doesNotMatch(assets, /regulaMark:/);
+  assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
   assert.match(page, /REGULA \/\/ MATCH CONTROL/);
   assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
   assert.match(css, /\.regula-console\{/);
   assert.match(css, /\.hud-regula-progress\{/);
+  assert.match(css, /\.manual-tabs button\{min-width:76px;max-width:110px;overflow:hidden/);
 });
 
 test("keeps the manual inside its frame and presents device identity as company registry", async () => {
