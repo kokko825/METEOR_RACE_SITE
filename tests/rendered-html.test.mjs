@@ -177,7 +177,7 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
   assert.match(css, /@media\(max-width:700px\).*?\.manual-world/s);
 });
 
-test("uses a provisional favicon and mark-free REGULA match-control presentation", async () => {
+test("uses a provisional favicon and mark-free REGULA CORE-arrival presentation", async () => {
   const [page, assets, css] = await Promise.all([
     read("../app/page.tsx"),
     read("../config/asset-paths.ts"),
@@ -186,7 +186,7 @@ test("uses a provisional favicon and mark-free REGULA match-control presentation
   assert.match(assets, /favicon: "\/assets\/branding\/meteor-race-favicon\.svg"/);
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
-  assert.match(page, /REGULA \/\/ MATCH CONTROL/);
+  assert.match(page, /REGULA \/\/ CORE到達管制/);
   assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
   assert.match(css, /\.regula-console\{/);
   assert.match(css, /\.hud-mode \.regula-console\{position:absolute;z-index:2;left:50%;top:-9px;width:250px;transform:translateX\(-50%\)/);
@@ -302,10 +302,26 @@ test("keeps final rankings and rematch controls above a dimmed board", async () 
     read("../app/globals.css"),
   ]);
   assert.match(page, /className="result-overlay"/);
-  assert.match(page, /game\.phase === "over" \? " result-dim"/);
+  assert.match(page, /resultVisible \? " result-dim"/);
   assert.match(page, /className="primary-action result-rematch"/);
   assert.match(css, /\.board\.result-dim/);
   assert.match(css, /\.result-overlay \{ position:absolute; z-index:45/);
+});
+
+test("reveals results only after the CORE arrival motion settles", async () => {
+  const [page, hook, behavior, copy] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/hooks/use-deferred-reveal.ts"),
+    read("../config/ui-behavior.ts"),
+    read("../config/ui-copy.ts"),
+  ]);
+  assert.match(page, /blocked: isAnimating/);
+  assert.match(page, /resultVisible && \(/);
+  assert.match(page, /resultVisible \? " result-dim"/);
+  assert.match(page, /statusCoreArrival/);
+  assert.match(hook, /revealedIdentity === identity/);
+  assert.match(behavior, /resultRevealDelayMs: 700/);
+  assert.match(copy, /CORE到達を確認中/);
 });
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {

@@ -1231,3 +1231,27 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
   .hud-mode .action-panel { position:relative; z-index:30; }
   .battle-hud.global-hud { position:fixed!important; }
 }
+
+/* Keep the battle viewport inside a stable safe frame. REGULA is a dedicated
+   CORE-arrival monitor, so it owns a clear tier instead of floating in the
+   match header. */
+@media (min-width:901px) {
+  .shell.hud-mode {
+    padding-top:max(18px,env(safe-area-inset-top));
+    padding-right:max(22px,env(safe-area-inset-right));
+    padding-bottom:calc(84px + env(safe-area-inset-bottom));
+    padding-left:max(22px,env(safe-area-inset-left));
+  }
+  .hud-mode > .topbar {
+    height:82px;
+    margin:0;
+    padding-top:36px;
+  }
+  .hud-mode .regula-console {
+    top:0;
+    width:264px;
+  }
+  .hud-mode > .game-layout {
+    height:calc(100dvh - 180px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}

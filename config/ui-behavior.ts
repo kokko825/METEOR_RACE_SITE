@@ -9,4 +9,5 @@ export const UI_BEHAVIOR = {
   labEffectScaleFast: 0.08,
   labEffectScaleMedium: 0.18,
   labEffectScaleNormal: 0.48,
+  resultRevealDelayMs: 700,
 } as const;

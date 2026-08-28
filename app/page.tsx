@@ -57,6 +57,7 @@ import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance
 import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, itemEffectFacts } from "./item-content";
 import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
+import { useDeferredReveal } from "./hooks/use-deferred-reveal";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
@@ -208,6 +209,15 @@ function Game() {
   const [hoveredOrbitRing, setHoveredOrbitRing] = useState<number | null>(null);
   const [selectedOrbitRing, setSelectedOrbitRing] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const resultIdentity = `${game.turnCount}:${game.winner ?? "none"}:${game.finishOrder?.join("-") ?? ""}`;
+  const resultVisible = useDeferredReveal({
+    active: game.phase === "over" && Boolean(game.winner),
+    blocked: isAnimating,
+    identity: resultIdentity,
+    delayMs: UI_BEHAVIOR.resultRevealDelayMs,
+  });
+  const visibleGameMessage =
+    game.phase === "over" && !resultVisible ? t("statusCoreArrival") : displayGameMessage;
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [onlinePlayerCount, setOnlinePlayerCount] = useState<1 | 2 | 3 | 4>(2);
   const [onlineAiCount, setOnlineAiCount] = useState<0 | 1 | 2 | 3>(0);
@@ -1775,7 +1785,7 @@ function Game() {
     return false;
   };
   const resultPlayer =
-    game.phase === "over" && game.winner && game.winner !== "draw"
+    resultVisible && game.winner && game.winner !== "draw"
       ? game.winner
       : null;
   const displayAccent = resultPlayer ?? game.turn;
@@ -1938,7 +1948,7 @@ function Game() {
             <p>{t("titleTagline")}</p>
           </div>
         </div>
-        <div className="regula-console" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-label={`REGULA match progress ${regulaProgress}%`}><span><small>REGULA // MATCH CONTROL</small><i><b /></i><em>CORE APPROACH {regulaProgress}%</em></span></div>
+        <div className="regula-console" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-label={`REGULA core arrival progress ${regulaProgress}%`}><span><small>{language === "ja" ? "REGULA // CORE到達管制" : "REGULA // CORE ARRIVAL CONTROL"}</small><i><b /></i><em>{language === "ja" ? `最接近機の到達度 ${regulaProgress}%` : `NEAREST PROBE ${regulaProgress}%`}</em></span></div>
         <div className="round">
           {t("round")} {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
@@ -2008,7 +2018,7 @@ function Game() {
       {manualOpen && (
         <div className="manual-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setManualOpen(false)}>
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
-            <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{displayGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
+            <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{visibleGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
             {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
               <section className="manual-world-hero"><div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><strong>REGULA</strong><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
               <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div></section>
@@ -2029,13 +2039,13 @@ function Game() {
 
       <section className="game-layout">
         <div className="player-stack left-stack">
-          <aside className={`player-card red-card ${(game.phase === "over" ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>
+          <aside className={`player-card red-card ${(resultVisible ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
           <h2>RED</h2>
           <ProbeIcon color="red" teamMode={isTeamVariant(game.variant)} />
           <InventoryPanel inventory={game.inventory.red} color="red" items={canSeeLoadout("red") ? game.itemHands?.red ?? [] : []} loadoutHidden={!canSeeLoadout("red")} />
           </aside>
-          {activePlayers(game).includes("green") && <aside className={`player-card green-card ${(game.phase === "over" ? game.winner === "green" : game.turn === "green") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("green", 3)}</span><h2>GREEN</h2><ProbeIcon color="green" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.green} color="green" items={canSeeLoadout("green") ? game.itemHands?.green ?? [] : []} loadoutHidden={!canSeeLoadout("green")} /></aside>}
+          {activePlayers(game).includes("green") && <aside className={`player-card green-card ${(resultVisible ? game.winner === "green" : game.turn === "green") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("green", 3)}</span><h2>GREEN</h2><ProbeIcon color="green" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.green} color="green" items={canSeeLoadout("green") ? game.itemHands?.green ?? [] : []} loadoutHidden={!canSeeLoadout("green")} /></aside>}
         </div>
 
         <section className="arena">
@@ -2054,7 +2064,7 @@ function Game() {
           </div>
           <div className="status" aria-live="polite">
             <span className={`status-dot ${displayAccent}`} />
-            {displayGameMessage}
+            {visibleGameMessage}
           </div>
           {game.phase === "setup" && isItemVariant(game.variant) && (
             <div className="item-selection-overlay" aria-live="polite">
@@ -2080,7 +2090,7 @@ function Game() {
             </div>
           )}
           <div
-            className={`board turn-${displayAccent}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}${game.phase === "over" ? " result-dim" : ""}`}
+            className={`board turn-${displayAccent}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}${resultVisible ? " result-dim" : ""}`}
             data-perspective={perspectiveSlot}
             style={{
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
@@ -2223,7 +2233,7 @@ function Game() {
             })}
           </div>
 
-          {game.phase === "over" && (
+          {resultVisible && (
             <section className="result-overlay" role="dialog" aria-modal="true" aria-label="対戦結果">
               <header><small>MATCH RESULT</small><strong>{displayGameMessage}</strong></header>
               {(game.finishOrder?.length ?? 0) > 0 && (
@@ -2372,13 +2382,13 @@ function Game() {
         </section>
 
         <div className="player-stack right-stack">
-          <aside className={`player-card blue-card ${(game.phase === "over" ? game.winner === "blue" : game.turn === "blue") ? "active" : ""}`}>
+          <aside className={`player-card blue-card ${(resultVisible ? game.winner === "blue" : game.turn === "blue") ? "active" : ""}`}>
           <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
           <h2>BLUE</h2>
           <ProbeIcon color="blue" teamMode={isTeamVariant(game.variant)} />
           <InventoryPanel inventory={game.inventory.blue} color="blue" items={canSeeLoadout("blue") ? game.itemHands?.blue ?? [] : []} loadoutHidden={!canSeeLoadout("blue")} />
           </aside>
-          {activePlayers(game).includes("yellow") && <aside className={`player-card yellow-card ${(game.phase === "over" ? game.winner === "yellow" : game.turn === "yellow") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("yellow", 4)}</span><h2>YELLOW</h2><ProbeIcon color="yellow" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.yellow} color="yellow" items={canSeeLoadout("yellow") ? game.itemHands?.yellow ?? [] : []} loadoutHidden={!canSeeLoadout("yellow")} /></aside>}
+          {activePlayers(game).includes("yellow") && <aside className={`player-card yellow-card ${(resultVisible ? game.winner === "yellow" : game.turn === "yellow") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("yellow", 4)}</span><h2>YELLOW</h2><ProbeIcon color="yellow" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.yellow} color="yellow" items={canSeeLoadout("yellow") ? game.itemHands?.yellow ?? [] : []} loadoutHidden={!canSeeLoadout("yellow")} /></aside>}
         </div>
       </section>
 
@@ -2403,11 +2413,11 @@ function Game() {
               <span><small>PROBE CONTROL</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
             </button>
             <div className="hud-mission">
-              <small>{entryStage === "title" ? "REGULA NETWORK READY" : entryStage ? "REGULA / MATCH CONFIGURATION" : onlineLobbyOnly ? "REGULA / ONLINE WAITING ROOM" : game.phase === "over" ? "REGULA / MISSION COMPLETE" : `REGULA / ${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
-              <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? "ONLINEの対戦方式を設定" : setupMode === "cpu" ? "SINGLEの対戦方式を設定" : "LOCALの対戦方式を設定") : onlineLobbyOnly ? (online.code ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}` : "ルームを作成または参加") : displayGameMessage}</strong>
+              <small>{entryStage === "title" ? "REGULA NETWORK READY" : entryStage ? "REGULA / MATCH CONFIGURATION" : onlineLobbyOnly ? "REGULA / ONLINE WAITING ROOM" : resultVisible ? "REGULA / MISSION COMPLETE" : game.phase === "over" ? "REGULA / CORE ARRIVAL CONFIRMATION" : `REGULA / ${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
+              <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? "ONLINEの対戦方式を設定" : setupMode === "cpu" ? "SINGLEの対戦方式を設定" : "LOCALの対戦方式を設定") : onlineLobbyOnly ? (online.code ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}` : "ルームを作成または参加") : visibleGameMessage}</strong>
               {!entryStage && !onlineLobbyOnly && <i className="hud-regula-progress" aria-hidden="true"><b style={{ width: `${regulaProgress}%` }} /></i>}
               {mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}
-              {!entryStage && game.phase === "over" && mode === "online" && online.role && <button type="button" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
+              {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
             </div>
             <div className="hud-tools">
               <label className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label>
