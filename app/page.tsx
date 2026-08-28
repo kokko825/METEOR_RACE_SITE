@@ -67,6 +67,7 @@ import {
   type StrongPlayCandidate,
 } from "./strong-play";
 import { COMMUNITY_SAFETY } from "../config/community-safety";
+import { ITEM_LORE } from "../config/item-lore";
 import {
   ITEM_DEMO_LABELS,
   InventoryPanel,
@@ -189,6 +190,13 @@ function Game() {
   const [contactType, setContactType] = useState("不具合報告");
   const [contactMessage, setContactMessage] = useState("");
   const [contactStatus, setContactStatus] = useState("");
+  const [proposalName, setProposalName] = useState("");
+  const [proposalEffect, setProposalEffect] = useState("");
+  const [proposalReason, setProposalReason] = useState("");
+  const [proposalLimit, setProposalLimit] = useState("");
+  const [proposalCredit, setProposalCredit] = useState("");
+  const [proposalCreditAllowed, setProposalCreditAllowed] = useState(false);
+  const [proposalStatus, setProposalStatus] = useState("");
   const [obstaclesEnabled, setObstaclesEnabled] = useState(false);
   const [aiSpeed, setAiSpeed] = useState<number>(UI_BEHAVIOR.aiDefaultDelayMs);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("normal");
@@ -1833,6 +1841,34 @@ function Game() {
     }
   };
 
+  const sendItemProposal = async () => {
+    if (proposalName.trim().length < 2 || proposalEffect.trim().length < 10 || proposalReason.trim().length < 10 || proposalLimit.trim().length < 5) {
+      setProposalStatus(language === "ja" ? "アイテム名と各説明をもう少し詳しく入力してください" : "Please add a name and more detail to each required field.");
+      return;
+    }
+    setProposalStatus(language === "ja" ? "送信中…" : "Sending…");
+    const message = [
+      `ITEM NAME: ${proposalName.trim()}`,
+      `EFFECT: ${proposalEffect.trim()}`,
+      `WHY IT IS FUN: ${proposalReason.trim()}`,
+      `BALANCE LIMIT: ${proposalLimit.trim()}`,
+      `CREDIT: ${proposalCreditAllowed ? proposalCredit.trim() || nickname.trim() || "匿名" : "掲載不可"}`,
+    ].join("\n\n");
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-meteor-player-id": getOrCreatePlayerId() },
+        body: JSON.stringify({ type: "アイテム提案", message, nickname, version: APP_VERSION, roomCode: online.code || null }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? (language === "ja" ? "送信できませんでした" : "Could not send proposal"));
+      setProposalName(""); setProposalEffect(""); setProposalReason(""); setProposalLimit(""); setProposalCredit(""); setProposalCreditAllowed(false);
+      setProposalStatus(language === "ja" ? `提案を受け付けました（受付番号 ${data.reference}）` : `Proposal received (reference ${data.reference})`);
+    } catch (error) {
+      setProposalStatus(error instanceof Error ? error.message : (language === "ja" ? "送信できませんでした" : "Could not send proposal"));
+    }
+  };
+
   return (
     <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       <div className="phone-portrait-lock" role="status" aria-live="polite">
@@ -1964,8 +2000,10 @@ function Game() {
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
             <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{displayGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
             {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
-              <div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><strong>REGULA</strong><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
-              <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div>
+              <section className="manual-world-hero"><div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><strong>REGULA</strong><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
+              <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div></section>
+              <section className="authorized-equipment"><header><small>AUTHORIZED EQUIPMENT</small><h3>{language === "ja" ? "REGULA認可装備" : "REGULA-AUTHORIZED EQUIPMENT"}</h3><p>{language === "ja" ? "競技用アイテムは、REGULAの安全審査を通過した協賛企業から提供されています。" : "Competition items are supplied by partners that have passed REGULA safety review."}</p></header><div>{ITEM_LORE.map((item) => <article key={item.kind} className={item.kind}><i aria-hidden="true">{ITEM_ICONS[item.kind]}</i><span><small>{item.company}</small><b>{item.kind.toUpperCase()}</b><p>{language === "ja" ? item.ja : item.en}</p></span></article>)}</div></section>
+              <section className="supplier-proposal"><header><small>NEW SUPPLIER PROGRAM</small><h3>{language === "ja" ? "新規装備提案" : "PROPOSE NEW EQUIPMENT"}</h3><p>{language === "ja" ? "REGULA認可競技装備のアイデアを募集しています。" : "Submit an idea for new REGULA-authorized competition equipment."}</p></header><form onSubmit={(event) => { event.preventDefault(); void sendItemProposal(); }}><label>{language === "ja" ? "アイテム名" : "ITEM NAME"}<input maxLength={40} value={proposalName} onChange={(event) => setProposalName(event.target.value)} required /></label><label>{language === "ja" ? "効果案" : "EFFECT"}<textarea maxLength={300} value={proposalEffect} onChange={(event) => setProposalEffect(event.target.value)} required /></label><label>{language === "ja" ? "面白いと思う理由" : "WHY IT IS FUN"}<textarea maxLength={300} value={proposalReason} onChange={(event) => setProposalReason(event.target.value)} required /></label><label>{language === "ja" ? "強すぎないための制約" : "BALANCE LIMIT"}<textarea maxLength={240} value={proposalLimit} onChange={(event) => setProposalLimit(event.target.value)} required /></label><label>{language === "ja" ? "掲載名（任意）" : "CREDIT NAME (OPTIONAL)"}<input maxLength={24} value={proposalCredit} onChange={(event) => setProposalCredit(event.target.value)} disabled={!proposalCreditAllowed} /></label><label className="proposal-check"><input type="checkbox" checked={proposalCreditAllowed} onChange={(event) => setProposalCreditAllowed(event.target.checked)} />{language === "ja" ? "採用時の名前掲載を許可する" : "Allow this name to be credited if adopted"}</label><p>{language === "ja" ? "提案は調整・改変して採用する場合があります。個人情報や第三者の作品は送らないでください。" : "Ideas may be adjusted before adoption. Do not submit personal information or third-party work."} <a href="/terms">{language === "ja" ? "投稿規約" : "Terms"}</a></p><button type="submit">{language === "ja" ? "REGULAへ提案を送る" : "SEND TO REGULA"}</button>{proposalStatus && <strong role="status">{proposalStatus}</strong>}</form></section>
             </div> : <div className="manual-onepage">
               <section className="manual-rules"><header><small>01</small><h3>{t("turnLoopHeading")}</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
                 <article><span>01</span><i>✥</i><div><b>MOVE</b><p>{t("manualMove")}</p></div></article><em>↓</em>

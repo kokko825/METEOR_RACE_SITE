@@ -211,6 +211,22 @@ test("keeps the manual inside its frame and presents device identity as company 
   assert.match(css, /\.manual-onepage,\.manual-world\{flex:1;width:100%;height:auto;min-height:0;max-width:100%\}/);
 });
 
+test("documents every authorized item supplier and accepts balanced equipment proposals", async () => {
+  const [page, lore, css, terms] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../config/item-lore.ts"),
+    read("../app/globals.css"),
+    read("../app/terms/page.tsx"),
+  ]);
+  for (const company of ["AEGIS FRAME", "VOLTERRA DRIVE", "MIRAGE WORKS", "KEPLER DYNAMICS", "PYRA INDUSTRIES", "NEXWAVE SYSTEMS", "ANCHOR LOGISTICS"]) assert.match(lore, new RegExp(company));
+  assert.match(page, /AUTHORIZED EQUIPMENT/);
+  assert.match(page, /type: "アイテム提案"/);
+  assert.match(page, /proposalCreditAllowed/);
+  assert.match(css, /\.authorized-equipment>div\{display:grid/);
+  assert.match(css, /\.supplier-proposal form\{/);
+  assert.match(terms, /アイテム案の投稿/);
+});
+
 test("keeps the board square and lets narrow phones scroll without fixed-control overlap", async () => {
   const [page, css] = await Promise.all([
     read("../app/page.tsx"),
