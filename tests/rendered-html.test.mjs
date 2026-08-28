@@ -324,6 +324,23 @@ test("reveals results only after the CORE arrival motion settles", async () => {
   assert.match(copy, /CORE到達を確認中/);
 });
 
+test("centralizes replaceable UI sounds and tactile feedback", async () => {
+  const [page, hook, engine, config, readme] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/hooks/use-ui-feedback.ts"),
+    read("../app/ui-feedback.ts"),
+    read("../config/ui-feedback.ts"),
+    read("../public/assets/audio/README.md"),
+  ]);
+  assert.match(page, /useUiFeedback\(\{ soundEnabled, masterVolume, sfxVolume \}\)/);
+  assert.match(hook, /document\.addEventListener\("click", onClick\)/);
+  assert.match(hook, /document\.addEventListener\("input", onInput\)/);
+  assert.match(engine, /navigator\.vibrate/);
+  assert.match(config, /confirmSelector/);
+  assert.match(config, /volumeTickIntervalMs: 42/);
+  assert.match(readme, /config\/ui-feedback\.ts/);
+});
+
 test("animates BLAST probe movement with lifted travel on every client", async () => {
   const [page, pieces, rooms, css] = await Promise.all([
     read("../app/page.tsx"),

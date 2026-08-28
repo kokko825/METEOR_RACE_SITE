@@ -58,6 +58,7 @@ import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, itemEffectFacts } from "./ite
 import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 import { useDeferredReveal } from "./hooks/use-deferred-reveal";
+import { useUiFeedback } from "./hooks/use-ui-feedback";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
@@ -244,6 +245,7 @@ function Game() {
     turns: 0,
   });
   useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, reducedMotion, battleTrack });
+  useUiFeedback({ soundEnabled, masterVolume, sfxVolume });
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
@@ -2417,7 +2419,7 @@ function Game() {
               <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? "ONLINEの対戦方式を設定" : setupMode === "cpu" ? "SINGLEの対戦方式を設定" : "LOCALの対戦方式を設定") : onlineLobbyOnly ? (online.code ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}` : "ルームを作成または参加") : visibleGameMessage}</strong>
               {!entryStage && !onlineLobbyOnly && <i className="hud-regula-progress" aria-hidden="true"><b style={{ width: `${regulaProgress}%` }} /></i>}
               {mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}
-              {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
+              {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
             </div>
             <div className="hud-tools">
               <label className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label>

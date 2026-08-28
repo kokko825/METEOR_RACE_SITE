@@ -11,6 +11,12 @@
 - `public/assets/audio/music/waiting-room.ogg` → `/assets/audio/music/waiting-room.ogg`
 - `public/assets/audio/sfx/game-start.ogg` → `/assets/audio/sfx/game-start.ogg`
 
+UI操作音は `config/ui-feedback.ts` の `sounds` に公開パスを設定します。空文字の間は内蔵の仮音が鳴ります。
+
+- `select`：通常の選択音
+- `confirm`：ゲーム開始・再戦など重要操作の確定音
+- `volumeTick`：音量スライダーの刻み音
+
 ## 戦闘曲（5ステム）
 
 各曲のフォルダへ、同じ長さ・BPMの5ファイルを置きます。
