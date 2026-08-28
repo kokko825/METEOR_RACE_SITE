@@ -189,8 +189,10 @@ test("uses a provisional favicon and mark-free REGULA match-control presentation
   assert.match(page, /REGULA \/\/ MATCH CONTROL/);
   assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
   assert.match(css, /\.regula-console\{/);
+  assert.match(css, /\.hud-mode \.regula-console\{position:absolute;z-index:2;left:50%;top:-9px;width:250px;transform:translateX\(-50%\)/);
   assert.match(css, /\.hud-regula-progress\{/);
-  assert.match(css, /\.manual-tabs button\{min-width:76px;max-width:110px;overflow:hidden/);
+  assert.match(css, /\.manual-tabs button\{width:auto;min-width:78px;max-width:none;overflow:visible/);
+  assert.doesNotMatch(css, /\.manual-tabs button\{[^}]*text-overflow:ellipsis/);
 });
 
 test("keeps the manual inside its frame and presents device identity as company registry", async () => {

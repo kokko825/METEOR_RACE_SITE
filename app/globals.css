@@ -1054,14 +1054,16 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 /* The official marks are under reconsideration. Keep the interface typographic until finalized. */
 .regula-console{min-width:220px;grid-template-columns:minmax(0,1fr)}
 .regula-console>span{width:100%}
+.hud-mode>.topbar{position:relative}
+@media(min-width:1051px){.hud-mode .regula-console{position:absolute;z-index:2;left:50%;top:-9px;width:250px;transform:translateX(-50%);text-align:center}.hud-mode .topbar>.round{align-self:flex-end;margin:0 auto -2px}}
 .hud-mission{grid-template-columns:minmax(0,1fr)}
 .hud-mission>small,.hud-mission>strong{grid-column:1}
 .manual-world-orbit>strong{position:absolute;z-index:2;inset:35%;display:grid;place-items:center;border:1px solid #59d8f7;border-radius:50%;background:radial-gradient(circle,#123849,#06141c 68%);box-shadow:0 0 32px rgba(94,222,255,.26);color:#eaffff;font-size:clamp(11px,1.4vw,17px);letter-spacing:.2em}
 
 /* Manual page tabs must keep their labels inside the button at every width. */
 .manual-drawer .manual-tabs{flex:0 0 auto;min-width:0}
-.manual-tabs button{min-width:76px;max-width:110px;overflow:hidden;padding-inline:10px;letter-spacing:.04em;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:700px){.manual-drawer .manual-tabs{gap:4px}.manual-tabs button{min-width:62px;max-width:76px;padding-inline:6px;font-size:8px;letter-spacing:0}.manual-drawer>header>div:first-child{flex:1}.manual-drawer>header>div:first-child h2{display:none}}
+.manual-tabs button{width:auto;min-width:78px;max-width:none;overflow:visible;padding-inline:12px;letter-spacing:.04em;text-overflow:clip;white-space:nowrap}
+@media(max-width:700px){.manual-drawer .manual-tabs{gap:4px}.manual-tabs button{width:auto;min-width:66px;max-width:none;padding-inline:8px;font-size:8px;letter-spacing:0}.manual-drawer>header>div:first-child{flex:1 1 0;min-width:0}.manual-drawer>header>div:first-child h2{display:none}}
 
 /* One persistent utility bar across title, setup, lobby and battle screens. */
 .battle-hud.global-hud{position:fixed!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;margin:0!important}
