@@ -59,6 +59,8 @@ import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 import { useDeferredReveal } from "./hooks/use-deferred-reveal";
 import { useUiFeedback } from "./hooks/use-ui-feedback";
+import { SoundMixer, VolumeRange } from "./components/sound-controls";
+import { MatchMeta } from "./components/match-meta";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
@@ -1950,13 +1952,7 @@ function Game() {
             <p>{t("titleTagline")}</p>
           </div>
         </div>
-        <div className="match-meta">
-          <div className="regula-console" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-label={`REGULA core arrival progress ${regulaProgress}%`}><span><small>{language === "ja" ? "REGULA // CORE到達管制" : "REGULA // CORE ARRIVAL CONTROL"}</small><i><b /></i><em>{language === "ja" ? `最接近機の到達度 ${regulaProgress}%` : `NEAREST PROBE ${regulaProgress}%`}</em></span></div>
-          <div className="round">
-            {t("round")} {Math.floor(game.turnCount / activePlayers(game).length) + 1}
-            {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
-          </div>
-        </div>
+        <MatchMeta language={language} progress={regulaProgress} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
       </header>
 
@@ -1990,9 +1986,9 @@ function Game() {
             </section>
             <section>
               <h3>{t("soundHeading")}</h3>
-              <label>{t("masterVolume")} <b>{masterVolume}</b><input type="range" min="0" max="100" value={masterVolume} onInput={playVolumeTick} onChange={(event) => setMasterVolume(Number(event.target.value))} /></label>
-              <label>BGM <b>{bgmVolume}</b><input type="range" min="0" max="100" value={bgmVolume} onInput={playVolumeTick} onChange={(event) => setBgmVolume(Number(event.target.value))} /></label>
-              <label>{t("soundEffects")} <b>{sfxVolume}</b><input type="range" min="0" max="100" value={sfxVolume} onInput={playVolumeTick} onChange={(event) => setSfxVolume(Number(event.target.value))} /></label>
+              <VolumeRange className="drawer-volume" label={t("masterVolume")} value={masterVolume} onChange={setMasterVolume} onTick={playVolumeTick} />
+              <VolumeRange className="drawer-volume" label="BGM" value={bgmVolume} onChange={setBgmVolume} onTick={playVolumeTick} />
+              <VolumeRange className="drawer-volume" label={t("soundEffects")} value={sfxVolume} onChange={setSfxVolume} onTick={playVolumeTick} />
               <button type="button" className={soundEnabled ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setSoundEnabled((value) => !value)}>{t("muteAll")} {soundEnabled ? "OFF" : "ON"}</button>
               <label>BATTLE MUSIC
                 <select value={battleTrack} onChange={(event) => setBattleTrack(event.target.value as BattleTrackChoice)}>
@@ -2424,7 +2420,7 @@ function Game() {
               {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
             </div>
             <div className="hud-tools">
-              <div className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><div className="hud-mixer"><label><span>ALL</span><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onInput={playVolumeTick} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label><label><span>BGM</span><input aria-label="BGM音量" type="range" min="0" max="100" step="10" value={bgmVolume} onInput={playVolumeTick} onChange={(event) => setBgmVolume(Number(event.target.value))} /><output>{bgmVolume}</output></label><label><span>SFX</span><input aria-label="効果音音量" type="range" min="0" max="100" step="10" value={sfxVolume} onInput={playVolumeTick} onChange={(event) => setSfxVolume(Number(event.target.value))} /><output>{sfxVolume}</output></label></div></div>
+              <SoundMixer enabled={soundEnabled} masterVolume={masterVolume} bgmVolume={bgmVolume} sfxVolume={sfxVolume} masterLabel={t("masterVolume")} sfxLabel={t("soundEffects")} muteLabel={language === "ja" ? "消音する" : "Mute audio"} unmuteLabel={language === "ja" ? "音を出す" : "Enable audio"} setMasterVolume={setMasterVolume} setBgmVolume={setBgmVolume} setSfxVolume={setSfxVolume} onTick={playVolumeTick} onToggle={() => setSoundEnabled((current) => !current)} />
               <div className="hud-icons">
                 {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""}`} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>CHAT</button>}
                 {mode === "online" && online.code && <button type="button" className={`chat-mute ${chatMuted ? "active danger" : ""}`} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}

@@ -37,9 +37,16 @@
   --green: #35dc8b;
   --yellow: #ffd83d;
   --gold: #ffd363;
+  --page-gutter-inline: clamp(12px, 2.1vw, 30px);
+  --page-gutter-block: clamp(14px, 2vw, 24px);
+  --battle-hud-height: 76px;
+  --battle-header-height: 72px;
+  --battle-section-gap: 14px;
 }
 
 * { box-sizing: border-box; }
+
+:focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px}
 
 html { background: var(--space); }
 
@@ -60,7 +67,7 @@ body {
 button, select { font: inherit; }
 button { color: inherit; }
 
-.shell { width: min(1440px, 100%); margin: 0 auto; padding: 22px 30px 36px; }
+.shell { width: min(1440px, 100%); margin: 0 auto; padding: var(--page-gutter-block) var(--page-gutter-inline) 36px; }
 .shell.entry-active { width:100%; min-height:100dvh; padding:0; overflow:hidden; }
 .shell.entry-active > :not(.title-screen):not(.entry-flow):not(.settings-overlay):not(.manual-overlay):not(.global-hud) { display:none !important; }
 .shell.online-lobby-only>.topbar,.shell.online-lobby-only>.game-layout,.shell.online-lobby-only>.extra-players{display:none!important}
@@ -69,6 +76,7 @@ button { color: inherit; }
 .shell.room-uncreated .in-game-settings,.shell.room-uncreated .settings-pending{display:none!important}
 .shell.online-lobby-only .online-panel{margin:0 auto;width:min(760px,100%);padding:clamp(18px,4vw,36px)}
 .topbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.topbar>*,.battle-hud>*{min-width:0}
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-mark { color: var(--gold); font-size: 32px; filter: drop-shadow(0 0 9px #ffc943); }
 .brand h1 { margin: 0; font-size: clamp(22px, 3vw, 34px); letter-spacing: .19em; font-weight: 850; }
@@ -637,10 +645,10 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 }
 
 /* Full-screen tactical HUD: the board remains the primary surface. */
-.hud-mode{height:100dvh;max-width:none;width:100%;padding:12px 22px 88px;overflow:hidden}
-.hud-mode>.topbar{height:58px;padding-bottom:8px}
+.hud-mode{height:100dvh;max-width:none;width:100%;padding:20px 22px 88px;overflow:hidden}
+.hud-mode>.topbar{height:62px;padding-bottom:8px}
 .hud-mode>.control-strip{display:none}
-.hud-mode>.game-layout{height:calc(100dvh - 158px);margin-top:8px;grid-template-columns:minmax(125px,160px) minmax(360px,680px) minmax(125px,160px);gap:clamp(10px,2vw,28px);overflow:hidden}
+.hud-mode>.game-layout{height:calc(100dvh - 170px);margin-top:8px;grid-template-columns:minmax(125px,160px) minmax(360px,680px) minmax(125px,160px);gap:clamp(10px,2vw,28px);overflow:hidden}
 .hud-mode .board{width:min(100%,680px,calc(100dvh - 300px))}
 .hud-mode .player-card{min-height:0;height:min(100%,620px);padding:16px 12px}
 .hud-mode .player-card h2{margin-bottom:10px;font-size:18px}
@@ -654,7 +662,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .manual-drawer>header{display:flex;justify-content:space-between;align-items:center;padding-bottom:18px;border-bottom:1px solid #244958}
 .manual-drawer>header small{display:block;color:#69ddff;letter-spacing:.2em}.manual-drawer h2{margin:4px 0 0;color:#fff}.manual-drawer>header button,.comms-panel>header button{width:38px;height:38px;border:1px solid #31566a;background:#071923;color:#fff;font-size:22px;cursor:pointer}
 .manual-drawer section{padding:17px 0;border-bottom:1px solid #183643}.manual-drawer h3{margin:0 0 7px;color:#ff9248;font-size:12px;letter-spacing:.18em}.manual-drawer p{margin:0;font-size:13px;line-height:1.75}.manual-current strong{display:block;margin-bottom:7px;color:#fff}.manual-drawer nav{display:flex;gap:10px;padding-top:20px}.manual-drawer nav a{flex:1;padding:12px;border:1px solid #3d7186;color:#8ee5ff;text-align:center;text-decoration:none;font-weight:800}
-.battle-hud{position:fixed;z-index:80;left:0;right:0;bottom:0;height:76px;display:grid;grid-template-columns:minmax(230px,1fr) minmax(320px,1.4fr) minmax(280px,1fr);align-items:stretch;border-top:1px solid #31596a;background:linear-gradient(90deg,rgba(4,17,25,.98),rgba(7,27,38,.98),rgba(4,14,22,.98));box-shadow:0 -12px 36px rgba(0,0,0,.4)}
+.battle-hud{position:fixed;z-index:80;left:0;right:0;bottom:0;height:var(--battle-hud-height);display:grid;grid-template-columns:minmax(230px,1fr) minmax(320px,1.4fr) minmax(280px,1fr);align-items:stretch;border-top:1px solid #31596a;background:linear-gradient(90deg,rgba(4,17,25,.98),rgba(7,27,38,.98),rgba(4,14,22,.98));box-shadow:0 -12px 36px rgba(0,0,0,.4)}
 .hud-player{display:flex;align-items:center;gap:12px;padding:10px 20px;border:0;border-right:1px solid #254452;background:transparent;color:#fff;text-align:left;cursor:pointer}.hud-player>i{width:34px;height:34px;border:2px solid currentColor;border-radius:8px;transform:rotate(45deg);box-shadow:0 0 14px currentColor}.hud-player>i.red{color:var(--red)}.hud-player>i.blue{color:var(--blue)}.hud-player>i.green{color:var(--green)}.hud-player>i.yellow{color:var(--yellow)}.hud-player span{display:grid}.hud-player small,.hud-mission small{color:#6b9aae;font-size:8px;letter-spacing:.18em}.hud-player b{margin-top:2px;font-size:13px;letter-spacing:.07em}.hud-player em{color:#79b8cf;font-size:9px;font-style:normal}
 .hud-mission{display:grid;align-content:center;justify-items:center;padding:8px 16px;text-align:center}.hud-mission strong{max-width:100%;overflow:hidden;color:#d9f4ff;font-size:12px;text-overflow:ellipsis;white-space:nowrap}.hud-mission button{margin-top:4px;padding:2px 9px;border:1px solid #30576a;background:transparent;color:#75dfff;font-size:8px;cursor:pointer}
 .hud-tools{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:8px 18px;border-left:1px solid #254452}.hud-volume{display:grid;grid-template-columns:44px minmax(72px,130px) 24px;align-items:center;gap:6px}.hud-volume button{width:44px;height:44px;border:0;background:transparent;color:#87dfff;font-size:15px;cursor:pointer}.hud-volume input{width:100%;accent-color:#63ddff}.hud-volume output{color:#6e9aac;font-size:9px}.hud-icons{display:flex;gap:5px}.hud-icons button{width:44px;height:44px;border:1px solid #31586a;background:#071923;color:#8cc9df;font-weight:900;cursor:pointer}.hud-icons .chat-toggle{width:auto;min-width:48px;padding:0 7px;font-size:8px;letter-spacing:.08em}.hud-icons button:hover,.hud-icons button.active{border-color:#6be2ff;color:#fff;box-shadow:0 0 12px rgba(70,216,255,.24)}.hud-icons button.danger{border-color:#ff6d64;color:#ff8179}
@@ -662,22 +670,19 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .online-lobby-only .comms-panel{bottom:88px}
 @media(max-width:900px){
   .hud-mode{padding:8px 10px 80px}
-  .hud-mode>.game-layout{height:calc(100dvh - 146px);grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto;gap:6px;overflow:hidden}
+  .hud-mode>.game-layout{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto;gap:6px;overflow:hidden}
   .hud-mode .arena{min-height:0;display:grid;place-items:center}.hud-mode .board{width:min(100%,calc(100dvh - 285px));max-height:100%}
   .hud-mode .player-card{height:86px;min-height:0;padding:7px}.hud-mode .player-card .inventory{margin-top:0}
   .battle-hud{height:70px;grid-template-columns:minmax(150px,1fr) auto}.hud-mission{display:none}.hud-tools{padding:6px 10px}.hud-player{padding:7px 10px}.hud-volume{grid-template-columns:30px minmax(54px,95px);gap:3px}.hud-volume output{display:none}.manual-trigger span{display:none}
   .hud-mode>.extra-players{display:none}
 }
 @media(max-width:560px){
-  .hud-mode>.topbar{height:54px}.hud-mode .topbar .brand{display:none}.manual-trigger{min-width:40px;padding:7px}.hud-mode>.game-layout{height:calc(100dvh - 132px)}
+  .hud-mode .topbar .brand{display:none}.manual-trigger{min-width:40px;padding:7px}
   .hud-mode .board{width:min(100%,calc(100dvh - 300px))}.hud-mode .player-card{height:80px}.hud-mode .player-card .eyebrow{font-size:7px}.hud-mode .player-card h2{font-size:13px}
   .battle-hud{grid-template-columns:minmax(115px,1fr) auto}.hud-player>i{width:24px;height:24px}.hud-player small,.hud-player em{display:none}.hud-player b{max-width:88px;overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.hud-volume{grid-template-columns:44px 52px}.hud-icons button{width:44px;height:44px}.hud-icons .chat-toggle{display:block;min-width:48px}.hud-icons .chat-mute{display:none}
 }
 
 /* Full-screen manual and single-source HUD controls. */
-.hud-mode{padding-top:20px}
-.hud-mode>.topbar{height:62px}
-.hud-mode>.game-layout{height:calc(100dvh - 170px)}
 .manual-overlay{align-items:center;justify-content:center;padding:18px}
 .manual-drawer{width:min(1180px,calc(100vw - 36px));height:calc(100dvh - 36px);overflow:hidden;padding:18px 20px;border:1px solid #3e7c94;box-shadow:0 24px 80px rgba(0,0,0,.68)}
 .manual-drawer>header{height:58px;padding-bottom:12px;gap:14px}
@@ -1089,6 +1094,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 
 /* One persistent utility bar across title, setup, lobby and battle screens. */
 .battle-hud.global-hud{position:fixed!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;margin:0!important}
+.battle-hud.global-hud{padding-right:env(safe-area-inset-right);padding-left:env(safe-area-inset-left)}
 .shell.entry-active .global-hud{z-index:950}
 .shell.entry-active .title-screen>footer{display:none}
 .shell.entry-active .entry-flow{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
@@ -1113,13 +1119,13 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 /* Compact battle header: REGULA belongs beside the round counter. */
 .match-meta{display:flex;align-items:center;justify-content:center;gap:9px;margin-left:auto}
 @media (min-width:901px) {
-  .hud-mode > .topbar{height:72px;gap:18px;padding-top:0;padding-bottom:10px}
+  .hud-mode > .topbar{height:var(--battle-header-height);gap:18px;padding-top:0;padding-bottom:10px}
   .hud-mode .game-back{margin-right:4px}
   .hud-mode .brand{margin-right:auto;min-width:0}
   .hud-mode .brand p{position:static;line-height:1.4;white-space:nowrap}
   .hud-mode .match-meta .regula-console{position:static;display:grid;width:238px;min-width:238px;min-height:42px;padding:6px 10px;transform:none;text-align:left}
   .hud-mode .match-meta .round{align-self:center;margin:0;white-space:nowrap}
-  .hud-mode > .game-layout{height:calc(100dvh - 170px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin-top:14px}
+  .hud-mode > .game-layout{height:calc(100dvh - 170px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin-top:var(--battle-section-gap)}
 }
 @media (min-width:701px) and (max-width:1050px) {
   .hud-mode .match-meta .regula-console{display:grid;width:205px;min-width:205px}
@@ -1139,6 +1145,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .hud-mixer label{display:grid;grid-template-columns:24px minmax(70px,1fr) 22px;align-items:center;gap:4px;min-height:16px}
 .hud-mixer span,.hud-mixer output{color:#7299aa;font-size:7px;font-weight:800;letter-spacing:.04em}
 .hud-mixer input{width:100%;height:12px;margin:0;accent-color:#63ddff}
+.settings-drawer .drawer-volume{grid-template-columns:minmax(0,1fr) auto;align-items:center}.settings-drawer .drawer-volume input{grid-column:1/-1}.settings-drawer .drawer-volume output{color:#8ee6ff;font-size:10px}
 @media(max-width:700px){.hud-volume{grid-template-columns:34px minmax(62px,92px)}.hud-volume>button{width:34px}.hud-mixer label:not(:first-child){display:none}.hud-mixer label{grid-template-columns:minmax(54px,1fr)}.hud-mixer label span,.hud-mixer label output{display:none}}
 @media(max-width:380px){.hud-volume{display:grid}}
 

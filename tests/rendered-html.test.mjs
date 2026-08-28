@@ -178,18 +178,19 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
 });
 
 test("uses a provisional favicon and mark-free REGULA CORE-arrival presentation", async () => {
-  const [page, assets, css] = await Promise.all([
+  const [page, matchMeta, assets, css] = await Promise.all([
     read("../app/page.tsx"),
+    read("../app/components/match-meta.tsx"),
     read("../config/asset-paths.ts"),
     read("../app/globals.css"),
   ]);
   assert.match(assets, /favicon: "\/assets\/branding\/meteor-race-favicon\.svg"/);
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
-  assert.match(page, /REGULA \/\/ CORE到達管制/);
+  assert.match(matchMeta, /REGULA \/\/ CORE到達管制/);
   assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
   assert.match(css, /\.regula-console\{/);
-  assert.match(page, /className="match-meta"/);
+  assert.match(matchMeta, /className="match-meta"/);
   assert.match(css, /\.hud-mode \.match-meta \.regula-console\{position:static/);
   assert.match(css, /\.hud-regula-progress\{/);
   assert.match(css, /\.manual-drawer>header \.manual-tabs button\{width:84px;min-width:84px;max-width:84px;height:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center/);
@@ -326,8 +327,9 @@ test("reveals results only after the CORE arrival motion settles", async () => {
 });
 
 test("centralizes replaceable UI sounds and tactile feedback", async () => {
-  const [page, hook, engine, config, readme] = await Promise.all([
+  const [page, controls, hook, engine, config, readme] = await Promise.all([
     read("../app/page.tsx"),
+    read("../app/components/sound-controls.tsx"),
     read("../app/hooks/use-ui-feedback.ts"),
     read("../app/ui-feedback.ts"),
     read("../config/ui-feedback.ts"),
@@ -336,15 +338,25 @@ test("centralizes replaceable UI sounds and tactile feedback", async () => {
   assert.match(page, /useUiFeedback\(\{ soundEnabled, masterVolume, sfxVolume \}\)/);
   assert.match(hook, /document\.addEventListener\("click", onClick\)/);
   assert.match(hook, /return \{ playVolumeTick \}/);
-  assert.match(page, /onInput=\{playVolumeTick\}/);
+  assert.match(controls, /onInput=\{onTick\}/);
   assert.match(engine, /kind === "volumeTick" \? Math\.max\(18, masterVolume\)/);
   assert.match(engine, /navigator\.vibrate/);
   assert.match(config, /confirmSelector/);
   assert.match(config, /volumeTickIntervalMs: 42/);
   assert.match(readme, /config\/ui-feedback\.ts/);
-  assert.match(page, /aria-label="全体音量"/);
-  assert.match(page, /aria-label="BGM音量"/);
-  assert.match(page, /aria-label="効果音音量"/);
+  assert.match(page, /<SoundMixer/);
+  assert.match(controls, /shortLabel="ALL"/);
+  assert.match(controls, /shortLabel="BGM"/);
+  assert.match(controls, /shortLabel="SFX"/);
+});
+
+test("uses shared spacing tokens for the battle shell", async () => {
+  const css = await read("../app/globals.css");
+  assert.match(css, /--page-gutter-inline:/);
+  assert.match(css, /--battle-hud-height: 76px/);
+  assert.match(css, /height:var\(--battle-hud-height\)/);
+  assert.match(css, /height:var\(--battle-header-height\)/);
+  assert.match(css, /margin-top:var\(--battle-section-gap\)/);
 });
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {
