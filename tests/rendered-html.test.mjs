@@ -335,7 +335,9 @@ test("centralizes replaceable UI sounds and tactile feedback", async () => {
   ]);
   assert.match(page, /useUiFeedback\(\{ soundEnabled, masterVolume, sfxVolume \}\)/);
   assert.match(hook, /document\.addEventListener\("click", onClick\)/);
-  assert.match(hook, /document\.addEventListener\("input", onInput\)/);
+  assert.match(hook, /return \{ playVolumeTick \}/);
+  assert.match(page, /onInput=\{playVolumeTick\}/);
+  assert.match(engine, /kind === "volumeTick" \? Math\.max\(18, masterVolume\)/);
   assert.match(engine, /navigator\.vibrate/);
   assert.match(config, /confirmSelector/);
   assert.match(config, /volumeTickIntervalMs: 42/);

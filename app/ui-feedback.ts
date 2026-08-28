@@ -40,7 +40,9 @@ function playConfiguredFile(kind: UiFeedbackKind, volume: number) {
 }
 
 export function playUiFeedback(kind: UiFeedbackKind, soundEnabled: boolean, masterVolume: number, sfxVolume: number) {
-  const volume = UI_FEEDBACK.gain[kind] * masterVolume / 100 * sfxVolume / 100;
+  const previewMaster = kind === "volumeTick" ? Math.max(18, masterVolume) : masterVolume;
+  const previewSfx = kind === "volumeTick" ? Math.max(18, sfxVolume) : sfxVolume;
+  const volume = UI_FEEDBACK.gain[kind] * previewMaster / 100 * previewSfx / 100;
   if (soundEnabled && !playConfiguredFile(kind, volume)) synthesize(kind, volume);
   const vibration = UI_FEEDBACK.vibrationMs[kind];
   if ("vibrate" in navigator) navigator.vibrate(typeof vibration === "number" ? vibration : [...vibration]);

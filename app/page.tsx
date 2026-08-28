@@ -245,7 +245,7 @@ function Game() {
     turns: 0,
   });
   useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, reducedMotion, battleTrack });
-  useUiFeedback({ soundEnabled, masterVolume, sfxVolume });
+  const { playVolumeTick } = useUiFeedback({ soundEnabled, masterVolume, sfxVolume });
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
@@ -1990,9 +1990,9 @@ function Game() {
             </section>
             <section>
               <h3>{t("soundHeading")}</h3>
-              <label>{t("masterVolume")} <b>{masterVolume}</b><input type="range" min="0" max="100" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /></label>
-              <label>BGM <b>{bgmVolume}</b><input type="range" min="0" max="100" value={bgmVolume} onChange={(event) => setBgmVolume(Number(event.target.value))} /></label>
-              <label>{t("soundEffects")} <b>{sfxVolume}</b><input type="range" min="0" max="100" value={sfxVolume} onChange={(event) => setSfxVolume(Number(event.target.value))} /></label>
+              <label>{t("masterVolume")} <b>{masterVolume}</b><input type="range" min="0" max="100" value={masterVolume} onInput={playVolumeTick} onChange={(event) => setMasterVolume(Number(event.target.value))} /></label>
+              <label>BGM <b>{bgmVolume}</b><input type="range" min="0" max="100" value={bgmVolume} onInput={playVolumeTick} onChange={(event) => setBgmVolume(Number(event.target.value))} /></label>
+              <label>{t("soundEffects")} <b>{sfxVolume}</b><input type="range" min="0" max="100" value={sfxVolume} onInput={playVolumeTick} onChange={(event) => setSfxVolume(Number(event.target.value))} /></label>
               <button type="button" className={soundEnabled ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setSoundEnabled((value) => !value)}>{t("muteAll")} {soundEnabled ? "OFF" : "ON"}</button>
               <label>BATTLE MUSIC
                 <select value={battleTrack} onChange={(event) => setBattleTrack(event.target.value as BattleTrackChoice)}>
@@ -2424,7 +2424,7 @@ function Game() {
               {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
             </div>
             <div className="hud-tools">
-              <div className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><div className="hud-mixer"><label><span>ALL</span><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label><label><span>BGM</span><input aria-label="BGM音量" type="range" min="0" max="100" step="10" value={bgmVolume} onChange={(event) => setBgmVolume(Number(event.target.value))} /><output>{bgmVolume}</output></label><label><span>SFX</span><input aria-label="効果音音量" type="range" min="0" max="100" step="10" value={sfxVolume} onChange={(event) => setSfxVolume(Number(event.target.value))} /><output>{sfxVolume}</output></label></div></div>
+              <div className="hud-volume"><button type="button" aria-label={soundEnabled ? "消音する" : "音を出す"} onClick={() => setSoundEnabled((current) => !current)}>{soundEnabled ? "◖))" : "◖×"}</button><div className="hud-mixer"><label><span>ALL</span><input aria-label="全体音量" type="range" min="0" max="100" step="10" value={masterVolume} onInput={playVolumeTick} onChange={(event) => setMasterVolume(Number(event.target.value))} /><output>{masterVolume}</output></label><label><span>BGM</span><input aria-label="BGM音量" type="range" min="0" max="100" step="10" value={bgmVolume} onInput={playVolumeTick} onChange={(event) => setBgmVolume(Number(event.target.value))} /><output>{bgmVolume}</output></label><label><span>SFX</span><input aria-label="効果音音量" type="range" min="0" max="100" step="10" value={sfxVolume} onInput={playVolumeTick} onChange={(event) => setSfxVolume(Number(event.target.value))} /><output>{sfxVolume}</output></label></div></div>
               <div className="hud-icons">
                 {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""}`} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>CHAT</button>}
                 {mode === "online" && online.code && <button type="button" className={`chat-mute ${chatMuted ? "active danger" : ""}`} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
