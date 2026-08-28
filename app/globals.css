@@ -762,7 +762,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .shell.text-size-large{--ui-font-adjust:.61;--ui-control-min:44px;--ui-control-pad-y:10px}
 .shell.text-size-xlarge{--ui-font-adjust:.69;--ui-control-min:50px;--ui-control-pad-y:12px}
 .shell :is(.title-screen nav button,.entry-flow button,.entry-flow select,.settings-drawer button,.settings-drawer input,.settings-drawer select,.online-panel button,.online-panel input,.online-panel select,.action-panel button,.battle-hud button){min-height:var(--ui-control-min);padding-top:var(--ui-control-pad-y);padding-bottom:var(--ui-control-pad-y)}
-@media(min-width:901px){.shell{--ui-font-adjust:.66;--ui-control-min:44px;--ui-control-pad-y:10px}.shell.text-size-large{--ui-font-adjust:.70;--ui-control-min:48px;--ui-control-pad-y:11px}.shell.text-size-xlarge{--ui-font-adjust:.74;--ui-control-min:52px;--ui-control-pad-y:13px}}
+@media(min-width:901px){.shell{--ui-font-adjust:.66;--ui-control-min:44px;--ui-control-pad-y:10px}.shell.text-size-large{--ui-font-adjust:.76;--ui-control-min:56px;--ui-control-pad-y:14px}.shell.text-size-xlarge{--ui-font-adjust:.88;--ui-control-min:66px;--ui-control-pad-y:18px}}
 .meteor-choice.item-choice{justify-content:center;text-align:center}.meteor-choice.item-choice>span,.meteor-choice.item-choice>b{min-width:0;text-align:center}.meteor-choice.item-choice>b{margin-left:0}
 .text-size-large .entry-flow,.text-size-xlarge .entry-flow,.text-size-large.online-lobby-only,.text-size-xlarge.online-lobby-only{overflow-y:auto}
 .text-size-large .item-selection-overlay,.text-size-xlarge .item-selection-overlay{max-height:calc(100% - 12px);overflow-y:auto}
