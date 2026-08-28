@@ -229,7 +229,10 @@ test("documents every authorized item supplier and accepts balanced equipment pr
 
 test("tags Gmail notifications by submission category", async () => {
   const contact = await read("../app/api/contact/route.ts");
-  for (const tag of ["ITEM IDEA", "BUG", "FEEDBACK", "ACCOUNT", "CONTACT"]) assert.match(contact, new RegExp(`return "${tag}"`));
+  for (const tag of ["ITEM IDEA", "BUG", "FEEDBACK", "CONTACT"]) assert.match(contact, new RegExp(`return "${tag}"`));
+  assert.doesNotMatch(contact, /return "ACCOUNT"/);
+  const page = await read("../app/page.tsx");
+  assert.doesNotMatch(page, /<option>アカウントについて<\/option>/);
   assert.match(contact, /Subject: \[METEOR RACE\]\[\$\{gmailSubjectTag\(report\.category\)\}\]\[\$\{report\.reference\}\]/);
 });
 

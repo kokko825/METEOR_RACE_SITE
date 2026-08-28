@@ -29,7 +29,6 @@ const gmailSubjectTag = (category: string) => {
   if (category === "アイテム提案") return "ITEM IDEA";
   if (category === "不具合報告") return "BUG";
   if (category === "ご意見・要望") return "FEEDBACK";
-  if (category === "アカウントについて") return "ACCOUNT";
   return "CONTACT";
 };
 
