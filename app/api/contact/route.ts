@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { EmailMessage } from "cloudflare:email";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 import { COMMUNITY_SAFETY } from "../../../config/community-safety";
+import { registryNumberFor } from "../../registry-number";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ async function notifyContact(report: {
   category: string;
   message: string;
   nickname: string;
-  playerId: string;
+  registryNumber: string;
   siteVersion: string;
   roomCode: string | null;
   createdAt: number;
@@ -52,7 +53,7 @@ async function notifyContact(report: {
       `種別: ${report.category}`,
       `送信日時: ${sentAt}`,
       `ニックネーム: ${report.nickname || "未設定"}`,
-      `REGULA企業登録番号: ${report.playerId}`,
+      `REGULA企業登録番号: ${report.registryNumber}`,
       `サイトバージョン: ${report.siteVersion}`,
       `ルームコード: ${report.roomCode || "なし"}`,
       "",
@@ -99,9 +100,10 @@ export async function POST(request: Request) {
   await env.DB.prepare("DELETE FROM contact_messages WHERE created_at < ?")
     .bind(createdAt - COMMUNITY_SAFETY.contactRetentionDays * 86_400_000).run();
   const reference = id.slice(0, 8).toUpperCase();
+  const registryNumber = await registryNumberFor(playerId);
   let notification: "sent" | "not_configured" | "failed" = "not_configured";
   try {
-    notification = await notifyContact({ reference, category, message, nickname, playerId, siteVersion, roomCode, createdAt })
+    notification = await notifyContact({ reference, category, message, nickname, registryNumber, siteVersion, roomCode, createdAt })
       ? "sent"
       : "not_configured";
   } catch (error) {

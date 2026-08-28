@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { readDuelRating } from "../../duel-rating-store";
 import { containsBlockedChatLanguage } from "../../chat-moderation";
 import { COMMUNITY_SAFETY } from "../../../config/community-safety";
+import { registryNumberFor } from "../../registry-number";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,6 @@ async function ensureProfileSchema() {
   )`).run();
 }
 
-async function publicId(key: string) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`meteor-race:${key}`));
-  return Array.from(new Uint8Array(digest).slice(0, 5), (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
-}
-
 export async function GET(request: Request) {
   const current = identity(request);
   if (!current.key) return Response.json({ email: "未連携", playerId: "--------", nickname: "", synced: false });
@@ -39,7 +35,7 @@ export async function GET(request: Request) {
   const rating = await readDuelRating(current.key);
   return Response.json({
     email: current.email ? maskedEmail(current.email) : "端末内プロフィール",
-    playerId: await publicId(current.key),
+    playerId: await registryNumberFor(current.key),
     nickname: row?.nickname ?? "",
     synced: Boolean(current.email),
     classicRating: rating?.classic_rating ?? 1200,

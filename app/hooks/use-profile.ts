@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getOrCreatePlayerId, playerRequestHeaders } from "../client-identity";
+import { formatRegistryNumber } from "../registry-number";
 
 /**
  * Device identity + 真剣タイマン rating, sourced from /api/profile (server
@@ -21,7 +22,7 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
     return fetch("/api/profile", { headers: playerRequestHeaders(), cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
-        setPublicPlayerId(data.playerId ?? playerId.replace("player:", "").slice(0, 8).toUpperCase());
+        setPublicPlayerId(data.playerId ?? formatRegistryNumber(playerId.replace("player:", "")));
         if (data.nickname) onNicknameFromServer(data.nickname);
         setProfileStatus(data.synced ? "アカウント間で同期中" : "この端末に保存");
         // 真剣タイマンのレートはサーバーが権威（改ざん防止）。取得できた値で常に上書きする。
