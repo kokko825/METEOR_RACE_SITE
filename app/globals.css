@@ -1062,8 +1062,11 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 
 /* Manual page tabs must keep their labels inside the button at every width. */
 .manual-drawer .manual-tabs{flex:0 0 auto;min-width:0}
-.manual-tabs button{width:auto;min-width:78px;max-width:none;overflow:visible;padding-inline:12px;letter-spacing:.04em;text-overflow:clip;white-space:nowrap}
-@media(max-width:700px){.manual-drawer .manual-tabs{gap:4px}.manual-tabs button{width:auto;min-width:66px;max-width:none;padding-inline:8px;font-size:8px;letter-spacing:0}.manual-drawer>header>div:first-child{flex:1 1 0;min-width:0}.manual-drawer>header>div:first-child h2{display:none}}
+.manual-drawer>header .manual-tabs button{width:84px;min-width:84px;max-width:84px;height:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;padding:0 8px;font-size:10px;line-height:1;letter-spacing:.04em;text-align:center;text-overflow:clip;white-space:nowrap}
+@media(max-width:700px){.manual-drawer .manual-tabs{gap:4px}.manual-drawer>header .manual-tabs button{width:68px;min-width:68px;max-width:68px;height:34px;min-height:34px;padding:0 5px;font-size:9px;line-height:1;letter-spacing:0}.manual-drawer>header>div:first-child{flex:1 1 0;min-width:0}.manual-drawer>header>div:first-child h2{display:none}}
+
+/* REGULA occupies its own centered control tier above the regular match header. */
+@media(min-width:901px){.hud-mode>.topbar{height:80px;padding-top:34px}.hud-mode .regula-console{display:grid;position:absolute;z-index:3;left:50%;top:0;width:240px;min-height:29px;padding:5px 10px;transform:translateX(-50%);text-align:center}.hud-mode>.game-layout{height:calc(100dvh - 176px)}}
 
 /* One persistent utility bar across title, setup, lobby and battle screens. */
 .battle-hud.global-hud{position:fixed!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;margin:0!important}

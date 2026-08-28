@@ -191,7 +191,7 @@ test("uses a provisional favicon and mark-free REGULA match-control presentation
   assert.match(css, /\.regula-console\{/);
   assert.match(css, /\.hud-mode \.regula-console\{position:absolute;z-index:2;left:50%;top:-9px;width:250px;transform:translateX\(-50%\)/);
   assert.match(css, /\.hud-regula-progress\{/);
-  assert.match(css, /\.manual-tabs button\{width:auto;min-width:78px;max-width:none;overflow:visible/);
+  assert.match(css, /\.manual-drawer>header \.manual-tabs button\{width:84px;min-width:84px;max-width:84px;height:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center/);
   assert.doesNotMatch(css, /\.manual-tabs button\{[^}]*text-overflow:ellipsis/);
 });
 
