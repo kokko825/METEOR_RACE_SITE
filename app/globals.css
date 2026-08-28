@@ -769,6 +769,13 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .text-size-xlarge .manual-onepage{height:auto;min-height:100%;grid-template-columns:1fr;grid-template-rows:auto auto;overflow-y:auto}.text-size-xlarge .manual-onepage>section{min-height:320px}
 @media(max-width:700px){.text-size-switch{gap:5px}.text-size-switch .drawer-toggle{padding-inline:5px}.text-size-large .manual-onepage,.text-size-xlarge .manual-onepage{height:auto;display:block;overflow-y:auto}.text-size-large .manual-onepage>section,.text-size-xlarge .manual-onepage>section{min-height:310px;margin-bottom:8px}.text-size-large .item-selection-overlay,.text-size-xlarge .item-selection-overlay{max-height:52dvh}.text-size-large .switch-setup-controls,.text-size-xlarge .switch-setup-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+/* Keep headings and their explanations separated at every text scale. */
+.title-copy h1{line-height:.8;margin-bottom:8px}
+.title-copy .title-reading{margin-top:12px;line-height:1.35}
+.title-copy .title-description{margin-top:20px}
+.entry-panel h2{line-height:1.15}
+.entry-panel>p{line-height:1.6}
+
 /* Battles are portrait-only on short coarse-pointer phones; menus remain available in landscape. */
 @media (orientation:landscape) and (max-height:600px) and (max-width:950px) and (hover:none) and (pointer:coarse){
   .hud-mode>.phone-portrait-lock{position:fixed;z-index:9999;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;padding:28px;text-align:center;background:radial-gradient(circle at 50% 45%,rgba(22,91,116,.32),transparent 38%),rgba(2,8,13,.985);color:#dff8ff}

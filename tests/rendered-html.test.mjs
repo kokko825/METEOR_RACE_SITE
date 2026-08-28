@@ -399,6 +399,9 @@ test("scales readable text and controls without resizing the board", async () =>
   assert.match(css, /@media\(min-width:901px\)\{\.shell\{--ui-font-adjust:\.66/);
   assert.match(css, /\.shell\.text-size-large\{--ui-font-adjust:\.76;--ui-control-min:56px/);
   assert.match(css, /\.shell\.text-size-xlarge\{--ui-font-adjust:\.88;--ui-control-min:66px/);
+  assert.match(css, /\.title-copy h1\{line-height:\.8;margin-bottom:8px\}/);
+  assert.match(css, /\.title-copy \.title-description\{margin-top:20px\}/);
+  assert.match(css, /\.entry-panel h2\{line-height:1\.15\}/);
   assert.match(css, /\.meteor-choice\.item-choice\{justify-content:center;text-align:center\}/);
   assert.match(css, /\.text-size-xlarge \.manual-onepage/);
 });
