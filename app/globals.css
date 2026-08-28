@@ -761,8 +761,8 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .shell{--ui-font-adjust:none;--ui-control-min:40px;--ui-control-pad-y:8px;font-size-adjust:var(--ui-font-adjust)}
 .shell.text-size-large{--ui-font-adjust:.61;--ui-control-min:44px;--ui-control-pad-y:10px}
 .shell.text-size-xlarge{--ui-font-adjust:.69;--ui-control-min:50px;--ui-control-pad-y:12px}
-.text-size-large :is(.title-screen nav button,.entry-flow button,.entry-flow select,.settings-drawer button,.settings-drawer input,.settings-drawer select,.online-panel button,.online-panel input,.online-panel select,.action-panel button,.battle-hud button),
-.text-size-xlarge :is(.title-screen nav button,.entry-flow button,.entry-flow select,.settings-drawer button,.settings-drawer input,.settings-drawer select,.online-panel button,.online-panel input,.online-panel select,.action-panel button,.battle-hud button){min-height:var(--ui-control-min);padding-top:var(--ui-control-pad-y);padding-bottom:var(--ui-control-pad-y)}
+.shell :is(.title-screen nav button,.entry-flow button,.entry-flow select,.settings-drawer button,.settings-drawer input,.settings-drawer select,.online-panel button,.online-panel input,.online-panel select,.action-panel button,.battle-hud button){min-height:var(--ui-control-min);padding-top:var(--ui-control-pad-y);padding-bottom:var(--ui-control-pad-y)}
+@media(min-width:901px){.shell{--ui-font-adjust:.66;--ui-control-min:44px;--ui-control-pad-y:10px}.shell.text-size-large{--ui-font-adjust:.70;--ui-control-min:48px;--ui-control-pad-y:11px}.shell.text-size-xlarge{--ui-font-adjust:.74;--ui-control-min:52px;--ui-control-pad-y:13px}}
 .meteor-choice.item-choice{justify-content:center;text-align:center}.meteor-choice.item-choice>span,.meteor-choice.item-choice>b{min-width:0;text-align:center}.meteor-choice.item-choice>b{margin-left:0}
 .text-size-large .entry-flow,.text-size-xlarge .entry-flow,.text-size-large.online-lobby-only,.text-size-xlarge.online-lobby-only{overflow-y:auto}
 .text-size-large .item-selection-overlay,.text-size-xlarge .item-selection-overlay{max-height:calc(100% - 12px);overflow-y:auto}
@@ -1053,7 +1053,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .title-orbit>img{position:absolute;z-index:2;left:27%;top:27%;width:46%;height:46%;object-fit:contain;filter:drop-shadow(0 0 18px rgba(38,218,246,.38));animation:title-counter-orbit 16s linear infinite}
 @keyframes title-counter-orbit{to{transform:rotate(-360deg)}}
 .regula-console{min-width:190px;display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:8px;padding:7px 10px;border:1px solid #285467;background:linear-gradient(100deg,rgba(7,29,40,.95),rgba(3,14,21,.9));box-shadow:inset 2px 0 #5edbf8}
-.regula-console>img{width:31px;height:31px;filter:drop-shadow(0 0 7px rgba(87,221,250,.45))}.regula-console>span{min-width:0;display:grid;gap:3px}.regula-console small{color:#6fdcf7;font-size:7px;font-weight:900;letter-spacing:.13em}.regula-console span>i{height:3px;overflow:hidden;background:#122f3b}.regula-console span>i>b{display:block;width:var(--regula-progress);height:100%;background:linear-gradient(90deg,#319ec0,#76e6ff);box-shadow:0 0 8px #65dfff}.regula-console em{color:#7296a5;font-size:7px;font-style:normal;letter-spacing:.1em}
+.regula-console>img{width:31px;height:31px;filter:drop-shadow(0 0 7px rgba(87,221,250,.45))}.regula-console>span{min-width:0;display:grid;gap:4px}.regula-console small{color:#6fdcf7;font-size:9.5px;font-weight:900;line-height:1.2;letter-spacing:.09em}.regula-console span>i{height:3px;overflow:hidden;background:#122f3b}.regula-console span>i>b{display:block;width:var(--regula-progress);height:100%;background:linear-gradient(90deg,#319ec0,#76e6ff);box-shadow:0 0 8px #65dfff}.regula-console em{color:#8aa9b6;font-size:8.5px;font-style:normal;line-height:1.2;letter-spacing:.06em}
 .hud-mission{position:relative;grid-template-columns:18px minmax(0,1fr);column-gap:6px}.hud-mission .hud-regula-mark{grid-row:1/3;width:17px;height:17px;align-self:center;filter:drop-shadow(0 0 5px #48d8f6)}.hud-mission>small,.hud-mission>strong{grid-column:2}.hud-regula-progress{grid-column:1/-1;width:min(230px,100%);height:2px;overflow:hidden;background:#17333e}.hud-regula-progress>b{display:block;height:100%;background:#63dfff;box-shadow:0 0 7px #63dfff}.hud-mission>button{grid-column:1/-1}
 
 /* The manual frame owns its content height; nothing can spill beyond it. */
@@ -1123,12 +1123,12 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
   .hud-mode .game-back{margin-right:4px}
   .hud-mode .brand{margin-right:auto;min-width:0}
   .hud-mode .brand p{position:static;line-height:1.4;white-space:nowrap}
-  .hud-mode .match-meta .regula-console{position:static;display:grid;width:238px;min-width:238px;min-height:42px;padding:6px 10px;transform:none;text-align:left}
+  .hud-mode .match-meta .regula-console{position:static;display:grid;width:250px;min-width:250px;min-height:48px;padding:7px 11px;transform:none;text-align:left}
   .hud-mode .match-meta .round{align-self:center;margin:0;white-space:nowrap}
   .hud-mode > .game-layout{height:calc(100dvh - 170px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin-top:var(--battle-section-gap)}
 }
 @media (min-width:701px) and (max-width:1050px) {
-  .hud-mode .match-meta .regula-console{display:grid;width:205px;min-width:205px}
+  .hud-mode .match-meta .regula-console{display:grid;width:220px;min-width:220px}
   .hud-mode .topbar .round::before{content:none}
   .hud-mode .brand h1{font-size:clamp(18px,2.6vw,27px)}
 }

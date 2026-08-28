@@ -192,6 +192,8 @@ test("uses a provisional favicon and mark-free REGULA CORE-arrival presentation"
   assert.match(css, /\.regula-console\{/);
   assert.match(matchMeta, /className="match-meta"/);
   assert.match(css, /\.hud-mode \.match-meta \.regula-console\{position:static/);
+  assert.match(css, /\.regula-console small\{[^}]*font-size:9\.5px/);
+  assert.match(css, /\.regula-console em\{[^}]*font-size:8\.5px/);
   assert.match(css, /\.hud-regula-progress\{/);
   assert.match(css, /\.manual-drawer>header \.manual-tabs button\{width:84px;min-width:84px;max-width:84px;height:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center/);
   assert.doesNotMatch(css, /\.manual-tabs button\{[^}]*text-overflow:ellipsis/);
@@ -394,6 +396,7 @@ test("scales readable text and controls without resizing the board", async () =>
   assert.match(copy, /textSizeExtraLarge/);
   assert.match(css, /--ui-control-min/);
   assert.match(css, /font-size-adjust:var\(--ui-font-adjust\)/);
+  assert.match(css, /@media\(min-width:901px\)\{\.shell\{--ui-font-adjust:\.66/);
   assert.match(css, /\.meteor-choice\.item-choice\{justify-content:center;text-align:center\}/);
   assert.match(css, /\.text-size-xlarge \.manual-onepage/);
 });
