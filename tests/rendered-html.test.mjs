@@ -189,7 +189,8 @@ test("uses a provisional favicon and mark-free REGULA CORE-arrival presentation"
   assert.match(page, /REGULA \/\/ CORE到達管制/);
   assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
   assert.match(css, /\.regula-console\{/);
-  assert.match(css, /\.hud-mode \.regula-console\{position:absolute;z-index:2;left:50%;top:-9px;width:250px;transform:translateX\(-50%\)/);
+  assert.match(page, /className="match-meta"/);
+  assert.match(css, /\.hud-mode \.match-meta \.regula-console\{position:static/);
   assert.match(css, /\.hud-regula-progress\{/);
   assert.match(css, /\.manual-drawer>header \.manual-tabs button\{width:84px;min-width:84px;max-width:84px;height:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center/);
   assert.doesNotMatch(css, /\.manual-tabs button\{[^}]*text-overflow:ellipsis/);
@@ -339,6 +340,9 @@ test("centralizes replaceable UI sounds and tactile feedback", async () => {
   assert.match(config, /confirmSelector/);
   assert.match(config, /volumeTickIntervalMs: 42/);
   assert.match(readme, /config\/ui-feedback\.ts/);
+  assert.match(page, /aria-label="全体音量"/);
+  assert.match(page, /aria-label="BGM音量"/);
+  assert.match(page, /aria-label="効果音音量"/);
 });
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {
