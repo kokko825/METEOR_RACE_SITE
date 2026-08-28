@@ -402,6 +402,8 @@ test("scales readable text and controls without resizing the board", async () =>
   assert.match(css, /\.title-copy h1\{line-height:\.8;margin-bottom:8px\}/);
   assert.match(css, /\.title-copy \.title-description\{margin-top:20px\}/);
   assert.match(css, /\.entry-panel h2\{line-height:1\.15\}/);
+  assert.match(css, /\.title-copy>small\{margin-bottom:20px\}/);
+  assert.match(css, /\.title-copy \.title-reading\{margin-top:22px\}/);
   assert.match(css, /\.meteor-choice\.item-choice\{justify-content:center;text-align:center\}/);
   assert.match(css, /\.text-size-xlarge \.manual-onepage/);
 });
