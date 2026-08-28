@@ -227,6 +227,12 @@ test("documents every authorized item supplier and accepts balanced equipment pr
   assert.match(terms, /アイテム案の投稿/);
 });
 
+test("tags Gmail notifications by submission category", async () => {
+  const contact = await read("../app/api/contact/route.ts");
+  for (const tag of ["ITEM IDEA", "BUG", "FEEDBACK", "ACCOUNT", "CONTACT"]) assert.match(contact, new RegExp(`return "${tag}"`));
+  assert.match(contact, /Subject: \[METEOR RACE\]\[\$\{gmailSubjectTag\(report\.category\)\}\]\[\$\{report\.reference\}\]/);
+});
+
 test("keeps the board square and lets narrow phones scroll without fixed-control overlap", async () => {
   const [page, css] = await Promise.all([
     read("../app/page.tsx"),

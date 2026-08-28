@@ -25,6 +25,14 @@ const clean = (value: unknown, max: number) => typeof value === "string" ? value
 const CONTACT_DESTINATION = "follnest.info+meteorrace@gmail.com";
 const CONTACT_SENDER = "contact@follnest.com";
 
+const gmailSubjectTag = (category: string) => {
+  if (category === "アイテム提案") return "ITEM IDEA";
+  if (category === "不具合報告") return "BUG";
+  if (category === "ご意見・要望") return "FEEDBACK";
+  if (category === "アカウントについて") return "ACCOUNT";
+  return "CONTACT";
+};
+
 async function notifyContact(report: {
   reference: string;
   category: string;
@@ -58,7 +66,7 @@ async function notifyContact(report: {
     `From: METEOR RACE <${CONTACT_SENDER}>`,
     `To: ${CONTACT_DESTINATION}`,
     `Reply-To: ${CONTACT_SENDER}`,
-    `Subject: [METEOR RACE ${report.reference}] Contact report`,
+    `Subject: [METEOR RACE][${gmailSubjectTag(report.category)}][${report.reference}] New submission`,
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",
     "Content-Transfer-Encoding: 8bit",
