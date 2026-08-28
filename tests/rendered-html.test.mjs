@@ -160,6 +160,23 @@ test("localizes every player-facing label in match setup", async () => {
   assert.match(page, /language === "en" \? "Daily 12:00–13:00 \/ 20:00–21:00 JST"/);
 });
 
+test("ships the bilingual ASTRA ACCORD world archive in the manual", async () => {
+  const [page, copy, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../config/ui-copy.ts"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(page, /manualPage === "world"/);
+  assert.match(page, /ARCHIVE \/ ASTRA ACCORD/);
+  assert.match(page, /t\("worldRegula"\)/);
+  assert.match(copy, /アストラ協定/);
+  assert.match(copy, /REGULA/);
+  assert.match(copy, /非暴力の競技/);
+  assert.match(copy, /nonviolent competition/);
+  assert.match(css, /\.manual-world\{/);
+  assert.match(css, /@media\(max-width:700px\).*?\.manual-world/s);
+});
+
 test("keeps the board square and lets narrow phones scroll without fixed-control overlap", async () => {
   const [page, css] = await Promise.all([
     read("../app/page.tsx"),

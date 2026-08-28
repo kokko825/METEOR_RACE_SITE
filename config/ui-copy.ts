@@ -75,6 +75,29 @@ export const UI_COPY = {
     en: "Only high-impact positions from the winning side are saved. Nicknames, email, chat, and PLAYER IDs are never sent.",
   },
   rulesAndItems: { ja: "ルール・アイテム一覧", en: "Rules & Items" },
+  worldHeading: { ja: "世界観", en: "WORLD" },
+  manualRulesTab: { ja: "ルール", en: "RULES" },
+  manualWorldTab: { ja: "世界観", en: "WORLD" },
+  worldEra: {
+    ja: "20XX年。\n人類は星々へ進出し、宇宙開発は新たな時代を迎えていた。",
+    en: "20XX.\nHumanity had reached the stars, and space development was entering a new era.",
+  },
+  worldAccord: {
+    ja: "領域、航路、資源――\n星間社会に広がる争いを収めるため、\n各国は『アストラ協定』を結ぶ。",
+    en: "Territory, routes, resources—\nTo end the conflicts spreading across interstellar society, the nations signed the Astra Accord.",
+  },
+  worldRegula: {
+    ja: "星間管理AI『REGULA』が見守るなか、\n資源を巡る衝突は、非暴力の競技へと姿を変えた。",
+    en: "Under the watch of REGULA, the interstellar administration AI, disputes over resources became a nonviolent competition.",
+  },
+  worldBroadcast: {
+    ja: "各企業の衛星から投下されるメテオ。\n星間ネットワークの向こうで、戦いを見守る無数の観衆。",
+    en: "Meteors descend from each corporation's satellites.\nAcross the interstellar network, countless spectators watch the battle unfold.",
+  },
+  worldFinale: {
+    ja: "星々の未来と熱狂を背負う、その競技の名は――",
+    en: "A competition carrying the future and fervor of the stars. Its name is—",
+  },
   close: { ja: "閉じる", en: "Close" },
   manualMove: { ja: "探査機を縦横へ1マス移動", en: "Move your probe one orthogonal cell" },
   manualMeteor: { ja: "小または大メテオを1個配置", en: "Place one small or large meteor" },

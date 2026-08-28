@@ -1009,6 +1009,27 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .manual-item-grid article.booster > i { color: var(--item-booster); }
 .manual-item-grid article.blast > i { color: var(--item-blast); }
 
+/* WORLD archive inside the manual. */
+.manual-drawer .manual-tabs{display:flex;gap:6px;margin-left:auto;padding:0}
+.manual-tabs button{min-height:36px;padding:7px 13px;border:1px solid #294f60;background:#061720;color:#7296a5;font-size:9px;font-weight:900;letter-spacing:.14em;cursor:pointer}
+.manual-tabs button:hover,.manual-tabs button:focus-visible{border-color:#60d9fa;color:#dff8ff}
+.manual-tabs button.active{border-color:#69ddff;background:#0a3443;color:#fff;box-shadow:inset 0 -2px #69ddff,0 0 18px rgba(74,208,244,.12)}
+.manual-world{position:relative;height:calc(100% - 58px);display:grid;grid-template-columns:minmax(260px,.75fr) minmax(360px,1.25fr);align-items:center;gap:clamp(24px,5vw,80px);overflow:hidden;padding:clamp(24px,5vh,58px) clamp(28px,7vw,90px);background:radial-gradient(circle at 22% 47%,rgba(24,114,143,.25),transparent 27%),radial-gradient(circle at 75% 30%,rgba(79,38,115,.15),transparent 34%),linear-gradient(135deg,#020a0f,#061823 55%,#02080d)}
+.manual-world::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,#81dff8 0 1px,transparent 1.4px),radial-gradient(circle,#fff 0 1px,transparent 1.3px);background-position:0 0,37px 28px;background-size:73px 73px,109px 109px;opacity:.18}
+.manual-world-orbit{position:relative;z-index:1;width:min(32vw,330px);aspect-ratio:1;margin:auto;border:1px solid rgba(105,221,255,.36);border-radius:50%;box-shadow:0 0 70px rgba(63,186,224,.14),inset 0 0 40px rgba(55,185,221,.1)}
+.manual-world-orbit::before{content:"REGULA";position:absolute;inset:21%;display:grid;place-items:center;border:1px solid #5dd8f7;border-radius:50%;background:radial-gradient(circle,#123849,#06141c 66%);box-shadow:0 0 34px rgba(94,222,255,.33);color:#eaffff;font-size:clamp(12px,1.4vw,18px);font-weight:950;letter-spacing:.26em}
+.manual-world-orbit::after{content:"INTERSTELLAR ADMINISTRATION AI";position:absolute;left:50%;bottom:7%;width:max-content;transform:translateX(-50%);color:#56899c;font-size:7px;letter-spacing:.2em}
+.manual-world-orbit>i{position:absolute;inset:8%;border:1px solid rgba(133,222,246,.2);border-radius:50%;transform:rotate(24deg)}
+.manual-world-orbit>i:nth-child(2){inset:2% 25%;transform:rotate(61deg)}
+.manual-world-orbit>i:nth-child(3){inset:25% 2%;transform:rotate(-39deg)}
+.manual-world-copy{position:relative;z-index:1;max-width:620px;padding-left:clamp(18px,3vw,34px);border-left:2px solid #54cfee}
+.manual-world-copy small{display:block;margin-bottom:clamp(15px,2.3vh,25px);color:#62dcfa;font-size:9px;font-weight:900;letter-spacing:.24em}
+.manual-world-copy p{margin:0 0 clamp(11px,1.7vh,19px);white-space:pre-line;color:#b9d0da;font-size:clamp(11px,1.6cqh,15px);line-height:1.8;letter-spacing:.04em}
+.manual-world-copy strong{display:block;margin-top:clamp(17px,2.6vh,28px);color:#e6f8ff;font-size:clamp(11px,1.6cqh,15px);font-weight:600;letter-spacing:.08em}
+.manual-world-copy b{display:block;margin-top:7px;color:#fff;font-family:var(--font-orbitron),sans-serif;font-size:clamp(25px,4.4cqh,43px);letter-spacing:.15em;text-shadow:0 0 22px rgba(84,213,247,.45)}
+@media(max-width:900px){.manual-now{display:none}.manual-world{grid-template-columns:minmax(190px,.62fr) minmax(330px,1.38fr);gap:22px;padding:25px 30px}.manual-world-orbit{width:min(28vw,235px)}}
+@media(max-width:700px){.manual-drawer>header>div:first-child h2{font-size:14px}.manual-drawer .manual-tabs{margin-left:0}.manual-tabs button{min-height:32px;padding:5px 9px;font-size:8px}.manual-world{height:auto;min-height:calc(100% - 50px);grid-template-columns:1fr;align-content:start;gap:15px;overflow:visible;padding:19px 16px 28px}.manual-world-orbit{width:min(45vw,170px)}.manual-world-copy{padding-left:14px}.manual-world-copy p{margin-bottom:12px;font-size:10px;line-height:1.65}.manual-world-copy strong{margin-top:18px;font-size:10px}.manual-world-copy b{font-size:24px}}
+
 /* One persistent utility bar across title, setup, lobby and battle screens. */
 .battle-hud.global-hud{position:fixed!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;margin:0!important}
 .shell.entry-active .global-hud{z-index:950}

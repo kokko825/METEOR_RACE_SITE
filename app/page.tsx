@@ -164,6 +164,7 @@ function Game() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [manualPage, setManualPage] = useState<"rules" | "world">("rules");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMuted, setChatMuted] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -1962,8 +1963,11 @@ function Game() {
       {manualOpen && (
         <div className="manual-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setManualOpen(false)}>
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
-            <header><div><small>METEOR RACE / MANUAL</small><h2>{t("rulesAndItems")}</h2></div><div className="manual-now"><small>NOW</small><strong>{displayGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
-            <div className="manual-onepage">
+            <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{displayGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
+            {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
+              <div className="manual-world-orbit" aria-hidden="true"><i /><i /><i /></div>
+              <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div>
+            </div> : <div className="manual-onepage">
               <section className="manual-rules"><header><small>01</small><h3>{t("turnLoopHeading")}</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
                 <article><span>01</span><i>✥</i><div><b>MOVE</b><p>{t("manualMove")}</p></div></article><em>↓</em>
                 <article><span>02</span><i>◆</i><div><b>METEOR</b><p>{t("manualMeteor")}</p></div></article><em>↓</em>
@@ -1971,7 +1975,7 @@ function Game() {
                 <strong>{t("manualNext")}</strong>
               </div><div className="manual-notes"><p>{t("noDiagonal")}</p><p>{t("blastPropulsion")}</p><p>{t("anyCoreArrival")}</p><p>{t("firstTurnRule")}</p></div></div></section>
               <section className="manual-items"><header><small>02</small><h3>{t("itemArchiveHeading")}</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance, language)}</p></div></article>)}</div></section>
-            </div>
+            </div>}
           </aside>
         </div>
       )}
