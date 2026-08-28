@@ -1030,6 +1030,27 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 @media(max-width:900px){.manual-now{display:none}.manual-world{grid-template-columns:minmax(190px,.62fr) minmax(330px,1.38fr);gap:22px;padding:25px 30px}.manual-world-orbit{width:min(28vw,235px)}}
 @media(max-width:700px){.manual-drawer>header>div:first-child h2{font-size:14px}.manual-drawer .manual-tabs{margin-left:0}.manual-tabs button{min-height:32px;padding:5px 9px;font-size:8px}.manual-world{height:auto;min-height:calc(100% - 50px);grid-template-columns:1fr;align-content:start;gap:15px;overflow:visible;padding:19px 16px 28px}.manual-world-orbit{width:min(45vw,170px)}.manual-world-copy{padding-left:14px}.manual-world-copy p{margin-bottom:12px;font-size:10px;line-height:1.65}.manual-world-copy strong{margin-top:18px;font-size:10px}.manual-world-copy b{font-size:24px}}
 
+/* Official marks and REGULA match-control language. */
+.brand-mark{width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 0 9px rgba(43,218,245,.55))}
+.title-orbit>img{position:absolute;z-index:2;left:27%;top:27%;width:46%;height:46%;object-fit:contain;filter:drop-shadow(0 0 18px rgba(38,218,246,.38));animation:title-counter-orbit 16s linear infinite}
+@keyframes title-counter-orbit{to{transform:rotate(-360deg)}}
+.regula-console{min-width:190px;display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:8px;padding:7px 10px;border:1px solid #285467;background:linear-gradient(100deg,rgba(7,29,40,.95),rgba(3,14,21,.9));box-shadow:inset 2px 0 #5edbf8}
+.regula-console>img{width:31px;height:31px;filter:drop-shadow(0 0 7px rgba(87,221,250,.45))}.regula-console>span{min-width:0;display:grid;gap:3px}.regula-console small{color:#6fdcf7;font-size:7px;font-weight:900;letter-spacing:.13em}.regula-console span>i{height:3px;overflow:hidden;background:#122f3b}.regula-console span>i>b{display:block;width:var(--regula-progress);height:100%;background:linear-gradient(90deg,#319ec0,#76e6ff);box-shadow:0 0 8px #65dfff}.regula-console em{color:#7296a5;font-size:7px;font-style:normal;letter-spacing:.1em}
+.hud-mission{position:relative;grid-template-columns:18px minmax(0,1fr);column-gap:6px}.hud-mission .hud-regula-mark{grid-row:1/3;width:17px;height:17px;align-self:center;filter:drop-shadow(0 0 5px #48d8f6)}.hud-mission>small,.hud-mission>strong{grid-column:2}.hud-regula-progress{grid-column:1/-1;width:min(230px,100%);height:2px;overflow:hidden;background:#17333e}.hud-regula-progress>b{display:block;height:100%;background:#63dfff;box-shadow:0 0 7px #63dfff}.hud-mission>button{grid-column:1/-1}
+
+/* The manual frame owns its content height; nothing can spill beyond it. */
+.manual-drawer{display:flex;flex-direction:column;max-width:calc(100vw - 12px);overflow:hidden}
+.manual-drawer>header{flex:0 0 58px;min-width:0}.manual-drawer>header>div:first-child{min-width:0}.manual-drawer>header>div:first-child small,.manual-drawer>header>div:first-child h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.manual-onepage,.manual-world{flex:1;width:100%;height:auto;min-height:0;max-width:100%}
+.manual-onepage{padding-bottom:1px}.manual-rule-content,.manual-item-grid{max-width:100%;overflow:hidden}
+.manual-world-orbit::before{content:"";position:absolute;inset:12%;border-radius:50%;background:conic-gradient(#62defb var(--regula-progress),rgba(86,197,225,.12) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0)}
+.manual-world-orbit::after{content:"INTERSTELLAR ADMINISTRATION AI";position:absolute;left:50%;bottom:4%;width:max-content;transform:translateX(-50%);color:#56899c;font-size:7px;letter-spacing:.2em}
+.manual-world-orbit>img{position:absolute;z-index:2;inset:29%;width:42%;height:42%;filter:drop-shadow(0 0 13px rgba(90,224,255,.5))}.manual-world-orbit>span,.manual-world-orbit>b{position:absolute;z-index:2;left:50%;width:max-content;transform:translateX(-50%);letter-spacing:.14em}.manual-world-orbit>span{top:8%;color:#6fdcf7;font-size:8px}.manual-world-orbit>b{bottom:13%;color:#dff9ff;font-size:8px}
+.settings-drawer dl div:only-child{align-items:center;border-color:#326579;background:linear-gradient(100deg,#082430,#061720)}.settings-drawer dl div:only-child dt{color:#76dff8;font-weight:900;letter-spacing:.1em}
+@media(max-width:1050px){.regula-console{display:none}.hud-mode .topbar .round::before{content:"REGULA / ";color:#62dffa}}
+@media(max-width:700px){.manual-drawer{display:block;overflow-x:hidden;overflow-y:auto}.manual-drawer>header{min-height:50px;height:auto;flex-wrap:nowrap}.manual-onepage,.manual-world{min-height:0}.manual-world{overflow:hidden}.manual-world-copy{max-width:100%}.manual-world-copy p{overflow-wrap:anywhere}}
+@media(min-width:701px) and (max-height:720px){.manual-overlay{padding:8px}.manual-drawer{height:calc(100dvh - 16px);padding:10px 14px}.manual-drawer>header{flex-basis:48px}.manual-onepage{gap:7px;padding-top:7px}.manual-world{gap:18px;padding:16px 28px}.manual-world-copy p{margin-bottom:7px;font-size:9px;line-height:1.42}.manual-world-copy strong{margin-top:9px;font-size:9px}.manual-world-copy b{font-size:25px}.manual-world-orbit{width:min(27vw,210px)}}
+
 /* One persistent utility bar across title, setup, lobby and battle screens. */
 .battle-hud.global-hud{position:fixed!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;margin:0!important}
 .shell.entry-active .global-hud{z-index:950}

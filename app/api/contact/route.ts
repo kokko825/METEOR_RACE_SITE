@@ -45,7 +45,7 @@ async function notifyContact(report: {
       `種別: ${report.category}`,
       `送信日時: ${sentAt}`,
       `ニックネーム: ${report.nickname || "未設定"}`,
-      `PLAYER ID: ${report.playerId}`,
+      `REGULA企業登録番号: ${report.playerId}`,
       `サイトバージョン: ${report.siteVersion}`,
       `ルームコード: ${report.roomCode || "なし"}`,
       "",

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="REGULA">
+  <g fill="none" stroke="#f7fbff" stroke-width="30" stroke-linecap="square" stroke-linejoin="round">
+    <path d="M256 72C250 163 307 235 424 249M424 249C329 255 269 319 256 430M256 430C248 333 183 269 88 255M88 255C183 247 245 176 256 72"/>
+  </g>
+  <circle cx="256" cy="256" r="35" fill="#f7fbff"/><circle cx="256" cy="430" r="23" fill="#ff8500"/>
+</svg>

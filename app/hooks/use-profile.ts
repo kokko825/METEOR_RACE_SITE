@@ -11,7 +11,6 @@ import { getOrCreatePlayerId, playerRequestHeaders } from "../client-identity";
  * shows up.
  */
 export function useProfile(onNicknameFromServer: (nickname: string) => void) {
-  const [profileEmail, setProfileEmail] = useState("未連携");
   const [publicPlayerId, setPublicPlayerId] = useState("--------");
   const [profileStatus, setProfileStatus] = useState("");
   const [classicRankRating, setClassicRankRating] = useState(1200);
@@ -22,7 +21,6 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
     return fetch("/api/profile", { headers: playerRequestHeaders(), cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
-        setProfileEmail(data.email ?? "未連携");
         setPublicPlayerId(data.playerId ?? playerId.replace("player:", "").slice(0, 8).toUpperCase());
         if (data.nickname) onNicknameFromServer(data.nickname);
         setProfileStatus(data.synced ? "アカウント間で同期中" : "この端末に保存");
@@ -30,7 +28,7 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
         if (Number.isFinite(data.classicRating)) setClassicRankRating(data.classicRating);
         if (Number.isFinite(data.itemRating)) setItemRankRating(data.itemRating);
       })
-      .catch(() => setProfileEmail("未連携"));
+      .catch(() => setProfileStatus("登録情報を確認できませんでした"));
   }, [onNicknameFromServer]);
 
   useEffect(() => {
@@ -46,7 +44,7 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
   }, [refreshProfile]);
 
   return {
-    profileEmail, publicPlayerId,
+    publicPlayerId,
     profileStatus, setProfileStatus,
     classicRankRating, itemRankRating,
     refreshProfile,

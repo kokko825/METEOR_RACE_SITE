@@ -177,6 +177,36 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
   assert.match(css, /@media\(max-width:700px\).*?\.manual-world/s);
 });
 
+test("uses official marks and REGULA match-control presentation", async () => {
+  const [page, assets, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../config/asset-paths.ts"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(assets, /favicon: "\/assets\/branding\/meteor-race-mark\.svg"/);
+  assert.match(assets, /regulaMark: "\/assets\/branding\/regula-mark\.svg"/);
+  assert.match(page, /REGULA \/\/ MATCH CONTROL/);
+  assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
+  assert.match(css, /\.regula-console\{/);
+  assert.match(css, /\.hud-regula-progress\{/);
+});
+
+test("keeps the manual inside its frame and presents device identity as company registry", async () => {
+  const [page, copy, css, settings] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../config/ui-copy.ts"),
+    read("../app/globals.css"),
+    read("../app/hooks/use-local-settings.ts"),
+  ]);
+  assert.match(copy, /REGULA企業登録番号/);
+  assert.match(copy, /METEORは相手を妨害/);
+  assert.doesNotMatch(page, /t\("accountType"\)/);
+  assert.doesNotMatch(page, /t\("reduceMotion"\)/);
+  assert.doesNotMatch(settings, /meteor-race-reduced-motion/);
+  assert.match(settings, /prefers-reduced-motion: reduce/);
+  assert.match(css, /\.manual-onepage,\.manual-world\{flex:1;width:100%;height:auto;min-height:0;max-width:100%\}/);
+});
+
 test("keeps the board square and lets narrow phones scroll without fixed-control overlap", async () => {
   const [page, css] = await Promise.all([
     read("../app/page.tsx"),

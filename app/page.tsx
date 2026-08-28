@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
 import { rankTier } from "./duel-rating";
@@ -67,6 +68,7 @@ import {
   type StrongPlayCandidate,
 } from "./strong-play";
 import { COMMUNITY_SAFETY } from "../config/community-safety";
+import { ASSET_PATHS } from "../config/asset-paths";
 import {
   ITEM_DEMO_LABELS,
   InventoryPanel,
@@ -177,7 +179,7 @@ function Game() {
     masterVolume, setMasterVolume,
     bgmVolume, setBgmVolume,
     sfxVolume, setSfxVolume,
-    reducedMotion, setReducedMotion,
+    reducedMotion,
     battleTrack, setBattleTrack,
     language, setLanguage,
     strongPlaySharing, setStrongPlaySharing,
@@ -259,11 +261,14 @@ function Game() {
   const rankedOpen = isRankedOpen(new Date(currentTime));
   useEffect(() => { if (!rankedOpen) setRankedMode(false); }, [rankedOpen]);
   const {
-    profileEmail, publicPlayerId,
+    publicPlayerId,
     profileStatus, setProfileStatus,
     classicRankRating, itemRankRating, refreshProfile,
   } = useProfile(setNickname);
   const rankRating = isItemVariant(variant) ? itemRankRating : classicRankRating;
+  const regulaCore = { r: Math.floor(game.size / 2), c: Math.floor(game.size / 2) };
+  const regulaClosestDistance = Math.min(...activePlayers(game).map((player) => distance(game.probes[player], regulaCore)));
+  const regulaProgress = game.phase === "over" ? 100 : Math.max(0, Math.min(99, Math.round((1 - regulaClosestDistance / Math.max(1, game.size - 1)) * 100)));
   useEffect(() => {
     fetch("/api/balance", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
@@ -1785,7 +1790,7 @@ function Game() {
         body: JSON.stringify({ nickname }),
       });
       if (!response.ok) throw new Error();
-      setProfileStatus(profileEmail === "端末内プロフィール" ? "この端末に保存しました" : "アカウントに保存しました");
+      setProfileStatus("REGULA企業登録を更新しました");
     } catch {
       setProfileStatus("保存できませんでした");
     }
@@ -1841,7 +1846,7 @@ function Game() {
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
           <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
-          <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
+          <div className="title-orbit" aria-hidden="true"><i /><i /><Image unoptimized width={220} height={220} src={ASSET_PATHS.branding.meteorRaceMark} alt="" /></div>
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
             <h1>METEOR<br/><span>RACE</span></h1>
@@ -1893,12 +1898,13 @@ function Game() {
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
         <div className="brand">
-          <span className="brand-mark">✦</span>
+          <Image unoptimized width={38} height={38} className="brand-mark" src={ASSET_PATHS.branding.meteorRaceMark} alt="" />
           <div>
             <h1>METEOR RACE</h1>
             <p>{t("titleTagline")}</p>
           </div>
         </div>
+        <div className="regula-console" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-label={`REGULA match progress ${regulaProgress}%`}><Image unoptimized width={31} height={31} src={ASSET_PATHS.branding.regulaMark} alt=""/><span><small>REGULA // MATCH CONTROL</small><i><b /></i><em>CORE APPROACH {regulaProgress}%</em></span></div>
         <div className="round">
           {t("round")} {Math.floor(game.turnCount / activePlayers(game).length) + 1}
           {game.ranked && <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></>}
@@ -1922,7 +1928,7 @@ function Game() {
               <h3>{t("accountHeading")}</h3>
               <label>{t("nickname")}<input maxLength={16} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="PLAYER" /></label>
               <p role="status">{profileStatus || t("autoSave")}</p>
-              <dl><div><dt>{t("accountType")}</dt><dd>{profileEmail}</dd></div><div><dt>PLAYER ID</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
+              <dl><div><dt>{t("registryNumber")}</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
               <p>{t("accountNote")}</p>
             </section>
             <section>
@@ -1937,10 +1943,6 @@ function Game() {
                   <option value="random">RANDOM</option>
                 </select>
               </label>
-            </section>
-            <section>
-              <h3>{t("displayHeading")}</h3>
-              <button type="button" className={reducedMotion ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setReducedMotion((value) => !value)}>{t("reduceMotion")} {reducedMotion ? "ON" : "OFF"}</button>
             </section>
             <section>
               <h3>{t("playResearchHeading")}</h3>
@@ -1965,7 +1967,7 @@ function Game() {
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
             <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{displayGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
             {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
-              <div className="manual-world-orbit" aria-hidden="true"><i /><i /><i /></div>
+              <div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><Image unoptimized width={140} height={140} src={ASSET_PATHS.branding.regulaMark} alt=""/><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
               <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div>
             </div> : <div className="manual-onepage">
               <section className="manual-rules"><header><small>01</small><h3>{t("turnLoopHeading")}</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
@@ -2356,8 +2358,9 @@ function Game() {
               <span><small>PROBE CONTROL</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
             </button>
             <div className="hud-mission">
-              <small>{entryStage === "title" ? "SYSTEM READY" : entryStage ? "MATCH CONFIGURATION" : onlineLobbyOnly ? "ONLINE WAITING ROOM" : game.phase === "over" ? "MISSION COMPLETE" : `${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
+              <Image unoptimized width={17} height={17} className="hud-regula-mark" src={ASSET_PATHS.branding.regulaMark} alt=""/><small>{entryStage === "title" ? "REGULA NETWORK READY" : entryStage ? "REGULA / MATCH CONFIGURATION" : onlineLobbyOnly ? "REGULA / ONLINE WAITING ROOM" : game.phase === "over" ? "REGULA / MISSION COMPLETE" : `REGULA / ${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
               <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? "ONLINEの対戦方式を設定" : setupMode === "cpu" ? "SINGLEの対戦方式を設定" : "LOCALの対戦方式を設定") : onlineLobbyOnly ? (online.code ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}` : "ルームを作成または参加") : displayGameMessage}</strong>
+              {!entryStage && !onlineLobbyOnly && <i className="hud-regula-progress" aria-hidden="true"><b style={{ width: `${regulaProgress}%` }} /></i>}
               {mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}
               {!entryStage && game.phase === "over" && mode === "online" && online.role && <button type="button" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
             </div>
