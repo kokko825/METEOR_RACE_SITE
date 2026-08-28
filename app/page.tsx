@@ -181,6 +181,7 @@ function Game() {
     reducedMotion,
     battleTrack, setBattleTrack,
     language, setLanguage,
+    textSize, setTextSize,
     strongPlaySharing, setStrongPlaySharing,
   } = useLocalSettings();
   const t = (key: Parameters<typeof uiText>[1]) => uiText(language, key);
@@ -1870,7 +1871,7 @@ function Game() {
   };
 
   return (
-    <main className={`shell variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
+    <main className={`shell text-size-${textSize} variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       <div className="phone-portrait-lock" role="status" aria-live="polite">
         <i aria-hidden="true">↻</i>
         <strong>端末を縦向きにしてください</strong>
@@ -1956,6 +1957,15 @@ function Game() {
                 <button type="button" className={language === "en" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={language === "en"} onClick={() => setLanguage("en")}>{t("englishLanguage")}</button>
               </div>
               <p>{t("languageSaved")}</p>
+            </section>
+            <section>
+              <h3>{t("textSizeHeading")}</h3>
+              <div className="text-size-switch" role="group" aria-label={t("textSizeHeading")}>
+                <button type="button" className={textSize === "standard" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={textSize === "standard"} onClick={() => setTextSize("standard")}>{t("textSizeStandard")}</button>
+                <button type="button" className={textSize === "large" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={textSize === "large"} onClick={() => setTextSize("large")}>{t("textSizeLarge")}</button>
+                <button type="button" className={textSize === "xlarge" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={textSize === "xlarge"} onClick={() => setTextSize("xlarge")}>{t("textSizeExtraLarge")}</button>
+              </div>
+              <p>{t("textSizeSaved")}</p>
             </section>
             <section>
               <h3>{t("accountHeading")}</h3>

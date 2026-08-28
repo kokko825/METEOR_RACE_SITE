@@ -330,6 +330,23 @@ test("keeps desktop item-selection icons at their intended proportions", async (
   assert.doesNotMatch(css, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
 });
 
+test("scales readable text and controls without resizing the board", async () => {
+  const [page, css, hook, copy] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+    read("../app/hooks/use-local-settings.ts"),
+    read("../config/ui-copy.ts"),
+  ]);
+  assert.match(page, /text-size-\$\{textSize\}/);
+  assert.match(page, /setTextSize\("xlarge"\)/);
+  assert.match(hook, /meteor-race-text-size/);
+  assert.match(copy, /textSizeExtraLarge/);
+  assert.match(css, /--ui-control-min/);
+  assert.match(css, /font-size-adjust:var\(--ui-font-adjust\)/);
+  assert.match(css, /\.meteor-choice\.item-choice\{justify-content:center;text-align:center\}/);
+  assert.match(css, /\.text-size-xlarge \.manual-onepage/);
+});
+
 test("falls back to a safe scrollable layout when a desktop window is resized", async () => {
   const [css, safety] = await Promise.all([
     read("../app/globals.css"),

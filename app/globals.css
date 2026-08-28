@@ -749,7 +749,20 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 @media(max-width:560px){.hud-mode>.topbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}.hud-mode .topbar .round{order:initial;width:auto;max-width:100%;margin:0;justify-self:center;padding:5px 8px;font-size:8px;text-align:center}.hud-mode .topbar .round b,.hud-mode .topbar .round em{margin-top:2px;font-size:6px}.hud-mode .game-back{white-space:nowrap}}
 .hud-mode .board{position:relative;z-index:1}.hud-mode .action-panel{position:relative;z-index:30;isolation:isolate;width:100%;justify-self:stretch;pointer-events:auto}.hud-mode .action-panel:empty{display:none}
 .language-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px}.language-switch .drawer-toggle{width:100%;font-weight:800;letter-spacing:.08em}
+.text-size-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.text-size-switch .drawer-toggle{width:100%;min-width:0;font-weight:800;letter-spacing:.06em}
 .phone-portrait-lock{display:none}
+
+/* One scalable typography system. The board geometry stays fixed while text metrics and control hit areas grow together. */
+.shell{--ui-font-adjust:none;--ui-control-min:40px;--ui-control-pad-y:8px;font-size-adjust:var(--ui-font-adjust)}
+.shell.text-size-large{--ui-font-adjust:.61;--ui-control-min:44px;--ui-control-pad-y:10px}
+.shell.text-size-xlarge{--ui-font-adjust:.69;--ui-control-min:50px;--ui-control-pad-y:12px}
+.text-size-large :is(.title-screen nav button,.entry-flow button,.entry-flow select,.settings-drawer button,.settings-drawer input,.settings-drawer select,.online-panel button,.online-panel input,.online-panel select,.action-panel button,.battle-hud button),
+.text-size-xlarge :is(.title-screen nav button,.entry-flow button,.entry-flow select,.settings-drawer button,.settings-drawer input,.settings-drawer select,.online-panel button,.online-panel input,.online-panel select,.action-panel button,.battle-hud button){min-height:var(--ui-control-min);padding-top:var(--ui-control-pad-y);padding-bottom:var(--ui-control-pad-y)}
+.meteor-choice.item-choice{justify-content:center;text-align:center}.meteor-choice.item-choice>span,.meteor-choice.item-choice>b{min-width:0;text-align:center}.meteor-choice.item-choice>b{margin-left:0}
+.text-size-large .entry-flow,.text-size-xlarge .entry-flow,.text-size-large.online-lobby-only,.text-size-xlarge.online-lobby-only{overflow-y:auto}
+.text-size-large .item-selection-overlay,.text-size-xlarge .item-selection-overlay{max-height:calc(100% - 12px);overflow-y:auto}
+.text-size-xlarge .manual-onepage{height:auto;min-height:100%;grid-template-columns:1fr;grid-template-rows:auto auto;overflow-y:auto}.text-size-xlarge .manual-onepage>section{min-height:320px}
+@media(max-width:700px){.text-size-switch{gap:5px}.text-size-switch .drawer-toggle{padding-inline:5px}.text-size-large .manual-onepage,.text-size-xlarge .manual-onepage{height:auto;display:block;overflow-y:auto}.text-size-large .manual-onepage>section,.text-size-xlarge .manual-onepage>section{min-height:310px;margin-bottom:8px}.text-size-large .item-selection-overlay,.text-size-xlarge .item-selection-overlay{max-height:52dvh}.text-size-large .switch-setup-controls,.text-size-xlarge .switch-setup-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Battles are portrait-only on short coarse-pointer phones; menus remain available in landscape. */
 @media (orientation:landscape) and (max-height:600px) and (max-width:950px) and (hover:none) and (pointer:coarse){

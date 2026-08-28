@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { BATTLE_TRACK_LABELS, type BattleTrackChoice } from "../music-engine";
 
 export type SiteLanguage = "ja" | "en";
+export type TextSize = "standard" | "large" | "xlarge";
 
 function storedNumber(key: string, fallback: number) {
   const stored = window.localStorage.getItem(key);
@@ -27,6 +28,7 @@ export function useLocalSettings() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [battleTrack, setBattleTrack] = useState<BattleTrackChoice>("random");
   const [language, setLanguage] = useState<SiteLanguage>("ja");
+  const [textSize, setTextSize] = useState<TextSize>("standard");
   const [strongPlaySharing, setStrongPlaySharing] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
@@ -42,6 +44,8 @@ export function useLocalSettings() {
       setBattleTrack(storedTrack as BattleTrackChoice);
     }
     if (window.localStorage.getItem("meteor-race-language") === "en") setLanguage("en");
+    const storedTextSize = window.localStorage.getItem("meteor-race-text-size");
+    if (storedTextSize === "large" || storedTextSize === "xlarge") setTextSize(storedTextSize);
     setStrongPlaySharing(window.localStorage.getItem("meteor-race-strong-play-sharing") !== "0");
     setHydrated(true);
   }, []);
@@ -56,6 +60,7 @@ export function useLocalSettings() {
     document.documentElement.lang = language;
   }, [hydrated, language]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-strong-play-sharing", strongPlaySharing ? "1" : "0"); }, [hydrated, strongPlaySharing]);
+  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-text-size", textSize); }, [hydrated, textSize]);
 
   return {
     nickname, setNickname,
@@ -65,6 +70,7 @@ export function useLocalSettings() {
     reducedMotion,
     battleTrack, setBattleTrack,
     language, setLanguage,
+    textSize, setTextSize,
     strongPlaySharing, setStrongPlaySharing,
   };
 }
