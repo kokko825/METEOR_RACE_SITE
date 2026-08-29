@@ -237,7 +237,7 @@ export async function POST(request: Request) {
         ? 11
         : 9;
     const size = Math.max(requestedSize, minimumSize);
-    const allowedPlayers: Player[] = ["red", "blue", "green", "yellow"].slice(0, playerCount) as Player[];
+    const allowedPlayers = PLAYER_ORDER.slice(0, playerCount);
     const first: Player = body.first && allowedPlayers.includes(body.first) ? body.first : allowedPlayers[0];
     const humanSeats = [allowedPlayers[0]];
     const botPlayers = createRanked ? [] : allowedPlayers.slice(humanCount);

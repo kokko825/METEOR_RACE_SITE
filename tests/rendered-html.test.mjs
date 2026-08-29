@@ -212,11 +212,25 @@ test("keeps the manual inside its frame and presents device identity as company 
   assert.doesNotMatch(page, /t\("reduceMotion"\)/);
   assert.doesNotMatch(settings, /meteor-race-reduced-motion/);
   assert.match(settings, /prefers-reduced-motion: reduce/);
-  assert.match(css, /\.manual-onepage,\.manual-world\{flex:1;width:100%;height:auto;min-height:0;max-width:100%\}/);
-  assert.match(css, /\.manual-drawer\{display:grid;grid-template-rows:auto minmax\(0,1fr\);overflow:hidden\}/);
+  assert.match(css, /\.manual-drawer\{display:grid;grid-template-rows:auto minmax\(0,1fr\);max-width:calc\(100vw - 12px\);overflow:hidden\}/);
   assert.match(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*overflow-y:auto/);
   assert.match(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*touch-action:pan-y/);
   assert.doesNotMatch(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*overscroll-behavior:contain/);
+  assert.match(css, /\.settings-drawer>header\{position:sticky;z-index:3;top:0;background:#092432\}/);
+  assert.match(css, /\.entry-flow>header\{position:sticky;z-index:4;top:0/);
+  assert.equal((css.match(/\.manual-drawer\{display:/g) ?? []).length, 1);
+});
+
+test("keeps carryable items and player order as shared rule constants", async () => {
+  const [rules, page, ai, pieces, rooms] = await Promise.all([
+    read("../app/game-rules.ts"), read("../app/page.tsx"), read("../app/ai-engine.ts"),
+    read("../app/components/game-pieces.tsx"), read("../app/api/rooms/route.ts"),
+  ]);
+  assert.match(rules, /export const SELECTABLE_ITEMS/);
+  assert.match(rules, /export const PLAYER_ORDER/);
+  for (const consumer of [page, ai, pieces]) assert.match(consumer, /SELECTABLE_ITEMS/);
+  assert.match(rooms, /PLAYER_ORDER\.slice\(0, playerCount\)/);
+  for (const consumer of [page, ai, pieces, rooms]) assert.doesNotMatch(consumer, /\["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"\]/);
 });
 
 test("documents every authorized item source and accepts balanced equipment proposals", async () => {

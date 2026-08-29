@@ -4,6 +4,8 @@ export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type GameVariant = "classic" | "team" | "item" | "team-item";
 export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "blast" | "pulse" | "recall" | "gravity";
+/** Carryable items shared by setup, inventory, UI and AI. GRAVITY is a match event. */
+export const SELECTABLE_ITEMS = ["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as const satisfies readonly ItemKind[];
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
 export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number };

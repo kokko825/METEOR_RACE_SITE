@@ -1,4 +1,4 @@
-import type { ItemKind } from "./game-rules";
+import { SELECTABLE_ITEMS, type ItemKind } from "./game-rules";
 import type { BalanceConfig } from "./balance-config";
 
 /**
@@ -10,16 +10,7 @@ import type { BalanceConfig } from "./balance-config";
  * guarantee the two drift apart the next time a balance value changes.
  */
 
-/** The seven items a player can bring into a match. GRAVITY is excluded: it is a ranked-match event, not a carryable item. */
-export const SELECTABLE_ITEMS: ItemKind[] = [
-  "shield",
-  "booster",
-  "holo",
-  "orbit",
-  "blast",
-  "pulse",
-  "recall",
-];
+export { SELECTABLE_ITEMS };
 
 export const ITEM_ICONS: Record<ItemKind, string> = {
   shield: "⬡",

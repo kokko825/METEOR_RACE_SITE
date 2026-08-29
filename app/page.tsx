@@ -2264,7 +2264,7 @@ function Game() {
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">{tf("selectItems", { total: balance.itemHandTotal, same: balance.itemSameMax })}</span>
-                {(["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[]).map((kind) => (
+                {SELECTABLE_ITEMS.map((kind) => (
                   <button
                     key={kind}
                     className={`meteor-choice item-choice ${kind} ${(game.itemHands?.[setupPlayer] ?? []).includes(kind) ? "selected" : ""}`}

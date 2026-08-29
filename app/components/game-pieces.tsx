@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { ITEM_ICONS } from "../item-content";
+import { ITEM_ICONS, SELECTABLE_ITEMS } from "../item-content";
 import {
   teamOf,
   type ItemKind,
@@ -109,7 +109,7 @@ export function InventoryPanel({ inventory, color, items, loadoutHidden = false 
   items: ItemKind[];
   loadoutHidden?: boolean;
 }) {
-  const itemCounts = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
+  const itemCounts = SELECTABLE_ITEMS
     .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
     .filter(({ count }) => count > 0);
   return (

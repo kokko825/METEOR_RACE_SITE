@@ -15,7 +15,9 @@ import {
   legalMoves,
   isItemVariant,
   isTeamVariant,
+  PLAYER_ORDER,
   samePos,
+  SELECTABLE_ITEMS,
   teamOf,
   type GameState,
   type ItemKind,
@@ -356,7 +358,7 @@ function projectTimedEffectsToNextTurn(state: GameState, player: Player): GameSt
   const elapsedTurns = (playerIndex - currentIndex + players.length) % players.length;
   if (elapsedTurns === 0) return state;
   const shieldTurns = Object.fromEntries(
-    (["red", "blue", "green", "yellow"] as Player[]).map((candidate) => [
+    PLAYER_ORDER.map((candidate) => [
       candidate,
       Math.max(0, (state.shieldTurns?.[candidate] ?? 0) - elapsedTurns),
     ]),
@@ -376,7 +378,7 @@ function projectTimedEffectsToNextTurn(state: GameState, player: Player): GameSt
     ...state,
     shieldTurns,
     shield: Object.fromEntries(
-      (["red", "blue", "green", "yellow"] as Player[]).map((candidate) => [candidate, shieldTurns[candidate] > 0]),
+      PLAYER_ORDER.map((candidate) => [candidate, shieldTurns[candidate] > 0]),
     ) as Record<Player, boolean>,
     obstacles,
     pulseDevices,
@@ -870,7 +872,7 @@ export function chooseAiDecision(
       gravity: 86,
     };
     const controls: ItemKind[] = ["blast", "pulse", "holo", "orbit"];
-    const ranked = (["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as ItemKind[])
+    const ranked = SELECTABLE_ITEMS
       .filter((kind) => own.filter((entry) => entry === kind).length < balance.itemSameMax)
       .map((kind) => {
         const duplicatePenalty = own.includes(kind) ? 24 : 0;
