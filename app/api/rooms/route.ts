@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, TEAM_TURN_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 import { isRankedOpen } from "../../ranked-schedule";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
@@ -438,7 +438,7 @@ export async function POST(request: Request) {
     if (room.status === "playing") return json({ error: "チーム変更は待機中に行ってください" }, 409);
     const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
     const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
-    const assigned: Player[] = ["red", "blue", "yellow", "green"];
+    const assigned = TEAM_TURN_ORDER;
     let activeIndex = 0;
     for (let index = 0; index < members.length; index += 1) {
       if (members[index] && seats[index]) seats[index] = body.teamEnabled ? assigned[activeIndex++] : PLAYER_ORDER[activeIndex++];
@@ -596,7 +596,7 @@ export async function POST(request: Request) {
           : requestedSize;
     const turnOrder =
       isTeamVariant(variant)
-        ? (["red", "blue", "yellow", "green"] as Player[])
+        ? [...TEAM_TURN_ORDER]
         : shuffledPlayers(playerList);
     const first =
       isTeamVariant(variant)
@@ -656,7 +656,7 @@ export async function POST(request: Request) {
     const playerList = PLAYER_ORDER.slice(0, players);
     const turnOrder =
       isTeamVariant(previous.variant ?? "classic")
-        ? (["red", "blue", "yellow", "green"] as Player[])
+        ? [...TEAM_TURN_ORDER]
         : shuffledPlayers(playerList);
     const nextFirst =
       isTeamVariant(previous.variant ?? "classic")

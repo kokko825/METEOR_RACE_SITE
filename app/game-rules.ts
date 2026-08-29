@@ -67,6 +67,11 @@ export type MeteorResolution = {
 };
 
 export const PLAYER_ORDER: Player[] = ["red", "blue", "green", "yellow"];
+export const TEAM_TURN_ORDER: Player[] = ["red", "blue", "yellow", "green"];
+const cloneInventory = (inventory: Inventory): Inventory =>
+  Object.fromEntries(
+    PLAYER_ORDER.map((player) => [player, { ...inventory[player] }]),
+  ) as Inventory;
 export const isTeamVariant = (variant: GameVariant) => variant === "team" || variant === "team-item";
 export const isItemVariant = (variant: GameVariant) => variant === "item" || variant === "team-item";
 export const activePlayers = (state: GameState): Player[] =>
@@ -221,7 +226,7 @@ export function initialGameState(
   const count = Math.max(2, Math.min(4, playerCount));
   const players =
     isTeamVariant(variant)
-      ? (["red", "blue", "yellow", "green"] as Player[])
+      ? [...TEAM_TURN_ORDER]
       : PLAYER_ORDER.slice(0, count);
   if (!players.includes(first)) first = players[0];
   if (![9, 11, 13, 15].includes(size)) size = 9;
@@ -729,9 +734,7 @@ export function applyGravity(state: GameState, forceThroughObstacles = false): G
     }
   });
   if (!forceThroughObstacles) return { ...state, probes };
-  const inventory: Inventory = Object.fromEntries(
-    PLAYER_ORDER.map((player) => [player, { ...state.inventory[player] }]),
-  ) as Inventory;
+  const inventory = cloneInventory(state.inventory);
   const meteors = state.meteors.filter((meteor) => {
     if (!clearedTargets.some((target) => samePos(target, meteor))) return true;
     if (!meteor.consumable) inventory[meteor.owner][meteor.size] += 1;
@@ -789,9 +792,7 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
     return resolveCoreArrivals(state, advanced, reached);
   }
   if (kind === "recall") {
-    const inventory: Inventory = Object.fromEntries(
-      PLAYER_ORDER.map((candidate) => [candidate, { ...state.inventory[candidate] }]),
-    ) as Inventory;
+    const inventory = cloneInventory(state.inventory);
     const recalled = state.meteors.filter((meteor) => meteor.owner === player && !meteor.consumable);
     recalled.forEach((meteor) => { inventory[player][meteor.size] += 1; });
     const holoCount = activeObstacles(state).filter((holo) => holo.owner === player).length;
@@ -966,9 +967,7 @@ export function applyRecallItem(state: GameState, meteorId?: number): GameState 
   if (state.phase !== "switch" || current?.kind !== "recall") {
     throw new Error("リコールを使用できません");
   }
-  const inventory: Inventory = Object.fromEntries(
-    PLAYER_ORDER.map((player) => [player, { ...state.inventory[player] }]),
-  ) as Inventory;
+  const inventory = cloneInventory(state.inventory);
   const recalled = state.meteors.filter((meteor) => meteor.owner === current.player && !meteor.consumable);
   recalled.forEach((meteor) => { inventory[current.player][meteor.size] += 1; });
   return finishSwitch({
@@ -1019,12 +1018,7 @@ export function applyMeteor(
     id: state.nextMeteorId,
     consumable: useCapsule,
   };
-  const inventory: Inventory = {
-    red: { ...state.inventory.red },
-    blue: { ...state.inventory.blue },
-    green: { ...state.inventory.green },
-    yellow: { ...state.inventory.yellow },
-  };
+  const inventory = cloneInventory(state.inventory);
   if (!useCapsule) inventory[state.turn][chosenSize] -= 1;
   destroyed.forEach((meteor) => {
     if (!meteor.consumable) inventory[meteor.owner][meteor.size] += 1;
