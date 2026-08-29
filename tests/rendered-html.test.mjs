@@ -215,6 +215,8 @@ test("keeps the manual inside its frame and presents device identity as company 
   assert.match(css, /\.manual-onepage,\.manual-world\{flex:1;width:100%;height:auto;min-height:0;max-width:100%\}/);
   assert.match(css, /\.manual-drawer\{display:grid;grid-template-rows:auto minmax\(0,1fr\);overflow:hidden\}/);
   assert.match(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*overflow-y:auto/);
+  assert.match(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*touch-action:pan-y/);
+  assert.doesNotMatch(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*overscroll-behavior:contain/);
 });
 
 test("documents every authorized item source and accepts balanced equipment proposals", async () => {
