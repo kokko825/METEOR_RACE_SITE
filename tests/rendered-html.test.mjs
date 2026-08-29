@@ -222,7 +222,7 @@ test("documents every authorized item source and accepts balanced equipment prop
     read("../app/globals.css"),
     read("../app/terms/page.tsx"),
   ]);
-  for (const source of ["AEGIS FRAME", "VOLTERRA DRIVE", "MIRAGE WORKS", "KEPLER DYNAMICS", "PYRA INDUSTRIES", "NEXWAVE SYSTEMS", "AEQRIS FIELD CONTROL"]) assert.match(lore, new RegExp(source));
+  for (const source of ["AEGIS FRAME", "VOLTERRA DRIVE", "MIRAGE WEAVE", "KEPLER DYNAMICS", "PYRA IMPACT", "NEXWAVE SYSTEMS", "AEQRIS FIELD CONTROL"]) assert.match(lore, new RegExp(source));
   assert.match(lore, /障害物が増えすぎた競技フィールドを安全に整地/);
   assert.match(lore, /operator: true/);
   assert.match(page, /AUTHORIZED EQUIPMENT/);
