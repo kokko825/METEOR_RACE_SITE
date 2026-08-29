@@ -1,7 +1,7 @@
 /** 世界観ページに表示する認可装備と提供企業です。ゲーム効果とは分離して編集します。 */
 export const ITEM_LORE = [
   { kind: "shield", company: "AEGIS FRAME", ja: "採掘現場の落石防護技術を転用し、探査機の周囲へ瞬間展開式フィールドを形成する競技用安全装置。", en: "A competition safety unit adapted from mining-site impact protection. It projects a temporary field around the probe." },
-  { kind: "booster", company: "VOLTERRA DRIVE", ja: "探査機の駆動系へ短時間だけ出力を集中させる補助推進装置。機体性能の差を抑えるため、REGULAが出力を制限。", en: "An auxiliary drive that briefly concentrates power into the probe's propulsion system. REGULA limits its output to keep machines equal." },
+  { kind: "booster", company: "VOLTERRA DRIVE", ja: "探査機の駆動系へ短時間だけ出力を集中させる補助推進装置。機体性能の差を抑えるため、AEQRISが出力を制限。", en: "An auxiliary drive that briefly concentrates power into the probe's propulsion system. AEQRIS limits its output to keep machines equal." },
   { kind: "holo", company: "MIRAGE WORKS", ja: "測量用の立体投影技術から生まれた、触れられる競技用ホログラム障害物。実体を傷つけず、進路だけを制限。", en: "A tangible competitive hologram derived from survey projection technology. It blocks routes without damaging physical equipment." },
   { kind: "orbit", company: "KEPLER DYNAMICS", ja: "衛星群の軌道補正技術を盤面制御へ応用した装置。指定リング内の競技データを同期し、90度回転。", en: "A board-control system derived from satellite orbit correction. It synchronizes and rotates all competition data on a selected ring." },
   { kind: "blast", company: "PYRA INDUSTRIES", ja: "鉱床を傷つけず周囲の岩盤だけを動かす非接触採掘技術。競技では衛星から爆風データのみを投射。", en: "A contactless mining technology that shifts surrounding rock without harming the deposit. In competition, satellites project only its blast data." },

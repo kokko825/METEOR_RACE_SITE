@@ -1059,7 +1059,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .manual-world{position:relative;height:calc(100% - 58px);display:grid;grid-template-columns:minmax(260px,.75fr) minmax(360px,1.25fr);align-items:center;gap:clamp(24px,5vw,80px);overflow:hidden;padding:clamp(24px,5vh,58px) clamp(28px,7vw,90px);background:radial-gradient(circle at 22% 47%,rgba(24,114,143,.25),transparent 27%),radial-gradient(circle at 75% 30%,rgba(79,38,115,.15),transparent 34%),linear-gradient(135deg,#020a0f,#061823 55%,#02080d)}
 .manual-world::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,#81dff8 0 1px,transparent 1.4px),radial-gradient(circle,#fff 0 1px,transparent 1.3px);background-position:0 0,37px 28px;background-size:73px 73px,109px 109px;opacity:.18}
 .manual-world-orbit{position:relative;z-index:1;width:min(32vw,330px);aspect-ratio:1;margin:auto;border:1px solid rgba(105,221,255,.36);border-radius:50%;box-shadow:0 0 70px rgba(63,186,224,.14),inset 0 0 40px rgba(55,185,221,.1)}
-.manual-world-orbit::before{content:"REGULA";position:absolute;inset:21%;display:grid;place-items:center;border:1px solid #5dd8f7;border-radius:50%;background:radial-gradient(circle,#123849,#06141c 66%);box-shadow:0 0 34px rgba(94,222,255,.33);color:#eaffff;font-size:clamp(12px,1.4vw,18px);font-weight:950;letter-spacing:.26em}
+.manual-world-orbit::before{content:"AEQRIS";position:absolute;inset:21%;display:grid;place-items:center;border:1px solid #5dd8f7;border-radius:50%;background:radial-gradient(circle,#123849,#06141c 66%);box-shadow:0 0 34px rgba(94,222,255,.33);color:#eaffff;font-size:clamp(12px,1.4vw,18px);font-weight:950;letter-spacing:.2em}
 .manual-world-orbit::after{content:"INTERSTELLAR ADMINISTRATION AI";position:absolute;left:50%;bottom:7%;width:max-content;transform:translateX(-50%);color:#56899c;font-size:7px;letter-spacing:.2em}
 .manual-world-orbit>i{position:absolute;inset:8%;border:1px solid rgba(133,222,246,.2);border-radius:50%;transform:rotate(24deg)}
 .manual-world-orbit>i:nth-child(2){inset:2% 25%;transform:rotate(61deg)}
@@ -1072,7 +1072,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 @media(max-width:900px){.manual-now{display:none}.manual-world{grid-template-columns:minmax(190px,.62fr) minmax(330px,1.38fr);gap:22px;padding:25px 30px}.manual-world-orbit{width:min(28vw,235px)}}
 @media(max-width:700px){.manual-drawer>header>div:first-child h2{font-size:14px}.manual-drawer .manual-tabs{margin-left:0}.manual-tabs button{min-height:32px;padding:5px 9px;font-size:8px}.manual-world{height:auto;min-height:calc(100% - 50px);grid-template-columns:1fr;align-content:start;gap:15px;overflow:visible;padding:19px 16px 28px}.manual-world-orbit{width:min(45vw,170px)}.manual-world-copy{padding-left:14px}.manual-world-copy p{margin-bottom:12px;font-size:10px;line-height:1.65}.manual-world-copy strong{margin-top:18px;font-size:10px}.manual-world-copy b{font-size:24px}}
 
-/* Official marks and REGULA match-control language. */
+/* Official marks and AEQRIS match-control language. */
 .brand-mark{width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 0 9px rgba(43,218,245,.55))}
 .title-orbit>img{position:absolute;z-index:2;left:27%;top:27%;width:46%;height:46%;object-fit:contain;filter:drop-shadow(0 0 18px rgba(38,218,246,.38));animation:title-counter-orbit 16s linear infinite}
 @keyframes title-counter-orbit{to{transform:rotate(-360deg)}}
@@ -1089,7 +1089,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .manual-world-orbit::after{content:"INTERSTELLAR ADMINISTRATION AI";position:absolute;left:50%;bottom:4%;width:max-content;transform:translateX(-50%);color:#56899c;font-size:7px;letter-spacing:.2em}
 .manual-world-orbit>img{position:absolute;z-index:2;inset:29%;width:42%;height:42%;filter:drop-shadow(0 0 13px rgba(90,224,255,.5))}.manual-world-orbit>span,.manual-world-orbit>b{position:absolute;z-index:2;left:50%;width:max-content;transform:translateX(-50%);letter-spacing:.14em}.manual-world-orbit>span{top:8%;color:#6fdcf7;font-size:8px}.manual-world-orbit>b{bottom:13%;color:#dff9ff;font-size:8px}
 .settings-drawer dl div:only-child{align-items:center;border-color:#326579;background:linear-gradient(100deg,#082430,#061720)}.settings-drawer dl div:only-child dt{color:#76dff8;font-weight:900;letter-spacing:.1em}
-@media(max-width:700px){.regula-console{display:none}.hud-mode .topbar .round::before{content:"REGULA / ";color:#62dffa}}
+@media(max-width:700px){.regula-console{display:none}.hud-mode .topbar .round::before{content:"AEQRIS / ";color:#62dffa}}
 @media(max-width:700px){.manual-drawer{display:block;overflow-x:hidden;overflow-y:auto}.manual-drawer>header{min-height:50px;height:auto;flex-wrap:nowrap}.manual-onepage,.manual-world{min-height:0}.manual-world{overflow:hidden}.manual-world-copy{max-width:100%}.manual-world-copy p{overflow-wrap:anywhere}}
 @media(min-width:701px) and (max-height:720px){.manual-overlay{padding:8px}.manual-drawer{height:calc(100dvh - 16px);padding:10px 14px}.manual-drawer>header{flex-basis:48px}.manual-onepage{gap:7px;padding-top:7px}.manual-world{gap:18px;padding:16px 28px}.manual-world-copy p{margin-bottom:7px;font-size:9px;line-height:1.42}.manual-world-copy strong{margin-top:9px;font-size:9px}.manual-world-copy b{font-size:25px}.manual-world-orbit{width:min(27vw,210px)}}
 
@@ -1140,7 +1140,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
   .title-screen nav { align-self:center; margin-bottom:0; }
 }
 
-/* Compact battle header: REGULA belongs beside the round counter. */
+/* Compact battle header: AEQRIS belongs beside the round counter. */
 .match-meta{display:flex;align-items:center;justify-content:center;gap:9px;margin-left:auto}
 @media (min-width:901px) {
   .hud-mode > .topbar{height:var(--battle-header-height);gap:18px;padding-top:0;padding-bottom:10px}

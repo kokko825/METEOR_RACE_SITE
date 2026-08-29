@@ -170,14 +170,14 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
   assert.match(page, /ARCHIVE \/ ASTRA ACCORD/);
   assert.match(page, /t\("worldRegula"\)/);
   assert.match(copy, /アストラ協定/);
-  assert.match(copy, /REGULA/);
+  assert.match(copy, /AEQRIS/);
   assert.match(copy, /非暴力の競技/);
   assert.match(copy, /nonviolent competition/);
   assert.match(css, /\.manual-world\{/);
   assert.match(css, /@media\(max-width:700px\).*?\.manual-world/s);
 });
 
-test("uses a provisional favicon and mark-free REGULA CORE-arrival presentation", async () => {
+test("uses a provisional favicon and mark-free AEQRIS CORE-arrival presentation", async () => {
   const [page, matchMeta, assets, css] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/components/match-meta.tsx"),
@@ -187,7 +187,7 @@ test("uses a provisional favicon and mark-free REGULA CORE-arrival presentation"
   assert.match(assets, /favicon: "\/assets\/branding\/meteor-race-favicon\.svg"/);
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
-  assert.match(matchMeta, /REGULA \/\/ CORE到達管制/);
+  assert.match(matchMeta, /AEQRIS \/\/ CORE到達管制/);
   assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
   assert.match(css, /\.regula-console\{/);
   assert.match(matchMeta, /className="match-meta"/);
@@ -206,7 +206,7 @@ test("keeps the manual inside its frame and presents device identity as company 
     read("../app/globals.css"),
     read("../app/hooks/use-local-settings.ts"),
   ]);
-  assert.match(copy, /REGULA企業登録番号/);
+  assert.match(copy, /AEQRIS企業登録番号/);
   assert.match(copy, /METEORは相手を妨害/);
   assert.doesNotMatch(page, /t\("accountType"\)/);
   assert.doesNotMatch(page, /t\("reduceMotion"\)/);

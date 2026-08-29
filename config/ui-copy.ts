@@ -63,10 +63,10 @@ export const UI_COPY = {
   textSizeSaved: { ja: "文字サイズはこの端末に保存されます。盤面の大きさは変わりません。", en: "Text size is saved on this device. The board size does not change." },
   nickname: { ja: "ニックネーム", en: "Nickname" },
   autoSave: { ja: "入力すると自動保存されます", en: "Changes are saved automatically." },
-  registryNumber: { ja: "REGULA企業登録番号", en: "REGULA REGISTRY NO." },
+  registryNumber: { ja: "AEQRIS企業登録番号", en: "AEQRIS REGISTRY NO." },
   accountNote: {
-    ja: "アストラ協定のもと、REGULAがこの端末の参加企業へ発行する識別番号です。オンライン対戦、ランク記録、不具合調査に使用され、通常は他の企業へ公開されません。",
-    en: "Issued by REGULA to the company participating from this device under the Astra Accord. It identifies online matches, ranked records, and support reports, and is normally hidden from other companies.",
+    ja: "アストラ協定のもと、AEQRISがこの端末の参加企業へ発行する識別番号です。オンライン対戦、ランク記録、不具合調査に使用され、通常は他の企業へ公開されません。",
+    en: "Issued by AEQRIS to the company participating from this device under the Astra Accord. It identifies online matches, ranked records, and support reports, and is normally hidden from other companies.",
   },
   masterVolume: { ja: "全体音量", en: "Master volume" },
   soundEffects: { ja: "効果音", en: "Sound effects" },
@@ -74,8 +74,8 @@ export const UI_COPY = {
   playResearchHeading: { ja: "プレイ研究", en: "PLAY RESEARCH" },
   strongPlaySharing: { ja: "匿名の好プレー提供", en: "Share anonymous strong plays" },
   strongPlaySharingNote: {
-    ja: "勝者の中から、勝利に貢献した可能性が高い局面だけを保存します。名前、メール、チャット、REGULA企業登録番号は送信しません。",
-    en: "Only high-impact positions from the winning side are saved. Nicknames, email, chat, and REGULA registry numbers are never sent.",
+    ja: "勝者の中から、勝利に貢献した可能性が高い局面だけを保存します。名前、メール、チャット、AEQRIS企業登録番号は送信しません。",
+    en: "Only high-impact positions from the winning side are saved. Nicknames, email, chat, and AEQRIS registry numbers are never sent.",
   },
   rulesAndItems: { ja: "ルール・アイテム一覧", en: "Rules & Items" },
   worldHeading: { ja: "世界観", en: "WORLD" },
@@ -90,8 +90,8 @@ export const UI_COPY = {
     en: "Territory, routes, resources—\nTo end the conflicts spreading across interstellar society, the nations signed the Astra Accord.",
   },
   worldRegula: {
-    ja: "星間管理AI『REGULA』が見守るなか、\n資源を巡る衝突は、非暴力の競技へと姿を変えた。",
-    en: "Under the watch of REGULA, the interstellar administration AI, disputes over resources became a nonviolent competition.",
+    ja: "星間管理AI『AEQRIS』が見守るなか、\n資源を巡る衝突は、非暴力の競技へと姿を変えた。",
+    en: "Under the watch of AEQRIS, the interstellar administration AI, disputes over resources became a nonviolent competition.",
   },
   worldBroadcast: {
     ja: "各企業の衛星から投下されるメテオ。\n星間ネットワークの向こうで、戦いを見守る無数の観衆。",

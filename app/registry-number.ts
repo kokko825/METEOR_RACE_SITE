@@ -1,5 +1,5 @@
 /**
- * Public-facing REGULA company registration number.
+ * Public-facing AEQRIS company registration number.
  *
  * The private player UUID remains the durable database/room identity. Only its
  * deterministic hash is exposed so a player can quote a short, stable number
@@ -7,7 +7,7 @@
  */
 export function formatRegistryNumber(compactId: string) {
   const normalized = compactId.replace(/[^a-f0-9]/gi, "").toUpperCase().slice(0, 10).padEnd(10, "0");
-  return `REG-${normalized.slice(0, 4)}-${normalized.slice(4, 8)}-${normalized.slice(8, 10)}`;
+  return `AEQ-${normalized.slice(0, 4)}-${normalized.slice(4, 8)}-${normalized.slice(8, 10)}`;
 }
 
 export async function registryNumberFor(identityKey: string) {
