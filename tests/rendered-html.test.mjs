@@ -387,7 +387,10 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(css, /\.title-screen nav \.title-start,[^}]*min-height:62px/);
   assert.match(css, /\.action-panel button,[^}]*min-height:48px/);
   assert.match(css, /calc\(100dvh - 330px\)/);
-  assert.match(css, /\.hud-mode \.arena\{display:flex;flex-direction:column;align-items:center;gap:6px;height:auto\}/);
+  assert.match(css, /\.shell\.hud-mode\{height:100dvh;min-height:0;padding:8px 12px calc\(82px \+ env\(safe-area-inset-bottom\)\);overflow:hidden\}/);
+  assert.match(css, /\.hud-mode \.arena\{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax\(0,1fr\) auto;[^}]*overflow:hidden\}/);
+  assert.match(css, /calc\(100dvh - 290px\)/);
+  assert.match(css, /\.hud-mode \.action-panel\{[^}]*max-height:124px;[^}]*overflow-y:auto/);
   assert.match(css, /\.switch-setup-controls>\.meteor-choice\.item-choice\{[^}]*grid-template-columns:26px minmax\(0,1fr\);[^}]*grid-template-rows:auto auto/);
   assert.match(css, /\.switch-setup-controls>\.meteor-choice\.item-choice>b\{[^}]*grid-row:2/);
 });
