@@ -470,9 +470,11 @@ test("supports replaceable wordmark and symbol artwork with text fallbacks", asy
   assert.match(page, /ASSET_PATHS\.branding\.wordmark/);
   assert.match(page, /ASSET_PATHS\.branding\.symbol/);
   assert.match(page, /<h1>METEOR<br\/><span>RACE<\/span><\/h1>/);
+  assert.doesNotMatch(page, /INTERPLANETARY TACTICAL RACE/);
   assert.match(css, /\.title-wordmark\.image-loaded>h1/);
-  assert.match(css, /\.title-orbit\.symbol-loaded>b/);
+  assert.match(css, /\.title-symbol\.symbol-loaded>b/);
   assert.match(css, /\.title-brand-lockup \.title-orbit/);
+  assert.match(css, /@keyframes title-lockup-orbit/);
   assert.match(css, /\.header-wordmark\.image-loaded>h1/);
 });
 

@@ -1746,37 +1746,37 @@ function Game() {
         <section className="title-screen" aria-label={t("titleAria")}>
           <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
           <div className="title-brand-lockup">
-          <div className="title-orbit" aria-hidden="true">
-            <i /><i /><b>✦</b>
-            <Image
-              src={ASSET_PATHS.branding.symbol}
-              alt=""
-              width={1024}
-              height={500}
-              unoptimized
-              onLoad={(event) => event.currentTarget.parentElement?.classList.add("symbol-loaded")}
-              onError={(event) => { event.currentTarget.hidden = true; }}
-            />
-          </div>
-          <div className="title-copy">
-            <small>INTERPLANETARY TACTICAL RACE</small>
-            <div className="title-wordmark">
+            <div className="title-orbit" aria-hidden="true"><i /><i /></div>
+            <div className="title-symbol" aria-hidden="true">
               <Image
-                src={ASSET_PATHS.branding.wordmark}
+                src={ASSET_PATHS.branding.symbol}
                 alt=""
                 width={1024}
-                height={200}
-                priority
+                height={500}
                 unoptimized
-                onLoad={(event) => event.currentTarget.parentElement?.classList.add("image-loaded")}
+                onLoad={(event) => event.currentTarget.parentElement?.classList.add("symbol-loaded")}
                 onError={(event) => { event.currentTarget.hidden = true; }}
               />
-              <h1>METEOR<br/><span>RACE</span></h1>
+              <b>✦</b>
             </div>
-            {language === "ja" && <b className="title-reading">メテオレース</b>}
-            <p>{t("titleTagline")}</p>
-            <p className="title-description">{t("titleDescription")}</p>
-          </div>
+            <div className="title-copy">
+              <div className="title-wordmark">
+                <Image
+                  src={ASSET_PATHS.branding.wordmark}
+                  alt=""
+                  width={1024}
+                  height={200}
+                  priority
+                  unoptimized
+                  onLoad={(event) => event.currentTarget.parentElement?.classList.add("image-loaded")}
+                  onError={(event) => { event.currentTarget.hidden = true; }}
+                />
+                <h1>METEOR<br/><span>RACE</span></h1>
+              </div>
+              {language === "ja" && <b className="title-reading">メテオレース</b>}
+              <p>{t("titleTagline")}</p>
+              <p className="title-description">{t("titleDescription")}</p>
+            </div>
           </div>
           <nav>
             <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")} <span>▶</span></button>
