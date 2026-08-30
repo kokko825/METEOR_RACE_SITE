@@ -1340,3 +1340,17 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 @media (max-width:560px) {
   .shell.hud-mode{padding-top:max(16px,calc(env(safe-area-inset-top) + 6px))}
 }
+
+/* All-ages game UI: readable at a glance, generous to click and tap. */
+.shell{--game-ui-text:13px;--game-ui-small:10px;--game-ui-button:13px;--game-ui-primary:16px}
+.shell.text-size-large{--game-ui-text:15px;--game-ui-small:12px;--game-ui-button:15px;--game-ui-primary:19px}
+.shell.text-size-xlarge{--game-ui-text:17px;--game-ui-small:14px;--game-ui-button:17px;--game-ui-primary:22px}
+.entry-flow button,.title-screen nav button,.settings-drawer button,.manual-tabs button,.online-panel button,.action-panel button,.battle-hud button,.comms-panel button{min-height:48px;font-size:var(--game-ui-button);line-height:1.25}
+.title-screen nav .title-start,.entry-confirm,.apply-room-settings,.setup-confirm-actions button{min-height:62px;font-size:var(--game-ui-primary)}
+.entry-panel>p,.entry-panel label,.choice-row button span,.settings-drawer label,.settings-drawer p,.online-panel small,.online-panel label,.comms-panel input{font-size:var(--game-ui-text);line-height:1.55}
+.eyebrow,.inventory>span,.action-label,.manual-now small,.manual-onepage small,.battle-hud small{font-size:var(--game-ui-small);line-height:1.35}
+.meteor-choice,.item-choice,.drawer-toggle,.quick-comms button{font-weight:800;letter-spacing:.04em}
+@media(max-width:560px){
+  .shell{--game-ui-text:12px;--game-ui-small:9px;--game-ui-button:12px;--game-ui-primary:15px}
+  .entry-flow button,.settings-drawer button,.online-panel button,.action-panel button,.battle-hud button,.comms-panel button{min-height:46px}
+}
