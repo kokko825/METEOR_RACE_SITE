@@ -178,11 +178,12 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
 });
 
 test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation", async () => {
-  const [page, matchMeta, assets, css] = await Promise.all([
+  const [page, matchMeta, assets, css, layout] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/components/match-meta.tsx"),
     read("../config/asset-paths.ts"),
     read("../app/globals.css"),
+    read("../app/layout.tsx"),
   ]);
   assert.match(assets, /favicon: "\/assets\/branding\/METEOR_RACE_logo\.svg"/);
   assert.match(await read("../public/assets/branding/METEOR_RACE_logo.svg"), /viewBox="0 250 1024 500"/);
@@ -194,6 +195,10 @@ test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation"
   assert.match(matchMeta, /className="match-meta"/);
   assert.match(css, /\.hud-mode \.match-meta \.regula-console\{position:static/);
   assert.match(css, /\.regula-console small\{[^}]*font-size:9\.5px/);
+  assert.match(layout, /rel="preload" href=\{ASSET_PATHS\.branding\.symbol\} as="image" type="image\/svg\+xml"/);
+  assert.match(css, /\.title-symbol>img\{[^}]*opacity:1;[^}]*transition:none/);
+  assert.match(css, /\.header-wordmark:has\(>img:not\(\[hidden\]\)\)>h1\{display:none\}/);
+  assert.doesNotMatch(page, /classList\.add\("(?:symbol|image)-loaded"\)/);
   assert.match(css, /\.regula-console em\{[^}]*font-size:8\.5px/);
   assert.match(css, /\.hud-regula-progress\{/);
   assert.match(css, /\.manual-drawer>header \.manual-tabs button\{width:84px;min-width:84px;max-width:84px;height:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center/);
@@ -486,11 +491,11 @@ test("supports replaceable wordmark and symbol artwork with text fallbacks", asy
   assert.match(page, /ASSET_PATHS\.branding\.symbol/);
   assert.match(page, /<h1>METEOR<br\/><span>RACE<\/span><\/h1>/);
   assert.doesNotMatch(page, /INTERPLANETARY TACTICAL RACE/);
-  assert.match(css, /\.title-wordmark\.image-loaded>h1/);
-  assert.match(css, /\.title-symbol\.symbol-loaded>b/);
+  assert.match(css, /\.title-wordmark:has\(>img:not\(\[hidden\]\)\)>h1\{display:none\}/);
+  assert.match(css, /\.title-symbol:has\(>img:not\(\[hidden\]\)\)>b\{display:none\}/);
   assert.match(css, /\.title-brand-lockup \.title-orbit/);
   assert.match(css, /@keyframes title-lockup-orbit/);
-  assert.match(css, /\.header-wordmark\.image-loaded>h1/);
+  assert.match(css, /\.header-wordmark:has\(>img:not\(\[hidden\]\)\)>h1\{display:none\}/);
 });
 
 test("keeps strong-play research anonymous, verified and optional", async () => {

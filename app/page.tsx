@@ -1754,7 +1754,6 @@ function Game() {
                 width={1024}
                 height={500}
                 unoptimized
-                onLoad={(event) => event.currentTarget.parentElement?.classList.add("symbol-loaded")}
                 onError={(event) => { event.currentTarget.hidden = true; }}
               />
               <b>✦</b>
@@ -1768,7 +1767,6 @@ function Game() {
                   height={200}
                   priority
                   unoptimized
-                  onLoad={(event) => event.currentTarget.parentElement?.classList.add("image-loaded")}
                   onError={(event) => { event.currentTarget.hidden = true; }}
                 />
                 <h1>METEOR<br/><span>RACE</span></h1>
@@ -1840,7 +1838,6 @@ function Game() {
                 width={1024}
                 height={200}
                 unoptimized
-                onLoad={(event) => event.currentTarget.parentElement?.classList.add("image-loaded")}
                 onError={(event) => { event.currentTarget.hidden = true; }}
               />
               <h1>METEOR RACE</h1>

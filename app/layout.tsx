@@ -100,6 +100,8 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
+        <link rel="preload" href={ASSET_PATHS.branding.symbol} as="image" type="image/svg+xml" />
+        <link rel="preload" href={ASSET_PATHS.branding.wordmark} as="image" type="image/svg+xml" />
         <script
           type="application/ld+json"
           // Serialized from a local literal, never from user input.
