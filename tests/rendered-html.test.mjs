@@ -177,7 +177,7 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
   assert.match(css, /@media\(max-width:700px\).*?\.manual-world/s);
 });
 
-test("uses a provisional favicon and mark-free AEQRIS CORE-arrival presentation", async () => {
+test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation", async () => {
   const [page, matchMeta, assets, css] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/components/match-meta.tsx"),
@@ -185,6 +185,7 @@ test("uses a provisional favicon and mark-free AEQRIS CORE-arrival presentation"
     read("../app/globals.css"),
   ]);
   assert.match(assets, /favicon: "\/assets\/branding\/meteor-race-favicon\.svg"/);
+  assert.match(await read("../public/assets/branding/meteor-race-favicon.svg"), /#FF8528/);
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
   assert.match(matchMeta, /AEQRIS \/\/ CORE到達管制/);
