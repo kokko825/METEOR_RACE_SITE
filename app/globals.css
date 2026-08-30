@@ -1329,6 +1329,10 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
     padding-left:max(22px,env(safe-area-inset-left));
   }
   .hud-mode > .game-layout{height:calc(100dvh - 180px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+  .hud-mode .brand{gap:12px}
+  .hud-mode .brand-symbol{width:clamp(56px,4.7vw,72px);height:clamp(42px,3.8vw,56px)}
+  .hud-mode .header-wordmark{width:clamp(205px,18vw,280px);min-height:36px}
+  .hud-mode .brand p{margin-top:1px;color:#6e8c99;font-size:7px;line-height:1.15;letter-spacing:.12em;opacity:.72}
 }
 @media (min-width:561px) and (max-width:900px) {
   .shell.hud-mode{padding-top:max(20px,calc(env(safe-area-inset-top) + 8px))}
