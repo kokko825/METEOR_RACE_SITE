@@ -386,6 +386,8 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(css, /--game-ui-button:13px/);
   assert.match(css, /\.title-screen nav \.title-start,[^}]*min-height:62px/);
   assert.match(css, /\.action-panel button,[^}]*min-height:48px/);
+  assert.match(css, /calc\(100dvh - 330px\)/);
+  assert.match(css, /\.hud-mode \.arena\{display:flex;flex-direction:column;align-items:center;gap:6px;height:auto\}/);
 });
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {
