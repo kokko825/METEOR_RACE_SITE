@@ -456,6 +456,22 @@ test("keeps diagnostics out of ordinary player screens and item labels in sync",
   assert.doesNotMatch(pieces, /pulse: "[^"]*\d+ ROUNDS"/);
 });
 
+test("supports replaceable wordmark and symbol artwork with text fallbacks", async () => {
+  const [page, css, assets] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+    read("../config/asset-paths.ts"),
+  ]);
+  assert.match(assets, /wordmark: "\/assets\/branding\/METEOR_RACE_txt\.svg"/);
+  assert.match(assets, /symbol: "\/assets\/branding\/METEOR_RACE_logo\.svg"/);
+  assert.match(page, /className="title-wordmark"/);
+  assert.match(page, /ASSET_PATHS\.branding\.wordmark/);
+  assert.match(page, /ASSET_PATHS\.branding\.symbol/);
+  assert.match(page, /<h1>METEOR<br\/><span>RACE<\/span><\/h1>/);
+  assert.match(css, /\.title-wordmark\.image-loaded>h1/);
+  assert.match(css, /\.title-orbit\.symbol-loaded>b/);
+});
+
 test("keeps strong-play research anonymous, verified and optional", async () => {
   const [page, route, hook, privacy] = await Promise.all([
     read("../app/page.tsx"),

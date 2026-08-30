@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 const requiredAssets = [
   "public/assets/branding/meteor-race-favicon.svg",
   "public/assets/branding/meteor-race-social-card.jpg",
+  "public/assets/branding/METEOR_RACE_logo.svg",
+  "public/assets/branding/METEOR_RACE_txt.svg",
   "public/assets/fonts/geist-sans.woff2",
   "public/assets/fonts/geist-mono.woff2",
   "public/assets/images/items/item-preview-board.jpg",

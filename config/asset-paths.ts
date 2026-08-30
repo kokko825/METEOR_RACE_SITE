@@ -3,6 +3,8 @@ export const ASSET_PATHS = {
   branding: {
     favicon: "/assets/branding/meteor-race-favicon.svg",
     socialCard: "/assets/branding/meteor-race-social-card.jpg",
+    wordmark: "/assets/branding/METEOR_RACE_txt.svg",
+    symbol: "/assets/branding/METEOR_RACE_logo.svg",
   },
   images: {
     itemPreviewBoard: "/assets/images/items/item-preview-board.jpg",

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
@@ -72,6 +73,7 @@ import {
 } from "./strong-play";
 import { COMMUNITY_SAFETY } from "../config/community-safety";
 import { ITEM_LORE } from "../config/item-lore";
+import { ASSET_PATHS } from "../config/asset-paths";
 import {
   ITEM_DEMO_LABELS,
   InventoryPanel,
@@ -1743,10 +1745,33 @@ function Game() {
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
           <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
-          <div className="title-orbit" aria-hidden="true"><i /><i /><b>✦</b></div>
+          <div className="title-orbit" aria-hidden="true">
+            <i /><i /><b>✦</b>
+            <Image
+              src={ASSET_PATHS.branding.symbol}
+              alt=""
+              width={1024}
+              height={500}
+              unoptimized
+              onLoad={(event) => event.currentTarget.parentElement?.classList.add("symbol-loaded")}
+              onError={(event) => { event.currentTarget.hidden = true; }}
+            />
+          </div>
           <div className="title-copy">
             <small>INTERPLANETARY TACTICAL RACE</small>
-            <h1>METEOR<br/><span>RACE</span></h1>
+            <div className="title-wordmark">
+              <Image
+                src={ASSET_PATHS.branding.wordmark}
+                alt=""
+                width={1024}
+                height={200}
+                priority
+                unoptimized
+                onLoad={(event) => event.currentTarget.parentElement?.classList.add("image-loaded")}
+                onError={(event) => { event.currentTarget.hidden = true; }}
+              />
+              <h1>METEOR<br/><span>RACE</span></h1>
+            </div>
             {language === "ja" && <b className="title-reading">メテオレース</b>}
             <p>{t("titleTagline")}</p>
             <p className="title-description">{t("titleDescription")}</p>
@@ -1795,6 +1820,16 @@ function Game() {
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
         <div className="brand">
+          <Image
+            className="brand-symbol"
+            src={ASSET_PATHS.branding.symbol}
+            alt=""
+            width={1024}
+            height={500}
+            unoptimized
+            aria-hidden="true"
+            onError={(event) => { event.currentTarget.hidden = true; }}
+          />
           <div>
             <h1>METEOR RACE</h1>
             <p>{t("titleTagline")}</p>
