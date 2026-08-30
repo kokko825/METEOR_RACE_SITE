@@ -1745,6 +1745,7 @@ function Game() {
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
           <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
+          <div className="title-brand-lockup">
           <div className="title-orbit" aria-hidden="true">
             <i /><i /><b>✦</b>
             <Image
@@ -1775,6 +1776,7 @@ function Game() {
             {language === "ja" && <b className="title-reading">メテオレース</b>}
             <p>{t("titleTagline")}</p>
             <p className="title-description">{t("titleDescription")}</p>
+          </div>
           </div>
           <nav>
             <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")} <span>▶</span></button>
@@ -1831,7 +1833,18 @@ function Game() {
             onError={(event) => { event.currentTarget.hidden = true; }}
           />
           <div>
-            <h1>METEOR RACE</h1>
+            <div className="header-wordmark">
+              <Image
+                src={ASSET_PATHS.branding.wordmark}
+                alt=""
+                width={1024}
+                height={200}
+                unoptimized
+                onLoad={(event) => event.currentTarget.parentElement?.classList.add("image-loaded")}
+                onError={(event) => { event.currentTarget.hidden = true; }}
+              />
+              <h1>METEOR RACE</h1>
+            </div>
             <p>{t("titleTagline")}</p>
           </div>
         </div>

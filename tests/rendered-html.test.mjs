@@ -465,11 +465,15 @@ test("supports replaceable wordmark and symbol artwork with text fallbacks", asy
   assert.match(assets, /wordmark: "\/assets\/branding\/METEOR_RACE_txt\.svg"/);
   assert.match(assets, /symbol: "\/assets\/branding\/METEOR_RACE_logo\.svg"/);
   assert.match(page, /className="title-wordmark"/);
+  assert.match(page, /className="title-brand-lockup"/);
+  assert.match(page, /className="header-wordmark"/);
   assert.match(page, /ASSET_PATHS\.branding\.wordmark/);
   assert.match(page, /ASSET_PATHS\.branding\.symbol/);
   assert.match(page, /<h1>METEOR<br\/><span>RACE<\/span><\/h1>/);
   assert.match(css, /\.title-wordmark\.image-loaded>h1/);
   assert.match(css, /\.title-orbit\.symbol-loaded>b/);
+  assert.match(css, /\.title-brand-lockup \.title-orbit/);
+  assert.match(css, /\.header-wordmark\.image-loaded>h1/);
 });
 
 test("keeps strong-play research anonymous, verified and optional", async () => {
