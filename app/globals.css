@@ -1364,3 +1364,22 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
   .hud-mode .board{flex:0 0 auto}
   .hud-mode .action-panel{flex:0 0 auto;margin-top:0}
 }
+
+/* Loadout buttons separate long item names from their selected count. */
+.switch-setup-controls>.meteor-choice.item-choice{
+  min-height:58px;
+  display:grid;
+  grid-template-columns:26px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  column-gap:6px;
+  row-gap:2px;
+  align-items:center;
+  text-align:center;
+}
+.switch-setup-controls>.meteor-choice.item-choice>.item-icon{grid-column:1;grid-row:1/3}
+.switch-setup-controls>.meteor-choice.item-choice>span{grid-column:2;grid-row:1;min-width:0;line-height:1.1;white-space:nowrap}
+.switch-setup-controls>.meteor-choice.item-choice>b{grid-column:2;grid-row:2;min-width:0;margin:0;color:#fff;font-size:.82em;line-height:1;font-variant-numeric:tabular-nums}
+@media(max-width:700px){
+  .switch-setup-controls>.meteor-choice.item-choice{min-height:52px;grid-template-columns:21px minmax(0,1fr);column-gap:3px;padding:4px}
+  .switch-setup-controls>.meteor-choice.item-choice>span{font-size:clamp(7px,2.2vw,11px)}
+}

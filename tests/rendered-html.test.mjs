@@ -388,6 +388,8 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(css, /\.action-panel button,[^}]*min-height:48px/);
   assert.match(css, /calc\(100dvh - 330px\)/);
   assert.match(css, /\.hud-mode \.arena\{display:flex;flex-direction:column;align-items:center;gap:6px;height:auto\}/);
+  assert.match(css, /\.switch-setup-controls>\.meteor-choice\.item-choice\{[^}]*grid-template-columns:26px minmax\(0,1fr\);[^}]*grid-template-rows:auto auto/);
+  assert.match(css, /\.switch-setup-controls>\.meteor-choice\.item-choice>b\{[^}]*grid-row:2/);
 });
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {
