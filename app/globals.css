@@ -1323,9 +1323,16 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 /* Keep the battle viewport inside a stable safe frame. */
 @media (min-width:901px) {
   .shell.hud-mode {
-    padding-top:max(18px,env(safe-area-inset-top));
+    padding-top:max(28px,calc(env(safe-area-inset-top) + 10px));
     padding-right:max(22px,env(safe-area-inset-right));
     padding-bottom:calc(84px + env(safe-area-inset-bottom));
     padding-left:max(22px,env(safe-area-inset-left));
   }
+  .hud-mode > .game-layout{height:calc(100dvh - 180px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+}
+@media (min-width:561px) and (max-width:900px) {
+  .shell.hud-mode{padding-top:max(20px,calc(env(safe-area-inset-top) + 8px))}
+}
+@media (max-width:560px) {
+  .shell.hud-mode{padding-top:max(16px,calc(env(safe-area-inset-top) + 6px))}
 }

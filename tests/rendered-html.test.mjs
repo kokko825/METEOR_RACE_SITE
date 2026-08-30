@@ -379,6 +379,8 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(css, /height:var\(--battle-hud-height\)/);
   assert.match(css, /height:var\(--battle-header-height\)/);
   assert.match(css, /margin-top:var\(--battle-section-gap\)/);
+  assert.match(css, /padding-top:max\(28px,calc\(env\(safe-area-inset-top\) \+ 10px\)\)/);
+  assert.match(css, /padding-top:max\(16px,calc\(env\(safe-area-inset-top\) \+ 6px\)\)/);
 });
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {
