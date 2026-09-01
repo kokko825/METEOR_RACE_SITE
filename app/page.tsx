@@ -58,6 +58,7 @@ import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance
 import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, itemEffectFacts } from "./item-content";
 import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
+import { LATEST_RELEASE_NOTES } from "../config/release-notes";
 import { useDeferredReveal } from "./hooks/use-deferred-reveal";
 import { useUiFeedback } from "./hooks/use-ui-feedback";
 import { SoundMixer, VolumeRange } from "./components/sound-controls";
@@ -1896,6 +1897,16 @@ function Game() {
               <p>{t("strongPlaySharingNote")}</p>
             </section>
             <AdSlot position="settings" />
+            <section className="release-summary">
+              <h3>{language === "ja" ? "更新履歴" : "UPDATE LOG"}</h3>
+              <div className="release-summary-list">
+                {LATEST_RELEASE_NOTES.map((note) => <article key={note.version}>
+                  <header><b>Version {note.version}</b><time dateTime={note.date}>{note.date}</time></header>
+                  <strong>{note.title[language]}</strong><p>{note.summary[language]}</p>
+                </article>)}
+              </div>
+              <a className="release-all-link" href="/updates">{language === "ja" ? "すべて見る" : "VIEW ALL"}<span aria-hidden="true">→</span></a>
+            </section>
             <section>
               <h3>{t("contactHeading")}</h3>
               <select value={contactType} onChange={(event) => setContactType(event.target.value)}><option>不具合報告</option><option>ご意見・要望</option><option>その他</option></select>

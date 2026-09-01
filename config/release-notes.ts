@@ -1,0 +1,23 @@
+export type ReleaseNote = {
+  version: string;
+  date: string;
+  title: { ja: string; en: string };
+  summary: { ja: string; en: string };
+  details: { ja: readonly string[]; en: readonly string[] };
+  tags: readonly ("BUG FIX" | "UI" | "SYSTEM" | "ASSET")[];
+};
+
+// 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
+export const RELEASE_NOTES = [
+  { version:"1.1.49", date:"2026-09-01", tags:["SYSTEM","UI"], title:{ja:"更新履歴を追加",en:"Release history added"}, summary:{ja:"最新3件の更新内容と、全履歴を確認できる画面を追加。",en:"Added recent updates and a complete release-history page."}, details:{ja:["設定画面に最新3件の更新内容を表示","「すべて見る」から過去の更新履歴を確認可能","更新内容を1ファイルで管理できる構成へ整理"],en:["Shows the three latest updates in Settings","Adds a complete history page","Centralizes release notes in one file"]} },
+  { version:"1.1.48", date:"2026-08-30", tags:["ASSET","UI"], title:{ja:"ファビコンの視認性を改善",en:"Improved favicon visibility"}, summary:{ja:"白背景の公式シンボルを採用し、小さい表示でも見やすく調整。",en:"Uses the official symbol on white for clearer small-size display."}, details:{ja:["白背景版のシンボルへ変更","ブラウザタブでの識別性を改善"],en:["Switched to the white-background symbol","Improved browser-tab recognition"]} },
+  { version:"1.1.47", date:"2026-08-30", tags:["BUG FIX","ASSET"], title:{ja:"ロゴ表示の遅れを解消",en:"Removed logo display delay"}, summary:{ja:"ロゴを事前読込し、画面表示時の一瞬の遅れを解消。",en:"Preloads logos to remove the brief display delay."}, details:{ja:["タイトル・シンボルロゴを事前読込","不要なフェード待ちを削除"],en:["Preloads title and symbol logos","Removed unnecessary fade delay"]} },
+  { version:"1.1.46", date:"2026-08-30", tags:["ASSET"], title:{ja:"公式シンボルをファビコンへ反映",en:"Official symbol favicon"}, summary:{ja:"仮アイコンから正式な記号ロゴへ変更。",en:"Replaced the provisional icon with the official symbol."}, details:{ja:["サイトのファビコンを正式ロゴへ統一"],en:["Unified the favicon with the official mark"]} },
+  { version:"1.1.45", date:"2026-08-30", tags:["ASSET"], title:{ja:"専用ファビコンを追加",en:"Added a custom favicon"}, summary:{ja:"ブラウザタブ用の専用アイコンを追加。",en:"Added a dedicated browser-tab icon."}, details:{ja:["汎用アイコンから専用アイコンへ変更"],en:["Replaced the generic browser icon"]} },
+  { version:"1.1.44", date:"2026-08-30", tags:["BUG FIX","UI"], title:{ja:"PC対戦画面の重なりを修正",en:"Fixed desktop battle overlap"}, summary:{ja:"盤面・操作欄・下部バーを分離し、スクロールなしで収まるよう調整。",en:"Separated board, controls, and footer for a no-scroll desktop layout."}, details:{ja:["メテオ配置欄と盤面の重なりを解消","下部バー用の表示領域を確保","低い画面でも操作できるよう調整"],en:["Cleared meteor controls from the board","Reserved space for the footer","Improved short-screen operation"]} },
+  { version:"1.1.43", date:"2026-08-30", tags:["BUG FIX","UI"], title:{ja:"所持品表示を整理",en:"Refined loadout display"}, summary:{ja:"BOOSTERなどの名称と所持数が重ならない2段表示へ変更。",en:"Separated item labels and counts into two rows."}, details:{ja:["アイテム名と数字の重なりを修正","限られた幅での視認性を改善"],en:["Fixed item label/count overlap","Improved narrow-width readability"]} },
+  { version:"1.1.42", date:"2026-08-30", tags:["BUG FIX","UI"], title:{ja:"メテオ操作欄の位置を修正",en:"Fixed meteor-control placement"}, summary:{ja:"配置操作が盤面を覆わないようレイアウトを修正。",en:"Adjusted placement controls so they no longer cover the board."}, details:{ja:["誤操作につながる表示の重なりを解消"],en:["Removed overlap that could cause unintended input"]} },
+  { version:"1.1.41", date:"2026-08-30", tags:["UI"], title:{ja:"全年齢向けに視認性を向上",en:"Improved all-ages readability"}, summary:{ja:"主要な文字とボタンを大きくし、操作しやすさを改善。",en:"Enlarged key text and controls for easier play."}, details:{ja:["主要ボタンの押しやすさを改善","案内文字のサイズを拡大"],en:["Improved primary button accessibility","Increased guidance text size"]} },
+] as const satisfies readonly ReleaseNote[];
+
+export const LATEST_RELEASE_NOTES = RELEASE_NOTES.slice(0, 3);

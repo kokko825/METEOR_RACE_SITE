@@ -74,6 +74,23 @@ test("serves read-only configuration from Git-versioned files", async () => {
   await assert.rejects(read("../app/admin-auth.ts"), { code: "ENOENT" });
 });
 
+test("keeps public release history centralized and shows only three recent entries in settings", async () => {
+  const [page, updates, notes, version] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/updates/page.tsx"),
+    read("../config/release-notes.ts"),
+    read("../app/version.ts"),
+  ]);
+  assert.match(notes, /RELEASE_NOTES/);
+  assert.match(notes, /slice\(0, 3\)/);
+  assert.match(page, /LATEST_RELEASE_NOTES/);
+  assert.match(page, /href="\/updates"/);
+  assert.match(updates, /RELEASE_NOTES\.map/);
+  const appVersion = version.match(/APP_VERSION = "([^"]+)"/)?.[1];
+  assert.ok(appVersion);
+  assert.match(notes, new RegExp(`version:\\s*"${appVersion.replaceAll(".", "\\.")}"`));
+});
+
 test("keeps online room settings authoritative and bounded", async () => {
   const rooms = await read("../app/api/rooms/route.ts");
   assert.match(rooms, /body\.humanCount/);
