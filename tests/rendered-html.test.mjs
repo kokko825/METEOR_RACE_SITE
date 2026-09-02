@@ -91,6 +91,11 @@ test("keeps public release history centralized and shows only three recent entri
   assert.match(notes, new RegExp(`version:\\s*"${appVersion.replaceAll(".", "\\.")}"`));
 });
 
+test("keeps release history scrollable in the short desktop viewport layout", async () => {
+  const css = await read("../app/globals.css");
+  assert.match(css, /html:has\(\.release-page\),body:has\(\.release-page\).*overflow-y:auto/);
+});
+
 test("keeps online room settings authoritative and bounded", async () => {
   const rooms = await read("../app/api/rooms/route.ts");
   assert.match(rooms, /body\.humanCount/);

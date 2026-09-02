@@ -1370,6 +1370,9 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
   .arena:has(.item-selection-overlay) .action-panel{max-height:258px}
 }
 
+/* Document routes must scroll even when the short desktop battle layout locks the viewport. */
+html:has(.release-page),body:has(.release-page){height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:auto}
+
 /* Loadout buttons separate long item names from their selected count. */
 .switch-setup-controls>.meteor-choice.item-choice{
   min-height:58px;
