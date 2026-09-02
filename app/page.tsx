@@ -1913,7 +1913,7 @@ function Game() {
               <textarea maxLength={COMMUNITY_SAFETY.contactMaxLength} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder="内容を入力してください" />
               <button type="button" className="contact-send" onClick={() => void sendContact()}>送信する</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
-              <nav><a href="/policy">{language === "ja" ? "サイトポリシー" : "SITE POLICY"}</a><span>{APP_VERSION_LABEL}</span></nav>
+              <nav><a href="/policy">{language === "ja" ? "利用規約" : "TERMS & PRIVACY"}</a><span>{APP_VERSION_LABEL}</span></nav>
             </section>
           </aside>
         </div>

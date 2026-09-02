@@ -350,6 +350,18 @@ function isImmediateWinAvailable(state: GameState, player: Player): boolean {
   return false;
 }
 
+function pulseMeteorEscapeBonus(state: GameState, next: GameState, player: Player) {
+  const radius = normalizeBalance(state.balance).pulseRadius;
+  const wasLocked = activePulseDevices(state).some(
+    (device) => distance(device, state.probes[player]) <= radius,
+  );
+  if (!wasLocked) return 0;
+  const stillLocked = activePulseDevices(next).some(
+    (device) => distance(device, next.probes[player]) <= normalizeBalance(next.balance).pulseRadius,
+  );
+  return stillLocked ? 0 : AI_STRATEGY.items.pulseMeteorEscapeBonus;
+}
+
 function projectTimedEffectsToNextTurn(state: GameState, player: Player): GameState {
   const players = activePlayers(state);
   const currentIndex = players.indexOf(state.turn);
@@ -772,6 +784,7 @@ function bestPlacement(
       choice: placement,
       value:
         scoreResult(next, player, difficulty, state) +
+        pulseMeteorEscapeBonus(state, next, player) +
         plannedRecallBonus(state, placement, next) +
         earlyPlacementStrategyBonus(state, placement, next),
     });
@@ -994,6 +1007,7 @@ export function chooseAiDecision(
       choice: placement,
       value:
         scoreResult(next, player, difficulty, state) +
+        pulseMeteorEscapeBonus(state, next, player) +
         plannedRecallBonus(state, placement, next) +
         earlyPlacementStrategyBonus(state, placement, next),
     });

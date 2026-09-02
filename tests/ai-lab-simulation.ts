@@ -308,7 +308,7 @@ import {
   const state = initialGameState(11, "red", 2, false, 0, [], "item");
   state.turnCount = 8;
   state.phase = "place";
-  state.probes = { ...state.probes, red: { r: 8, c: 5 }, blue: { r: 2, c: 5 } };
+  state.probes = { ...state.probes, red: { r: 8, c: 5 }, blue: { r: 1, c: 1 } };
   state.pulseDevices = [{ id: 91, r: 8, c: 6, owner: "blue", turns: 4, createdTurnCount: 7 }];
   state.itemHands!.red = ["booster"];
   const decision = chooseAiDecision(state, "hard", () => 0);
@@ -324,6 +324,22 @@ import {
   state.itemHands!.red = ["booster", "blast"];
   const decision = chooseAiDecision(state, "hard", () => 0);
   assert.deepEqual(decision, { type: "item", kind: "blast" }, "PULSE-locked duel AI should start a BLAST escape");
+}
+
+{
+  const state = initialGameState(11, "red", 2, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.probes = { ...state.probes, red: { r: 8, c: 5 }, blue: { r: 1, c: 1 } };
+  state.pulseDevices = [{ id: 93, r: 8, c: 6, owner: "blue", turns: 4, createdTurnCount: 7 }];
+  state.itemHands!.red = [];
+  state.inventory.red = { small: 0, large: 1 };
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.equal(decision.type, "meteor", "PULSE-locked AI should use a meteor blast when it provides an escape");
+  if (decision.type === "meteor") {
+    const escaped = applyMeteor(state, decision.target, decision.size, decision.useCapsule).state;
+    assert.ok(legalMoves({ ...escaped, phase: "move", turn: "red" }, "red").length > 0, "chosen meteor must move the probe outside PULSE");
+  }
 }
 
 function play(state: GameState, difficulty: AiDifficulty, seed: number) {

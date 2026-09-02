@@ -100,7 +100,7 @@ test("consolidates legal pages and removes obsolete settings navigation", async 
   const [page, policy, sitemap, css] = await Promise.all([
     read("../app/page.tsx"), read("../app/policy/page.tsx"), read("../app/sitemap.ts"), read("../app/globals.css"),
   ]);
-  assert.match(policy, /サイトポリシー/);
+  assert.match(policy, /<h1>利用規約<\/h1>/);
   assert.match(policy, /プライバシー方針/);
   assert.match(policy, /利用条件と禁止事項/);
   assert.doesNotMatch(page, /<nav><button[^>]*>ルールガイド/);

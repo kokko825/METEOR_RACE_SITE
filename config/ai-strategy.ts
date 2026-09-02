@@ -61,6 +61,7 @@ export const AI_STRATEGY = {
     blastMobility: 5,
     shieldLossPenalty: 150,
     pulseEscapeBonus: 760,
+    pulseMeteorEscapeBonus: 100_000,
     duelItemCreativity: 11,
     useThresholdEasy: -4,
     useThresholdNormal: 2,

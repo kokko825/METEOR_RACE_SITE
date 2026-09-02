@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "サイトポリシー",
+  title: "利用規約",
   description: "METEOR RACEのプライバシー方針と利用条件です。",
   alternates: { canonical: "/policy" },
 };
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PolicyPage() {
   return <main className="doc-page">
     <div className="doc-topbar"><Link className="doc-back" href="/">← 戻る</Link></div>
-    <header className="doc-header"><small>SITE POLICY</small><h1>サイトポリシー</h1><p className="doc-lead">取り扱う情報と、楽しく公平に遊ぶための利用条件をまとめています。</p></header>
+    <header className="doc-header"><small>TERMS &amp; PRIVACY</small><h1>利用規約</h1><p className="doc-lead">楽しく公平に遊ぶための利用条件と、取り扱う情報についてまとめています。</p></header>
     <section className="doc-section"><h2>プライバシー方針</h2><h3>保存する情報</h3><p>ニックネーム、端末ごとの内部識別子と、それから作る短いAEQRIS企業登録番号、対戦結果、レート、ルーム参加情報、ルームチャット、お問い合わせ内容を保存することがあります。認証サービスと連携した場合に限り、識別と問い合わせ通知のためメールアドレスを取り扱う場合があります。</p><h3>利用目的</h3><p>オンライン対戦の同期、プロフィールとレートの識別、不具合調査、お問い合わせ対応、ゲーム品質の改善に利用します。</p></section>
     <section className="doc-section"><h2>匿名の好プレーデータ</h2><p>設定がONの場合、CPUを含む対戦で勝者が行った有効性の高い局面をAI改善の検証資料として保存することがあります。ニックネーム、メールアドレス、チャット、企業登録番号、ルームコードは含めません。AIの自動学習には使用せず、設定からいつでもOFFにできます。</p></section>
     <section className="doc-section"><h2>公開範囲と端末保存</h2><p>他のプレイヤーに表示するのは対戦用ニックネームなど必要な情報だけです。設定と企業登録番号はブラウザにも保存され、ブラウザデータを消去すると失われる場合があります。</p></section>
