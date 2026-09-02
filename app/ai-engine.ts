@@ -693,6 +693,9 @@ function targetedItemOptions(
   player: Player,
   difficulty: AiDifficulty,
 ) {
+  const wasPulseLocked = activePulseDevices(state).some(
+    (device) => distance(device, state.probes[player]) <= normalizeBalance(state.balance).pulseRadius,
+  );
   const pending = applyUseItem(state, kind);
   return switchCandidateCells(pending, kind).flatMap((target) => {
     try {
@@ -706,7 +709,11 @@ function targetedItemOptions(
         : kind === "pulse"
           ? mobilitySwing(state, next, player) * AI_STRATEGY.items.pulseMobility
           : mobilitySwing(state, next, player) * AI_STRATEGY.items.blastMobility;
-      return [{ choice: { target, next }, value: scoreResult(next, player, difficulty, state) + tactical }];
+      const escapedPulse = kind === "blast" && wasPulseLocked && !activePulseDevices(next).some(
+        (device) => distance(device, next.probes[player]) <= normalizeBalance(next.balance).pulseRadius,
+      );
+      return [{ choice: { target, next }, value: scoreResult(next, player, difficulty, state) + tactical +
+        (escapedPulse ? AI_STRATEGY.items.pulseEscapeBonus : 0) }];
     } catch {
       return [];
     }
@@ -731,7 +738,12 @@ function itemUseValue(state: GameState, kind: ItemKind, player: Player, difficul
       ? scoreResult(best.choice.next, player, difficulty, state)
       : undefined;
   }
-  if (kind === "booster") return boosterFollowupValue(pending, player, difficulty);
+  if (kind === "booster") {
+    const pulseLocked = activePulseDevices(state).some(
+      (device) => distance(device, state.probes[player]) <= normalizeBalance(state.balance).pulseRadius,
+    );
+    return pulseLocked ? undefined : boosterFollowupValue(pending, player, difficulty);
+  }
   if (kind === "shield") {
     const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
     const danger = Math.min(...rivals.map((candidate) => distance(state.probes[player], state.probes[candidate])));
@@ -857,6 +869,8 @@ export function chooseAiDecision(
   if (state.phase === "over") return { type: "skip" };
   const creativity = normalizeBalance(state.balance).aiCreativity;
   const player = state.turn;
+  const itemDuel = isItemVariant(state.variant) && activePlayers(state).length === 2;
+  const decisionCreativity = itemDuel ? Math.min(creativity, AI_STRATEGY.items.duelItemCreativity) : creativity;
   if (state.phase === "setup") {
     const own = state.itemHands?.[player] ?? [];
     const balance = normalizeBalance(state.balance);
@@ -970,7 +984,7 @@ export function chooseAiDecision(
       ranked = [...understandable, ...provenRetreats];
     }
     ranked.sort((a, b) => b.value - a.value);
-    const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);
+    const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant) && !itemDuel, decisionCreativity);
     return selected ? { type: "move", target: selected.choice } : { type: "skip" };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
@@ -1007,7 +1021,7 @@ export function chooseAiDecision(
       value,
     });
   }
-  const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant), creativity);
+  const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant) && !itemDuel, decisionCreativity);
   if (!selected) return { type: "skip" };
   if (selected.choice === "pass") return { type: "pass" };
   if ("itemKind" in selected.choice) return { type: "item", kind: selected.choice.itemKind as ItemKind };

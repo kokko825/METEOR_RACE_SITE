@@ -304,6 +304,28 @@ import {
   );
 }
 
+{
+  const state = initialGameState(11, "red", 2, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.probes = { ...state.probes, red: { r: 8, c: 5 }, blue: { r: 2, c: 5 } };
+  state.pulseDevices = [{ id: 91, r: 8, c: 6, owner: "blue", turns: 4, createdTurnCount: 7 }];
+  state.itemHands!.red = ["booster"];
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.notDeepEqual(decision, { type: "item", kind: "booster" }, "PULSE-locked AI must preserve BOOSTER");
+}
+
+{
+  const state = initialGameState(11, "red", 2, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.probes = { ...state.probes, red: { r: 8, c: 5 }, blue: { r: 2, c: 5 } };
+  state.pulseDevices = [{ id: 92, r: 8, c: 6, owner: "blue", turns: 4, createdTurnCount: 7 }];
+  state.itemHands!.red = ["booster", "blast"];
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(decision, { type: "item", kind: "blast" }, "PULSE-locked duel AI should start a BLAST escape");
+}
+
 function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
   let moves = 0;

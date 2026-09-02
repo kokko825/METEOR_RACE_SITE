@@ -96,6 +96,20 @@ test("keeps release history scrollable in the short desktop viewport layout", as
   assert.match(css, /html:has\(\.release-page\),body:has\(\.release-page\).*overflow-y:auto/);
 });
 
+test("consolidates legal pages and removes obsolete settings navigation", async () => {
+  const [page, policy, sitemap, css] = await Promise.all([
+    read("../app/page.tsx"), read("../app/policy/page.tsx"), read("../app/sitemap.ts"), read("../app/globals.css"),
+  ]);
+  assert.match(policy, /サイトポリシー/);
+  assert.match(policy, /プライバシー方針/);
+  assert.match(policy, /利用条件と禁止事項/);
+  assert.doesNotMatch(page, /<nav><button[^>]*>ルールガイド/);
+  assert.match(page, /href="\/policy"/);
+  assert.match(sitemap, /\/policy/);
+  assert.doesNotMatch(sitemap, /\/privacy|\/terms/);
+  assert.match(css, /settings-drawer>header.*box-shadow:0 -28px 0/);
+});
+
 test("keeps online room settings authoritative and bounded", async () => {
   const rooms = await read("../app/api/rooms/route.ts");
   assert.match(rooms, /body\.humanCount/);
@@ -244,7 +258,7 @@ test("keeps the manual inside its frame and presents device identity as company 
   assert.match(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*overflow-y:auto/);
   assert.match(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*touch-action:pan-y/);
   assert.doesNotMatch(css, /\.manual-drawer>\.manual-onepage,\.manual-drawer>\.manual-world\{[^}]*overscroll-behavior:contain/);
-  assert.match(css, /\.settings-drawer>header\{position:sticky;z-index:3;top:0;background:#092432\}/);
+  assert.match(css, /\.settings-drawer>header\{position:sticky;z-index:3;top:0;background:#092432;box-shadow:0 -28px 0 #092432\}/);
   assert.match(css, /\.entry-flow>header\{position:sticky;z-index:4;top:0/);
   assert.equal((css.match(/\.manual-drawer\{display:/g) ?? []).length, 1);
 });
@@ -262,11 +276,11 @@ test("keeps carryable items and player order as shared rule constants", async ()
 });
 
 test("documents every authorized item source and accepts balanced equipment proposals", async () => {
-  const [page, lore, css, terms] = await Promise.all([
+  const [page, lore, css, policy] = await Promise.all([
     read("../app/page.tsx"),
     read("../config/item-lore.ts"),
     read("../app/globals.css"),
-    read("../app/terms/page.tsx"),
+    read("../app/policy/page.tsx"),
   ]);
   for (const source of ["AEGIS FRAME", "VOLTERRA DRIVE", "MIRAGE WEAVE", "KEPLER DYNAMICS", "PYRA IMPACT", "NEXWAVE SYSTEMS", "AEQRIS FIELD CONTROL"]) assert.match(lore, new RegExp(source));
   assert.match(lore, /障害物が増えすぎた競技フィールドを安全に整地/);
@@ -276,7 +290,7 @@ test("documents every authorized item source and accepts balanced equipment prop
   assert.match(page, /proposalCreditAllowed/);
   assert.match(css, /\.authorized-equipment>div\{display:grid/);
   assert.match(css, /\.supplier-proposal form\{/);
-  assert.match(terms, /アイテム案の投稿/);
+  assert.match(policy, /アイテム案の投稿/);
 });
 
 test("tags Gmail notifications by submission category", async () => {
@@ -521,16 +535,16 @@ test("supports replaceable wordmark and symbol artwork with text fallbacks", asy
 });
 
 test("keeps strong-play research anonymous, verified and optional", async () => {
-  const [page, route, hook, privacy] = await Promise.all([
+  const [page, route, hook, policy] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/api/strong-plays/route.ts"),
     read("../app/hooks/use-local-settings.ts"),
-    read("../app/privacy/page.tsx"),
+    read("../app/policy/page.tsx"),
   ]);
   assert.match(page, /strongPlaySharing/);
   assert.match(route, /verifyStrongPlayCandidate/);
   assert.match(route, /JSON\.stringify\(play\)/);
   assert.doesNotMatch(route, /x-meteor-player-id|nickname|email|roomCode|chat/i);
   assert.match(hook, /if \(hydrated\) window\.localStorage\.setItem/);
-  assert.match(privacy, /AIが自動学習するためには使用せず/);
+  assert.match(policy, /AIの自動学習には使用せず/);
 });

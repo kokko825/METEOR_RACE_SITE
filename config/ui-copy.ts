@@ -4,7 +4,7 @@ export const UI_COPY = {
   manualLabel: { ja: "あそびかた", en: "MANUAL" },
   gameStart: { ja: "ゲーム開始", en: "GAME START" },
   settingsLabel: { ja: "設定", en: "SETTINGS" },
-  privacyLabel: { ja: "プライバシー", en: "PRIVACY" },
+  privacyLabel: { ja: "サイトポリシー", en: "SITE POLICY" },
   onlineReady: { ja: "オンライン対応", en: "ONLINE READY" },
   guestPlayer: { ja: "ゲスト", en: "GUEST PLAYER" },
   ruleGuide: { ja: "ルール案内", en: "RULE GUIDE" },

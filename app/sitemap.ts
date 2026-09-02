@@ -25,13 +25,7 @@ export default function sitemap() {
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/privacy`,
-      lastModified: CONTENT_LAST_MODIFIED,
-      changeFrequency: "yearly" as const,
-      priority: 0.3,
-    },
-    {
-      url: `${SITE_URL}/terms`,
+      url: `${SITE_URL}/policy`,
       lastModified: CONTENT_LAST_MODIFIED,
       changeFrequency: "yearly" as const,
       priority: 0.3,
