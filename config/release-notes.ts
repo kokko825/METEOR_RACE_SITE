@@ -9,6 +9,7 @@ export type ReleaseNote = {
 
 // 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
 export const RELEASE_NOTES = [
+  { version:"1.0.59", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"チュートリアル進行を調整",en:"Refined tutorial timing"}, summary:{ja:"説明と相手の行動が順番に進むよう調整。",en:"Tutorial guidance and opponent actions now proceed in sequence."}, details:{ja:["説明中は盤面を停止"],en:["Pauses the board during guidance"]} },
   { version:"1.0.58", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"チュートリアル入口を修正",en:"Fixed tutorial access"}, summary:{ja:"各準備画面からチュートリアルを開始可能に。",en:"Tutorial access is now available from preparation screens."}, details:{ja:["案内表現を統一"],en:["Unified guidance wording"]} },
   { version:"1.0.57", date:"2026-09-07", tags:["UI"], title:{ja:"案内文を調整",en:"Refined tutorial guidance"}, summary:{ja:"AEQRISの案内を自然な表現に調整。",en:"Refined AEQRIS tutorial guidance."}, details:{ja:["現在のルールを簡潔に案内"],en:["Presents the current rules concisely"]} },
   { version:"1.0.56", date:"2026-09-07", tags:["UI","BUG FIX"], title:{ja:"チュートリアル入口を全画面へ統一",en:"Unified tutorial access across screens"}, summary:{ja:"オンライン対戦中を除き、ホーム・対戦設定・通常対戦画面からすぐ開始確認を表示。",en:"Tutorial confirmation is now available from home, setup, and offline match screens."}, details:{ja:["確認文を「チュートリアルを開始しますか？」だけに簡略化","YESからチュートリアルへ直接移動","オフライン対戦画面の右上にも初心者ボタンを追加","オンライン待機室からは正常に退出して開始","進行中のオンライン対戦ではボタンを非表示"],en:["Simplified the confirmation prompt","Starts directly after YES","Added the beginner button to offline matches","Leaves online waiting rooms cleanly before training","Hides the button during active online matches"]} },

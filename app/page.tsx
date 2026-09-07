@@ -149,7 +149,7 @@ type OnlineRoom = {
 };
 
 type ChatMessage = { id: string; nickname: string; message: string; createdAt: number };
-type TutorialStep = "welcome" | "goal" | "first-move" | "first-praise" | "rival" | "second-move" | "meteor" | "meteor-result" | "large" | "large-result" | "free" | "complete";
+type TutorialStep = "welcome" | "goal" | "first-move" | "first-praise" | "rival" | "rival-moving" | "rival-result" | "second-move" | "meteor" | "meteor-result" | "large" | "large-result" | "free" | "complete";
 const QUICK_CHAT_MESSAGES = COMMUNITY_SAFETY.quickChatMessages;
 
 
@@ -1577,8 +1577,8 @@ function Game() {
   }, [mode, aiRunning, game, aiSpeed, stats.games, activeBalance]);
 
   useEffect(() => {
-    if (tutorialStep === "rival" && game.turn === "red" && game.turnCount > 0) {
-      setTutorialStep("second-move");
+    if (tutorialStep === "rival-moving" && game.turn === "red" && game.turnCount > 0) {
+      setTutorialStep("rival-result");
     }
   }, [tutorialStep, game.turn, game.turnCount]);
 
@@ -1592,7 +1592,7 @@ function Game() {
       isAnimating ||
       game.phase === "over"
     ) return;
-    if (tutorialStep && tutorialStep !== "rival" && tutorialStep !== "free") return;
+    if (tutorialStep && tutorialStep !== "rival-moving" && tutorialStep !== "free") return;
     const timer = window.setTimeout(() => {
       if (game.phase === "setup") {
         const setupDecision = chooseAiDecision(game, aiDifficulty);
@@ -2034,13 +2034,15 @@ function Game() {
 
         <section className="arena">
           {tutorialStep && (
-            <section className={`tutorial-coach ${["welcome", "goal", "first-praise", "rival", "meteor-result", "complete"].includes(tutorialStep) ? "explain" : "guide"}`} role="dialog" aria-live="polite">
+            <section className={`tutorial-coach ${["welcome", "goal", "first-praise", "rival", "rival-result", "meteor-result", "complete"].includes(tutorialStep) ? "explain" : "guide"}`} role="dialog" aria-live="polite">
               <small>AEQRIS // FIELD TRAINING</small>
-              <h2>{tutorialStep === "welcome" ? "ようこそ、METEOR RACEへ" : tutorialStep === "goal" ? "相手より先にCOREを目指しましょう" : tutorialStep === "first-move" ? "まず、探査機を動かしてみましょう" : tutorialStep === "first-praise" ? (tutorialOpening === "forward" ? "素晴らしいです。COREへ前進できました" : tutorialOpening === "side" ? "横へずらすのも立派な戦略です" : "後退から進路を作る判断も有効です") : tutorialStep === "rival" ? "次は相手の手番です" : tutorialStep === "second-move" ? "好きな移動先を選んでください" : tutorialStep === "meteor" ? "次はメテオを配置してみましょう" : tutorialStep === "meteor-result" ? (tutorialHitRival ? "お見事です。相手を爆風で動かしました" : "メテオは障害物にも、次の推進力にもなります") : tutorialStep === "large" ? "大メテオもお試しいただけます" : tutorialStep === "complete" ? "チュートリアルが完了しました" : "ここからは自由にCOREを目指してください"}</h2>
-              <p>{tutorialStep === "welcome" ? "星間管理AI AEQRISが、METEOR RACEの基礎をご案内します。" : tutorialStep === "goal" ? "探査機は縦横へ1マス移動します。メテオの爆風を利用すれば、斜め方向にも進めます。" : tutorialStep === "first-move" ? "光るマスはすべて選択できます。前進がおすすめですが、横移動や後退を選んでも問題ありません。" : tutorialStep === "first-praise" ? "選び方に正解は一つではありません。次は相手の行動を確認してみましょう。" : tutorialStep === "rival" ? "相手も探査機を動かし、2手目以降はメテオを使用します。" : tutorialStep === "second-move" ? "盤面の状況を確認し、進みたいマスを自由に選んでください。" : tutorialStep === "meteor" ? "小メテオは周囲1マスに爆風を起こします。自分を進めても、相手を妨害しても、将来の布石にしても構いません。" : tutorialStep === "meteor-result" ? "大メテオは中心に近いほど強く、内周を2マス、外周を1マス動かします。以降も小・大を自由に選べます。" : tutorialStep === "large" ? "盤面の状況に合わせて、大メテオ、小メテオ、パスから選んでください。" : tutorialStep === "complete" ? "おめでとうございます。これで基本操作のご案内は終了です。" : "メテオを使い切ると、その手番中にボーナス移動が1回発生します。対戦相手はEASYのCPUです。"}</p>
+              <h2>{tutorialStep === "welcome" ? "ようこそ、METEOR RACEへ" : tutorialStep === "goal" ? "相手より先にCOREを目指しましょう" : tutorialStep === "first-move" ? "まず、探査機を動かしてみましょう" : tutorialStep === "first-praise" ? (tutorialOpening === "forward" ? "素晴らしいです。COREへ前進できました" : tutorialOpening === "side" ? "横へずらすのも立派な戦略です" : "後退から進路を作る判断も有効です") : tutorialStep === "rival" ? "次は相手の手番です" : tutorialStep === "rival-moving" ? "相手が行動しています" : tutorialStep === "rival-result" ? "相手の行動を確認しましょう" : tutorialStep === "second-move" ? "好きな移動先を選んでください" : tutorialStep === "meteor" ? "次はメテオを配置してみましょう" : tutorialStep === "meteor-result" ? (tutorialHitRival ? "お見事です。相手を爆風で動かしました" : "メテオは障害物にも、次の推進力にもなります") : tutorialStep === "large" ? "大メテオもお試しいただけます" : tutorialStep === "complete" ? "チュートリアルが完了しました" : "ここからは自由にCOREを目指してください"}</h2>
+              <p>{tutorialStep === "welcome" ? "星間管理AI AEQRISが、METEOR RACEの基礎をご案内します。" : tutorialStep === "goal" ? "探査機は縦横へ1マス移動します。メテオの爆風を利用すれば、斜め方向にも進めます。" : tutorialStep === "first-move" ? "光るマスはすべて選択できます。前進がおすすめですが、横移動や後退を選んでも問題ありません。" : tutorialStep === "first-praise" ? "選び方に正解は一つではありません。次は相手の行動を確認してみましょう。" : tutorialStep === "rival" ? "次へ進むと、相手の探査機が行動します。" : tutorialStep === "rival-moving" ? "移動とメテオ配置が終わるまでお待ちください。" : tutorialStep === "rival-result" ? "相手も探査機を動かし、2手目以降はメテオを使用します。盤面に置かれたメテオは障害物としても働きます。" : tutorialStep === "second-move" ? "盤面の状況を確認し、進みたいマスを自由に選んでください。" : tutorialStep === "meteor" ? "小メテオは周囲1マスに爆風を起こします。自分を進めても、相手を妨害しても、将来の布石にしても構いません。" : tutorialStep === "meteor-result" ? "大メテオは中心に近いほど強く、内周を2マス、外周を1マス動かします。以降も小・大を自由に選べます。" : tutorialStep === "large" ? "盤面の状況に合わせて、大メテオ、小メテオ、パスから選んでください。" : tutorialStep === "complete" ? "おめでとうございます。これで基本操作のご案内は終了です。" : "メテオを使い切ると、その手番中にボーナス移動が1回発生します。対戦相手はEASYのCPUです。"}</p>
               {tutorialStep === "welcome" && <button type="button" onClick={() => setTutorialStep("goal")}>案内を続ける</button>}
               {tutorialStep === "goal" && <button type="button" onClick={() => setTutorialStep("first-move")}>盤面を操作する</button>}
               {tutorialStep === "first-praise" && <button type="button" onClick={() => setTutorialStep("rival")}>相手の手番へ</button>}
+              {tutorialStep === "rival" && <button type="button" onClick={() => setTutorialStep("rival-moving")}>次へ</button>}
+              {tutorialStep === "rival-result" && <button type="button" onClick={() => setTutorialStep("second-move")}>次へ</button>}
               {tutorialStep === "meteor-result" && <button type="button" onClick={() => setTutorialStep("free")}>自由対戦を始める</button>}
               {tutorialStep === "complete" && <button type="button" onClick={leaveTutorial}>ホーム画面へ戻る</button>}
             </section>

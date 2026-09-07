@@ -56,6 +56,9 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /大メテオ、小メテオ、パスから選んでください/);
   assert.match(page, /ホーム画面へ戻る/);
   assert.doesNotMatch(page, /専用の簡易盤ではなく|通常のゲーム性を維持|大メテオを強調しています/);
+  assert.match(page, /tutorialStep !== "rival-moving"/);
+  assert.match(page, /setTutorialStep\("rival-result"\)/);
+  assert.match(page, /相手の行動を確認しましょう/);
   assert.match(css, /\.tutorial-coach/);
   assert.match(css, /\.board \.cell\.legal/);
 });
