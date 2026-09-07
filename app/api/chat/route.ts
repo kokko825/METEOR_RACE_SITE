@@ -33,10 +33,11 @@ async function ensureSchema() {
 
 async function roomMember(code: string, playerId: string) {
   const room = await env.DB.prepare(
-    "SELECT host_email, guest_email, player3_email, player4_email FROM game_rooms WHERE code = ?",
+    "SELECT host_email, guest_email, player3_email, player4_email, state_json FROM game_rooms WHERE code = ?",
   ).bind(code).first<Record<string, string | null>>();
   if (!room) return false;
-  return [room.host_email, room.guest_email, room.player3_email, room.player4_email].includes(playerId);
+  const spectators = JSON.parse(room.state_json ?? "{}").roomSpectators ?? [];
+  return [room.host_email, room.guest_email, room.player3_email, room.player4_email, ...spectators.map((member: { email: string }) => member.email)].includes(playerId);
 }
 
 function response(data: unknown, status = 200) {

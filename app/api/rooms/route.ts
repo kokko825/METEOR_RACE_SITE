@@ -27,6 +27,8 @@ type RoomRow = {
 const WAITING_ROOM_TTL_MS = 30 * 60 * 1000;
 const PLAYING_ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const ROOM_HEARTBEAT_INTERVAL_MS = 60 * 1000;
+const ROOM_CAPACITY = 10;
+type RoomSpectator = { email: string; name: string };
 
 // A Worker isolate handles many requests in a row (e.g. every 500ms room-poll
 // tick from each connected client), so memoize this instead of re-running the
@@ -117,16 +119,20 @@ async function cleanupAbandonedRooms(now = Date.now()) {
 }
 
 function roomMemberEmails(room: RoomRow) {
-  return [room.host_email, room.guest_email, room.player3_email, room.player4_email];
+  const state = JSON.parse(room.state_json);
+  const spectators = (state.roomSpectators ?? []) as RoomSpectator[];
+  return [room.host_email, room.guest_email, room.player3_email, room.player4_email, ...spectators.map((member) => member.email)];
 }
 
 function roomPayload(room: RoomRow, email: string) {
   const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
   const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
   const state = JSON.parse(room.state_json);
-  const memberIndex = memberEmails.indexOf(email);
+  const spectators = (state.roomSpectators ?? []) as RoomSpectator[];
+  const allMemberEmails = [...memberEmails, ...spectators.map((member) => member.email)];
+  const memberIndex = allMemberEmails.indexOf(email);
   const role: Player | null = memberIndex >= 0 ? seats[memberIndex] ?? null : null;
-  const roomCount = memberEmails.filter(Boolean).length;
+  const roomCount = memberEmails.filter(Boolean).length + spectators.length;
   const joinedPlayers = memberEmails.filter((member, index) => Boolean(member && seats[index])).length;
   return {
     code: room.code,
@@ -137,16 +143,16 @@ function roomPayload(room: RoomRow, email: string) {
     joinedPlayers,
     roomCount,
     spectatorCount: roomCount - joinedPlayers,
-    memberNames: memberEmails
+    memberNames: [...memberEmails
       .map((member, index) =>
         member
           ? state.roomMemberNames?.[index] || displayNameFromEmail(member)
           : null,
       )
-      .filter((name): name is string => Boolean(name)),
-    memberRoles: memberEmails
+      .filter((name): name is string => Boolean(name)), ...spectators.map((member) => member.name)],
+    memberRoles: [...memberEmails
       .map((member, index) => (member ? seats[index] ?? null : null))
-      .filter((_, index) => Boolean(memberEmails[index])),
+      .filter((_, index) => Boolean(memberEmails[index])), ...spectators.map(() => null)],
     isHost: email === room.host_email,
     joinLocked: Boolean(state.roomJoinLocked),
     state,
@@ -297,7 +303,17 @@ export async function POST(request: Request) {
     ];
     const seats = JSON.parse(room.seat_order_json) as Player[];
     const leavingIndex = memberEmails.indexOf(email);
-    if (leavingIndex < 0) return json({ left: true });
+    if (leavingIndex < 0) {
+      const state = JSON.parse(room.state_json);
+      const spectators = (state.roomSpectators ?? []) as RoomSpectator[];
+      const nextSpectators = spectators.filter((member) => member.email !== email);
+      if (nextSpectators.length !== spectators.length) {
+        state.roomSpectators = nextSpectators;
+        await env.DB.prepare("UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+          .bind(JSON.stringify(state), Date.now(), code).run();
+      }
+      return json({ left: true });
+    }
     const leavingRole = seats[leavingIndex] ?? null;
     const remaining = memberEmails
       .map((member, index) => ({ member, seat: seats[index] ?? null }))
@@ -377,9 +393,28 @@ export async function POST(request: Request) {
         return json(roomPayload(room, email));
       }
       const waitingState = JSON.parse(room.state_json);
+      const spectators = (waitingState.roomSpectators ?? []) as RoomSpectator[];
+      const existingSpectator = spectators.findIndex((member) => member.email === email);
+      if (existingSpectator >= 0) {
+        spectators[existingSpectator] = { email, name: normalizeNickname(body.nickname, email) };
+        waitingState.roomSpectators = spectators;
+        await env.DB.prepare("UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+          .bind(JSON.stringify(waitingState), Date.now(), code).run();
+        room = (await roomByCode(code))!;
+        return json(roomPayload(room, email));
+      }
       if (waitingState.roomJoinLocked) return json({ error: "このルームは参加受付を締め切っています" }, 409);
       const openSlot = memberEmails.findIndex((member) => !member);
-      if (openSlot < 0) return json({ error: "ルームの参加枠が埋まっています" }, 409);
+      if (openSlot < 0) {
+        if (memberEmails.filter(Boolean).length + spectators.length >= ROOM_CAPACITY) return json({ error: "ルームの参加枠が埋まっています" }, 409);
+        waitingState.roomSpectators = [...spectators, { email, name: normalizeNickname(body.nickname, email) }];
+        const result = await env.DB.prepare(
+          "UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ? AND version = ?",
+        ).bind(JSON.stringify(waitingState), Date.now(), code, room.version).run();
+        room = (await roomByCode(code))!;
+        if (result.meta.changes) return json(roomPayload(room, email));
+        continue;
+      }
       const column = ["host_email", "guest_email", "player3_email", "player4_email"][openSlot];
       const state = JSON.parse(room.state_json);
       const names = [...(state.roomMemberNames ?? [])];
@@ -406,12 +441,25 @@ export async function POST(request: Request) {
   if (body.action === "manage_member") {
     if (email !== room.host_email) return json({ error: "ルームリーダーだけが変更できます" }, 403);
     if (room.status === "playing") return json({ error: "メンバー変更は待機中に行ってください" }, 409);
-    const targetIndex = Math.max(0, Math.min(3, Number(body.targetIndex ?? -1)));
+    const targetIndex = Math.max(0, Math.min(ROOM_CAPACITY - 1, Number(body.targetIndex ?? -1)));
     if (targetIndex === 0 && body.memberAction === "kick") return json({ error: "ルームリーダーは退出操作を使用してください" }, 400);
     const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
-    if (!members[targetIndex]) return json({ error: "メンバーが見つかりません" }, 404);
     const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
     const state = JSON.parse(room.state_json);
+    const coreMemberCount = members.filter(Boolean).length;
+    if (targetIndex >= coreMemberCount) {
+      const spectators = (state.roomSpectators ?? []) as RoomSpectator[];
+      const spectatorIndex = targetIndex - coreMemberCount;
+      if (!spectators[spectatorIndex]) return json({ error: "メンバーが見つかりません" }, 404);
+      if (body.memberAction !== "kick") return json({ error: "追加の観戦者は対戦席が空いてから参加できます" }, 409);
+      spectators.splice(spectatorIndex, 1);
+      state.roomSpectators = spectators;
+      await env.DB.prepare("UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+        .bind(JSON.stringify(state), Date.now(), code).run();
+      room = (await roomByCode(code))!;
+      return json(roomPayload(room, email));
+    }
+    if (!members[targetIndex]) return json({ error: "メンバーが見つかりません" }, 404);
     if (body.memberAction === "kick") {
       const remaining = members.map((member, index) => ({ member, role: seats[index] ?? null, name: state.roomMemberNames?.[index] ?? null })).filter((entry, index) => Boolean(entry.member) && index !== targetIndex);
       state.roomMemberNames = remaining.map((entry) => entry.name);
@@ -507,8 +555,18 @@ export async function POST(request: Request) {
       room.player4_email,
     ];
     const memberIndex = memberEmails.indexOf(email);
-    if (memberIndex < 0) return json({ error: "ルームに参加していません" }, 403);
     const state = JSON.parse(room.state_json);
+    if (memberIndex < 0) {
+      const spectators = (state.roomSpectators ?? []) as RoomSpectator[];
+      const spectatorIndex = spectators.findIndex((member) => member.email === email);
+      if (spectatorIndex < 0) return json({ error: "ルームに参加していません" }, 403);
+      spectators[spectatorIndex] = { email, name: normalizeNickname(body.nickname, email) };
+      state.roomSpectators = spectators;
+      await env.DB.prepare("UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+        .bind(JSON.stringify(state), Date.now(), code).run();
+      room = (await roomByCode(code))!;
+      return json(roomPayload(room, email));
+    }
     const names = [...(state.roomMemberNames ?? [])];
     names[memberIndex] = normalizeNickname(body.nickname, email);
     state.roomMemberNames = names;
@@ -520,7 +578,7 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "return_lobby") {
-    const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
+    const memberEmails = roomMemberEmails(room);
     if (!memberEmails.includes(email)) return json({ error: "ルームに参加していません" }, 403);
     if (email !== room.host_email && room.status !== "finished") return json({ error: "対局終了後にマッチルームへ戻れます" }, 403);
     await env.DB.prepare("UPDATE game_rooms SET status = 'waiting', version = version + 1, updated_at = ? WHERE code = ?")
@@ -621,6 +679,8 @@ export async function POST(request: Request) {
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
       previous.roomMemberNames ?? [];
+    (nextState as typeof nextState & { roomSpectators: RoomSpectator[] }).roomSpectators =
+      previous.roomSpectators ?? [];
     (
       nextState as typeof nextState & {
         roomPreferredRoles: Array<Player | null>;
@@ -681,6 +741,8 @@ export async function POST(request: Request) {
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
       previous.roomMemberNames ?? [];
+    (nextState as typeof nextState & { roomSpectators: RoomSpectator[] }).roomSpectators =
+      previous.roomSpectators ?? [];
     (
       nextState as typeof nextState & {
         roomPreferredRoles: Array<Player | null>;

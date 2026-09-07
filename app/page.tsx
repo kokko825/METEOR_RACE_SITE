@@ -2694,7 +2694,7 @@ function Game() {
                     className={online.memberRoles[index] ?? "spectator"}
                   >
                     <b>{name}{index === 0 ? " / LEADER" : ""}</b><small>{online.memberRoles[index] ? playerName(online.memberRoles[index]!) : "WATCH"}</small>
-                    {online.isHost && online.status !== "playing" && <span className="member-actions"><button type="button" onClick={()=>online.memberRoles[index]?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",PLAYER_ORDER.find((player)=>!online.memberRoles.includes(player))??"blue")}>{online.memberRoles[index]?"観戦へ":"選手へ"}</button>{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
+                    {online.isHost && online.status !== "playing" && <span className="member-actions">{index < 4 && <button type="button" onClick={()=>online.memberRoles[index]?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",PLAYER_ORDER.find((player)=>!online.memberRoles.includes(player))??"blue")}>{online.memberRoles[index]?"観戦へ":"選手へ"}</button>}{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
                     {isTeamVariant(variant)&&index!==ownMemberIndex&&online.memberRoles[index]&&online.role&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void swapOwnRole(online.memberRoles[index]!)}>このメンバーと入れ替え</button>}
                   </div>
                 ))}
