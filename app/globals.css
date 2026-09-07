@@ -1435,3 +1435,24 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .switch-setup-controls>.meteor-choice.item-choice{min-height:52px;grid-template-columns:21px minmax(0,1fr);column-gap:3px;padding:4px}
   .switch-setup-controls>.meteor-choice.item-choice>span{font-size:clamp(7px,2.2vw,11px)}
 }
+
+/* Centre classic boards in the actual space between the header and lower HUD.
+   This selector intentionally outranks the resized-desktop fallback above. */
+@media(min-width:901px) and (min-height:761px){
+  .variant-classic.hud-mode .arena>.board,
+  .variant-team.hud-mode .arena>.board{width:min(100%,720px,calc(100dvh - 330px));max-height:100%}
+}
+@media(min-width:901px) and (max-height:760px){
+  .variant-classic.hud-mode .arena>.board,
+  .variant-team.hud-mode .arena>.board{width:min(100%,720px,calc(100dvh - 290px));max-height:100%}
+}
+@media(min-width:901px){
+  .variant-classic.hud-mode .arena,
+  .variant-team.hud-mode .arena{grid-template-rows:minmax(0,1fr) auto;row-gap:0}
+  .variant-classic.hud-mode .arena>.board,
+  .variant-team.hud-mode .arena>.board{grid-row:1;align-self:center}
+  .variant-classic.hud-mode .arena>.action-panel,
+  .variant-team.hud-mode .arena>.action-panel{grid-row:2}
+  .variant-classic.hud-mode .arena>.action-panel:not(:empty),
+  .variant-team.hud-mode .arena>.action-panel:not(:empty){margin-top:6px}
+}
