@@ -61,7 +61,7 @@ test("guides beginners on the real match board without restricting legal actions
   assert.doesNotMatch(page, /合法マス/);
   assert.match(page, /横移動や後退を選んでも問題ありません/);
   assert.match(page, /大メテオ、小メテオ、パスから選んでください/);
-  assert.match(page, /ホーム画面へ戻る/);
+  assert.match(page, /チュートリアルを終える/);
   assert.doesNotMatch(page, /専用の簡易盤ではなく|通常のゲーム性を維持|大メテオを強調しています/);
   assert.match(page, /tutorialStep !== "rival-moving"/);
   assert.match(page, /setTutorialStep\("rival-result"\)/);
@@ -69,6 +69,9 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /tutorialStep === "rival-moving" && game\.turn === "blue"/);
   assert.match(page, /const scriptedMove = \{ r: game\.probes\.blue\.r \+ 1/);
   assert.match(page, /\{ r: red\.r - 2, c: red\.c \}/);
+  assert.match(page, /setTutorialStep\("free-play"\)/);
+  assert.match(page, /tutorialStep === "complete" \? "チュートリアルを終える"/);
+  assert.match(page, /tutorialStep !== "free-play" && tutorialStep !== "complete"/);
   assert.match(page, /resolution\.state\.winner === "blue"/);
   assert.match(page, /チュートリアルCPUはCORE直前で移動を見送った/);
   assert.match(css, /\.tutorial-coach/);
