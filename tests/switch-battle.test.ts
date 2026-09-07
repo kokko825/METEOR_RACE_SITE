@@ -60,6 +60,17 @@ assert.equal(shieldGame.turn, "blue");
 assert.equal(shieldGame.shieldTurns?.red, 1, "shield lasts through every opponent in one round");
 const shielded = applyMeteor({ ...shieldGame, phase: "place" }, { r: 7, c: 5 }, "small").state;
 assert.ok(samePos(shielded.probes.red, { r: 7, c: 6 }), "shield cancels one square of blast movement");
+const largeShielded = applyMeteor({ ...shieldGame, phase: "place" }, { r: 7, c: 5 }, "large").state;
+assert.ok(samePos(largeShielded.probes.red, { r: 7, c: 7 }), "shield reduces a two-square large-meteor blast to one square");
+
+let blastShieldGame: GameState = {
+  ...shieldGame,
+  phase: "switch" as const,
+  turn: "blue" as const,
+  pendingSwitches: [{ kind: "blast" as const, player: "blue" as const }],
+};
+blastShieldGame = applyBlastSwitch(blastShieldGame, { r: 7, c: 5 });
+assert.ok(samePos(blastShieldGame.probes.red, { r: 7, c: 7 }), "shield reduces a two-square BLAST push to one square");
 
 let blastGame = initialGameState(15, "red", 2, false, 0, [], "item");
 blastGame = {

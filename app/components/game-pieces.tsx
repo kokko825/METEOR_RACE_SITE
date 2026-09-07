@@ -12,7 +12,7 @@ import {
 } from "../game-rules";
 
 export const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
-  shield: "BLAST BLOCKED",
+  shield: "BLAST -1 CELL",
   booster: "METEOR JUMP",
   holo: "TEMPORARY BLOCK",
   orbit: "RING ROTATE 90°",

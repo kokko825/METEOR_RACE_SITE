@@ -25,7 +25,7 @@ export const ITEM_ICONS: Record<ItemKind, string> = {
 
 /** Balance-independent fallback copy, used for items whose text has no tunable numbers in it. */
 export const ITEM_DETAILS: Record<ItemKind, string> = {
-  shield: "1巡のあいだ爆風を防ぐ防御フィールド。自分の爆風も無効になります。",
+  shield: "1巡のあいだ爆風による移動を1マス分軽減する防御フィールド。自分の爆風にも適用されます。",
   booster: "縦横へ最大2マス前進。途中のメテオを飛び越えてCOREへ到達できます。",
   holo: "4巡残るホロメテオを配置し、相手の進路を封鎖します。",
   orbit: "選んだリングを90度回転させ、盤上の配置をまとめて動かします。",
@@ -36,7 +36,7 @@ export const ITEM_DETAILS: Record<ItemKind, string> = {
 };
 
 export const ITEM_DETAILS_EN: Record<ItemKind, string> = {
-  shield: "Blocks blast effects for one round, including your own blasts.",
+  shield: "Reduces blast movement by one cell for one round, including your own blasts.",
   booster: "Move up to two orthogonal cells, jump over meteors, and enter the CORE.",
   holo: "Place a temporary holo meteor that blocks routes.",
   orbit: "Rotate one selected ring 90 degrees with every object on it.",
@@ -49,7 +49,7 @@ export const ITEM_DETAILS_EN: Record<ItemKind, string> = {
 export function itemDetail(kind: ItemKind, balance: BalanceConfig, language: "ja" | "en" = "ja"): string {
   if (language === "en") {
     switch (kind) {
-      case "shield": return `Blocks incoming blasts for ${balance.shieldRounds} round(s), including your own blasts.`;
+      case "shield": return `Reduces blast movement by one cell for ${balance.shieldRounds} round(s), including your own blasts.`;
       case "booster": return `Grants ${balance.boosterUses} two-cell orthogonal move(s). Jump over meteors and holo meteors and enter the CORE; the effect remains until the full move is used.`;
       case "holo": return balance.holoUnlimited
         ? "Places a permanent holo meteor that blocks routes."
@@ -61,7 +61,7 @@ export function itemDetail(kind: ItemKind, balance: BalanceConfig, language: "ja
     }
   }
   switch (kind) {
-    case "shield": return `${balance.shieldRounds}巡の間、受ける爆風を防ぎます。自分の爆風も無効になります。`;
+    case "shield": return `${balance.shieldRounds}巡の間、爆風による移動を1マス分軽減します。自分の爆風にも適用されます。`;
     case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオやお邪魔メテオを飛び越えてCOREへ到達できます。2マス移動で実際に使うまで効果は持続します。`;
     case "holo": return balance.holoUnlimited
       ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"
@@ -76,7 +76,7 @@ export function itemDetail(kind: ItemKind, balance: BalanceConfig, language: "ja
 export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language: "ja" | "en" = "ja"): [string, string] {
   if (language === "en") {
     switch (kind) {
-      case "shield": return [`Duration: ${balance.shieldRounds} round(s)`, "Cancels enemy and self-inflicted blasts"];
+      case "shield": return [`Duration: ${balance.shieldRounds} round(s)`, "Reduce every blast movement by one cell"];
       case "booster": return [`Uses: ${balance.boosterUses}`, "Move two cells and jump over meteors"];
       case "holo": return [balance.holoUnlimited ? "Duration: unlimited" : `Duration: ${balance.holoRounds} rounds`, "Place an impassable obstacle"];
       case "orbit": return ["Rotation: 90°", "Move every object on the chosen ring"];
@@ -87,7 +87,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
     }
   }
   switch (kind) {
-    case "shield": return [`有効：${balance.shieldRounds}巡`, "敵と自分の爆風を無効化"];
+    case "shield": return [`有効：${balance.shieldRounds}巡`, "敵と自分の爆風を1マス軽減"];
     case "booster": return [`使用：${balance.boosterUses}回`, "縦横2マス進みメテオを飛び越える"];
     case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, "破壊不能の障害物として設置"];
     case "orbit": return ["回転：90度", "選択したリング上の配置を移動"];
@@ -100,7 +100,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
 
 /** One-line tactical note per item — written for the guide page, where a reader has no board in front of them. */
 export const ITEM_TACTICS: Record<ItemKind, string> = {
-  shield: "COREへ詰める直前に張ると、相手の妨害用の爆風を1巡のあいだ無効化して押し切れます。自分の爆風も消えるため、爆風で進む手とは併用できません。",
+  shield: "小メテオ相当の1マス爆風は防げます。大メテオやBLASTの2マス分の爆風は1マスに軽減されるため、完全には止まりません。自分の爆風にも同じように適用されます。",
   booster: "唯一の純粋な前進アイテム。メテオやお邪魔メテオを飛び越えられるので、進路が塞がれた局面の突破口になります。実際に2マス進むまで効果が残るのが強みです。",
   holo: "相手がCOREへ入る一歩手前のマスに置くのが最も効きます。ただし完全な不動物ではなく、隣接するメテオの爆風を受けると残り時間が削られます。大メテオを至近距離で当てられると一気に消えるため、爆風の届かない位置を選ぶのが確実です。",
   orbit: "盤面をまとめて回すので、相手の有利な配置ごとずらせます。自分のメテオやPULSE装置も一緒に動く点に注意が必要です。",
