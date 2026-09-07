@@ -50,8 +50,9 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /online\.status !== "playing"/);
   assert.match(page, /topbar-guide-actions/);
   assert.match(page, /横移動や後退を選んでも問題ありません/);
-  assert.match(page, /状況に合わなければ小メテオやパス/);
+  assert.match(page, /大メテオ、小メテオ、パスから選んでください/);
   assert.match(page, /ホーム画面へ戻る/);
+  assert.doesNotMatch(page, /専用の簡易盤ではなく|通常のゲーム性を維持|大メテオを強調しています/);
   assert.match(css, /\.tutorial-coach/);
   assert.match(css, /\.board \.cell\.legal/);
 });
