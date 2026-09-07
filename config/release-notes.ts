@@ -9,6 +9,7 @@ export type ReleaseNote = {
 
 // 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
 export const RELEASE_NOTES = [
+  { version:"1.0.65", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"案内とチャット表示を修正",en:"Fixed guidance and chat display"}, summary:{ja:"自由対戦中の案内とオンラインチャットの表示を整理。",en:"Refined free-play guidance and online chat presentation."}, details:{ja:["チュートリアルボタンの形を統一","チャット欄を右下へ配置"],en:["Unified the tutorial button shape","Moved chat to the lower right"]} },
   { version:"1.0.64", date:"2026-09-07", tags:["UI","BUG FIX"], title:{ja:"チュートリアル表示を改善",en:"Improved tutorial presentation"}, summary:{ja:"導線を統一し、CPUの行動を見やすく調整。",en:"Unified tutorial access and improved CPU action visibility."}, details:{ja:["案内表示を整理"],en:["Refined tutorial guidance"]} },
   { version:"1.0.63", date:"2026-09-07", tags:["SYSTEM","BUG FIX"], title:{ja:"練習CPUとEASYを調整",en:"Refined training and EASY CPU"}, summary:{ja:"案内中の動きとEASYの判断を安定化。",en:"Stabilized guided actions and EASY decisions."}, details:{ja:["分かりやすい判断を優先"],en:["Prioritizes understandable decisions"]} },
   { version:"1.0.62", date:"2026-09-07", tags:["SYSTEM"], title:{ja:"EASYのメテオ選択を調整",en:"Adjusted EASY meteor choices"}, summary:{ja:"EASYでは小メテオだけを使用するよう調整。",en:"EASY now uses small meteors only."}, details:{ja:["難易度ごとの特徴を明確化"],en:["Clarified the difficulty levels"]} },

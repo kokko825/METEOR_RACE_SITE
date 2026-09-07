@@ -1016,7 +1016,7 @@ function Game() {
       }, Math.max(70, Math.round(1100 * effectScale)));
       window.setTimeout(() => {
         commit(resolution.state);
-        if (tutorialStep && game.turn === "red") {
+        if (tutorialStep === "meteor" && game.turn === "red") {
           const hitRival = Boolean(resolution.pushed.blue);
           setTutorialHitRival(hitRival);
           setTutorialStep(resolution.state.phase === "over" && resolution.state.winner === "red" ? "complete" : "meteor-result");
@@ -2434,7 +2434,7 @@ function Game() {
 
       {!entryStage && mode === "online" && online.code && chatOpen && !chatMuted && (
         <aside className="comms-panel" aria-label="ルームチャット">
-          <header><div><small>ROOM {online.code}</small><strong>CHAT</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
+          <header><div><small>ROOM {online.code}</small><strong>チャット欄</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
           <div className="comms-log" aria-live="polite">
             {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
           </div>
@@ -2462,7 +2462,7 @@ function Game() {
             <div className="hud-tools">
               <SoundMixer enabled={soundEnabled} masterVolume={masterVolume} bgmVolume={bgmVolume} sfxVolume={sfxVolume} masterLabel={t("masterVolume")} sfxLabel={t("soundEffects")} muteLabel={language === "ja" ? "消音する" : "Mute audio"} unmuteLabel={language === "ja" ? "音を出す" : "Enable audio"} setMasterVolume={setMasterVolume} setBgmVolume={setBgmVolume} setSfxVolume={setSfxVolume} onTick={playVolumeTick} onToggle={() => setSoundEnabled((current) => !current)} />
               <div className="hud-icons">
-                {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""}`} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>CHAT</button>}
+                {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""}`} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>チャット欄</button>}
                 {mode === "online" && online.code && <button type="button" className={`chat-mute ${chatMuted ? "active danger" : ""}`} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
                 {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={`room-lock ${online.joinLocked ? "active danger" : ""}`} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
               </div>

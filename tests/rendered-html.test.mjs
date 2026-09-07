@@ -72,6 +72,8 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /setTutorialStep\("free-play"\)/);
   assert.match(page, /tutorialStep === "complete" \? "チュートリアルを終える"/);
   assert.match(page, /tutorialStep !== "free-play" && tutorialStep !== "complete"/);
+  assert.match(page, /tutorialStep === "meteor" && game\.turn === "red"/);
+  assert.match(css, /\.title-beginner\{width:auto;min-width:112px;[^}]*border-radius:0/);
   assert.match(page, /resolution\.state\.winner === "blue"/);
   assert.match(page, /チュートリアルCPUはCORE直前で移動を見送った/);
   assert.match(css, /\.tutorial-coach/);
@@ -208,6 +210,9 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(profile, /containsBlockedChatLanguage/);
   assert.match(page, /className="free-comms"/);
   assert.match(page, /chat-toggle/);
+  assert.match(page, /<strong>チャット欄<\/strong>/);
+  assert.match(css, /\.comms-panel\{position:fixed;z-index:90;right:14px;/);
+  assert.doesNotMatch(css, /content:"CHAT"/);
   assert.match(page, /global-hud/);
   assert.doesNotMatch(page, /lobby-chat-toggle/);
   assert.doesNotMatch(css, /nth-last-child\(2\)\{display:none\}/);
