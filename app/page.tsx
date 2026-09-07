@@ -63,6 +63,7 @@ import { useDeferredReveal } from "./hooks/use-deferred-reveal";
 import { useUiFeedback } from "./hooks/use-ui-feedback";
 import { SoundMixer, VolumeRange } from "./components/sound-controls";
 import { MatchMeta } from "./components/match-meta";
+import { Tutorial } from "./components/tutorial";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
@@ -155,6 +156,8 @@ const QUICK_CHAT_MESSAGES = COMMUNITY_SAFETY.quickChatMessages;
 function Game() {
   useSiteTheme();
   const [entryStage, setEntryStage] = useState<"title" | "rule" | "play" | "match" | "setup" | null>("title");
+  const [tutorialConfirmOpen, setTutorialConfirmOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
@@ -1735,6 +1738,8 @@ function Game() {
     }
   };
 
+  if (tutorialOpen) return <Tutorial onExit={() => { setTutorialOpen(false); setEntryStage("title"); }} />;
+
   return (
     <main className={`shell text-size-${textSize} variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       <div className="phone-portrait-lock" role="status" aria-live="polite">
@@ -1779,11 +1784,13 @@ function Game() {
           </div>
           <nav>
             <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")} <span>▶</span></button>
+            <button className="title-tutorial" type="button" onClick={() => setTutorialConfirmOpen(true)}>{t("howToPlay")} <span aria-hidden="true">🔰</span></button>
             <button type="button" onClick={() => setSettingsOpen(true)}>{t("settingsLabel")}</button>
             <a className="title-privacy" href="/policy">{t("privacyLabel")}</a>
           </nav>
           <footer><span>{t("onlineReady")}</span><span>{nickname.trim() || t("guestPlayer")} · {rankTier(rankRating)} {rankRating}</span></footer>
           <AdSlot position="title" />
+          {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルをはじめますか？</h2><p>基本の移動、メテオの爆風、大メテオを実際に操作しながら体験します。</p><div><button type="button" className="primary-action" onClick={() => { setTutorialConfirmOpen(false); setTutorialOpen(true); }}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
         </section>
       )}
       {entryStage && entryStage !== "title" && (

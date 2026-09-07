@@ -38,6 +38,23 @@ test("keeps human-editable values separate from application logic", async () => 
   assert.match(configGuide, /どこを変更するか/);
 });
 
+test("ships an isolated adaptive beginner tutorial", async () => {
+  const [page, tutorial, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/components/tutorial.tsx"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(page, /<Tutorial onExit=/);
+  assert.match(page, /チュートリアルをはじめますか？/);
+  assert.match(page, /t\("howToPlay"\).*🔰/);
+  assert.match(tutorial, /ようこそ、METEOR RACEへ/);
+  assert.match(tutorial, /最初に横へずれることも/);
+  assert.match(tutorial, /大メテオは小メテオの2倍/);
+  assert.match(tutorial, /先にゴールすることはない/);
+  assert.match(tutorial, /ホーム画面へ戻る/);
+  assert.match(css, /\.tutorial-board/);
+});
+
 test("keeps the public game discoverable by search engines", async () => {
   const [page, layout, guide, items, copy] = await Promise.all([
     read("../app/page.tsx"),
