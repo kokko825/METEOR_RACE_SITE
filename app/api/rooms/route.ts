@@ -137,6 +137,7 @@ function roomPayload(room: RoomRow, email: string) {
   return {
     code: room.code,
     role,
+    kicked: memberIndex < 0,
     status: room.status,
     version: room.version,
     maxPlayers: 4,
@@ -146,6 +147,7 @@ function roomPayload(room: RoomRow, email: string) {
     lobbyVariant: state.roomLobbyVariant ?? state.variant ?? "classic",
     lobbySize: state.roomLobbySize ?? state.size ?? 9,
     lobbyAiCount: state.roomLobbyAiCount ?? (state.botPlayers ?? []).length,
+    lobbyAiDifficulty: state.roomLobbyAiDifficulty ?? "normal",
     memberNames: [...memberEmails
       .map((member, index) =>
         member
@@ -216,6 +218,7 @@ export async function POST(request: Request) {
     meteorId?: number;
     setupActor?: Player;
     ranked?: boolean;
+    difficulty?: "easy" | "normal" | "hard";
     locked?: boolean;
     targetIndex?: number;
     targetRole?: Player | null;
@@ -281,6 +284,7 @@ export async function POST(request: Request) {
             roomLobbyVariant: createVariant,
             roomLobbySize: size,
             roomLobbyAiCount: requestedAi,
+            roomLobbyAiDifficulty: "normal",
           }),
           "waiting",
           now,
@@ -562,6 +566,7 @@ export async function POST(request: Request) {
     state.roomLobbyVariant = nextVariant;
     state.roomLobbySize = isTeamVariant(nextVariant) ? Math.max(13, requestedSize) : isItemVariant(nextVariant) ? Math.max(11, requestedSize) : Math.min(11, requestedSize);
     state.roomLobbyAiCount = Math.max(0, Math.min(3, Math.round(body.aiCount ?? 0)));
+    state.roomLobbyAiDifficulty = body.difficulty === "easy" || body.difficulty === "hard" ? body.difficulty : "normal";
     await env.DB.prepare("UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
       .bind(JSON.stringify(state), Date.now(), code).run();
     room = (await roomByCode(code))!;
@@ -702,7 +707,7 @@ export async function POST(request: Request) {
       previous.roomMemberNames ?? [];
     (nextState as typeof nextState & { roomSpectators: RoomSpectator[] }).roomSpectators =
       previous.roomSpectators ?? [];
-    Object.assign(nextState, { roomLobbyVariant: variant, roomLobbySize: size, roomLobbyAiCount: aiCount });
+    Object.assign(nextState, { roomLobbyVariant: variant, roomLobbySize: size, roomLobbyAiCount: aiCount, roomLobbyAiDifficulty: body.difficulty === "easy" || body.difficulty === "hard" ? body.difficulty : "normal" });
     (
       nextState as typeof nextState & {
         roomPreferredRoles: Array<Player | null>;

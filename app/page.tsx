@@ -489,6 +489,7 @@ function Game() {
         nickname,
         variant,
         ranked: rankedMode,
+        difficulty: aiDifficulty,
       });
       setGame(data.state);
       setVariant(data.state.variant ?? "classic");
@@ -514,6 +515,7 @@ function Game() {
       });
       setOnlinePlayerCount(1);
       setOnlineAiCount(1);
+      setAiDifficulty((data.lobbyAiDifficulty ?? "normal") as AiDifficulty);
       setNeedsNewGame(true);
       setRoomCodeInput(data.code);
     } catch (error) {
@@ -558,6 +560,7 @@ function Game() {
           (player) => !(data.state.botPlayers ?? []).includes(player),
         ).length as 1 | 2 | 3 | 4,
       );
+      setAiDifficulty((data.lobbyAiDifficulty ?? "normal") as AiDifficulty);
       setOnlineAiCount((data.state.botPlayers ?? []).length as 0 | 1 | 2 | 3);
       setVariant(data.lobbyVariant ?? data.state.variant ?? "classic");
       setSize(data.lobbySize ?? data.state.size);
@@ -770,6 +773,7 @@ function Game() {
         variant,
         size,
         aiCount: onlineAiCount,
+        difficulty: aiDifficulty,
       }).then((data) => {
         setOnline((current) => ({ ...current, version: data.version, pending: false, error: "" }));
       }).catch((error) => {
@@ -777,7 +781,7 @@ function Game() {
       });
     }, 160);
     return () => window.clearTimeout(timer);
-  }, [online.code, online.isHost, online.status, variant, size, onlineAiCount]);
+  }, [online.code, online.isHost, online.status, variant, size, onlineAiCount, aiDifficulty]);
 
   const swapOwnRole = async (targetRole: Player) => {
     if (!online.code || !online.role || targetRole === online.role) return;
@@ -1452,7 +1456,15 @@ function Game() {
           }
           setSize(data.status === "waiting" ? (data.lobbySize ?? data.state.size) : data.state.size);
           setVariant(data.status === "waiting" ? (data.lobbyVariant ?? data.state.variant ?? "classic") : (data.state.variant ?? "classic"));
-          if (data.status === "waiting") setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
+          if (data.status === "waiting") {
+            setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
+            setAiDifficulty((data.lobbyAiDifficulty ?? "normal") as AiDifficulty);
+          }
+          if (data.kicked) {
+            setOnline({ code: "", role: null, status: "idle", version: 0, maxPlayers: 4, joinedPlayers: 0, roomCount: 0, spectatorCount: 0, memberNames: [], memberRoles: [], error: "ルームから退出させられました", pending: false, isHost: false, joinLocked: false });
+            setEntryStage("rule");
+            return;
+          }
           setRankedMode(Boolean(data.state.ranked));
           setFirst(data.state.startingPlayer);
           setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
@@ -1678,7 +1690,12 @@ function Game() {
       if (decision.type === "move") {
         moveProbe(decision.target);
       } else if (decision.type === "meteor") {
-        placeMeteor(decision.target, decision.size, decision.useCapsule);
+        try {
+          placeMeteor(decision.target, decision.size, decision.useCapsule);
+        } catch {
+          // A stale AI target must never stall an AI-only match.
+          passPlacement();
+        }
       } else if (decision.type === "item") {
         activateItem(decision.kind);
       } else if (decision.type === "pass") {
@@ -2723,7 +2740,7 @@ function Game() {
               </div>
             )}
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
-            {online.code && <div className="room-settings-summary" aria-label="現在のルーム設定"><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount}</b></div>}
+            {online.code && <div className="room-settings-summary" aria-label="現在のルーム設定"><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b></div>}
             {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder="NICKNAME" aria-label="ニックネーム" maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label="ルームコード" maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>← ゲームモードへ戻る</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>
@@ -2751,7 +2768,7 @@ function Game() {
             )}
             {online.code && online.isHost && (
               <div className="online-count ai-members-card" aria-label="オンライン追加AI人数">
-                <div><span>AI MEMBERS</span><small>空席へCPU探査機を追加</small></div><div className="ai-stepper"><button type="button" disabled={onlineAiCount === 0} onClick={() => { setOnlineAiCount((onlineAiCount - 1) as 0|1|2|3); setNeedsNewGame(true); }}>−</button><b>{onlineAiCount}<small> AI</small></b><button type="button" disabled={onlinePlayerCount + onlineAiCount >= 4} onClick={() => { const next=Math.min(3,onlineAiCount+1) as 0|1|2|3; setOnlineAiCount(next); if(onlinePlayerCount+next>2&&size===9)setSize(11); setNeedsNewGame(true); }}>＋</button></div>
+                <div><span>AI MEMBERS</span><small>空席へCPU探査機を追加</small></div><div className="ai-stepper"><button type="button" disabled={onlineAiCount === 0} onClick={() => { setOnlineAiCount((onlineAiCount - 1) as 0|1|2|3); setNeedsNewGame(true); }}>−</button><b>{onlineAiCount}<small> AI</small></b><button type="button" disabled={onlinePlayerCount + onlineAiCount >= 4} onClick={() => { const next=Math.min(3,onlineAiCount+1) as 0|1|2|3; setOnlineAiCount(next); if(onlinePlayerCount+next>2&&size===9)setSize(11); setNeedsNewGame(true); }}>＋</button><label className="ai-level-inline">LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label></div>
               </div>
             )}
             {online.code && online.isHost && (
