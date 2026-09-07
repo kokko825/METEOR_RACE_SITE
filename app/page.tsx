@@ -2396,10 +2396,24 @@ function Game() {
                 {t("blockedMove")}
               </button>
             )}
-            {game.phase === "move" && showTurnActionControls && game.bonusMove && moves.length > 0 && (
-              <div className={`bonus-move-callout ${game.turn}`} role="status">
-                BONUS MOVE <b>2 / 2</b>
-              </div>
+            {game.phase === "move" && showTurnActionControls && game.bonusMove && (
+              <>
+                <div className={`bonus-move-callout ${game.turn}`} role="status">
+                  BONUS MOVE <b>移動／アイテム</b>
+                </div>
+                {isItemVariant(game.variant) && (game.itemHands?.[game.turn] ?? []).map((kind, index) => (
+                  <button
+                    key={`bonus-${kind}-${index}`}
+                    className={`meteor-choice item-choice ${kind}`}
+                    disabled={!canUseItem(game, kind)}
+                    onClick={() => activateItem(kind)}
+                    title={t("itemUseWarning")}
+                  >
+                    <ItemIcon kind={kind} />
+                    <span>{kind.toUpperCase()}</span>
+                  </button>
+                ))}
+              </>
             )}
           </div>
         </section>

@@ -48,7 +48,7 @@ export type GameState = {
   nextPulseDeviceId?: number;
   repetitions: Record<string, number>;
   pendingSwitches?: PendingSwitch[];
-  switchResume?: "place" | "finish";
+  switchResume?: "place" | "finish" | "bonus";
   itemHands?: Partial<Record<Player, ItemKind[]>>;
   setupConfirmed?: Partial<Record<Player, boolean>>;
   balance?: BalanceConfig;
@@ -688,7 +688,7 @@ function finishSwitch(state: GameState): GameState {
 }
 
 export function canUseItem(state: GameState, kind: ItemKind, player = state.turn) {
-  if (!isItemVariant(state.variant) || state.phase !== "place") return false;
+  if (!isItemVariant(state.variant) || (state.phase !== "place" && !(state.phase === "move" && state.bonusMove))) return false;
   if (kind === "gravity") return false;
   if (!(state.itemHands?.[player] ?? []).includes(kind)) return false;
   if (kind === "shield" && (state.shieldTurns?.[player] ?? 0) > 0) return false;
@@ -831,7 +831,7 @@ export function applyUseItem(state: GameState, kind: ItemKind): GameState {
     itemHands,
     phase: "switch",
     pendingSwitches: [{ kind, player }],
-    switchResume: "finish",
+    switchResume: state.bonusMove ? "bonus" : "finish",
     message: `${playerName(player)}：${kind.toUpperCase()}の対象を選択`,
     log,
   };
@@ -842,14 +842,16 @@ export function cancelPendingItem(state: GameState): GameState {
   if (state.phase !== "switch" || !current) throw new Error("戻れるアイテム選択ではありません");
   return {
     ...state,
-    phase: "place",
+    phase: state.switchResume === "bonus" ? "move" : "place",
     itemHands: {
       ...(state.itemHands ?? {}),
       [current.player]: [...(state.itemHands?.[current.player] ?? []), current.kind],
     },
     pendingSwitches: [],
     switchResume: undefined,
-    message: `${playerName(current.player)}：アイテムかメテオを選択`,
+    message: state.switchResume === "bonus"
+      ? `${playerName(current.player)}：ボーナス移動かアイテムを選択`
+      : `${playerName(current.player)}：アイテムかメテオを選択`,
     log: state.log.slice(0, -1),
   };
 }

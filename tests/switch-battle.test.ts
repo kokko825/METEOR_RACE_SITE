@@ -9,6 +9,7 @@ import {
   applyPulseSwitch,
   applySetupItem,
   applyUseItem,
+  canUseItem,
   confirmSetupItems,
   finishTurn,
   resetSetupItems,
@@ -71,6 +72,18 @@ let blastShieldGame: GameState = {
 };
 blastShieldGame = applyBlastSwitch(blastShieldGame, { r: 7, c: 5 });
 assert.ok(samePos(blastShieldGame.probes.red, { r: 7, c: 7 }), "shield reduces a two-square BLAST push to one square");
+
+let bonusItemGame = initialGameState(15, "red", 2, false, 0, [], "item");
+bonusItemGame = {
+  ...bonusItemGame,
+  phase: "move",
+  bonusMove: true,
+  turnCount: 2,
+  itemHands: { red: ["shield"], blue: [] },
+};
+assert.equal(canUseItem(bonusItemGame, "shield"), true, "a remaining item can be chosen instead of the bonus move");
+bonusItemGame = applyUseItem(bonusItemGame, "shield");
+assert.equal(bonusItemGame.turn, "blue", "using an item consumes the bonus action and ends the turn");
 
 let blastGame = initialGameState(15, "red", 2, false, 0, [], "item");
 blastGame = {
