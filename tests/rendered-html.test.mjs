@@ -41,7 +41,6 @@ test("keeps human-editable values separate from application logic", async () => 
 test("guides beginners on the real match board without restricting legal actions", async () => {
   const [page, css] = await Promise.all([read("../app/page.tsx"), read("../app/globals.css")]);
   assert.doesNotMatch(page, /<Tutorial onExit=/);
-  assert.match(page, /チュートリアルをはじめますか？/);
   assert.match(page, /title-guide-actions/);
   assert.match(page, /title-beginner/);
   assert.match(page, /チュートリアルを開始しますか？/);
