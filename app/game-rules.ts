@@ -168,6 +168,27 @@ export function resolveCoreArrivals(state: GameState, next: GameState, reached: 
     if (!finishOrder.includes(player)) finishOrder.push(player);
   });
   const remaining = activePlayers(state).filter((player) => !finishOrder.includes(player));
+  const onlyAiRemain = remaining.length > 0 &&
+    remaining.every((player) => (state.botPlayers ?? []).includes(player));
+  if (onlyAiRemain) {
+    const core = { r: Math.floor(state.size / 2), c: Math.floor(state.size / 2) };
+    const playerOrder = activePlayers(state);
+    const rankedAi = [...remaining].sort((left, right) =>
+      distance(next.probes[left], core) - distance(next.probes[right], core) ||
+      playerOrder.indexOf(left) - playerOrder.indexOf(right),
+    );
+    const finalOrder = [...finishOrder, ...rankedAi];
+    return {
+      ...next,
+      players: rankedAi,
+      phase: "over",
+      bonusMove: false,
+      winner: finalOrder[0] ?? first,
+      finishOrder: finalOrder,
+      message: `${playerName(finalOrder[0] ?? first)} WIN!　残りの順位はCOREへの距離で確定しました`,
+      log: [...next.log, "残りの競技者がAIのみになったため、COREへの距離で順位を確定"],
+    };
+  }
   if (remaining.length <= 1) {
     const finalOrder = [...finishOrder, ...remaining];
     return {

@@ -53,9 +53,9 @@ test("guides beginners on the real match board without restricting legal actions
   assert.doesNotMatch(page, /YESを押すと、対戦設定を挟まず/);
   assert.match(page, /onClick=\{requestTutorial\}/);
   assert.match(page, /autoFocus onClick=\{startTutorial\}/);
-  assert.match(page, /online\.status !== "playing"/);
+  assert.match(page, /mode !== "online" \|\| !online\.code/);
   assert.match(page, /topbar-guide-actions/);
-  assert.match(page, /lobby-tutorial-trigger/);
+  assert.doesNotMatch(page, /lobby-tutorial-trigger/);
   assert.match(css, /not\(\.tutorial-confirm-backdrop\)/);
   assert.match(css, /\.tutorial-confirm-backdrop\{position:fixed;z-index:2000;/);
   assert.doesNotMatch(page, /合法マス/);

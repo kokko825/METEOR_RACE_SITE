@@ -368,6 +368,23 @@ for (const boardSize of [11, 13, 15]) {
 }
 
 {
+  let aiRemainder = initialGameState(11, "red", 4, false, 0, ["blue", "green", "yellow"], "classic");
+  aiRemainder.turnCount = 4;
+  aiRemainder.phase = "move";
+  aiRemainder.probes.red = { r: 6, c: 5 };
+  aiRemainder.probes.blue = { r: 1, c: 5 };
+  aiRemainder.probes.green = { r: 5, c: 3 };
+  aiRemainder.probes.yellow = { r: 8, c: 5 };
+  aiRemainder = applyMove(aiRemainder, { r: 5, c: 5 });
+  assert.equal(aiRemainder.phase, "over", "人間が競技を終えてAIだけになったら即座に終了する");
+  assert.deepEqual(
+    aiRemainder.finishOrder,
+    ["red", "green", "yellow", "blue"],
+    "残ったAIはCOREへ近い順に順位を確定する",
+  );
+}
+
+{
   const ranked = initialGameState(9, "red", 4, false, 0, [], "classic");
   ranked.turnCount = 4;
   ranked.phase = "place";

@@ -1951,7 +1951,6 @@ function Game() {
         </section>
       )}
       {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルを開始しますか？</h2><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
-      {onlineLobbyOnly && !tutorialConfirmOpen && <button className="lobby-tutorial-trigger" type="button" onClick={requestTutorial}>🔰 チュートリアル</button>}
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{tutorialStep ? "← 終了" : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
         <div className="brand">
@@ -1982,7 +1981,7 @@ function Game() {
         </div>
         <MatchMeta language={language} progress={regulaProgress} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <div className="topbar-guide-actions">
-          {mode !== "online" || online.status !== "playing" ? <button className="manual-trigger tutorial-trigger" type="button" aria-label="チュートリアルを始める" onClick={requestTutorial}>🔰 <span>チュートリアル</span></button> : null}
+          {mode !== "online" || !online.code ? <button className="manual-trigger tutorial-trigger" type="button" aria-label="チュートリアルを始める" onClick={requestTutorial}>🔰 <span>チュートリアル</span></button> : null}
           <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
         </div>
       </header>
