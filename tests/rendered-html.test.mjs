@@ -60,6 +60,8 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /tutorialStep !== "rival-moving"/);
   assert.match(page, /setTutorialStep\("rival-result"\)/);
   assert.match(page, /相手の行動を確認しましょう/);
+  assert.match(page, /resolution\.state\.winner === "blue"/);
+  assert.match(page, /チュートリアルCPUはCORE直前で移動を見送った/);
   assert.match(css, /\.tutorial-coach/);
   assert.match(css, /\.board \.cell\.legal/);
 });

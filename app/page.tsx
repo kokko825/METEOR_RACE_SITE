@@ -969,6 +969,10 @@ function Game() {
     try {
       const capsule = useCapsule || game.selected === "capsule";
       const resolution = applyMeteor(game, target, chosenSize, capsule);
+      if (tutorialStep && game.turn === "blue" && resolution.state.phase === "over" && resolution.state.winner === "blue") {
+        passPlacement();
+        return;
+      }
       if (mode === "online") {
         setIsAnimating(true);
         setBlastFx({
@@ -1610,6 +1614,15 @@ function Game() {
       if (tutorialStep && game.turn === "blue" && decision.type === "move" && decision.target.r === mid && decision.target.c === mid) {
         const safeMove = moves.find((target) => target.r !== mid || target.c !== mid);
         if (safeMove) decision = { type: "move", target: safeMove };
+        else {
+          commit({
+            ...game,
+            phase: "place",
+            message: "BLUE：移動を見送り、メテオ配置へ",
+            log: [...game.log, "チュートリアルCPUはCORE直前で移動を見送った"],
+          });
+          return;
+        }
       }
       if (decision.type === "move") {
         moveProbe(decision.target);
