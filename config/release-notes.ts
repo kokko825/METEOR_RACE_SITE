@@ -9,6 +9,7 @@ export type ReleaseNote = {
 
 // 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
 export const RELEASE_NOTES = [
+  { version:"1.0.69", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"対戦表示を安定化",en:"Stabilized match presentation"}, summary:{ja:"盤面とCORE到達表示、各画面の操作ボタンを改善。",en:"Improved the board, CORE arrival flow, and screen controls."}, details:{ja:["操作中の盤面サイズを固定","チュートリアルの完了表示を修正","CORE到達後の待ち時間を調整","閉じるボタンの位置を統一"],en:["Keeps the board size fixed during actions","Fixed tutorial completion","Adjusted the delay after reaching the CORE","Aligned close controls consistently"]} },
   { version:"1.0.68", date:"2026-09-07", tags:["SYSTEM","UI"], title:{ja:"可変レイアウトを強化",en:"Improved adaptive layout"}, summary:{ja:"画面や文字の大きさに合わせて盤面が自動調整されるよう改善。",en:"The board now adapts to the available screen and text size."}, details:{ja:["操作欄を含む表示領域へ自動追従"],en:["Adapts to the play area and action controls"]} },
   { version:"1.0.67", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"通常戦の盤面位置を修正",en:"Fixed classic board alignment"}, summary:{ja:"通常戦の盤面を上下中央へ正確に配置。",en:"Precisely centered the classic board vertically."}, details:{ja:["画面上下の余白を均等化"],en:["Balanced the space above and below the board"]} },
   { version:"1.0.66", date:"2026-09-07", tags:["UI"], title:{ja:"盤面の上下余白を調整",en:"Adjusted board spacing"}, summary:{ja:"通常戦とアイテム戦に合わせて盤面位置を調整。",en:"Refined board placement for classic and item matches."}, details:{ja:["画面サイズ別の余白を調整"],en:["Adjusted spacing by screen size"]} },

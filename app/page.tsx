@@ -1596,6 +1596,12 @@ function Game() {
   }, [tutorialStep, game.turn, game.turnCount]);
 
   useEffect(() => {
+    if (tutorialStep === "free-play" && game.phase === "over" && game.winner === "red") {
+      setTutorialStep("complete");
+    }
+  }, [tutorialStep, game.phase, game.winner]);
+
+  useEffect(() => {
     if (
       !isAiTurn ||
       !aiRunning ||
@@ -1984,7 +1990,7 @@ function Game() {
       {settingsOpen && (
         <div className="settings-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}>
           <aside className="settings-drawer" role="dialog" aria-modal="true" aria-label={t("settings")}>
-            <header><div><small>METEOR RACE</small><h2>{t("settingsLabel")}</h2></div><button ref={settingsCloseRef} type="button" aria-label={t("closeSettings")} onClick={() => setSettingsOpen(false)}>×</button></header>
+            <header><div><small>METEOR RACE</small><h2>{t("settingsLabel")}</h2></div><button ref={settingsCloseRef} className="icon-close" type="button" aria-label={t("closeSettings")} onClick={() => setSettingsOpen(false)}>×</button></header>
             <section>
               <h3>{t("languageHeading")}</h3>
               <div className="language-switch" role="group" aria-label={t("displayLanguage")}>
@@ -2053,7 +2059,7 @@ function Game() {
       {manualOpen && (
         <div className="manual-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setManualOpen(false)}>
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label="マニュアル">
-            <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{visibleGameMessage}</strong></div><button type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
+            <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{visibleGameMessage}</strong></div><button className="icon-close" type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
             {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
               <section className="manual-world-hero"><div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><strong>AEQRIS</strong><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
               <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div></section>
@@ -2444,7 +2450,7 @@ function Game() {
 
       {!entryStage && mode === "online" && online.code && chatOpen && !chatMuted && (
         <aside className="comms-panel" aria-label="ルームチャット">
-          <header><div><small>ROOM {online.code}</small><strong>チャット欄</strong></div><button type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
+          <header><div><small>ROOM {online.code}</small><strong>チャット欄</strong></div><button className="icon-close" type="button" aria-label="チャットを閉じる" onClick={() => setChatOpen(false)}>×</button></header>
           <div className="comms-log" aria-live="polite">
             {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
           </div>

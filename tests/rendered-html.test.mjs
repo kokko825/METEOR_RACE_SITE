@@ -70,6 +70,7 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /const scriptedMove = \{ r: game\.probes\.blue\.r \+ 1/);
   assert.match(page, /\{ r: red\.r - 2, c: red\.c \}/);
   assert.match(page, /setTutorialStep\("free-play"\)/);
+  assert.match(page, /tutorialStep === "free-play" && game\.phase === "over" && game\.winner === "red"/);
   assert.match(page, /tutorialStep === "complete" \? "チュートリアルを終える"/);
   assert.match(page, /tutorialStep !== "free-play" && tutorialStep !== "complete"/);
   assert.match(page, /tutorialStep === "meteor" && game\.turn === "red"/);
@@ -441,7 +442,7 @@ test("reveals results only after the CORE arrival motion settles", async () => {
   assert.match(page, /resultVisible \? " result-dim"/);
   assert.match(page, /statusCoreArrival/);
   assert.match(hook, /revealedIdentity === identity/);
-  assert.match(behavior, /resultRevealDelayMs: 700/);
+  assert.match(behavior, /resultRevealDelayMs: 420/);
   assert.match(copy, /CORE到達を確認中/);
 });
 
@@ -491,8 +492,10 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(css, /--board-available-size/);
   assert.match(responsiveBoard, /new ResizeObserver\(scheduleUpdate\)/);
   assert.match(responsiveBoard, /arena\.clientHeight - actionHeight/);
-  assert.match(responsiveBoard, /availableHeight \* verticalFill/);
+  assert.match(responsiveBoard, /arena\.clientHeight \* verticalFill/);
+  assert.match(responsiveBoard, /UI_LAYOUT\.battleActionReservePx/);
   assert.match(uiLayout, /classicBoardVerticalFill: 0\.78/);
+  assert.match(uiLayout, /battleActionReservePx: 124/);
   assert.match(page, /useResponsiveBoard\([\s\S]*?arenaRef,[\s\S]*?actionPanelRef,/);
   assert.match(css, /\.hud-mode \.action-panel\{[^}]*max-height:124px;[^}]*overflow-y:auto/);
   assert.match(css, /\.switch-setup-controls>\.meteor-choice\.item-choice\{[^}]*grid-template-columns:26px minmax\(0,1fr\);[^}]*grid-template-rows:auto auto/);

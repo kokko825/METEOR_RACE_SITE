@@ -6,4 +6,5 @@ export const UI_LAYOUT = {
   classicBoardVerticalFill: 0.78,
   itemBoardVerticalFill: 0.9,
   actionPanelGapPx: 6,
+  battleActionReservePx: 124,
 } as const;
