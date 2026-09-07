@@ -44,9 +44,12 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /チュートリアルをはじめますか？/);
   assert.match(page, /title-guide-actions/);
   assert.match(page, /title-beginner/);
-  assert.match(page, /対戦設定を挟まずに実戦形式のチュートリアル/);
+  assert.match(page, /チュートリアルを開始しますか？/);
+  assert.doesNotMatch(page, /YESを押すと、対戦設定を挟まず/);
   assert.match(page, /onClick=\{requestTutorial\}/);
   assert.match(page, /autoFocus onClick=\{startTutorial\}/);
+  assert.match(page, /online\.status !== "playing"/);
+  assert.match(page, /topbar-guide-actions/);
   assert.match(page, /横移動や後退を選んでも問題ありません/);
   assert.match(page, /状況に合わなければ小メテオやパス/);
   assert.match(page, /ホーム画面へ戻る/);

@@ -657,6 +657,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .manual-trigger{display:flex;align-items:center;gap:7px;min-height:40px;padding:8px 13px;border:1px solid #31566a;background:rgba(7,24,35,.92);color:#8eddf4;font-weight:900;letter-spacing:.12em;cursor:pointer}
 .manual-trigger:hover,.manual-trigger:focus-visible{border-color:#70dfff;color:#fff}
 .manual-trigger span{font-size:10px}
+.topbar-guide-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px}.tutorial-trigger{border-color:#756624;color:#ffe16c}.tutorial-trigger:hover,.tutorial-trigger:focus-visible{border-color:#ffe16c;color:#fff}
 .manual-overlay{position:fixed;z-index:1200;inset:0;display:flex;justify-content:flex-end;background:rgba(0,6,10,.68);backdrop-filter:blur(5px)}
 .manual-drawer{width:min(430px,94vw);height:100%;overflow:auto;padding:26px;background:linear-gradient(180deg,#071d29,#030b11);border-left:1px solid #3e7c94;box-shadow:-20px 0 60px rgba(0,0,0,.55);color:#b7d0dc}
 .manual-drawer>header{display:flex;justify-content:space-between;align-items:center;padding-bottom:18px;border-bottom:1px solid #244958}

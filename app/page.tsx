@@ -838,6 +838,15 @@ function Game() {
   }, [soundEnabled, masterVolume, sfxVolume]);
 
   const startTutorial = () => {
+    if (online.code && online.status !== "playing") {
+      void roomRequest({ action: "leave", code: online.code }).catch(() => undefined);
+      setOnline({
+        code: "", role: null, status: "idle", version: 0, maxPlayers: 2,
+        joinedPlayers: 0, memberNames: [], memberRoles: [], error: "",
+        pending: false, isHost: false, joinLocked: false,
+      });
+      setRoomCodeInput("");
+    }
     const training = initialState(9, "red", 2, false, 0, ["blue"], "classic", activeBalance, false);
     setTutorialConfirmOpen(false);
     setTutorialStep("welcome");
@@ -1884,7 +1893,7 @@ function Game() {
           <footer><span>MODE SELECT</span><i /><span>MATCH SETUP</span></footer>
         </section>
       )}
-      {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルをはじめますか？</h2><p>YESを押すと、対戦設定を挟まずに実戦形式のチュートリアルを開始します。</p><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>YES・すぐ始める</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
+      {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルを開始しますか？</h2><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{tutorialStep ? "← 終了" : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
         <div className="brand">
@@ -1914,7 +1923,10 @@ function Game() {
           </div>
         </div>
         <MatchMeta language={language} progress={regulaProgress} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>真剣タイマン · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
-        <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
+        <div className="topbar-guide-actions">
+          {mode !== "online" || online.status !== "playing" ? <button className="manual-trigger tutorial-trigger" type="button" aria-label="チュートリアルを始める" onClick={requestTutorial}>🔰 <span>TUTORIAL</span></button> : null}
+          <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
+        </div>
       </header>
 
       {settingsOpen && (
