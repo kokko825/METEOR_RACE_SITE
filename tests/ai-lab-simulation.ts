@@ -239,6 +239,33 @@ import {
 }
 
 {
+  const state = initialGameState(9, "red", 2, false, 0, ["red", "blue"], "classic");
+  state.turnCount = 10;
+  state.phase = "place";
+  state.turn = "blue";
+  state.inventory.blue = { small: 0, large: 1 };
+  state.passAvailable.blue = false;
+  const decision = chooseAiDecision(state, "easy", () => 0.99);
+  assert.equal(decision.type, "meteor", "EASY must use its remaining large meteor instead of stalling");
+  if (decision.type === "meteor") {
+    assert.equal(decision.size, "large");
+    const next = applyMeteor(state, decision.target, decision.size, decision.useCapsule).state;
+    assert.notEqual(next.turn, "blue", "a fallback placement must advance the match");
+  }
+}
+
+{
+  const state = initialGameState(9, "red", 2, false, 0, ["red", "blue"], "classic");
+  state.turnCount = 10;
+  state.phase = "place";
+  state.turn = "blue";
+  state.inventory.blue = { small: 1, large: 1 };
+  state.passAvailable.blue = true;
+  const decision = chooseAiDecision(state, "normal", () => 0.99);
+  assert.equal(decision.type, "meteor", "AI must prefer a legal meteor over its one-time pass");
+}
+
+{
   for (const difficulty of ["easy", "normal", "hard"] as const) {
     const state = initialGameState(11, "red", 4, false, 0, [], "classic");
     state.turnCount = 4;

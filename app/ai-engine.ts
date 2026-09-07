@@ -216,6 +216,19 @@ function placements(state: GameState): Placement[] {
       for (const kind of kinds) result.push({ target, ...kind });
     }
   }
+  // Strategic sampling should never make the AI believe that a legal board is
+  // full. If every sampled square is occupied, fall back to an exhaustive scan
+  // so even a quiet placement can keep the match moving.
+  if (!result.length && kinds.length) {
+    for (let r = 0; r < state.size; r += 1) {
+      for (let c = 0; c < state.size; c += 1) {
+        const target = { r, c };
+        if (!occupied(target)) {
+          for (const kind of kinds) result.push({ target, ...kind });
+        }
+      }
+    }
+  }
   return result;
 }
 
@@ -789,7 +802,7 @@ function bestPlacement(
         earlyPlacementStrategyBonus(state, placement, next),
     });
   }
-  if (state.passAvailable?.[state.turn] ?? true) {
+  if (!options.length && (state.passAvailable?.[state.turn] ?? true)) {
     const next = applyPass(state);
     options.push({
       choice: "pass",
@@ -1001,8 +1014,12 @@ export function chooseAiDecision(
     return selected ? { type: "move", target: selected.choice } : { type: "skip" };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
-  for (const placement of placements(state)) {
-    if (difficulty === "easy" && placement.size === "large" && !placement.useCapsule) continue;
+  const availablePlacements = placements(state);
+  const easyHasSmallMeteor = availablePlacements.some((placement) => placement.size === "small");
+  for (const placement of availablePlacements) {
+    // EASY normally keeps the large meteor in reserve. Once no small meteor can
+    // be placed, it uses the large one instead of freezing the match.
+    if (difficulty === "easy" && easyHasSmallMeteor && placement.size === "large" && !placement.useCapsule) continue;
     const next = applyPlacement(state, placement);
     ranked.push({
       choice: placement,
@@ -1013,15 +1030,18 @@ export function chooseAiDecision(
         earlyPlacementStrategyBonus(state, placement, next),
     });
   }
-  if (state.passAvailable?.[player] ?? true) {
+  const passValue = (state.passAvailable?.[player] ?? true)
+    ? scoreResult(applyPass(state), player, difficulty, state) +
+      (earlyItemDevelopment(state, player) ? 18 : 5)
+    : -1_000_000;
+  // Passing is only a last resort when no legal meteor exists. Low-scoring
+  // placements are still real turns and must not be discarded.
+  if (!ranked.length && (state.passAvailable?.[player] ?? true)) {
     ranked.push({
       choice: "pass",
-      value:
-        scoreResult(applyPass(state), player, difficulty, state) +
-        (earlyItemDevelopment(state, player) ? 18 : 5),
+      value: passValue,
     });
   }
-  const passValue = ranked.find((entry) => entry.choice === "pass")?.value ?? -1_000_000;
   const itemThreshold = difficulty === "easy"
     ? AI_STRATEGY.items.useThresholdEasy
     : difficulty === "normal"

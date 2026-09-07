@@ -38,9 +38,11 @@ test("keeps human-editable values separate from application logic", async () => 
   assert.match(configGuide, /どこを変更するか/);
 });
 
-test("keeps EASY CPU on small meteors", async () => {
+test("keeps EASY CPU on small meteors without allowing placement stalls", async () => {
   const ai = await read("../app/ai-engine.ts");
-  assert.match(ai, /difficulty === "easy" && placement\.size === "large"/);
+  assert.match(ai, /difficulty === "easy" && easyHasSmallMeteor && placement\.size === "large"/);
+  assert.match(ai, /if \(!ranked\.length && \(state\.passAvailable\?\.\[player\] \?\? true\)\)/);
+  assert.match(ai, /If every sampled square is occupied, fall back to an exhaustive scan/);
   assert.match(ai, /bestValue - 18/);
 });
 
