@@ -1413,6 +1413,24 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 @media(min-width:901px) and (max-height:760px){.hud-mode>.game-layout{margin-top:12px;height:calc(100dvh - 154px - env(safe-area-inset-bottom))}}
 @media(min-width:561px) and (max-width:900px){.hud-mode>.game-layout{margin-top:10px}}
 @media(max-width:560px){.hud-mode>.game-layout{margin-top:6px}}
+
+/* Classic boards sit centrally; item boards reserve a little more room above the dense controls. */
+@media(min-width:901px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:14px;height:calc(100dvh - 204px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:20px;margin-bottom:8px;height:calc(100dvh - 204px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+}
+@media(min-width:901px) and (max-height:760px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:10px;height:calc(100dvh - 168px - env(safe-area-inset-bottom))}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:14px;margin-bottom:6px;height:calc(100dvh - 168px - env(safe-area-inset-bottom))}
+}
+@media(min-width:561px) and (max-width:900px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:10px}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:14px;margin-bottom:6px}
+}
+@media(max-width:560px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:6px}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:10px;margin-bottom:4px}
+}
 @media(max-width:700px){
   .switch-setup-controls>.meteor-choice.item-choice{min-height:52px;grid-template-columns:21px minmax(0,1fr);column-gap:3px;padding:4px}
   .switch-setup-controls>.meteor-choice.item-choice>span{font-size:clamp(7px,2.2vw,11px)}
