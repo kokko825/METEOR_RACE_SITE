@@ -471,6 +471,9 @@ test("centralizes replaceable UI sounds and tactile feedback", async () => {
 
 test("uses shared spacing tokens for the battle shell", async () => {
   const css = await read("../app/globals.css");
+  const responsiveBoard = await read("../app/hooks/use-responsive-board.ts");
+  const uiLayout = await read("../config/ui-layout.ts");
+  const page = await read("../app/page.tsx");
   assert.match(css, /--page-gutter-inline:/);
   assert.match(css, /--battle-hud-height: 76px/);
   assert.match(css, /height:var\(--battle-hud-height\)/);
@@ -483,10 +486,14 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(css, /--game-ui-button:13px/);
   assert.match(css, /\.title-screen nav \.title-start,[^}]*min-height:62px/);
   assert.match(css, /\.action-panel button,[^}]*min-height:48px/);
-  assert.match(css, /calc\(100dvh - 330px\)/);
   assert.match(css, /\.shell\.hud-mode\{height:100dvh;min-height:0;padding:8px 12px calc\(82px \+ env\(safe-area-inset-bottom\)\);overflow:hidden\}/);
   assert.match(css, /\.hud-mode \.arena\{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax\(0,1fr\) auto;[^}]*overflow:hidden\}/);
-  assert.match(css, /calc\(100dvh - 290px\)/);
+  assert.match(css, /--board-available-size/);
+  assert.match(responsiveBoard, /new ResizeObserver\(scheduleUpdate\)/);
+  assert.match(responsiveBoard, /arena\.clientHeight - actionHeight/);
+  assert.match(responsiveBoard, /availableHeight \* verticalFill/);
+  assert.match(uiLayout, /classicBoardVerticalFill: 0\.78/);
+  assert.match(page, /useResponsiveBoard\([\s\S]*?arenaRef,[\s\S]*?actionPanelRef,/);
   assert.match(css, /\.hud-mode \.action-panel\{[^}]*max-height:124px;[^}]*overflow-y:auto/);
   assert.match(css, /\.switch-setup-controls>\.meteor-choice\.item-choice\{[^}]*grid-template-columns:26px minmax\(0,1fr\);[^}]*grid-template-rows:auto auto/);
   assert.match(css, /\.switch-setup-controls>\.meteor-choice\.item-choice>b\{[^}]*grid-row:2/);

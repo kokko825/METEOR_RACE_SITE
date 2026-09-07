@@ -9,6 +9,7 @@ export type ReleaseNote = {
 
 // 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
 export const RELEASE_NOTES = [
+  { version:"1.0.68", date:"2026-09-07", tags:["SYSTEM","UI"], title:{ja:"可変レイアウトを強化",en:"Improved adaptive layout"}, summary:{ja:"画面や文字の大きさに合わせて盤面が自動調整されるよう改善。",en:"The board now adapts to the available screen and text size."}, details:{ja:["操作欄を含む表示領域へ自動追従"],en:["Adapts to the play area and action controls"]} },
   { version:"1.0.67", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"通常戦の盤面位置を修正",en:"Fixed classic board alignment"}, summary:{ja:"通常戦の盤面を上下中央へ正確に配置。",en:"Precisely centered the classic board vertically."}, details:{ja:["画面上下の余白を均等化"],en:["Balanced the space above and below the board"]} },
   { version:"1.0.66", date:"2026-09-07", tags:["UI"], title:{ja:"盤面の上下余白を調整",en:"Adjusted board spacing"}, summary:{ja:"通常戦とアイテム戦に合わせて盤面位置を調整。",en:"Refined board placement for classic and item matches."}, details:{ja:["画面サイズ別の余白を調整"],en:["Adjusted spacing by screen size"]} },
   { version:"1.0.65", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"案内とチャット表示を修正",en:"Fixed guidance and chat display"}, summary:{ja:"自由対戦中の案内とオンラインチャットの表示を整理。",en:"Refined free-play guidance and online chat presentation."}, details:{ja:["チュートリアルボタンの形を統一","チャット欄を右下へ配置"],en:["Unified the tutorial button shape","Moved chat to the lower right"]} },

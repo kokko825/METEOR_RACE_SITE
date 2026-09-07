@@ -6,6 +6,7 @@
 - `site-presentation.ts`：色、広告、BGMのURLと再生設定
 - `ai-strategy.ts`：AIの細かな判断重み（上級調整）
 - `ui-behavior.ts`：AI表示速度と演出タイミング
+- `ui-layout.ts`：盤面の最大寸法、画面に占める比率、操作欄との間隔
 - `ui-copy.ts`：日本語・英語の画面文章
 - `community-safety.ts`：チャット文字数、保存期間、定型文、禁止表現
 - `asset-paths.ts`：画像・フォント・音源の公開パス台帳
@@ -21,6 +22,7 @@
 - 基本色や発光を変える → `site-presentation.ts`
 - 日本語・英語の文章を直す → `ui-copy.ts`
 - AIの画面上の待ち時間を変える → `ui-behavior.ts`
+- 盤面の大きさや余白の比率を変える → `ui-layout.ts`
 
 ## 変更手順
 

@@ -61,10 +61,12 @@ import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 import { LATEST_RELEASE_NOTES } from "../config/release-notes";
 import { useDeferredReveal } from "./hooks/use-deferred-reveal";
 import { useUiFeedback } from "./hooks/use-ui-feedback";
+import { useResponsiveBoard } from "./hooks/use-responsive-board";
 import { SoundMixer, VolumeRange } from "./components/sound-controls";
 import { MatchMeta } from "./components/match-meta";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
+import { UI_LAYOUT } from "../config/ui-layout";
 import { gameStatusText } from "./game-status";
 import { getOrCreatePlayerId, playerRequestHeaders } from "./client-identity";
 import {
@@ -185,6 +187,13 @@ function Game() {
   const [chatDraft, setChatDraft] = useState("");
   const settingsCloseRef = useRef<HTMLButtonElement>(null);
   const settingsTriggerRef = useRef<HTMLElement | null>(null);
+  const arenaRef = useRef<HTMLElement>(null);
+  const actionPanelRef = useRef<HTMLDivElement>(null);
+  useResponsiveBoard(
+    arenaRef,
+    actionPanelRef,
+    isItemVariant(game.variant) ? UI_LAYOUT.itemBoardVerticalFill : UI_LAYOUT.classicBoardVerticalFill,
+  );
   const {
     nickname, setNickname,
     masterVolume, setMasterVolume,
@@ -2074,7 +2083,7 @@ function Game() {
           {activePlayers(game).includes("green") && <aside className={`player-card green-card ${(resultVisible ? game.winner === "green" : game.turn === "green") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("green", 3)}</span><h2>GREEN</h2><ProbeIcon color="green" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.green} color="green" items={canSeeLoadout("green") ? game.itemHands?.green ?? [] : []} loadoutHidden={!canSeeLoadout("green")} /></aside>}
         </div>
 
-        <section className="arena">
+        <section className="arena" ref={arenaRef}>
           {tutorialStep && tutorialStep !== "rival-moving" && tutorialStep !== "free-play" && tutorialStep !== "complete" && (
             <section className={`tutorial-coach ${["welcome", "goal", "first-praise", "rival", "rival-result", "meteor-result"].includes(tutorialStep) ? "explain" : "guide"}`} role="dialog" aria-live="polite">
               <small>AEQRIS // FIELD TRAINING</small>
@@ -2298,6 +2307,7 @@ function Game() {
 
           <div
             className="action-panel"
+            ref={actionPanelRef}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
