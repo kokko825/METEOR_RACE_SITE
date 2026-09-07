@@ -69,7 +69,7 @@ button { color: inherit; }
 
 .shell { width: min(1440px, 100%); margin: 0 auto; padding: var(--page-gutter-block) var(--page-gutter-inline) 36px; }
 .shell.entry-active { width:100%; min-height:100dvh; padding:0; overflow:hidden; }
-.shell.entry-active > :not(.title-screen):not(.entry-flow):not(.settings-overlay):not(.manual-overlay):not(.global-hud) { display:none !important; }
+.shell.entry-active > :not(.title-screen):not(.entry-flow):not(.settings-overlay):not(.manual-overlay):not(.tutorial-confirm-backdrop):not(.global-hud) { display:none !important; }
 .shell.online-lobby-only>.topbar,.shell.online-lobby-only>.game-layout,.shell.online-lobby-only>.extra-players{display:none!important}
 .shell.online-lobby-only .ai-lab-panel,.shell.online-lobby-only .rules,.shell.online-lobby-only .history-panel{display:none!important}
 .shell.online-lobby-only .control-strip{margin-top:0;padding:0 0 76px;border-top:0;min-height:100dvh;display:grid;align-content:center}
@@ -658,6 +658,7 @@ summary { cursor:pointer; color:#91a8b5; font-size:10px; letter-spacing:.18em; }
 .manual-trigger:hover,.manual-trigger:focus-visible{border-color:#70dfff;color:#fff}
 .manual-trigger span{font-size:10px}
 .topbar-guide-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px}.tutorial-trigger{border-color:#756624;color:#ffe16c}.tutorial-trigger:hover,.tutorial-trigger:focus-visible{border-color:#ffe16c;color:#fff}
+.lobby-tutorial-trigger{position:fixed;z-index:180;top:max(14px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));min-height:44px;padding:8px 12px;border:1px solid #756624;background:#071a24;color:#ffe16c;font-weight:900;letter-spacing:.08em;cursor:pointer}.lobby-tutorial-trigger:hover,.lobby-tutorial-trigger:focus-visible{border-color:#ffe16c;color:#fff}
 .manual-overlay{position:fixed;z-index:1200;inset:0;display:flex;justify-content:flex-end;background:rgba(0,6,10,.68);backdrop-filter:blur(5px)}
 .manual-drawer{width:min(430px,94vw);height:100%;overflow:auto;padding:26px;background:linear-gradient(180deg,#071d29,#030b11);border-left:1px solid #3e7c94;box-shadow:-20px 0 60px rgba(0,0,0,.55);color:#b7d0dc}
 .manual-drawer>header{display:flex;justify-content:space-between;align-items:center;padding-bottom:18px;border-bottom:1px solid #244958}

@@ -49,6 +49,9 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /autoFocus onClick=\{startTutorial\}/);
   assert.match(page, /online\.status !== "playing"/);
   assert.match(page, /topbar-guide-actions/);
+  assert.match(page, /lobby-tutorial-trigger/);
+  assert.match(css, /not\(\.tutorial-confirm-backdrop\)/);
+  assert.doesNotMatch(page, /合法マス/);
   assert.match(page, /横移動や後退を選んでも問題ありません/);
   assert.match(page, /大メテオ、小メテオ、パスから選んでください/);
   assert.match(page, /ホーム画面へ戻る/);
