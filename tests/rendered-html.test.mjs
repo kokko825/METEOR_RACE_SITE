@@ -51,6 +51,7 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /topbar-guide-actions/);
   assert.match(page, /lobby-tutorial-trigger/);
   assert.match(css, /not\(\.tutorial-confirm-backdrop\)/);
+  assert.match(css, /\.tutorial-confirm-backdrop\{position:fixed;z-index:2000;/);
   assert.doesNotMatch(page, /合法マス/);
   assert.match(page, /横移動や後退を選んでも問題ありません/);
   assert.match(page, /大メテオ、小メテオ、パスから選んでください/);

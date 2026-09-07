@@ -9,6 +9,7 @@ export type ReleaseNote = {
 
 // 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
 export const RELEASE_NOTES = [
+  { version:"1.0.60", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"チュートリアル開始確認を修正",en:"Fixed tutorial confirmation"}, summary:{ja:"各画面で開始確認がすぐ表示されるよう修正。",en:"Tutorial confirmation now appears immediately across screens."}, details:{ja:["開始確認の表示を安定化"],en:["Stabilized the start confirmation"]} },
   { version:"1.0.59", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"チュートリアル進行を調整",en:"Refined tutorial timing"}, summary:{ja:"説明と相手の行動が順番に進むよう調整。",en:"Tutorial guidance and opponent actions now proceed in sequence."}, details:{ja:["説明中は盤面を停止"],en:["Pauses the board during guidance"]} },
   { version:"1.0.58", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"チュートリアル入口を修正",en:"Fixed tutorial access"}, summary:{ja:"各準備画面からチュートリアルを開始可能に。",en:"Tutorial access is now available from preparation screens."}, details:{ja:["案内表現を統一"],en:["Unified guidance wording"]} },
   { version:"1.0.57", date:"2026-09-07", tags:["UI"], title:{ja:"案内文を調整",en:"Refined tutorial guidance"}, summary:{ja:"AEQRISの案内を自然な表現に調整。",en:"Refined AEQRIS tutorial guidance."}, details:{ja:["現在のルールを簡潔に案内"],en:["Presents the current rules concisely"]} },
