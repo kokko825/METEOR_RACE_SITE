@@ -555,6 +555,9 @@ function Game() {
         ).length as 1 | 2 | 3 | 4,
       );
       setOnlineAiCount((data.state.botPlayers ?? []).length as 0 | 1 | 2 | 3);
+      setVariant(data.lobbyVariant ?? data.state.variant ?? "classic");
+      setSize(data.lobbySize ?? data.state.size);
+      setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
       setRoomCodeInput(data.code);
     } catch (error) {
       setOnline((current) => ({
@@ -753,6 +756,24 @@ function Game() {
     if (!enabled && !isTeamVariant(variant) && size > 11) setSize(9);
     setNeedsNewGame(true);
   };
+
+  useEffect(() => {
+    if (!online.code || !online.isHost || online.status !== "waiting") return;
+    const timer = window.setTimeout(() => {
+      void roomRequest({
+        action: "update_lobby_settings",
+        code: online.code,
+        variant,
+        size,
+        aiCount: onlineAiCount,
+      }).then((data) => {
+        setOnline((current) => ({ ...current, version: data.version, pending: false, error: "" }));
+      }).catch((error) => {
+        setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "ルーム設定を同期できませんでした" }));
+      });
+    }, 160);
+    return () => window.clearTimeout(timer);
+  }, [online.code, online.isHost, online.status, variant, size, onlineAiCount]);
 
   const swapOwnRole = async (targetRole: Player) => {
     if (!online.code || !online.role || targetRole === online.role) return;
@@ -1424,8 +1445,9 @@ function Game() {
               }, 950);
             }
           }
-          setSize(data.state.size);
-          setVariant(data.state.variant ?? "classic");
+          setSize(data.status === "waiting" ? (data.lobbySize ?? data.state.size) : data.state.size);
+          setVariant(data.status === "waiting" ? (data.lobbyVariant ?? data.state.variant ?? "classic") : (data.state.variant ?? "classic"));
+          if (data.status === "waiting") setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
           setRankedMode(Boolean(data.state.ranked));
           setFirst(data.state.startingPlayer);
           setObstaclesEnabled(Boolean(data.state.obstaclesEnabled));
@@ -2676,6 +2698,7 @@ function Game() {
               </div>
             )}
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
+            {online.code && <div className="room-settings-summary" aria-label="現在のルーム設定"><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount}</b></div>}
             {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder="NICKNAME" aria-label="ニックネーム" maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label="ルームコード" maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>← ゲームモードへ戻る</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>

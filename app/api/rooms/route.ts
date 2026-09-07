@@ -143,6 +143,9 @@ function roomPayload(room: RoomRow, email: string) {
     joinedPlayers,
     roomCount,
     spectatorCount: roomCount - joinedPlayers,
+    lobbyVariant: state.roomLobbyVariant ?? state.variant ?? "classic",
+    lobbySize: state.roomLobbySize ?? state.size ?? 9,
+    lobbyAiCount: state.roomLobbyAiCount ?? (state.botPlayers ?? []).length,
     memberNames: [...memberEmails
       .map((member, index) =>
         member
@@ -275,6 +278,9 @@ export async function POST(request: Request) {
             ),
             roomMemberNames: [normalizeNickname(body.nickname, email)],
             roomPreferredRoles: ["red"],
+            roomLobbyVariant: createVariant,
+            roomLobbySize: size,
+            roomLobbyAiCount: requestedAi,
           }),
           "waiting",
           now,
@@ -547,6 +553,21 @@ export async function POST(request: Request) {
     return json(roomPayload(room, email));
   }
 
+  if (body.action === "update_lobby_settings") {
+    if (email !== room.host_email) return json({ error: "ルームリーダーだけが変更できます" }, 403);
+    if (room.status !== "waiting") return json({ error: "ルーム設定は待機中だけ変更できます" }, 409);
+    const state = JSON.parse(room.state_json);
+    const nextVariant: GameVariant = body.variant === "team" || body.variant === "item" || body.variant === "team-item" ? body.variant : "classic";
+    const requestedSize = [9, 11, 13, 15].includes(body.size ?? 9) ? body.size! : 9;
+    state.roomLobbyVariant = nextVariant;
+    state.roomLobbySize = isTeamVariant(nextVariant) ? Math.max(13, requestedSize) : isItemVariant(nextVariant) ? Math.max(11, requestedSize) : Math.min(11, requestedSize);
+    state.roomLobbyAiCount = Math.max(0, Math.min(3, Math.round(body.aiCount ?? 0)));
+    await env.DB.prepare("UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
+      .bind(JSON.stringify(state), Date.now(), code).run();
+    room = (await roomByCode(code))!;
+    return json(roomPayload(room, email));
+  }
+
   if (body.action === "nickname") {
     const memberEmails = [
       room.host_email,
@@ -681,6 +702,7 @@ export async function POST(request: Request) {
       previous.roomMemberNames ?? [];
     (nextState as typeof nextState & { roomSpectators: RoomSpectator[] }).roomSpectators =
       previous.roomSpectators ?? [];
+    Object.assign(nextState, { roomLobbyVariant: variant, roomLobbySize: size, roomLobbyAiCount: aiCount });
     (
       nextState as typeof nextState & {
         roomPreferredRoles: Array<Player | null>;
