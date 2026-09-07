@@ -784,7 +784,7 @@ function Game() {
   }, [online.code, online.isHost, online.status, variant, size, onlineAiCount, aiDifficulty]);
 
   const swapOwnRole = async (targetRole: Player) => {
-    if (!online.code || !online.role || targetRole === online.role) return;
+    if (!online.code || !online.isHost || !online.role || targetRole === online.role) return;
     try {
       const data = await roomRequest({ action: "swap_role", code: online.code, targetRole });
       setOnline((current) => ({ ...current, ...data, pending: false, error: "" }));
@@ -958,7 +958,7 @@ function Game() {
     }
   };
 
-  const placeMeteor = (target: Pos, sizeOverride?: MeteorSize, useCapsule = false) => {
+  const placeMeteor = (target: Pos, sizeOverride?: MeteorSize, useCapsule = false): boolean => {
     const chosenSize: MeteorSize =
       sizeOverride ??
       (game.selected === "obstacle" || game.selected === "capsule"
@@ -968,13 +968,13 @@ function Game() {
       !canControl ||
       isAnimating ||
       game.phase !== "place"
-    ) return;
+    ) return false;
     try {
       const capsule = useCapsule || game.selected === "capsule";
       const resolution = applyMeteor(game, target, chosenSize, capsule);
       if (tutorialStep && game.turn === "blue" && resolution.state.phase === "over" && resolution.state.winner === "blue") {
         passPlacement();
-        return;
+        return true;
       }
       if (mode === "online") {
         setIsAnimating(true);
@@ -988,7 +988,7 @@ function Game() {
         });
         playBoom();
         void submitOnlineAction("meteor", target, chosenSize, capsule);
-        return;
+        return true;
       }
       const probes = resolution.state.probes;
       setIsAnimating(true);
@@ -1027,9 +1027,9 @@ function Game() {
         setBlastFx(null);
         setIsAnimating(false);
       }, Math.max(140, Math.round(2020 * effectScale)));
-      return;
+      return true;
     } catch {
-      return;
+      return false;
     }
   };
 
@@ -1183,6 +1183,7 @@ function Game() {
               : obstaclesEnabled,
           humanCount: onlinePlayerCount,
           aiCount: onlineAiCount,
+          difficulty: aiDifficulty,
           variant,
           ranked: rankedMode,
         });
@@ -1368,8 +1369,11 @@ function Game() {
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
     const pollInterval = document.hidden ? 5000 : online.status === "playing" ? 900 : 2000;
+    let requestInFlight = false;
+    let active = true;
     const poll = window.setInterval(async () => {
-      if (isAnimating || online.pending) return;
+      if (isAnimating || online.pending || requestInFlight) return;
+      requestInFlight = true;
       try {
         const response = await fetch(`/api/rooms?code=${encodeURIComponent(online.code)}`, {
           headers: playerRequestHeaders(),
@@ -1377,7 +1381,7 @@ function Game() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error ?? "同期できませんでした");
-        if (data.version > online.version) {
+        if (active && data.version > online.version) {
           const remoteEffect = data.state.onlineEffect as OnlineEffect | undefined;
           const remoteItemEffect = data.state.onlineItemEffect as OnlineItemEffect | undefined;
           const shouldAnimate =
@@ -1493,13 +1497,19 @@ function Game() {
           }
         }
       } catch (error) {
+        if (!active) return;
         setOnline((current) => ({
           ...current,
           error: error instanceof Error ? error.message : "同期できませんでした",
         }));
+      } finally {
+        requestInFlight = false;
       }
     }, pollInterval);
-    return () => window.clearInterval(poll);
+    return () => {
+      active = false;
+      window.clearInterval(poll);
+    };
   }, [mode, online.code, online.version, online.pending, online.status, online.isHost, online.joinedPlayers, isAnimating, playBoom, playItemSound]);
 
   useEffect(() => {
@@ -1690,12 +1700,9 @@ function Game() {
       if (decision.type === "move") {
         moveProbe(decision.target);
       } else if (decision.type === "meteor") {
-        try {
-          placeMeteor(decision.target, decision.size, decision.useCapsule);
-        } catch {
-          // A stale AI target must never stall an AI-only match.
-          passPlacement();
-        }
+        // The board can change between evaluation and execution online.
+        // An invalid cached target must not trap an AI in the placement phase.
+        if (!placeMeteor(decision.target, decision.size, decision.useCapsule)) passPlacement();
       } else if (decision.type === "item") {
         activateItem(decision.kind);
       } else if (decision.type === "pass") {
@@ -1718,7 +1725,9 @@ function Game() {
       ? UI_BEHAVIOR.aiSetupDelayMs
       : game.bonusMove
         ? Math.max(UI_BEHAVIOR.aiBonusMoveMinimumDelayMs, aiSpeed)
-        : aiSpeed);
+        : mode === "online"
+          ? Math.max(UI_BEHAVIOR.aiMinimumDelayMs, aiSpeed)
+          : aiSpeed);
     return () => window.clearTimeout(timer);
   // Action helpers intentionally use the current game snapshot from this effect.
   // Adding every inline dispatcher would recreate the timer without changing its decision input.
@@ -2760,10 +2769,10 @@ function Game() {
                   >
                     <b>{name}{index === 0 ? " / LEADER" : ""}</b><small>{online.memberRoles[index] ? playerName(online.memberRoles[index]!) : "WATCH"}</small>
                     {online.isHost && online.status !== "playing" && <span className="member-actions">{index < 4 && <button type="button" onClick={()=>online.memberRoles[index]?void manageRoomMember(index,"spectate"):void manageRoomMember(index,"seat",PLAYER_ORDER.find((player)=>!online.memberRoles.includes(player))??"blue")}>{online.memberRoles[index]?"観戦へ":"選手へ"}</button>}{index>0&&<button type="button" onClick={()=>void manageRoomMember(index,"kick")}>退出させる</button>}</span>}
-                    {isTeamVariant(variant)&&index!==ownMemberIndex&&online.memberRoles[index]&&online.role&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void swapOwnRole(online.memberRoles[index]!)}>このメンバーと入れ替え</button>}
+                    {isTeamVariant(variant)&&index!==ownMemberIndex&&online.memberRoles[index]&&online.isHost&&online.role&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void swapOwnRole(online.memberRoles[index]!)}>このメンバーと入れ替え</button>}
                   </div>
                 ))}
-                {lobbyAiRoles.map((role,index)=><div key={`cpu-${index}`} className={`cpu-member ${role}`}><b>CPU {index+1}</b><small>{isTeamVariant(variant)?teamOf(role)==="sun"?"RED TEAM":"BLUE TEAM":playerName(role)}</small><i>AI</i>{online.role&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void swapOwnRole(role)}>CPUと入れ替え</button>}</div>)}
+                {lobbyAiRoles.map((role,index)=><div key={`cpu-${index}`} className={`cpu-member ${role}`}><b>CPU {index+1}</b><small>{isTeamVariant(variant)?teamOf(role)==="sun"?"RED TEAM":"BLUE TEAM":playerName(role)}</small><i>AI</i>{online.isHost&&online.role&&online.status!=="playing"&&<button type="button" className="team-switch" onClick={()=>void swapOwnRole(role)}>CPUと入れ替え</button>}</div>)}
               </div>
             )}
             {online.code && online.isHost && (

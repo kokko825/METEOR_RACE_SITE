@@ -627,3 +627,15 @@ test("keeps strong-play research anonymous, verified and optional", async () => 
   assert.match(hook, /if \(hydrated\) window\.localStorage\.setItem/);
   assert.match(policy, /AIの自動学習には使用せず/);
 });
+
+test("keeps online hosts stable and team assignment host-only", async () => {
+  const [page, rooms] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/api/rooms/route.ts"),
+  ]);
+  assert.match(page, /let requestInFlight = false/);
+  assert.match(page, /online\.pending \|\| requestInFlight/);
+  assert.match(page, /if \(!placeMeteor\([\s\S]*?\)\) passPlacement\(\)/);
+  assert.match(page, /!online\.isHost \|\| !online\.role/);
+  assert.match(rooms, /if \(email !== room\.host_email\) return json\(\{ error: "チーム変更はルームリーダーだけが行えます" \}, 403\)/);
+});

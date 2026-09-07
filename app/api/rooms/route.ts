@@ -527,6 +527,7 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "swap_role") {
+    if (email !== room.host_email) return json({ error: "チーム変更はルームリーダーだけが行えます" }, 403);
     if (room.status === "playing") return json({ error: "座席交換は待機中に行ってください" }, 409);
     const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
     const memberIndex = members.indexOf(email);
