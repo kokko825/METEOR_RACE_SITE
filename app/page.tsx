@@ -858,6 +858,12 @@ function Game() {
     setGame(training);
   };
 
+  const requestTutorial = () => {
+    setManualOpen(false);
+    setSettingsOpen(false);
+    setTutorialConfirmOpen(true);
+  };
+
   const leaveTutorial = () => {
     setTutorialStep(null);
     setEntryStage("title");
@@ -1805,7 +1811,7 @@ function Game() {
       </div>
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
-          <div className="title-guide-actions"><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button><button className="title-settings title-beginner" type="button" aria-label="チュートリアルを始める" onClick={() => setTutorialConfirmOpen(true)}>🔰 <span>TUTORIAL</span></button></div>
+          <div className="title-guide-actions"><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button><button className="title-settings title-beginner" type="button" aria-label="チュートリアルを始める" onClick={requestTutorial}>🔰 <span>TUTORIAL</span></button></div>
           <div className="title-brand-lockup">
             <div className="title-orbit" aria-hidden="true"><i /><i /></div>
             <div className="title-symbol" aria-hidden="true">
@@ -1848,7 +1854,7 @@ function Game() {
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
-          <div className="title-guide-actions"><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button><button className="title-settings title-beginner" type="button" aria-label="チュートリアルを始める" onClick={() => setTutorialConfirmOpen(true)}>🔰 <span>TUTORIAL</span></button></div>
+          <div className="title-guide-actions"><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button><button className="title-settings title-beginner" type="button" aria-label="チュートリアルを始める" onClick={requestTutorial}>🔰 <span>TUTORIAL</span></button></div>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>{t("back")}</button><div><small>{entryStage === "play" ? t("ruleGuide") : t("gameStart")}</small><b>{entryStage === "play" ? t("howToPlay") : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>COREへ先に到達せよ</h2><p>毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。</p></article><article><b>02</b><strong>PLACE</strong><p>小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。</p></article><article><b>03</b><strong>METEOR</strong><p>小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。</p></article><article><b>04</b><strong>BONUS MOVE</strong><p>手持ちのメテオをすべて使い切ると、その手番中にもう1回移動できます。</p></article><article><b>GOAL</b><strong>CORE</strong><p>移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。</p></article></div>
 <nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")}</button></div>}
@@ -1878,7 +1884,7 @@ function Game() {
           <footer><span>MODE SELECT</span><i /><span>MATCH SETUP</span></footer>
         </section>
       )}
-      {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルをはじめますか？</h2><p>普段と同じ対戦画面で、説明と強調表示を重ねながら基本操作を体験します。</p><div><button type="button" className="primary-action" onClick={startTutorial}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
+      {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルをはじめますか？</h2><p>YESを押すと、対戦設定を挟まずに実戦形式のチュートリアルを開始します。</p><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>YES・すぐ始める</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{tutorialStep ? "← 終了" : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
         <div className="brand">
