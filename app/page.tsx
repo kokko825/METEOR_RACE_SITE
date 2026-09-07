@@ -190,6 +190,9 @@ function Game() {
   const chatInitialized = useRef(false);
   const [chatPending, setChatPending] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
+  const chatBurst = useRef({ count: 0, lastSentAt: 0 });
+  const [chatCooldownUntil, setChatCooldownUntil] = useState(0);
+  const [chatCooldownRemaining, setChatCooldownRemaining] = useState(0);
   const settingsCloseRef = useRef<HTMLButtonElement>(null);
   const settingsTriggerRef = useRef<HTMLElement | null>(null);
   const arenaRef = useRef<HTMLElement>(null);
@@ -806,7 +809,7 @@ function Game() {
   };
 
   const sendChat = async (message: string) => {
-    if (!online.code || chatPending || chatMuted) return;
+    if (!online.code || chatPending || chatMuted || chatCooldownRemaining > 0) return;
     const normalizedMessage = message.replace(/\s+/g, " ").trim();
     if (!normalizedMessage || normalizedMessage.length > 80) return;
     setChatPending(true);
@@ -817,16 +820,56 @@ function Game() {
         body: JSON.stringify({ code: online.code, nickname: ownDisplayName || nickname || "PLAYER", message: normalizedMessage }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "送信できませんでした");
+      if (!response.ok) {
+        if (response.status === 429) {
+          const seconds = Number(data.retryAfterSeconds) || COMMUNITY_SAFETY.chatCooldownSeconds;
+          chatBurst.current = { count: 0, lastSentAt: 0 };
+          setChatCooldownUntil(Date.now() + seconds * 1000);
+        }
+        throw new Error(data.error ?? "送信できませんでした");
+      }
       knownChatIds.current.add(data.message.id);
       setChatMessages((current) => [...current.filter((item) => item.id !== data.message.id), data.message].slice(-40));
       setChatDraft("");
+      const now = Date.now();
+      const nextBurstCount = now - chatBurst.current.lastSentAt > COMMUNITY_SAFETY.chatPostWindowSeconds * 1000
+        ? 1
+        : chatBurst.current.count + 1;
+      chatBurst.current = { count: nextBurstCount, lastSentAt: now };
+      if (nextBurstCount >= COMMUNITY_SAFETY.chatPostLimit) {
+        chatBurst.current = { count: 0, lastSentAt: 0 };
+        setChatCooldownUntil(now + COMMUNITY_SAFETY.chatCooldownSeconds * 1000);
+      }
     } catch (error) {
       setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "チャットを送信できませんでした" }));
     } finally {
       setChatPending(false);
     }
   };
+
+  useEffect(() => {
+    if (!chatCooldownUntil) {
+      setChatCooldownRemaining(0);
+      return;
+    }
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((chatCooldownUntil - Date.now()) / 1000));
+      setChatCooldownRemaining(remaining);
+      if (!remaining) setChatCooldownUntil(0);
+    };
+    update();
+    const timer = window.setInterval(update, 250);
+    return () => window.clearInterval(timer);
+  }, [chatCooldownUntil]);
+
+  useEffect(() => {
+    if (chatOpen) setChatToast(null);
+  }, [chatOpen]);
+
+  useEffect(() => {
+    chatBurst.current = { count: 0, lastSentAt: 0 };
+    setChatCooldownUntil(0);
+  }, [online.code]);
 
   const sendQuickChat = (message: typeof QUICK_CHAT_MESSAGES[number]) => sendChat(message);
 
@@ -2074,7 +2117,7 @@ function Game() {
                   <strong>{note.title[language]}</strong><p>{note.summary[language]}</p>
                 </article>)}
               </div>
-              <a className="release-all-link" href="/updates">{language === "ja" ? "すべて見る" : "VIEW ALL"}<span aria-hidden="true">→</span></a>
+              <a className="release-all-link" href="/updates" target="_blank" rel="noopener noreferrer">{language === "ja" ? "すべて見る" : "VIEW ALL"}<span aria-hidden="true">↗</span></a>
             </section>
             <section>
               <h3>{t("contactHeading")}</h3>
@@ -2504,14 +2547,14 @@ function Game() {
             {chatMessages.length ? chatMessages.map((item) => <p key={item.id}><b>{item.nickname}</b><span>{item.message}</span></p>) : <em>まだ通信はありません</em>}
           </div>
           <form className="free-comms" onSubmit={(event) => { event.preventDefault(); void sendChat(chatDraft); }}>
-            <input aria-label="自由チャット" maxLength={COMMUNITY_SAFETY.chatMaxLength} value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} placeholder={`メッセージを入力（${COMMUNITY_SAFETY.chatMaxLength}文字まで）`} disabled={chatPending} />
-            <button type="submit" disabled={chatPending || !chatDraft.trim()}>SEND</button>
+            <input aria-label="自由チャット" maxLength={COMMUNITY_SAFETY.chatMaxLength} value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} placeholder={chatCooldownRemaining ? `${chatCooldownRemaining}秒後に送信できます` : `メッセージを入力（${COMMUNITY_SAFETY.chatMaxLength}文字まで）`} disabled={chatPending || chatCooldownRemaining > 0} />
+            <button type="submit" disabled={chatPending || chatCooldownRemaining > 0 || !chatDraft.trim()}>{chatCooldownRemaining ? `${chatCooldownRemaining}s` : "SEND"}</button>
           </form>
-          <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
+          <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending || chatCooldownRemaining > 0} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
         </aside>
       )}
       {!entryStage && mode === "online" && online.code && !chatOpen && !chatMuted && chatToast && (
-        <button type="button" className="chat-toast" onClick={() => { setChatOpen(true); setUnreadChatCount(0); setChatToast(null); }}>
+        <button type="button" className="chat-toast" aria-label={`${chatToast.nickname}からの新着チャットを開く`} onClick={() => { setChatOpen(true); setUnreadChatCount(0); setChatToast(null); }}>
           <b>{chatToast.nickname}</b><span>{chatToast.message}</span>
         </button>
       )}
@@ -2777,7 +2820,7 @@ function Game() {
             )}
             {online.code && online.isHost && (
               <div className="online-count ai-members-card" aria-label="オンライン追加AI人数">
-                <div><span>AI MEMBERS</span><small>空席へCPU探査機を追加</small></div><div className="ai-stepper"><button type="button" disabled={onlineAiCount === 0} onClick={() => { setOnlineAiCount((onlineAiCount - 1) as 0|1|2|3); setNeedsNewGame(true); }}>−</button><b>{onlineAiCount}<small> AI</small></b><button type="button" disabled={onlinePlayerCount + onlineAiCount >= 4} onClick={() => { const next=Math.min(3,onlineAiCount+1) as 0|1|2|3; setOnlineAiCount(next); if(onlinePlayerCount+next>2&&size===9)setSize(11); setNeedsNewGame(true); }}>＋</button><label className="ai-level-inline">LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label></div>
+                <div><span>AI MEMBERS</span><small>空席へCPU探査機を追加</small></div><div className="ai-member-controls"><label className="ai-level-inline">LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label><div className="ai-stepper"><button type="button" disabled={onlineAiCount === 0} onClick={() => { setOnlineAiCount((onlineAiCount - 1) as 0|1|2|3); setNeedsNewGame(true); }}>−</button><b>{onlineAiCount}<small> AI</small></b><button type="button" disabled={onlinePlayerCount + onlineAiCount >= 4} onClick={() => { const next=Math.min(3,onlineAiCount+1) as 0|1|2|3; setOnlineAiCount(next); if(onlinePlayerCount+next>2&&size===9)setSize(11); setNeedsNewGame(true); }}>＋</button></div></div>
               </div>
             )}
             {online.code && online.isHost && (

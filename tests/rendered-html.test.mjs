@@ -639,3 +639,26 @@ test("keeps online hosts stable and team assignment host-only", async () => {
   assert.match(page, /!online\.isHost \|\| !online\.role/);
   assert.match(rooms, /if \(email !== room\.host_email\) return json\(\{ error: "チーム変更はルームリーダーだけが行えます" \}, 403\)/);
 });
+
+test("keeps room chat compact, rate-limited and non-destructive to navigation", async () => {
+  const [page, chat, safety, css] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../app/api/chat/route.ts"),
+    read("../config/community-safety.ts"),
+    read("../app/globals.css"),
+  ]);
+  assert.match(safety, /chatPostLimit: 10/);
+  assert.match(safety, /chatCooldownSeconds: 10/);
+  assert.match(chat, /`chat-post:\$\{playerId\}:\$\{code\}`/);
+  assert.match(page, /!chatOpen && !chatMuted && chatToast/);
+  assert.match(page, /className="ai-member-controls"/);
+  assert.match(page, /href="\/updates" target="_blank" rel="noopener noreferrer"/);
+  assert.match(css, /\.ai-member-controls\{display:grid;grid-template-columns:/);
+});
+
+test("keeps the online room start controls reachable when the lobby grows", async () => {
+  const css = await read("../app/globals.css");
+  assert.match(css, /\.shell\.online-lobby-only \.control-strip\{[^}]*overflow-y:auto!important/);
+  assert.match(css, /\.shell\.online-lobby-only \.online-panel\{[^}]*max-height:none!important[^}]*overflow:visible!important/);
+  assert.match(css, /\.online-panel>\.apply-room-settings,[\s\S]*\.online-panel>\.leave-room-button\{[^}]*position:sticky/);
+});

@@ -58,12 +58,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!(await withinRateLimit(request, "chat-post", COMMUNITY_SAFETY.chatPostLimit, COMMUNITY_SAFETY.chatPostWindowSeconds))) return rateLimitedResponse();
   const playerId = playerIdFrom(request);
   const body = await request.json() as { code?: string; nickname?: string; message?: string };
   const code = body.code?.trim().toUpperCase() ?? "";
   const message = cleanMessage(body.message ?? "");
   if (!playerId || !/^[A-Z2-9]{6}$/.test(code)) return response({ error: "チャットを送信できません" }, 400);
+  if (!(await withinRateLimit(request, `chat-post:${playerId}:${code}`, COMMUNITY_SAFETY.chatPostLimit, COMMUNITY_SAFETY.chatPostWindowSeconds))) {
+    return rateLimitedResponse(COMMUNITY_SAFETY.chatCooldownSeconds);
+  }
   if (!message) return response({ error: "メッセージを入力してください" }, 400);
   if (message.length > COMMUNITY_SAFETY.chatMaxLength) return response({ error: `${COMMUNITY_SAFETY.chatMaxLength}文字以内で入力してください` }, 400);
   if (containsBlockedChatLanguage(message)) return response({ error: "送信できない表現が含まれています" }, 400);

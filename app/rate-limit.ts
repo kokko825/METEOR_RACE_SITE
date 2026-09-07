@@ -48,6 +48,17 @@ export async function withinRateLimit(request: Request, bucket: string, limit: n
   return (row?.count ?? 1) <= limit;
 }
 
-export function rateLimitedResponse() {
-  return Response.json({ error: "リクエストが多すぎます。しばらく待って再試行してください" }, { status: 429 });
+export function rateLimitedResponse(retryAfterSeconds?: number) {
+  return Response.json(
+    {
+      error: retryAfterSeconds
+        ? `${retryAfterSeconds}秒後にもう一度送信できます`
+        : "リクエストが多すぎます。しばらく待って再試行してください",
+      retryAfterSeconds,
+    },
+    {
+      status: 429,
+      headers: retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : undefined,
+    },
+  );
 }
