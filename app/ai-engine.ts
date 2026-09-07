@@ -1002,6 +1002,7 @@ export function chooseAiDecision(
   }
   const ranked: Array<Scored<Placement | "pass">> = [];
   for (const placement of placements(state)) {
+    if (difficulty === "easy" && placement.size === "large" && !placement.useCapsule) continue;
     const next = applyPlacement(state, placement);
     ranked.push({
       choice: placement,

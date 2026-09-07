@@ -38,6 +38,11 @@ test("keeps human-editable values separate from application logic", async () => 
   assert.match(configGuide, /どこを変更するか/);
 });
 
+test("keeps EASY CPU on small meteors", async () => {
+  const ai = await read("../app/ai-engine.ts");
+  assert.match(ai, /difficulty === "easy" && placement\.size === "large"/);
+});
+
 test("guides beginners on the real match board without restricting legal actions", async () => {
   const [page, css] = await Promise.all([read("../app/page.tsx"), read("../app/globals.css")]);
   assert.doesNotMatch(page, /<Tutorial onExit=/);

@@ -9,6 +9,7 @@ export type ReleaseNote = {
 
 // 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
 export const RELEASE_NOTES = [
+  { version:"1.0.62", date:"2026-09-07", tags:["SYSTEM"], title:{ja:"EASYのメテオ選択を調整",en:"Adjusted EASY meteor choices"}, summary:{ja:"EASYでは小メテオだけを使用するよう調整。",en:"EASY now uses small meteors only."}, details:{ja:["難易度ごとの特徴を明確化"],en:["Clarified the difficulty levels"]} },
   { version:"1.0.61", date:"2026-09-07", tags:["BUG FIX","SYSTEM"], title:{ja:"チュートリアルCPUを修正",en:"Fixed the tutorial CPU"}, summary:{ja:"練習を最後まで進められるよう調整。",en:"Training can now always be completed."}, details:{ja:["CPUの勝利条件を調整"],en:["Adjusted the CPU win condition"]} },
   { version:"1.0.60", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"チュートリアル開始確認を修正",en:"Fixed tutorial confirmation"}, summary:{ja:"各画面で開始確認がすぐ表示されるよう修正。",en:"Tutorial confirmation now appears immediately across screens."}, details:{ja:["開始確認の表示を安定化"],en:["Stabilized the start confirmation"]} },
   { version:"1.0.59", date:"2026-09-07", tags:["BUG FIX","UI"], title:{ja:"チュートリアル進行を調整",en:"Refined tutorial timing"}, summary:{ja:"説明と相手の行動が順番に進むよう調整。",en:"Tutorial guidance and opponent actions now proceed in sequence."}, details:{ja:["説明中は盤面を停止"],en:["Pauses the board during guidance"]} },
