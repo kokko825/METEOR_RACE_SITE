@@ -92,6 +92,14 @@ export default async function GuidePage() {
       </section>
 
       <section className="doc-section">
+        <h2>メテオを使い切ったとき</h2>
+        <p>
+          手持ちの小メテオと大メテオをすべて使い切ると、その手番中にボーナス移動が発生し、探査機をもう1回動かせます。
+          最後のメテオを自分の推進に使い、続けてCOREへ踏み込むこともできます。
+        </p>
+      </section>
+
+      <section className="doc-section">
         <h2>ゲームモード</h2>
         <dl className="doc-defs">
           <dt>CLASSIC</dt>

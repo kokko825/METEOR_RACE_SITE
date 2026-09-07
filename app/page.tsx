@@ -63,7 +63,6 @@ import { useDeferredReveal } from "./hooks/use-deferred-reveal";
 import { useUiFeedback } from "./hooks/use-ui-feedback";
 import { SoundMixer, VolumeRange } from "./components/sound-controls";
 import { MatchMeta } from "./components/match-meta";
-import { Tutorial } from "./components/tutorial";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
 import { gameStatusText } from "./game-status";
@@ -150,6 +149,7 @@ type OnlineRoom = {
 };
 
 type ChatMessage = { id: string; nickname: string; message: string; createdAt: number };
+type TutorialStep = "welcome" | "goal" | "first-move" | "first-praise" | "rival" | "second-move" | "meteor" | "meteor-result" | "large" | "large-result" | "free" | "complete";
 const QUICK_CHAT_MESSAGES = COMMUNITY_SAFETY.quickChatMessages;
 
 
@@ -157,7 +157,9 @@ function Game() {
   useSiteTheme();
   const [entryStage, setEntryStage] = useState<"title" | "rule" | "play" | "match" | "setup" | null>("title");
   const [tutorialConfirmOpen, setTutorialConfirmOpen] = useState(false);
-  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState<TutorialStep | null>(null);
+  const [tutorialOpening, setTutorialOpening] = useState<"forward" | "side" | "back">("forward");
+  const [tutorialHitRival, setTutorialHitRival] = useState(false);
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
@@ -220,7 +222,7 @@ function Game() {
   const [isAnimating, setIsAnimating] = useState(false);
   const resultIdentity = `${game.turnCount}:${game.winner ?? "none"}:${game.finishOrder?.join("-") ?? ""}`;
   const resultVisible = useDeferredReveal({
-    active: game.phase === "over" && Boolean(game.winner),
+    active: !tutorialStep && game.phase === "over" && Boolean(game.winner),
     blocked: isAnimating,
     identity: resultIdentity,
     delayMs: UI_BEHAVIOR.resultRevealDelayMs,
@@ -835,6 +837,33 @@ function Game() {
     playItemSoundSfx(kind, soundEnabled, masterVolume, sfxVolume);
   }, [soundEnabled, masterVolume, sfxVolume]);
 
+  const startTutorial = () => {
+    const training = initialState(9, "red", 2, false, 0, ["blue"], "classic", activeBalance, false);
+    setTutorialConfirmOpen(false);
+    setTutorialStep("welcome");
+    setTutorialOpening("forward");
+    setTutorialHitRival(false);
+    setEntryStage(null);
+    setMode("human");
+    setSetupMode("human");
+    setVariant("classic");
+    setSize(9);
+    setFirst("red");
+    setActiveFirst("red");
+    setNeedsNewGame(false);
+    setAiDifficulty("easy");
+    setAiRunning(true);
+    setBlastFx(null);
+    setIsAnimating(false);
+    setGame(training);
+  };
+
+  const leaveTutorial = () => {
+    setTutorialStep(null);
+    setEntryStage("title");
+    setNeedsNewGame(true);
+  };
+
   const showSwitchFx = useCallback((kind: ItemKind, player: Player) => {
     playItemSound(kind);
     setSwitchFx({ kind, player, nonce: Date.now() });
@@ -856,7 +885,18 @@ function Game() {
       void submitOnlineAction("move", target);
       return;
     }
-    commit(applyMove(game, target));
+    const next = applyMove(game, target);
+    if (tutorialStep && game.turn === "red") {
+      if (tutorialStep === "first-move") {
+        const from = game.probes.red;
+        setTutorialOpening(target.r < from.r ? "forward" : target.r === from.r ? "side" : "back");
+        setTutorialStep("first-praise");
+      } else if (tutorialStep === "second-move") {
+        setTutorialStep(next.phase === "place" ? "meteor" : "second-move");
+      }
+      if (next.phase === "over" && next.winner === "red") setTutorialStep("complete");
+    }
+    commit(next);
   };
 
   const skipBlockedMove = () => {
@@ -957,6 +997,11 @@ function Game() {
       }, Math.max(70, Math.round(1100 * effectScale)));
       window.setTimeout(() => {
         commit(resolution.state);
+        if (tutorialStep && game.turn === "red") {
+          const hitRival = Boolean(resolution.pushed.blue);
+          setTutorialHitRival(hitRival);
+          setTutorialStep(resolution.state.phase === "over" && resolution.state.winner === "red" ? "complete" : "meteor-result");
+        }
         setBlastFx(null);
         setIsAnimating(false);
       }, Math.max(140, Math.round(2020 * effectScale)));
@@ -1517,6 +1562,12 @@ function Game() {
   }, [mode, aiRunning, game, aiSpeed, stats.games, activeBalance]);
 
   useEffect(() => {
+    if (tutorialStep === "rival" && game.turn === "red" && game.turnCount > 0) {
+      setTutorialStep("second-move");
+    }
+  }, [tutorialStep, game.turn, game.turnCount]);
+
+  useEffect(() => {
     if (
       !isAiTurn ||
       !aiRunning ||
@@ -1526,6 +1577,7 @@ function Game() {
       isAnimating ||
       game.phase === "over"
     ) return;
+    if (tutorialStep && tutorialStep !== "rival" && tutorialStep !== "free") return;
     const timer = window.setTimeout(() => {
       if (game.phase === "setup") {
         const setupDecision = chooseAiDecision(game, aiDifficulty);
@@ -1539,7 +1591,11 @@ function Game() {
         }
         return;
       }
-      const decision = chooseAiDecision(game, aiDifficulty);
+      let decision = chooseAiDecision(game, aiDifficulty);
+      if (tutorialStep && game.turn === "blue" && decision.type === "move" && decision.target.r === mid && decision.target.c === mid) {
+        const safeMove = moves.find((target) => target.r !== mid || target.c !== mid);
+        if (safeMove) decision = { type: "move", target: safeMove };
+      }
       if (decision.type === "move") {
         moveProbe(decision.target);
       } else if (decision.type === "meteor") {
@@ -1584,6 +1640,7 @@ function Game() {
     moves,
     mid,
     humanSetupComplete,
+    tutorialStep,
   ]);
 
   const winRates = Object.fromEntries(
@@ -1738,10 +1795,8 @@ function Game() {
     }
   };
 
-  if (tutorialOpen) return <Tutorial onExit={() => { setTutorialOpen(false); setEntryStage("title"); }} />;
-
   return (
-    <main className={`shell text-size-${textSize} variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${reducedMotion ? " reduced-motion" : ""}`}>
+    <main className={`shell text-size-${textSize} variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${tutorialStep ? ` tutorial-active tutorial-${tutorialStep}` : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       <div className="phone-portrait-lock" role="status" aria-live="polite">
         <i aria-hidden="true">↻</i>
         <strong>端末を縦向きにしてください</strong>
@@ -1750,7 +1805,7 @@ function Game() {
       </div>
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
-          <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
+          <div className="title-guide-actions"><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button><button className="title-settings title-beginner" type="button" aria-label="チュートリアルを始める" onClick={() => setTutorialConfirmOpen(true)}>🔰 <span>TUTORIAL</span></button></div>
           <div className="title-brand-lockup">
             <div className="title-orbit" aria-hidden="true"><i /><i /></div>
             <div className="title-symbol" aria-hidden="true">
@@ -1784,20 +1839,18 @@ function Game() {
           </div>
           <nav>
             <button className="title-start" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")} <span>▶</span></button>
-            <button className="title-tutorial" type="button" onClick={() => setTutorialConfirmOpen(true)}>{t("howToPlay")} <span aria-hidden="true">🔰</span></button>
             <button type="button" onClick={() => setSettingsOpen(true)}>{t("settingsLabel")}</button>
             <a className="title-privacy" href="/policy">{t("privacyLabel")}</a>
           </nav>
           <footer><span>{t("onlineReady")}</span><span>{nickname.trim() || t("guestPlayer")} · {rankTier(rankRating)} {rankRating}</span></footer>
           <AdSlot position="title" />
-          {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルをはじめますか？</h2><p>基本の移動、メテオの爆風、大メテオを実際に操作しながら体験します。</p><div><button type="button" className="primary-action" onClick={() => { setTutorialConfirmOpen(false); setTutorialOpen(true); }}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
         </section>
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label="対戦準備">
-          <button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button>
+          <div className="title-guide-actions"><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button><button className="title-settings title-beginner" type="button" aria-label="チュートリアルを始める" onClick={() => setTutorialConfirmOpen(true)}>🔰 <span>TUTORIAL</span></button></div>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>{t("back")}</button><div><small>{entryStage === "play" ? t("ruleGuide") : t("gameStart")}</small><b>{entryStage === "play" ? t("howToPlay") : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
-          {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>COREへ先に到達せよ</h2><p>毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。</p></article><article><b>02</b><strong>PLACE</strong><p>小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。</p></article><article><b>03</b><strong>METEOR</strong><p>小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。</p></article><article><b>GOAL</b><strong>CORE</strong><p>移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。</p></article></div>
+          {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>COREへ先に到達せよ</h2><p>毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。</p></article><article><b>02</b><strong>PLACE</strong><p>小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。</p></article><article><b>03</b><strong>METEOR</strong><p>小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。</p></article><article><b>04</b><strong>BONUS MOVE</strong><p>手持ちのメテオをすべて使い切ると、その手番中にもう1回移動できます。</p></article><article><b>GOAL</b><strong>CORE</strong><p>移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。</p></article></div>
 <nav className="play-guide-links"><a href="/guide">遊び方をもっと詳しく</a><a href="/items">アイテム一覧</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")}</button></div>}
           {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>{t("choosePlayStyle")}</h2><p>{t("chooseOpponent")}</p><h3>PLAY STYLE</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>SINGLE</strong><span>{t("cpuBattle")}</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>LOCAL</strong><span>{t("localBattle")}</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>ONLINE</strong><span>{t("onlineBattle")}</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>{t("next")}</button></div>}
           {entryStage === "match" && (
@@ -1825,8 +1878,9 @@ function Game() {
           <footer><span>MODE SELECT</span><i /><span>MATCH SETUP</span></footer>
         </section>
       )}
+      {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルをはじめますか？</h2><p>普段と同じ対戦画面で、説明と強調表示を重ねながら基本操作を体験します。</p><div><button type="button" className="primary-action" onClick={startTutorial}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
       <header className="topbar">
-        <button className="game-back" type="button" onClick={() => mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
+        <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{tutorialStep ? "← 終了" : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
         <div className="brand">
           <Image
             className="brand-symbol"
@@ -1941,7 +1995,7 @@ function Game() {
                 <article><span>02</span><i>◆</i><div><b>METEOR</b><p>{t("manualMeteor")}</p></div></article><em>↓</em>
                 <article><span>03</span><i>{ITEM_ICONS.shield}</i><div><b>ITEM</b><p>{t("manualItem")}</p></div></article>
                 <strong>{t("manualNext")}</strong>
-              </div><div className="manual-notes"><p>{t("noDiagonal")}</p><p>{t("blastPropulsion")}</p><p>{t("anyCoreArrival")}</p><p>{t("firstTurnRule")}</p></div></div></section>
+              </div><div className="manual-notes"><p>{t("noDiagonal")}</p><p>{t("blastPropulsion")}</p><p>{t("anyCoreArrival")}</p><p>{t("firstTurnRule")}</p><p>{t("bonusMoveRule")}</p></div></div></section>
               <section className="manual-items"><header><small>02</small><h3>{t("itemArchiveHeading")}</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance, language)}</p></div></article>)}</div></section>
             </div>}
           </aside>
@@ -1960,6 +2014,18 @@ function Game() {
         </div>
 
         <section className="arena">
+          {tutorialStep && (
+            <section className={`tutorial-coach ${["welcome", "goal", "first-praise", "rival", "meteor-result", "complete"].includes(tutorialStep) ? "explain" : "guide"}`} role="dialog" aria-live="polite">
+              <small>AEQRIS // FIELD TRAINING</small>
+              <h2>{tutorialStep === "welcome" ? "ようこそ、METEOR RACEへ" : tutorialStep === "goal" ? "相手より先にCOREを目指しましょう" : tutorialStep === "first-move" ? "まず、探査機を動かしてみましょう" : tutorialStep === "first-praise" ? (tutorialOpening === "forward" ? "素晴らしいです。COREへ前進できました" : tutorialOpening === "side" ? "横へずらすのも立派な戦略です" : "後退から進路を作る判断も有効です") : tutorialStep === "rival" ? "次は相手の手番です" : tutorialStep === "second-move" ? "普段どおり、好きな合法マスへ移動できます" : tutorialStep === "meteor" ? "次はメテオを配置してみましょう" : tutorialStep === "meteor-result" ? (tutorialHitRival ? "お見事です。相手を爆風で動かしました" : "メテオは障害物にも、次の推進力にもなります") : tutorialStep === "large" ? "大メテオもお試しいただけます" : tutorialStep === "complete" ? "チュートリアルが完了しました" : "ここからは自由にCOREを目指してください"}</h2>
+              <p>{tutorialStep === "welcome" ? "星間管理AI AEQRISが実戦形式でご案内します。専用の簡易盤ではなく、通常戦と同じ画面・同じルールを使用します。" : tutorialStep === "goal" ? "探査機は縦横へ1マス移動します。メテオの爆風を利用すれば、斜め方向にも進めます。" : tutorialStep === "first-move" ? "光るマスはすべて選択できます。前進がおすすめですが、横移動や後退を選んでも問題ありません。" : tutorialStep === "first-praise" ? "選び方に正解は一つではありません。次は相手の行動を確認してみましょう。" : tutorialStep === "rival" ? "相手も通常ルールで移動し、2手目以降はメテオを使用します。" : tutorialStep === "second-move" ? "説明中も通常のゲーム性を維持しています。盤面を見て自由に選んでください。" : tutorialStep === "meteor" ? "小メテオは周囲1マスに爆風を起こします。自分を進めても、相手を妨害しても、将来の布石にしても構いません。" : tutorialStep === "meteor-result" ? "大メテオは中心に近いほど強く、内周を2マス、外周を1マス動かします。以降も小・大を自由に選べます。" : tutorialStep === "large" ? "大メテオを強調していますが、状況に合わなければ小メテオやパスを選んでも問題ありません。" : tutorialStep === "complete" ? "おめでとうございます。これで基本操作のご案内は終了です。" : "メテオを使い切ると、その手番中にボーナス移動が1回発生します。対戦相手はEASYのCPUです。"}</p>
+              {tutorialStep === "welcome" && <button type="button" onClick={() => setTutorialStep("goal")}>案内を続ける</button>}
+              {tutorialStep === "goal" && <button type="button" onClick={() => setTutorialStep("first-move")}>盤面を操作する</button>}
+              {tutorialStep === "first-praise" && <button type="button" onClick={() => setTutorialStep("rival")}>相手の手番へ</button>}
+              {tutorialStep === "meteor-result" && <button type="button" onClick={() => setTutorialStep("free")}>自由対戦を始める</button>}
+              {tutorialStep === "complete" && <button type="button" onClick={leaveTutorial}>ホーム画面へ戻る</button>}
+            </section>
+          )}
           {switchFx && (
             <div key={switchFx.nonce} className={`switch-activation ${switchFx.kind} ${switchFx.player}`} role="status">
               <span className="switch-burst" />

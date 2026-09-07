@@ -110,6 +110,7 @@ export const UI_COPY = {
   blastPropulsion: { ja: "※ METEORは相手を妨害するだけでなく、自分を進める推進力にもなります。", en: "* METEORS can disrupt rivals or propel your own probe." },
   anyCoreArrival: { ja: "※ 移動・爆風・アイテムのどの方法でもCOREへ入れば到達です。", en: "* Entering CORE by movement, blast, or item counts as arrival." },
   firstTurnRule: { ja: "※ 先攻の最初の手番だけメテオを配置できません。", en: "* The starting player cannot place a meteor on the first turn." },
+  bonusMoveRule: { ja: "※ 手持ちのメテオをすべて使い切ると、その手番中にもう1回移動できます。", en: "* After using your last meteor, you gain one extra move during that turn." },
   selectedItems: { ja: "選択したアイテム", en: "Selected items" },
   emptyLoadout: { ja: "下のアイテムを選ぶと、ここに使用イメージと説明が追加されます。", en: "Choose items below to add their preview and description here." },
   confirm: { ja: "決定", en: "CONFIRM" },

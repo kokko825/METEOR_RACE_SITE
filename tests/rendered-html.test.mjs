@@ -38,21 +38,28 @@ test("keeps human-editable values separate from application logic", async () => 
   assert.match(configGuide, /どこを変更するか/);
 });
 
-test("ships an isolated adaptive beginner tutorial", async () => {
-  const [page, tutorial, css] = await Promise.all([
-    read("../app/page.tsx"),
-    read("../app/components/tutorial.tsx"),
-    read("../app/globals.css"),
-  ]);
-  assert.match(page, /<Tutorial onExit=/);
+test("guides beginners on the real match board without restricting legal actions", async () => {
+  const [page, css] = await Promise.all([read("../app/page.tsx"), read("../app/globals.css")]);
+  assert.doesNotMatch(page, /<Tutorial onExit=/);
   assert.match(page, /チュートリアルをはじめますか？/);
-  assert.match(page, /t\("howToPlay"\).*🔰/);
-  assert.match(tutorial, /ようこそ、METEOR RACEへ/);
-  assert.match(tutorial, /最初に横へずれることも/);
-  assert.match(tutorial, /大メテオは小メテオの2倍/);
-  assert.match(tutorial, /先にゴールすることはない/);
-  assert.match(tutorial, /ホーム画面へ戻る/);
-  assert.match(css, /\.tutorial-board/);
+  assert.match(page, /title-guide-actions/);
+  assert.match(page, /title-beginner/);
+  assert.match(page, /普段と同じ対戦画面/);
+  assert.match(page, /横移動や後退を選んでも問題ありません/);
+  assert.match(page, /状況に合わなければ小メテオやパス/);
+  assert.match(page, /ホーム画面へ戻る/);
+  assert.match(css, /\.tutorial-coach/);
+  assert.match(css, /\.board \.cell\.legal/);
+});
+
+test("explains the last-meteor bonus move everywhere players learn the rules", async () => {
+  const [page, guide, copy] = await Promise.all([
+    read("../app/page.tsx"), read("../app/guide/page.tsx"), read("../config/ui-copy.ts"),
+  ]);
+  assert.match(page, /BONUS MOVE/);
+  assert.match(page, /t\("bonusMoveRule"\)/);
+  assert.match(guide, /ボーナス移動が発生/);
+  assert.match(copy, /手持ちのメテオをすべて使い切ると/);
 });
 
 test("keeps the public game discoverable by search engines", async () => {

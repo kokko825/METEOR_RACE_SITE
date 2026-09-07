@@ -433,16 +433,28 @@ function coreDistanceForTest(state: GameState, player: Player) {
   return Math.abs(state.probes[player].r - mid) + Math.abs(state.probes[player].c - mid);
 }
 
-const allScenarios: Array<{ variant: GameVariant; size: number; count: number }> = [
+const allScenarios: Array<{ variant: GameVariant; size: number; count: number; ranked?: boolean }> = [
   { variant: "classic", size: 9, count: 2 },
+  { variant: "classic", size: 9, count: 3 },
+  { variant: "classic", size: 9, count: 4 },
+  { variant: "classic", size: 11, count: 2 },
+  { variant: "classic", size: 11, count: 3 },
   { variant: "classic", size: 11, count: 4 },
   { variant: "team", size: 13, count: 4 },
   { variant: "team", size: 15, count: 4 },
   { variant: "item", size: 11, count: 2 },
+  { variant: "item", size: 11, count: 3 },
+  { variant: "item", size: 11, count: 4 },
   { variant: "item", size: 13, count: 2 },
+  { variant: "item", size: 13, count: 3 },
+  { variant: "item", size: 13, count: 4 },
+  { variant: "item", size: 15, count: 2 },
+  { variant: "item", size: 15, count: 3 },
   { variant: "item", size: 15, count: 4 },
   { variant: "team-item", size: 13, count: 4 },
   { variant: "team-item", size: 15, count: 4 },
+  { variant: "classic", size: 9, count: 2, ranked: true },
+  { variant: "item", size: 11, count: 2, ranked: true },
 ];
 const scenarioFilter = process.env.AI_LAB_SCENARIO;
 const scenarios = scenarioFilter
@@ -485,6 +497,8 @@ for (const difficulty of difficulties) {
         layoutOffset,
         players,
         scenario.variant,
+        undefined,
+        Boolean(scenario.ranked),
       );
       const result = play(
         initial,
