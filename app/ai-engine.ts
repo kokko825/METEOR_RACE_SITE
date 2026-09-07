@@ -1036,7 +1036,13 @@ export function chooseAiDecision(
       value,
     });
   }
-  const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant) && !itemDuel, decisionCreativity);
+  const understandableChoices = difficulty === "easy" && ranked.length
+    ? ranked.filter((entry) => {
+        const bestValue = Math.max(...ranked.map((candidate) => candidate.value));
+        return entry.value >= Math.max(passValue - 4, bestValue - 18);
+      })
+    : ranked;
+  const selected = selectWithDifficulty(understandableChoices, difficulty, random, isItemVariant(state.variant) && !itemDuel, decisionCreativity);
   if (!selected) return { type: "skip" };
   if (selected.choice === "pass") return { type: "pass" };
   if ("itemKind" in selected.choice) return { type: "item", kind: selected.choice.itemKind as ItemKind };

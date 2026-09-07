@@ -41,6 +41,7 @@ test("keeps human-editable values separate from application logic", async () => 
 test("keeps EASY CPU on small meteors", async () => {
   const ai = await read("../app/ai-engine.ts");
   assert.match(ai, /difficulty === "easy" && placement\.size === "large"/);
+  assert.match(ai, /bestValue - 18/);
 });
 
 test("guides beginners on the real match board without restricting legal actions", async () => {
@@ -65,6 +66,9 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /tutorialStep !== "rival-moving"/);
   assert.match(page, /setTutorialStep\("rival-result"\)/);
   assert.match(page, /相手の行動を確認しましょう/);
+  assert.match(page, /tutorialStep === "rival-moving" && game\.turn === "blue"/);
+  assert.match(page, /const scriptedMove = \{ r: game\.probes\.blue\.r \+ 1/);
+  assert.match(page, /\{ r: red\.r - 2, c: red\.c \}/);
   assert.match(page, /resolution\.state\.winner === "blue"/);
   assert.match(page, /チュートリアルCPUはCORE直前で移動を見送った/);
   assert.match(css, /\.tutorial-coach/);

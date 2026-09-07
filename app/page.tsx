@@ -1610,6 +1610,35 @@ function Game() {
         }
         return;
       }
+      if (tutorialStep === "rival-moving" && game.turn === "blue") {
+        if (game.phase === "move") {
+          const scriptedMove = { r: game.probes.blue.r + 1, c: game.probes.blue.c };
+          const target = moves.find((move) => samePos(move, scriptedMove))
+            ?? moves.find((move) => move.r !== mid || move.c !== mid);
+          if (target) moveProbe(target);
+          else skipBlockedMove();
+          return;
+        }
+        if (game.phase === "place") {
+          const red = game.probes.red;
+          const scriptedTargets = [
+            { r: red.r - 2, c: red.c },
+            { r: red.r - 2, c: red.c - 1 },
+            { r: red.r - 2, c: red.c + 1 },
+          ];
+          const target = scriptedTargets.find((candidate) => {
+            try {
+              applyMeteor(game, candidate, "small", false);
+              return true;
+            } catch {
+              return false;
+            }
+          });
+          if (target) placeMeteor(target, "small", false);
+          else passPlacement();
+          return;
+        }
+      }
       let decision = chooseAiDecision(game, aiDifficulty);
       if (tutorialStep && game.turn === "blue" && decision.type === "move" && decision.target.r === mid && decision.target.c === mid) {
         const safeMove = moves.find((target) => target.r !== mid || target.c !== mid);
