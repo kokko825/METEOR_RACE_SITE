@@ -109,6 +109,18 @@ test("keeps the public game discoverable by search engines", async () => {
   assert.match(items, /alternates: \{ canonical: "\/items" \}/);
 });
 
+test("loads Google Analytics once from centralized configuration", async () => {
+  const [layout, analytics, policy] = await Promise.all([
+    read("../app/layout.tsx"),
+    read("../config/analytics.ts"),
+    read("../app/policy/page.tsx"),
+  ]);
+  assert.match(analytics, /G-1BYGC3M1EW/);
+  assert.equal((layout.match(/googletagmanager\.com\/gtag\/js/g) ?? []).length, 1);
+  assert.match(layout, /gtag\('config','\$\{GOOGLE_ANALYTICS_ID\}'\)/);
+  assert.match(policy, /Google Analytics/);
+});
+
 test("does not ship a browser-based administration screen", async () => {
   await assert.rejects(read("../app/balance/page.tsx"), { code: "ENOENT" });
   await assert.rejects(read("../app/api/admin-proxy/route.ts"), { code: "ENOENT" });

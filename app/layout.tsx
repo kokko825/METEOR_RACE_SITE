@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { ASSET_PATHS } from "../config/asset-paths";
+import { GOOGLE_ANALYTICS_ID } from "../config/analytics";
 import "./globals.css";
 import { SITE_URL } from "./site-url";
 
@@ -110,6 +112,16 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         {children}
+        {GOOGLE_ANALYTICS_ID && <>
+          <Script
+            id="google-analytics-loader"
+            src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${GOOGLE_ANALYTICS_ID}');`}
+          </Script>
+        </>}
       </body>
     </html>
   );

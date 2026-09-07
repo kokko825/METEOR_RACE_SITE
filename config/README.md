@@ -13,6 +13,8 @@
 
 ## どこを変更するか
 
+- Google Analyticsの測定ID：`analytics.ts`
+
 - アイテム個数・効果範囲・継続巡数 → `game-balance.ts`
 - AIを前進型／妨害型へ寄せる → まず `game-balance.ts` の `ai...Weight`
 - AIの個別判断を細かく変える → `ai-strategy.ts`
