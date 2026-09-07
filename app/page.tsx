@@ -184,6 +184,10 @@ function Game() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMuted, setChatMuted] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [chatToast, setChatToast] = useState<ChatMessage | null>(null);
+  const knownChatIds = useRef(new Set<string>());
+  const chatInitialized = useRef(false);
   const [chatPending, setChatPending] = useState(false);
   const [chatDraft, setChatDraft] = useState("");
   const settingsCloseRef = useRef<HTMLButtonElement>(null);
@@ -810,6 +814,7 @@ function Game() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "送信できませんでした");
+      knownChatIds.current.add(data.message.id);
       setChatMessages((current) => [...current.filter((item) => item.id !== data.message.id), data.message].slice(-40));
       setChatDraft("");
     } catch (error) {
@@ -1488,6 +1493,9 @@ function Game() {
   useEffect(() => {
     if (mode !== "online" || !online.code || chatMuted) {
       setChatMessages([]);
+      setUnreadChatCount(0);
+      knownChatIds.current.clear();
+      chatInitialized.current = false;
       return;
     }
     let active = true;
@@ -1498,7 +1506,19 @@ function Game() {
           cache: "no-store",
         });
         const data = await response.json();
-        if (active && response.ok) setChatMessages(data.messages ?? []);
+        if (active && response.ok) {
+          const messages = (data.messages ?? []) as ChatMessage[];
+          const newMessages = messages.filter((message) => !knownChatIds.current.has(message.id));
+          if (chatInitialized.current && !chatOpen && newMessages.length) {
+            setUnreadChatCount((current) => Math.min(99, current + newMessages.length));
+            const latest = newMessages[newMessages.length - 1];
+            setChatToast(latest);
+            window.setTimeout(() => setChatToast((current) => current?.id === latest.id ? null : current), 3600);
+          }
+          messages.forEach((message) => knownChatIds.current.add(message.id));
+          chatInitialized.current = true;
+          setChatMessages(messages);
+        }
       } catch {
         // Chat is optional; a temporary failure must never interrupt the match.
       }
@@ -1506,7 +1526,7 @@ function Game() {
     void loadChat();
     const timer = window.setInterval(loadChat, document.hidden ? 6000 : 2200);
     return () => { active = false; window.clearInterval(timer); };
-  }, [mode, online.code, chatMuted]);
+  }, [mode, online.code, chatMuted, chatOpen]);
 
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
@@ -2464,6 +2484,11 @@ function Game() {
           <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message) => <button key={message} type="button" disabled={chatPending} onClick={() => void sendQuickChat(message)}>{message}</button>)}</div>
         </aside>
       )}
+      {!entryStage && mode === "online" && online.code && !chatOpen && !chatMuted && chatToast && (
+        <button type="button" className="chat-toast" onClick={() => { setChatOpen(true); setUnreadChatCount(0); setChatToast(null); }}>
+          <b>{chatToast.nickname}</b><span>{chatToast.message}</span>
+        </button>
+      )}
 
       <footer className="battle-hud global-hud" aria-label="共通操作バー">
             <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label="設定を開く">
@@ -2481,7 +2506,7 @@ function Game() {
             <div className="hud-tools">
               <SoundMixer enabled={soundEnabled} masterVolume={masterVolume} bgmVolume={bgmVolume} sfxVolume={sfxVolume} masterLabel={t("masterVolume")} sfxLabel={t("soundEffects")} muteLabel={language === "ja" ? "消音する" : "Mute audio"} unmuteLabel={language === "ja" ? "音を出す" : "Enable audio"} setMasterVolume={setMasterVolume} setBgmVolume={setBgmVolume} setSfxVolume={setSfxVolume} onTick={playVolumeTick} onToggle={() => setSoundEnabled((current) => !current)} />
               <div className="hud-icons">
-                {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""}`} aria-label="チャット表示を切り替える" aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); }}>チャット欄</button>}
+                {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""} ${unreadChatCount ? "has-unread" : ""}`} aria-label={unreadChatCount ? `チャット欄・新着${unreadChatCount}件` : "チャット表示を切り替える"} aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); setUnreadChatCount(0); setChatToast(null); }}>チャット欄{unreadChatCount > 0 && <i className="chat-unread" aria-hidden="true">{unreadChatCount}</i>}</button>}
                 {mode === "online" && online.code && <button type="button" className={`chat-mute ${chatMuted ? "active danger" : ""}`} aria-label="チャットをミュートする" aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}
                 {mode === "online" && online.code && online.isHost && online.status === "waiting" && <button type="button" className={`room-lock ${online.joinLocked ? "active danger" : ""}`} aria-label={online.joinLocked ? "ルーム参加受付を再開" : "これ以上の参加を締め切る"} aria-pressed={Boolean(online.joinLocked)} disabled={online.pending} onClick={() => void toggleRoomLock()}>{online.joinLocked ? "▣" : "▢"}</button>}
               </div>
