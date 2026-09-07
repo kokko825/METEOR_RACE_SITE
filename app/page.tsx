@@ -371,6 +371,7 @@ function Game() {
       : mode === "lab"
         ? false
         : !(game.botPlayers ?? []).includes(game.turn);
+  const playerBoardInputEnabled = canControl && showTurnActionControls && !isAnimating;
 
   useEffect(() => {
     setStats({
@@ -1182,7 +1183,7 @@ function Game() {
   };
 
   const handleCell = (r: number, c: number) => {
-    if (isAnimating) return;
+    if (!playerBoardInputEnabled) return;
     if (game.phase === "setup") return;
     if (game.phase === "move") moveProbe({ r, c });
     if (game.phase === "place") {
@@ -1380,7 +1381,9 @@ function Game() {
   const activeOrbitRing = selectedOrbitRing ?? hoveredOrbitRing;
 
   const validPlacement = (r: number, c: number) =>
-    game.phase === "setup"
+    !playerBoardInputEnabled
+      ? false
+      : game.phase === "setup"
       ? false
       : game.phase === "switch" && !showTurnActionControls
       ? false
@@ -2260,7 +2263,7 @@ function Game() {
               const pulseDevice = (game.pulseDevices ?? []).find((item) => samePos(item, pos));
               const pulseField = activePulseDevices(game).find((device) => distance(device, pos) <= (game.balance?.pulseRadius ?? activeBalance.pulseRadius));
               const legal =
-                canControl &&
+                playerBoardInputEnabled &&
                 game.phase === "move" &&
                 moves.some((m) => samePos(m, pos));
               const placeable = validPlacement(r, c);

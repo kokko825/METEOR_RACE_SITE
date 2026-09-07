@@ -77,6 +77,10 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(css, /\.title-beginner\{width:auto;min-width:112px;[^}]*border-radius:0/);
   assert.match(page, /resolution\.state\.winner === "blue"/);
   assert.match(page, /チュートリアルCPUはCORE直前で移動を見送った/);
+  assert.match(page, /const playerBoardInputEnabled = canControl && showTurnActionControls && !isAnimating/);
+  assert.match(page, /if \(!playerBoardInputEnabled\) return;/);
+  assert.match(page, /const validPlacement = \(r: number, c: number\) =>\s*!playerBoardInputEnabled\s*\? false/);
+  assert.match(page, /const legal =\s*playerBoardInputEnabled &&/);
   assert.match(css, /\.tutorial-coach/);
   assert.match(css, /\.board \.cell\.legal/);
 });
