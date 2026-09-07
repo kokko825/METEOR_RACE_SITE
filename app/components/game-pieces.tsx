@@ -15,7 +15,7 @@ export const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
   shield: "BLAST -1 CELL",
   booster: "METEOR JUMP",
   holo: "TEMPORARY BLOCK",
-  orbit: "RING ROTATE 90°",
+  orbit: "RING ROTATE 90° / 180°",
   blast: "AREA BLAST",
   pulse: "MOVE LOCK FIELD",
   recall: "ALL METEORS RETURN",

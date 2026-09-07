@@ -408,7 +408,7 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     else if (decision.type === "holo") state = applyHoloSwitch(state, decision.target);
     else if (decision.type === "blast") state = applyBlastSwitch(state, decision.target);
     else if (decision.type === "pulse") state = applyPulseSwitch(state, decision.target);
-    else if (decision.type === "orbit") state = applyOrbitSwitch(state, decision.ring, decision.clockwise);
+    else if (decision.type === "orbit") state = applyOrbitSwitch(state, decision.ring, decision.clockwise, decision.quarterTurns);
     else if (decision.type === "recall") state = applyRecallItem(state, decision.meteorId);
     else state = finishTurn(state, "AI skip");
     guard += 1;

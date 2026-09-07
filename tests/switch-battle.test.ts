@@ -125,6 +125,16 @@ deviceGame = applyOrbitSwitch(deviceGame, 1, true);
 assert.ok(samePos(deviceGame.pulseDevices?.[0] ?? { r: -1, c: -1 }, { r: 8, c: 7 }), "ORBIT rotates a fired EMP generator with its ring");
 assert.equal(deviceGame.pulseDevices?.length, 1, "ORBIT does not reactivate or consume an EMP generator");
 assert.ok(legalMoves({ ...deviceGame, phase: "move", turn: "blue" }, "blue").length > 0, "moving PULSE away with ORBIT immediately unlocks a probe outside the field");
+
+let halfTurnGame = initialGameState(15, "red", 2, false, 0, [], "item");
+halfTurnGame = {
+  ...halfTurnGame,
+  phase: "switch",
+  probes: { ...halfTurnGame.probes, red: { r: 6, c: 7 }, blue: { r: 2, c: 7 } },
+  pendingSwitches: [{ kind: "orbit", player: "red" }],
+};
+halfTurnGame = applyOrbitSwitch(halfTurnGame, 1, true, 2);
+assert.ok(samePos(halfTurnGame.probes.red, { r: 8, c: 7 }), "ORBIT can rotate the selected ring by 180 degrees");
 deviceGame = finishTurn(finishTurn(finishTurn(finishTurn(deviceGame))));
 assert.equal(deviceGame.pulseDevices?.length, 0, "PULSE generator disappears after its two active rounds");
 

@@ -38,7 +38,7 @@ export type AiDecision =
   | { type: "holo"; target: Pos }
   | { type: "blast"; target: Pos }
   | { type: "pulse"; target: Pos }
-  | { type: "orbit"; ring: number; clockwise: boolean }
+  | { type: "orbit"; ring: number; clockwise: boolean; quarterTurns: 1 | 2 }
   | { type: "recall"; meteorId: number }
   | { type: "confirm_setup" }
   | { type: "skip" };
@@ -653,12 +653,12 @@ function orbitTacticalValue(before: GameState, after: GameState, player: Player,
 }
 
 function orbitOptions(state: GameState, player: Player, difficulty: AiDifficulty) {
-  const options: Array<Scored<{ ring: number; clockwise: boolean; next: GameState; gain: number }>> = [];
+  const options: Array<Scored<{ ring: number; clockwise: boolean; quarterTurns: 1 | 2; next: GameState; gain: number }>> = [];
   for (let ring = 1; ring <= Math.floor(state.size / 2); ring += 1) {
-    for (const clockwise of [true, false]) {
-      const next = applyOrbitSwitch(state, ring, clockwise);
+    for (const [clockwise, quarterTurns] of [[true, 1], [false, 1], [true, 2]] as const) {
+      const next = applyOrbitSwitch(state, ring, clockwise, quarterTurns);
       const gain = orbitTacticalValue(state, next, player, difficulty);
-      options.push({ choice: { ring, clockwise, next, gain }, value: gain });
+      options.push({ choice: { ring, clockwise, quarterTurns, next, gain }, value: gain });
     }
   }
   return options.sort((a, b) => b.value - a.value);
@@ -969,7 +969,7 @@ export function chooseAiDecision(
     const tolerance = difficulty === "easy" ? 10 : difficulty === "normal" ? 5 : 0;
     const viable = options.filter((entry) => options[0].value - entry.value <= tolerance);
     const selected = viable[Math.floor(random() * viable.length)] ?? options[0];
-    return { type: "orbit", ring: selected.choice.ring, clockwise: selected.choice.clockwise };
+    return { type: "orbit", ring: selected.choice.ring, clockwise: selected.choice.clockwise, quarterTurns: selected.choice.quarterTurns };
   }
   if (state.phase === "move") {
     const moves = legalMoves(state, player);

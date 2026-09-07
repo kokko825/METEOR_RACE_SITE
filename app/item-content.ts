@@ -28,7 +28,7 @@ export const ITEM_DETAILS: Record<ItemKind, string> = {
   shield: "1巡のあいだ爆風による移動を1マス分軽減する防御フィールド。自分の爆風にも適用されます。",
   booster: "縦横へ最大2マス前進。途中のメテオを飛び越えてCOREへ到達できます。",
   holo: "4巡残るホロメテオを配置し、相手の進路を封鎖します。",
-  orbit: "選んだリングを90度回転させ、盤上の配置をまとめて動かします。",
+  orbit: "選んだリングを90度または180度回転させ、盤上の配置をまとめて動かします。",
   blast: "指定地点に回収効果のないメテオ爆風を発生させます。",
   pulse: "装置を置き、2巡のあいだ周囲の自力移動を封じます。",
   recall: "盤上にある自分の通常メテオを手札に戻します。自分が置いたホロメテオも同時に盤上から取り除かれますが、こちらは手札には戻りません。",
@@ -39,7 +39,7 @@ export const ITEM_DETAILS_EN: Record<ItemKind, string> = {
   shield: "Reduces blast movement by one cell for one round, including your own blasts.",
   booster: "Move up to two orthogonal cells, jump over meteors, and enter the CORE.",
   holo: "Place a temporary holo meteor that blocks routes.",
-  orbit: "Rotate one selected ring 90 degrees with every object on it.",
+  orbit: "Rotate one selected ring 90 or 180 degrees with every object on it.",
   blast: "Create a meteor-like blast at any target without leaving or recovering a meteor.",
   pulse: "Place a device that prevents voluntary movement in its area for two rounds.",
   recall: "Return all your normal meteors to inventory and remove your holo meteors.",
@@ -79,7 +79,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
       case "shield": return [`Duration: ${balance.shieldRounds} round(s)`, "Reduce every blast movement by one cell"];
       case "booster": return [`Uses: ${balance.boosterUses}`, "Move two cells and jump over meteors"];
       case "holo": return [balance.holoUnlimited ? "Duration: unlimited" : `Duration: ${balance.holoRounds} rounds`, "Place an impassable obstacle"];
-      case "orbit": return ["Rotation: 90°", "Move every object on the chosen ring"];
+      case "orbit": return ["Rotation: 90° / 180°", "Move every object on the chosen ring"];
       case "blast": return [`Area: target + ${balance.blastRadius} outer cell(s)`, "Create a blast without a meteor"];
       case "pulse": return [`Area: target + ${balance.pulseRadius} outer cell(s)`, "Prevent voluntary movement for two rounds"];
       case "recall": return ["Targets: all your meteors", "Return normal meteors; remove holos"];
@@ -90,7 +90,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
     case "shield": return [`有効：${balance.shieldRounds}巡`, "敵と自分の爆風を1マス軽減"];
     case "booster": return [`使用：${balance.boosterUses}回`, "縦横2マス進みメテオを飛び越える"];
     case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, "破壊不能の障害物として設置"];
-    case "orbit": return ["回転：90度", "選択したリング上の配置を移動"];
+    case "orbit": return ["回転：90度／180度", "選択したリング上の配置を移動"];
     case "blast": return [`範囲：中心＋外周${balance.blastRadius}マス`, "爆風だけを指定地点に発生"];
     case "pulse": return [`範囲：中心＋外周${balance.pulseRadius}マス`, "2巡の間、自力移動を封じる"];
     case "recall": return ["対象：盤上の自分のメテオ", "通常は手札へ、ホロは取り除くだけ"];
@@ -103,7 +103,7 @@ export const ITEM_TACTICS: Record<ItemKind, string> = {
   shield: "小メテオ相当の1マス爆風は防げます。大メテオやBLASTの2マス分の爆風は1マスに軽減されるため、完全には止まりません。自分の爆風にも同じように適用されます。",
   booster: "唯一の純粋な前進アイテム。メテオやお邪魔メテオを飛び越えられるので、進路が塞がれた局面の突破口になります。実際に2マス進むまで効果が残るのが強みです。",
   holo: "相手がCOREへ入る一歩手前のマスに置くのが最も効きます。ただし完全な不動物ではなく、隣接するメテオの爆風を受けると残り時間が削られます。大メテオを至近距離で当てられると一気に消えるため、爆風の届かない位置を選ぶのが確実です。",
-  orbit: "盤面をまとめて回すので、相手の有利な配置ごとずらせます。自分のメテオやPULSE装置も一緒に動く点に注意が必要です。",
+  orbit: "90度または180度で盤面をまとめて回し、相手の有利な配置ごとずらせます。自分のメテオやPULSE装置も一緒に動く点に注意が必要です。",
   blast: "手持ちのメテオを消費せずに、大メテオと同じ爆風だけを起こせます。COREに近い相手を弾き飛ばす、逆転向けの一手です。お邪魔メテオを削る手段としても有効です。",
   pulse: "範囲内の探査機は自力移動ができなくなります。相手の前進を丸ごと止められる、最も直接的な妨害手段です。",
   recall: "盤上に置いた自分の通常メテオを手札に戻せるので、終盤の弾切れを防げます。自分のホロメテオも一緒に消える点に注意してください。",

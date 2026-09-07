@@ -100,7 +100,7 @@ type BlastFx = {
 
 type OnlineEffect = Omit<BlastFx, "stage"> & { version: number };
 type SwitchFx = { kind: ItemKind; player: Player; nonce: number };
-type OrbitFx = { ring: number; clockwise: boolean; nonce: number };
+type OrbitFx = { ring: number; clockwise: boolean; quarterTurns: 1 | 2; nonce: number };
 type PulseFx = { kind: "blast" | "pulse"; target: Pos; radius: number; nonce: number };
 type OnlineItemEffect = {
   version: number;
@@ -108,6 +108,7 @@ type OnlineItemEffect = {
   player: Player;
   ring?: number;
   clockwise?: boolean;
+  quarterTurns?: 1 | 2;
   target?: Pos;
   radius?: number;
   pushed?: BlastFx["pushed"];
@@ -571,6 +572,7 @@ function Game() {
     useCapsule = false,
     ring?: number,
     clockwise?: boolean,
+    quarterTurns?: 1 | 2,
     itemKind?: ItemKind,
     meteorId?: number,
     setupActorOverride?: Player,
@@ -587,6 +589,7 @@ function Game() {
         useCapsule,
         ring,
         clockwise,
+        quarterTurns,
         itemKind,
         meteorId,
         setupActor: setupActorOverride ?? setupPlayer,
@@ -698,51 +701,12 @@ function Game() {
     }
   };
 
-  const rematchOnlineRoom = async () => {
-    if (!online.code || online.status !== "finished") return;
-    setOnline((current) => ({ ...current, pending: true, error: "" }));
-    try {
-      const data = await roomRequest({ action: "rematch", code: online.code });
-      getMusicManager().dispatch({ type: "NEW_GAME" });
-      setGame(data.state);
-      setVariant(data.state.variant ?? "classic");
-      setRankedMode(Boolean(data.state.ranked));
-      setBlastFx(null);
-      setSwitchFx(null);
-      setOrbitFx(null);
-      setPulseFx(null);
-      setSelectedOrbitRing(null);
-      setHoveredOrbitRing(null);
-      setIsAnimating(false);
-      setNeedsNewGame(false);
-      recordedOutcome.current = "";
-      recordedRankOutcome.current = "";
-      setOnline((current) => ({
-        ...current,
-        status: data.status,
-        version: data.version,
-        maxPlayers: data.maxPlayers,
-        joinedPlayers: data.joinedPlayers,
-        memberNames: data.memberNames ?? current.memberNames,
-        memberRoles: data.memberRoles ?? current.memberRoles,
-        pending: false,
-        error: "",
-      }));
-    } catch (error) {
-      setOnline((current) => ({
-        ...current,
-        pending: false,
-        error: error instanceof Error ? error.message : "再戦を開始できませんでした",
-      }));
-    }
-  };
-
   const commit = (next: GameState) => {
     setGame(next);
   };
 
   const returnOnlineLobby = async () => {
-    if (!online.code || !online.isHost) return;
+    if (!online.code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
     try {
       const data = await roomRequest({ action: "return_lobby", code: online.code });
@@ -1093,14 +1057,14 @@ function Game() {
     if (mode === "online") void submitOnlineAction("switch_blast", target);
     commit(next);
   };
-  const resolveOrbit = (ring: number, clockwise: boolean) => {
+  const resolveOrbit = (ring: number, clockwise: boolean, quarterTurns: 1 | 2 = 1) => {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
-    const next = applyOrbitSwitch(game, ring, clockwise);
+    const next = applyOrbitSwitch(game, ring, clockwise, quarterTurns);
     showSwitchFx("orbit", player);
-    if (mode === "online") void submitOnlineAction("switch_orbit", undefined, undefined, false, ring, clockwise);
+    if (mode === "online") void submitOnlineAction("switch_orbit", undefined, undefined, false, ring, clockwise, quarterTurns);
     setSelectedOrbitRing(null);
     setHoveredOrbitRing(null);
-    setOrbitFx({ ring, clockwise, nonce: Date.now() });
+    setOrbitFx({ ring, clockwise, quarterTurns, nonce: Date.now() });
     setIsAnimating(true);
     commit(next);
     window.setTimeout(() => {
@@ -1112,14 +1076,14 @@ function Game() {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
     const next = applyRecallItem(game, meteorId);
     showSwitchFx("recall", player);
-    if (mode === "online") void submitOnlineAction("switch_recall", undefined, undefined, false, undefined, undefined, undefined, meteorId);
+    if (mode === "online") void submitOnlineAction("switch_recall", undefined, undefined, false, undefined, undefined, undefined, undefined, meteorId);
     commit(next);
   };
   const activateItem = (kind: ItemKind) => {
     if (!canControl || !canUseItem(game, kind)) return;
     try {
       if (kind === "shield" || kind === "booster" || kind === "recall" || kind === "gravity") showSwitchFx(kind, game.turn);
-      if (mode === "online") void submitOnlineAction("use_item", undefined, undefined, false, undefined, undefined, kind);
+      if (mode === "online") void submitOnlineAction("use_item", undefined, undefined, false, undefined, undefined, undefined, kind);
       commit(applyUseItem(game, kind));
     } catch { return; }
   };
@@ -1426,6 +1390,7 @@ function Game() {
               setOrbitFx({
                 ring: remoteItemEffect.ring,
                 clockwise: remoteItemEffect.clockwise,
+                quarterTurns: remoteItemEffect.quarterTurns ?? 1,
                 nonce: Date.now(),
               });
               setIsAnimating(true);
@@ -1617,10 +1582,10 @@ function Game() {
         const setupDecision = chooseAiDecision(game, aiDifficulty);
         if (setupDecision.type === "setup") {
           const next = applySetupItem(game, setupDecision.kind);
-          if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, setupDecision.kind, undefined, game.turn);
+          if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, undefined, setupDecision.kind, undefined, game.turn);
           commit(next);
         } else if (setupDecision.type === "confirm_setup") {
-          if (mode === "online") void submitOnlineAction("setup_confirm", undefined, undefined, false, undefined, undefined, undefined, undefined, game.turn);
+          if (mode === "online") void submitOnlineAction("setup_confirm", undefined, undefined, false, undefined, undefined, undefined, undefined, undefined, game.turn);
           commit(confirmSetupItems(game));
         }
         return;
@@ -1683,7 +1648,7 @@ function Game() {
       } else if (decision.type === "pulse") {
         resolvePulse(decision.target);
       } else if (decision.type === "orbit") {
-        resolveOrbit(decision.ring, decision.clockwise);
+        resolveOrbit(decision.ring, decision.clockwise, decision.quarterTurns);
       } else if (decision.type === "recall") {
         resolveRecall(decision.meteorId);
       } else if (game.phase === "move") {
@@ -1952,7 +1917,7 @@ function Game() {
       )}
       {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">チュートリアルを開始しますか？</h2><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
       <header className="topbar">
-        <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : online.isHost ? returnOnlineLobby() : leaveOnlineRoom()) : setEntryStage("rule")}>{tutorialStep ? "← 終了" : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : online.isHost ? t("lobby") : t("leaveMatch") : t("back")}</button>
+        <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : returnOnlineLobby()) : setEntryStage("rule")}>{tutorialStep ? "← 終了" : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : t("lobby") : t("back")}</button>
         <div className="brand">
           <Image
             className="brand-symbol"
@@ -2163,9 +2128,11 @@ function Game() {
               const pos = { r, c };
               const orbitShift = orbitFx && orbitRingAt(r, c) === orbitFx.ring
                 ? (() => {
-                    const from = orbitFx.clockwise
-                      ? { r: game.size - 1 - c, c: r }
-                      : { r: c, c: game.size - 1 - r };
+                    const from = orbitFx.quarterTurns === 2
+                      ? { r: game.size - 1 - r, c: game.size - 1 - c }
+                      : orbitFx.clockwise
+                        ? { r: game.size - 1 - c, c: r }
+                        : { r: c, c: game.size - 1 - r };
                     return boardToViewDelta({ r: from.r - r, c: from.c - c }, perspectiveSlot);
                   })()
                 : null;
@@ -2301,10 +2268,10 @@ function Game() {
               )}
               <button
                 className="primary-action result-rematch"
-                onClick={tutorialStep === "complete" ? leaveTutorial : mode === "online" ? rematchOnlineRoom : restartCurrentGame}
+                onClick={tutorialStep === "complete" ? leaveTutorial : mode === "online" ? returnOnlineLobby : restartCurrentGame}
                 disabled={mode === "online" && online.pending}
               >
-                {tutorialStep === "complete" ? "チュートリアルを終える" : "同じメンバーでもう一度"}
+                {tutorialStep === "complete" ? "チュートリアルを終える" : mode === "online" ? "マッチルームへ戻る" : "同じメンバーでもう一度"}
               </button>
               <AdSlot position="result" />
             </section>
@@ -2327,7 +2294,7 @@ function Game() {
                     onClick={() => {
                       try {
                         const next = applySetupItem(game, kind, setupPlayer);
-                        if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, kind);
+                        if (mode === "online") void submitOnlineAction("setup_item", undefined, undefined, false, undefined, undefined, undefined, kind);
                         commit(next);
                       } catch { return; }
                     }}
@@ -2377,13 +2344,6 @@ function Game() {
                   <i className="placement-meteor-icon large" aria-hidden="true">✦</i>
                   <span>{t("largeMeteor")}</span> <b>{game.inventory[game.turn].large}</b>
                 </button>
-                <button
-                  className="meteor-choice pass-choice"
-                  disabled={!(game.passAvailable?.[game.turn] ?? true)}
-                  onClick={passPlacement}
-                >
-                  {t("passPlacement")} <b>{game.passAvailable?.[game.turn] ?? true ? 1 : 0}</b>
-                </button>
                 {isItemVariant(game.variant) && (game.itemHands?.[game.turn] ?? []).map((kind, index) => (
                   <button
                     key={`${kind}-${index}`}
@@ -2396,6 +2356,13 @@ function Game() {
                     <span>{kind.toUpperCase()}</span>
                   </button>
                 ))}
+                <button
+                  className="meteor-choice pass-choice"
+                  disabled={!(game.passAvailable?.[game.turn] ?? true)}
+                  onClick={passPlacement}
+                >
+                  {t("passPlacement")} <b>{game.passAvailable?.[game.turn] ?? true ? 1 : 0}</b>
+                </button>
               </>
             )}
             {game.phase === "switch" && showTurnActionControls && game.pendingSwitches?.[0]?.kind === "orbit" && (
@@ -2409,6 +2376,7 @@ function Game() {
                   <span className="orbit-direction-actions">
                     <button onClick={() => resolveOrbit(selectedOrbitRing, true)}>{t("clockwise")}</button>
                     <button onClick={() => resolveOrbit(selectedOrbitRing, false)}>{t("counterclockwise")}</button>
+                    <button onClick={() => resolveOrbit(selectedOrbitRing, true, 2)}>180°</button>
                     <button className="secondary" onClick={() => setSelectedOrbitRing(null)}>{t("chooseRingAgain")}</button>
                   </span>
                 )}
@@ -2472,7 +2440,7 @@ function Game() {
               <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? "ONLINEの対戦方式を設定" : setupMode === "cpu" ? "SINGLEの対戦方式を設定" : "LOCALの対戦方式を設定") : onlineLobbyOnly ? (online.code ? `参加待ち ${online.joinedPlayers}/${online.maxPlayers}` : "ルームを作成または参加") : visibleGameMessage}</strong>
               {!entryStage && !onlineLobbyOnly && <i className="hud-regula-progress" aria-hidden="true"><b style={{ width: `${regulaProgress}%` }} /></i>}
               {mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}
-              {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void rematchOnlineRoom()}>REMATCH</button>}
+              {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void returnOnlineLobby()}>MATCH ROOM</button>}
             </div>
             <div className="hud-tools">
               <SoundMixer enabled={soundEnabled} masterVolume={masterVolume} bgmVolume={bgmVolume} sfxVolume={sfxVolume} masterLabel={t("masterVolume")} sfxLabel={t("soundEffects")} muteLabel={language === "ja" ? "消音する" : "Mute audio"} unmuteLabel={language === "ja" ? "音を出す" : "Enable audio"} setMasterVolume={setMasterVolume} setBgmVolume={setBgmVolume} setSfxVolume={setSfxVolume} onTick={playVolumeTick} onToggle={() => setSoundEnabled((current) => !current)} />
@@ -2699,9 +2667,7 @@ function Game() {
               <span className="spectator-badge">SPECTATING</span>
             )}
             {online.status === "finished" && online.role && (
-              <button onClick={rematchOnlineRoom} disabled={online.pending}>
-                SAME ROOM REMATCH
-              </button>
+              <button onClick={returnOnlineLobby} disabled={online.pending}>MATCH ROOM</button>
             )}
             {online.code && online.isHost && online.status !== "waiting" && <button type="button" onClick={() => void returnOnlineLobby()} disabled={online.pending}>設定を変えて仕切り直す</button>}
             {online.code && <code>{online.code}</code>}

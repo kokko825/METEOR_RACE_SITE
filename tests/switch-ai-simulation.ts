@@ -43,7 +43,7 @@ function step(state: GameState, random: () => number): GameState {
     const beforeMeteor = ownedBefore.length && rivals.length
       ? Math.min(...ownedBefore.flatMap((meteor) => rivals.map((rival) => manhattan(state.probes[rival], meteor))))
       : 99;
-    const after = applyOrbitSwitch(state, d.ring, d.clockwise);
+    const after = applyOrbitSwitch(state, d.ring, d.clockwise, d.quarterTurns);
     const afterRelations = orbitRelations(after);
     const ownedAfter = after.meteors.filter((meteor) => meteor.owner === player);
     const afterMeteor = ownedAfter.length && rivals.length

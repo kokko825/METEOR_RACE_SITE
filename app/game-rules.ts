@@ -884,13 +884,18 @@ const ringOf = (state: GameState, pos: Pos) => {
 const rotatePos = (size: number, pos: Pos, clockwise: boolean): Pos =>
   clockwise ? { r: pos.c, c: size - 1 - pos.r } : { r: size - 1 - pos.c, c: pos.r };
 
-export function applyOrbitSwitch(state: GameState, ring: number, clockwise: boolean): GameState {
+export function applyOrbitSwitch(state: GameState, ring: number, clockwise: boolean, quarterTurns: 1 | 2 = 1): GameState {
   const current = state.pendingSwitches?.[0];
   const maxRing = Math.floor(state.size / 2);
   if (state.phase !== "switch" || current?.kind !== "orbit" || ring < 1 || ring > maxRing) {
     throw new Error("回転するリングを選んでください");
   }
-  const rotate = <T extends Pos>(value: T): T => ringOf(state, value) === ring ? { ...value, ...rotatePos(state.size, value, clockwise) } : value;
+  const rotate = <T extends Pos>(value: T): T => {
+    if (ringOf(state, value) !== ring) return value;
+    let position: Pos = value;
+    for (let turn = 0; turn < quarterTurns; turn += 1) position = rotatePos(state.size, position, clockwise);
+    return { ...value, ...position };
+  };
   const probes = Object.fromEntries(PLAYER_ORDER.map((p) => [p, rotate(state.probes[p])])) as Record<Player, Pos>;
   const next = finishSwitch({
     ...state,
@@ -898,7 +903,7 @@ export function applyOrbitSwitch(state: GameState, ring: number, clockwise: bool
     meteors: state.meteors.map(rotate),
     obstacles: activeObstacles(state).map(rotate),
     pulseDevices: (state.pulseDevices ?? []).map(rotate),
-    log: [...state.log, `${playerName(current.player)} rotated ring ${ring} ${clockwise ? "CW" : "CCW"}`],
+    log: [...state.log, `${playerName(current.player)} rotated ring ${ring} ${quarterTurns * 90}°${quarterTurns === 1 ? ` ${clockwise ? "CW" : "CCW"}` : ""}`],
   });
   const mid = Math.floor(state.size / 2);
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));

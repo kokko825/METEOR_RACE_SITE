@@ -203,6 +203,7 @@ export async function POST(request: Request) {
     itemKind?: ItemKind;
     ring?: number;
     clockwise?: boolean;
+    quarterTurns?: 1 | 2;
     meteorId?: number;
     setupActor?: Player;
     ranked?: boolean;
@@ -519,7 +520,9 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "return_lobby") {
-    if (email !== room.host_email) return json({ error: "ルームリーダーだけが仕切り直せます" }, 403);
+    const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
+    if (!memberEmails.includes(email)) return json({ error: "ルームに参加していません" }, 403);
+    if (email !== room.host_email && room.status !== "finished") return json({ error: "対局終了後にマッチルームへ戻れます" }, 403);
     await env.DB.prepare("UPDATE game_rooms SET status = 'waiting', version = version + 1, updated_at = ? WHERE code = ?")
       .bind(Date.now(), code).run();
     room = (await roomByCode(code))!;
@@ -807,12 +810,14 @@ export async function POST(request: Request) {
         radius: state.balance?.pulseRadius ?? 1,
       };
     } else if (body.action === "switch_orbit") {
-      nextState = applyOrbitSwitch(state, Number(body.ring), Boolean(body.clockwise));
+      const quarterTurns: 1 | 2 = Number(body.quarterTurns) === 2 ? 2 : 1;
+      nextState = applyOrbitSwitch(state, Number(body.ring), Boolean(body.clockwise), quarterTurns);
       itemEffect = {
         kind: "orbit",
         player: state.pendingSwitches?.[0]?.player ?? state.turn,
         ring: Number(body.ring),
         clockwise: Boolean(body.clockwise),
+        quarterTurns,
       };
     } else if (body.action === "switch_recall") {
       nextState = applyRecallItem(state, Number(body.meteorId));
