@@ -47,7 +47,7 @@ test("keeps EASY CPU on small meteors without allowing placement stalls", async 
 });
 
 test("guides beginners on the real match board without restricting legal actions", async () => {
-  const [page, css] = await Promise.all([read("../app/page.tsx"), read("../app/globals.css")]);
+  const [page, css, tutorial] = await Promise.all([read("../app/page.tsx"), read("../app/globals.css"), read("../config/tutorial-copy.ts")]);
   assert.doesNotMatch(page, /<Tutorial onExit=/);
   assert.match(page, /title-guide-actions/);
   assert.match(page, /title-beginner/);
@@ -61,19 +61,21 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(css, /not\(\.tutorial-confirm-backdrop\)/);
   assert.match(css, /\.tutorial-confirm-backdrop\{position:fixed;z-index:2000;/);
   assert.doesNotMatch(page, /合法マス/);
-  assert.match(page, /横移動や後退を選んでも問題ありません/);
-  assert.match(page, /大メテオ、小メテオ、パスから選んでください/);
+  assert.match(tutorial, /横移動や後退を選んでも問題ありません/);
+  assert.match(tutorial, /大メテオ、小メテオ、パスから選んでください/);
+  assert.match(tutorial, /WELCOME TO METEOR RACE/);
+  assert.match(tutorial, /START FREE PLAY/);
   assert.match(page, /チュートリアルを終える/);
   assert.doesNotMatch(page, /専用の簡易盤ではなく|通常のゲーム性を維持|大メテオを強調しています/);
   assert.match(page, /tutorialStep !== "rival-moving"/);
   assert.match(page, /setTutorialStep\("rival-result"\)/);
-  assert.match(page, /相手の行動を確認しましょう/);
+  assert.match(tutorial, /相手の行動を確認しましょう/);
   assert.match(page, /tutorialStep === "rival-moving" && game\.turn === "blue"/);
   assert.match(page, /const scriptedMove = \{ r: game\.probes\.blue\.r \+ 1/);
   assert.match(page, /\{ r: red\.r - 2, c: red\.c \}/);
   assert.match(page, /setTutorialStep\("free-play"\)/);
   assert.match(page, /tutorialStep === "free-play" && game\.phase === "over" && game\.winner === "red"/);
-  assert.match(page, /tutorialStep === "complete" \? "チュートリアルを終える"/);
+  assert.match(page, /tutorialStep === "complete" \? localize\("チュートリアルを終える", "FINISH TUTORIAL"\)/);
   assert.match(page, /tutorialStep !== "free-play" && tutorialStep !== "complete"/);
   assert.match(page, /tutorialStep === "meteor" && game\.turn === "red"/);
   assert.match(css, /\.title-beginner\{width:auto;min-width:112px;[^}]*border-radius:0/);
@@ -146,9 +148,10 @@ test("serves read-only configuration from Git-versioned files", async () => {
 });
 
 test("keeps public release history centralized and shows only three recent entries in settings", async () => {
-  const [page, updates, notes, version] = await Promise.all([
+  const [page, updates, updatesClient, notes, version] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/updates/page.tsx"),
+    read("../app/updates/updates-client.tsx"),
     read("../config/release-notes.ts"),
     read("../app/version.ts"),
   ]);
@@ -156,7 +159,9 @@ test("keeps public release history centralized and shows only three recent entri
   assert.match(notes, /slice\(0, 3\)/);
   assert.match(page, /LATEST_RELEASE_NOTES/);
   assert.match(page, /href="\/updates"/);
-  assert.match(updates, /RELEASE_NOTES\.map/);
+  assert.match(updates, /UpdatesClient/);
+  assert.match(updatesClient, /RELEASE_NOTES\.map/);
+  assert.match(updatesClient, /note\.title\[language\]/);
   const appVersion = version.match(/APP_VERSION = "([^"]+)"/)?.[1];
   assert.ok(appVersion);
   assert.match(notes, new RegExp(`version:\\s*"${appVersion.replaceAll(".", "\\.")}"`));
@@ -231,7 +236,7 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
   assert.match(profile, /containsBlockedChatLanguage/);
   assert.match(page, /className="free-comms"/);
   assert.match(page, /chat-toggle/);
-  assert.match(page, /<strong>チャット欄<\/strong>/);
+  assert.match(page, /localize\("チャット欄", "CHAT"\)/);
   assert.match(css, /\.comms-panel\{position:fixed;z-index:90;right:14px;/);
   assert.doesNotMatch(css, /content:"CHAT"/);
   assert.match(page, /global-hud/);

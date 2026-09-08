@@ -50,7 +50,7 @@ export function AdSlot({ position }: { position: AdPosition }) {
   if (!visible) return null;
 
   return (
-    <div className={`ad-slot ad-slot-${position}`} aria-label="広告枠" role="complementary">
+    <div className={`ad-slot ad-slot-${position}`} aria-label="Advertisement" role="complementary">
       <span>{SLOT_LABEL[position]}</span>
     </div>
   );

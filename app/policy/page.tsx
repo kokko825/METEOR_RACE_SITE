@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PolicyClient } from "./policy-client";
 
 export const metadata: Metadata = {
   title: "利用規約",
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function PolicyPage() {
-  return <main className="doc-page">
+  const japanese = <main className="doc-page">
     <div className="doc-topbar"><Link className="doc-back" href="/">← 戻る</Link></div>
     <header className="doc-header"><small>TERMS &amp; PRIVACY</small><h1>利用規約</h1><p className="doc-lead">楽しく公平に遊ぶための利用条件と、取り扱う情報についてまとめています。</p></header>
     <section className="doc-section"><h2>プライバシー方針</h2><h3>保存する情報</h3><p>ニックネーム、端末ごとの内部識別子と、それから作る短いAEQRIS企業登録番号、対戦結果、レート、ルーム参加情報、ルームチャット、お問い合わせ内容を保存することがあります。認証サービスと連携した場合に限り、識別と問い合わせ通知のためメールアドレスを取り扱う場合があります。</p><h3>利用目的</h3><p>オンライン対戦の同期、プロフィールとレートの識別、不具合調査、お問い合わせ対応、ゲーム品質の改善に利用します。</p><h3>アクセス解析</h3><p>利用状況の把握と改善のためGoogle Analyticsを使用します。GoogleがCookieなどを通じて収集する情報は、Googleのプライバシーポリシーに基づいて管理されます。</p></section>
@@ -21,4 +22,5 @@ export default function PolicyPage() {
     <section className="doc-section"><h2>お問い合わせ</h2><p>削除依頼、不具合、質問はゲーム内SETTINGSのお問い合わせフォームから送信してください。</p></section>
     <p className="doc-updated">制定日：2026年8月20日　最終更新：2026年9月7日</p>
   </main>;
+  return <PolicyClient japanese={japanese} />;
 }
