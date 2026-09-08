@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { getOrCreatePlayerId, playerRequestHeaders } from "../client-identity";
 import { formatRegistryNumber } from "../registry-number";
 
+export type ProfileStatus = "" | "synced" | "local" | "load-error" | "saving" | "saved" | "save-error";
+
 /**
  * Device identity + 真剣タイマン rating, sourced from /api/profile (server
  * is authoritative for rating — see app/duel-rating.ts). Call
@@ -13,7 +15,7 @@ import { formatRegistryNumber } from "../registry-number";
  */
 export function useProfile(onNicknameFromServer: (nickname: string) => void) {
   const [publicPlayerId, setPublicPlayerId] = useState("--------");
-  const [profileStatus, setProfileStatus] = useState("");
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>("");
   const [classicRankRating, setClassicRankRating] = useState(1200);
   const [itemRankRating, setItemRankRating] = useState(1200);
 
@@ -24,12 +26,12 @@ export function useProfile(onNicknameFromServer: (nickname: string) => void) {
       .then((data) => {
         setPublicPlayerId(data.playerId ?? formatRegistryNumber(playerId.replace("player:", "")));
         if (data.nickname) onNicknameFromServer(data.nickname);
-        setProfileStatus(data.synced ? "アカウント間で同期中" : "この端末に保存");
+        setProfileStatus(data.synced ? "synced" : "local");
         // 真剣タイマンのレートはサーバーが権威（改ざん防止）。取得できた値で常に上書きする。
         if (Number.isFinite(data.classicRating)) setClassicRankRating(data.classicRating);
         if (Number.isFinite(data.itemRating)) setItemRankRating(data.itemRating);
       })
-      .catch(() => setProfileStatus("登録情報を確認できませんでした"));
+      .catch(() => setProfileStatus("load-error"));
   }, [onNicknameFromServer]);
 
   useEffect(() => {

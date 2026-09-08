@@ -10,4 +10,4 @@ export const SITE_URL = "https://meteorrace.follnest.com";
  * on every crawl teaches Google to distrust the field. Bump it when the public
  * page's content actually changes.
  */
-export const CONTENT_LAST_MODIFIED = "2026-08-20";
+export const CONTENT_LAST_MODIFIED = "2026-09-08";

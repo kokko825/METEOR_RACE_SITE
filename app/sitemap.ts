@@ -30,5 +30,11 @@ export default function sitemap() {
       changeFrequency: "yearly" as const,
       priority: 0.3,
     },
+    {
+      url: `${SITE_URL}/updates`,
+      lastModified: CONTENT_LAST_MODIFIED,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    },
   ];
 }

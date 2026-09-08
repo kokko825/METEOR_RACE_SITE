@@ -63,6 +63,12 @@ export const UI_COPY = {
   textSizeSaved: { ja: "文字サイズはこの端末に保存されます。盤面の大きさは変わりません。", en: "Text size is saved on this device. The board size does not change." },
   nickname: { ja: "ニックネーム", en: "Nickname" },
   autoSave: { ja: "入力すると自動保存されます", en: "Changes are saved automatically." },
+  profileSynced: { ja: "アカウント間で同期中", en: "Synced across accounts" },
+  profileLocal: { ja: "この端末に保存", en: "Saved on this device" },
+  profileLoadError: { ja: "登録情報を確認できませんでした", en: "Could not verify registry information" },
+  profileSaving: { ja: "保存中…", en: "Saving…" },
+  profileSaved: { ja: "AEQRIS企業登録を更新しました", en: "AEQRIS company registration updated" },
+  profileSaveError: { ja: "保存できませんでした", en: "Could not save changes" },
   registryNumber: { ja: "AEQRIS企業登録番号", en: "AEQRIS REGISTRY NO." },
   accountNote: {
     ja: "アストラ協定のもと、AEQRISがこの端末の参加企業へ発行する識別番号です。オンライン対戦、ランク記録、不具合調査に使用され、通常は他の企業へ公開されません。",

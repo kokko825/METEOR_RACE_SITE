@@ -153,7 +153,7 @@ type OnlineRoom = {
 };
 
 type ChatMessage = { id: string; nickname: string; message: string; createdAt: number };
-type TutorialStep = "welcome" | "goal" | "first-move" | "first-praise" | "rival" | "rival-moving" | "rival-result" | "second-move" | "meteor" | "meteor-result" | "large" | "large-result" | "free" | "free-play" | "complete";
+type TutorialStep = "welcome" | "goal" | "first-move" | "first-praise" | "rival" | "rival-moving" | "rival-result" | "second-move" | "meteor" | "meteor-result" | "large" | "free" | "free-play" | "complete";
 const QUICK_CHAT_MESSAGES = COMMUNITY_SAFETY.quickChatMessages;
 
 
@@ -1812,14 +1812,14 @@ function Game() {
     .sort((a, b) => b.rate - a.rate);
   const strategicRead =
     stats.games < 10
-      ? "10戦以上で傾向を判定します"
+      ? localize("10戦以上で傾向を判定します", "PLAY 10+ MATCHES TO IDENTIFY TRENDS")
       : isTeamVariant(game.variant)
         ? Math.abs(teamWinRates.sun - teamWinRates.moon) <= 10
-          ? "現時点では大きなチーム差なし"
-          : `${teamWinRates.sun > teamWinRates.moon ? "SUN" : "MOON"} TEAM優勢。先攻・初期方向の影響を要観察`
+          ? localize("現時点では大きなチーム差なし", "NO SIGNIFICANT TEAM GAP DETECTED")
+          : localize(`${teamWinRates.sun > teamWinRates.moon ? "SUN" : "MOON"} TEAM優勢。先攻・初期方向の影響を要観察`, `${teamWinRates.sun > teamWinRates.moon ? "SUN" : "MOON"} TEAM LEADS. REVIEW TURN ORDER AND STARTING DIRECTION.`)
       : labLeaders.length < 2 || labLeaders[0].rate - labLeaders[1].rate <= 10
-        ? "現時点では大きな陣営差なし"
-        : `${playerName(labLeaders[0].player)}側優勢。先攻・初期方向の影響を要観察`;
+        ? localize("現時点では大きな陣営差なし", "NO SIGNIFICANT SIDE GAP DETECTED")
+        : localize(`${playerName(labLeaders[0].player)}側優勢。先攻・初期方向の影響を要観察`, `${playerName(labLeaders[0].player)} SIDE LEADS. REVIEW TURN ORDER AND STARTING DIRECTION.`);
   const perspectiveSlot =
     mode === "online" && online.role
       ? (PLAYER_ORDER.indexOf(online.role) + (game.layoutOffset ?? 0)) % 4
@@ -1867,7 +1867,7 @@ function Game() {
 
   const saveProfile = async () => {
     const playerId = getOrCreatePlayerId();
-    setProfileStatus(localize("保存中…", "Saving…"));
+    setProfileStatus("saving");
     try {
       const response = await fetch("/api/profile", {
         method: "POST",
@@ -1875,9 +1875,9 @@ function Game() {
         body: JSON.stringify({ nickname }),
       });
       if (!response.ok) throw new Error();
-      setProfileStatus(localize("AEQRIS企業登録を更新しました", "AEQRIS company registration updated"));
+      setProfileStatus("saved");
     } catch {
-      setProfileStatus(localize("保存できませんでした", "Could not save changes"));
+      setProfileStatus("save-error");
     }
   };
 
@@ -2018,7 +2018,7 @@ function Game() {
                 <h3>ONLINE TYPE</h3>
                 <div className="rank-choice">
                   <button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}><strong>CASUAL ROOM</strong><span>{t("casualRoomNote")}</span></button>
-                  <button className={rankedMode ? "selected" : "locked"} disabled={!rankedOpen} onClick={() => { setRankedMode(true); setVariant(isItemVariant(variant) ? "item" : "classic"); setOnlinePlayerCount(2); setOnlineAiCount(0); }}><strong>{rankedOpen ? t("rankedDuel") : t("rankedClosed")}</strong><span>{rankedOpen ? t("rankedOpen") : language === "en" ? "Daily 12:00–13:00 / 20:00–21:00 JST" : RANKED_SCHEDULE_LABEL}</span></button>
+                  <button className={rankedMode ? "selected" : "locked"} disabled={!rankedOpen} onClick={() => { setRankedMode(true); setVariant(isItemVariant(variant) ? "item" : "classic"); setOnlinePlayerCount(2); setOnlineAiCount(0); }}><strong>{rankedOpen ? t("rankedDuel") : t("rankedClosed")}</strong><span>{rankedOpen ? t("rankedOpen") : language === "en" ? "Daily 08:00–09:00 / 20:00–21:00 JST" : RANKED_SCHEDULE_LABEL}</span></button>
                 </div>
                 {rankedMode && <><h3>{t("rankedRules")}</h3><div className="choice-row"><button className={!isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>{t("rankedClassic")}</strong><span>{rankTier(classicRankRating)} {classicRankRating}</span></button><button className={isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>{t("rankedItem")}</strong><span>{rankTier(itemRankRating)} {itemRankRating}</span></button></div></>}
                 <p className={rankedOpen ? "rank-window open" : "rank-window"}>{rankedMode ? t("rankedRateNote") : t("casualLobbyNote")}</p>
@@ -2066,7 +2066,7 @@ function Game() {
         </div>
         <MatchMeta language={language} progress={regulaProgress} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <div className="topbar-guide-actions">
-          {mode !== "online" || !online.code ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
+          {!tutorialStep && (mode !== "online" || !online.code) ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
           <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
         </div>
       </header>
@@ -2095,7 +2095,7 @@ function Game() {
             <section>
               <h3>{t("accountHeading")}</h3>
               <label>{t("nickname")}<input maxLength={16} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="PLAYER" /></label>
-              <p role="status">{profileStatus || t("autoSave")}</p>
+              <p role="status">{profileStatus ? t(({ synced: "profileSynced", local: "profileLocal", "load-error": "profileLoadError", saving: "profileSaving", saved: "profileSaved", "save-error": "profileSaveError" } as const)[profileStatus]) : t("autoSave")}</p>
               <dl><div><dt>{t("registryNumber")}</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
               <p>{t("accountNote")}</p>
             </section>
@@ -2184,7 +2184,8 @@ function Game() {
               {tutorialStep === "first-praise" && <button type="button" onClick={() => setTutorialStep("rival")}>{tutorialPanelCopy?.action}</button>}
               {tutorialStep === "rival" && <button type="button" onClick={() => setTutorialStep("rival-moving")}>{tutorialPanelCopy?.action}</button>}
               {tutorialStep === "rival-result" && <button type="button" onClick={() => setTutorialStep("second-move")}>{tutorialPanelCopy?.action}</button>}
-              {tutorialStep === "meteor-result" && <button type="button" onClick={() => setTutorialStep("free")}>{tutorialPanelCopy?.action}</button>}
+              {tutorialStep === "meteor-result" && <button type="button" onClick={() => setTutorialStep("large")}>{tutorialPanelCopy?.action}</button>}
+              {tutorialStep === "large" && <button type="button" onClick={() => setTutorialStep("free")}>{tutorialPanelCopy?.action}</button>}
               {tutorialStep === "free" && <button type="button" onClick={() => setTutorialStep("free-play")}>{tutorialPanelCopy?.action}</button>}
             </section>
           )}

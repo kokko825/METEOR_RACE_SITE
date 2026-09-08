@@ -56,15 +56,16 @@ test("guides beginners on the real match board without restricting legal actions
   assert.match(page, /onClick=\{requestTutorial\}/);
   assert.match(page, /autoFocus onClick=\{startTutorial\}/);
   assert.match(page, /mode !== "online" \|\| !online\.code/);
+  assert.match(page, /!tutorialStep && \(mode !== "online" \|\| !online\.code\)/);
   assert.match(page, /topbar-guide-actions/);
   assert.doesNotMatch(page, /lobby-tutorial-trigger/);
   assert.match(css, /not\(\.tutorial-confirm-backdrop\)/);
   assert.match(css, /\.tutorial-confirm-backdrop\{position:fixed;z-index:2000;/);
   assert.doesNotMatch(page, /合法マス/);
   assert.match(tutorial, /横移動や後退を選んでも問題ありません/);
-  assert.match(tutorial, /大メテオ、小メテオ、パスから選んでください/);
+  assert.match(tutorial, /大・小メテオやパスを自由に選べます/);
   assert.match(tutorial, /WELCOME TO METEOR RACE/);
-  assert.match(tutorial, /START FREE PLAY/);
+  assert.match(tutorial, /CONTINUE TO FREE PLAY/);
   assert.match(page, /チュートリアルを終える/);
   assert.doesNotMatch(page, /専用の簡易盤ではなく|通常のゲーム性を維持|大メテオを強調しています/);
   assert.match(page, /tutorialStep !== "rival-moving"/);
@@ -100,11 +101,14 @@ test("explains the last-meteor bonus move everywhere players learn the rules", a
 });
 
 test("keeps the public game discoverable by search engines", async () => {
-  const [page, layout, guide, items, copy] = await Promise.all([
+  const [page, layout, guide, items, updates, sitemap, siteUrl, copy] = await Promise.all([
     read("../app/page.tsx"),
     read("../app/layout.tsx"),
     read("../app/guide/page.tsx"),
     read("../app/items/page.tsx"),
+    read("../app/updates/page.tsx"),
+    read("../app/sitemap.ts"),
+    read("../app/site-url.ts"),
     read("../config/ui-copy.ts"),
   ]);
   assert.match(layout, /\["VideoGame", "WebApplication"\]/);
@@ -115,6 +119,9 @@ test("keeps the public game discoverable by search engines", async () => {
   assert.match(page, /href="\/items"/);
   assert.match(guide, /alternates: \{ canonical: "\/guide" \}/);
   assert.match(items, /alternates: \{ canonical: "\/items" \}/);
+  assert.match(updates, /alternates: \{ canonical: "\/updates" \}/);
+  assert.match(sitemap, /`\$\{SITE_URL\}\/updates`/);
+  assert.match(siteUrl, /CONTENT_LAST_MODIFIED = "2026-09-08"/);
 });
 
 test("loads Google Analytics once from centralized configuration", async () => {
@@ -274,7 +281,7 @@ test("localizes every player-facing label in match setup", async () => {
     "onlineLobby",
   ]) assert.match(copy, new RegExp(`${key}: \\{ ja: ".+", en: ".+" \\}`));
   assert.match(page, /setupMode === "online" \? t\("onlineMatch"\) : t\("matchSetup"\)/);
-  assert.match(page, /language === "en" \? "Daily 12:00–13:00 \/ 20:00–21:00 JST"/);
+  assert.match(page, /language === "en" \? "Daily 08:00–09:00 \/ 20:00–21:00 JST"/);
 });
 
 test("ships the bilingual ASTRA ACCORD world archive in the manual", async () => {
@@ -665,6 +672,22 @@ test("keeps room chat compact, rate-limited and non-destructive to navigation", 
   assert.match(page, /className="ai-member-controls"/);
   assert.match(page, /href="\/updates" target="_blank" rel="noopener noreferrer"/);
   assert.match(css, /\.ai-member-controls\{display:grid;grid-template-columns:/);
+  assert.match(css, /\.chat-toast\{[^}]*top:auto;[^}]*right:max\([^}]*bottom:calc\(var\(--battle-hud-height,76px\)/);
+  assert.doesNotMatch(css, /\.chat-toast\{[^}]*var\(--hud-h\)/);
+});
+
+test("keeps bilingual schedules, AI diagnostics and tutorial steps consistent", async () => {
+  const [page, tutorial] = await Promise.all([
+    read("../app/page.tsx"),
+    read("../config/tutorial-copy.ts"),
+  ]);
+  assert.match(page, /Daily 08:00–09:00 \/ 20:00–21:00 JST/);
+  assert.doesNotMatch(page, /Daily 12:00–13:00/);
+  assert.match(page, /PLAY 10\+ MATCHES TO IDENTIFY TRENDS/);
+  assert.doesNotMatch(page, /\| "large-result"/);
+  assert.match(page, /tutorialStep === "meteor-result"[^\n]*setTutorialStep\("large"\)/);
+  assert.match(page, /tutorialStep === "large"[^\n]*setTutorialStep\("free"\)/);
+  assert.match(tutorial, /large: \{ title: "LARGE METEORS ARE NOW AVAILABLE"/);
 });
 
 test("keeps the online room start controls reachable when the lobby grows", async () => {
