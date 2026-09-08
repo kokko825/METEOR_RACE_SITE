@@ -1,5 +1,12 @@
 # METEOR RACE
 
+## 保存場所
+
+- 編集する正本：`C:\Users\user\Documents\MeteorRace`
+- Codex内のバックアップ：`C:\Users\user\Documents\Codex\2026-07-27\2-2-15-15\work\meteor-race-complete`
+- 調整場所は [config/README.md](./config/README.md)、処理の役割は [ARCHITECTURE.md](./ARCHITECTURE.md) を参照。
+- 旧正本はGitブランチ `backup/before-cleanup-2026-09-08` に保存。秘密設定 `.dev.vars` とローカルデータ `.wrangler` は上書きしない。
+
 探査機とメテオの爆風を使い、盤面中央のCOREを目指すターン制対戦ゲームです。
 
 公開版: https://meteorrace.follnest.com/

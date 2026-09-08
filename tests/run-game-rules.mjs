@@ -1,19 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import ts from "typescript";
+import { runTsSuite } from "./run-ts-suite.mjs";
 
-const root = process.cwd();
-const output = path.join(root, ".rules-test-fast");
-for (const file of ["config/game-balance.ts", "app/balance-config.ts", "app/game-rules.ts", "tests/game-rules.test.ts"]) {
-  const destination = path.join(output, file.replace(/\.ts$/, ".js"));
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  const source = fs.readFileSync(path.join(root, file), "utf8");
-  const code = ts
-    .transpileModule(source, {
-      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
-    })
-    .outputText.replace(/from "(\.[^"]+)(?<!\.js)"/g, 'from "$1.js"');
-  fs.writeFileSync(destination, code);
-}
-await import(`${pathToFileURL(path.join(output, "tests/game-rules.test.js")).href}?t=${Date.now()}`);
+await runTsSuite(".rules-test-fast", [
+  "config/game-balance.ts",
+  "app/balance-config.ts",
+  "app/game-rules.ts",
+  "tests/game-rules.test.ts",
+], "tests/game-rules.test.ts");

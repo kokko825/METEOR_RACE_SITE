@@ -33,4 +33,7 @@
 3. エラーがなければGitHubへ反映する
 
 値の意味と安全範囲は `app/balance-config.ts` と `app/site-config.ts` にあります。
-設定はGitHub上のファイルが正本で、D1の古い値には上書きされません。
+編集する正本は `C:\Users\user\Documents\MeteorRace` です。GitHubへ反映して公開します。D1の古い値には上書きされません。
+
+チュートリアル文章は `tutorial-copy.ts`、企業・装備の世界観は `item-lore.ts`、選択音や確定音の差し替えは `ui-feedback.ts`、更新履歴は `release-notes.ts` です。
+設定項目を増やすときは、初期値だけでなく対応する検証と日英の説明も確認してください。

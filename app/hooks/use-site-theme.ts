@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { normalizeSiteConfig } from "../site-config";
+import { loadSiteConfig } from "../site-config-client";
 
 /** Applies the published visual theme without requiring a code deployment. */
 export function useSiteTheme() {
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/site-config", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        const config = normalizeSiteConfig(data.config);
+    void loadSiteConfig()
+      .then((config) => {
+        if (cancelled) return;
         const root = document.documentElement;
         root.style.setProperty("--ui-accent", config.themeAccent);
         root.style.setProperty("--ui-warm", config.themeWarm);

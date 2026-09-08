@@ -33,3 +33,24 @@ if (warnings.length) {
   console.warn(`balance warnings:\n- ${warnings.join("\n- ")}`);
 }
 console.log("editable-config: all checks passed");
+
+// Theme, audio and ads must share configuration and recover after a failed request.
+import { loadSiteConfig } from "../app/site-config-client";
+const originalFetch = globalThis.fetch;
+let requests = 0;
+try {
+  globalThis.fetch = async () => { requests++; throw new Error("offline"); };
+  const failed = loadSiteConfig();
+  assert.equal(loadSiteConfig(), failed, "concurrent requests must share one promise");
+  assert.deepEqual(await failed, SITE_PRESENTATION);
+  assert.equal(requests, 1);
+  globalThis.fetch = async () => {
+    requests++;
+    return new Response(JSON.stringify({ config: { ...SITE_PRESENTATION, musicBpm: 130 } }));
+  };
+  assert.equal((await loadSiteConfig()).musicBpm, 130, "retry after failure");
+  await loadSiteConfig();
+  assert.equal(requests, 2, "successful configuration is reused");
+} finally {
+  globalThis.fetch = originalFetch;
+}

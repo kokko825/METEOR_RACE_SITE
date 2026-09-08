@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { activePlayers, type GameState } from "../game-rules";
 import { getMusicManager, type BattleTrackChoice, type MusicAssetConfig } from "../music-engine";
-import { normalizeSiteConfig } from "../site-config";
+import { loadSiteConfig } from "../site-config-client";
 
 type UseMusicSyncParams = {
   game: GameState;
@@ -29,11 +29,9 @@ export function useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, redu
   // engine on the first user gesture (autoplay policy).
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/site-config", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        const config = normalizeSiteConfig(data.config);
+    void loadSiteConfig()
+      .then((config) => {
+        if (cancelled) return;
         setMusicEnabled(Boolean(config.musicEnabled));
         setMusicAssets({
           titleUrl: config.musicTitleUrl,

@@ -1,6 +1,7 @@
 # METEOR RACE コード案内
 
-このGitHubリポジトリが公開版の正本です。通常の調整では、最初に `config/` を編集します。
+PC内の正本は `C:\Users\user\Documents\MeteorRace` です。通常の調整では、最初に `config/` を編集します。
+GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバックアップです。バックアップ側を直接編集して正本へ逆流させないでください。
 
 ## フォルダの役割
 
@@ -30,6 +31,9 @@
 - CPUの手の選び方 → `app/ai-engine.ts`
 
 ## 必須確認
+
+音楽・テーマ・広告の公開設定取得は `app/site-config-client.ts` に一本化しています。取得失敗時は初期値で継続し、次回の利用時に再試行します。
+小規模テストの変換処理は `tests/run-ts-suite.mjs` が共通担当です。各実行ファイルには必要なファイル一覧だけを記載します。
 
 1. `npm run check` — 警告0、型、設定、素材、ルール、UI構造、ビルド
 2. `npm run test:ai:quality` — 全盤面・全難易度の完走、後退、空振り、難易度差

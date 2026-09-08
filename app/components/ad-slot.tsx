@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DEFAULT_SITE_CONFIG, normalizeSiteConfig, type SiteConfig } from "../site-config";
+import { type SiteConfig } from "../site-config";
+import { loadSiteConfig } from "../site-config-client";
 
 type AdPosition = "title" | "result" | "settings";
 
@@ -10,24 +11,6 @@ const SLOT_FIELD: Record<AdPosition, keyof SiteConfig> = {
   result: "adSlotResult",
   settings: "adSlotSettings",
 };
-
-const SLOT_LABEL: Record<AdPosition, string> = {
-  title: "AD",
-  result: "AD",
-  settings: "AD",
-};
-
-let cachedConfig: Promise<SiteConfig> | null = null;
-
-function fetchSiteConfig(): Promise<SiteConfig> {
-  if (!cachedConfig) {
-    cachedConfig = fetch("/api/site-config", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => normalizeSiteConfig(data?.config))
-      .catch(() => DEFAULT_SITE_CONFIG);
-  }
-  return cachedConfig;
-}
 
 /**
  * Reserved slot for a future ad network. Renders nothing until both the
@@ -39,7 +22,7 @@ export function AdSlot({ position }: { position: AdPosition }) {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchSiteConfig().then((config) => {
+    void loadSiteConfig().then((config) => {
       if (!cancelled) setVisible(Boolean(config.adsEnabled) && Boolean(config[SLOT_FIELD[position]]));
     });
     return () => {
@@ -51,7 +34,7 @@ export function AdSlot({ position }: { position: AdPosition }) {
 
   return (
     <div className={`ad-slot ad-slot-${position}`} aria-label="Advertisement" role="complementary">
-      <span>{SLOT_LABEL[position]}</span>
+      <span>AD</span>
     </div>
   );
 }
