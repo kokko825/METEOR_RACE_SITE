@@ -1,7 +1,9 @@
 /** 素材を差し替えるときに確認する公開パス一覧です。 */
 export const ASSET_PATHS = {
   branding: {
-    favicon: "/assets/branding/METEOR_RACE_logo_w.png",
+    favicon: "/favicon.ico",
+    appleTouchIcon: "/assets/branding/icons/icon-180.png",
+    faviconPng: "/assets/branding/icons/icon-32.png",
     socialCard: "/assets/branding/meteor-race-social-card.jpg",
     wordmark: "/assets/branding/METEOR_RACE_txt.svg",
     symbol: "/assets/branding/METEOR_RACE_logo.svg",

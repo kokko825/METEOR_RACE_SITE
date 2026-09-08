@@ -309,7 +309,9 @@ test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation"
     read("../app/globals.css"),
     read("../app/layout.tsx"),
   ]);
-  assert.match(assets, /favicon: "\/assets\/branding\/METEOR_RACE_logo_w\.png"/);
+  assert.match(assets, /favicon: "\/favicon\.ico"/);
+  assert.match(layout, /apple: \[/);
+  assert.match(layout, /manifest: "\/site\.webmanifest"/);
   assert.ok((await readFile(new URL("../public/assets/branding/METEOR_RACE_logo_w.png", import.meta.url))).byteLength > 10000);
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);

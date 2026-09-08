@@ -1,0 +1,13 @@
+{
+  "name": "メテオレース | METEOR RACE",
+  "short_name": "METEOR RACE",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#060b20",
+  "icons": [
+    { "src": "/assets/branding/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/branding/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
