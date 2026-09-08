@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_URL } from "../site-url";
 import { getPublishedBalance } from "../published-balance";
+import { LocalizedDocument } from "../components/localized-document";
 
 export const metadata: Metadata = {
   title: "遊び方・ルール解説",
@@ -36,7 +37,7 @@ const BREADCRUMB = {
 export default async function GuidePage() {
   const balance = await getPublishedBalance();
 
-  return (
+  const japanese = (
     <main className="doc-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB) }} />
 
@@ -147,4 +148,16 @@ export default async function GuidePage() {
       </nav>
     </main>
   );
+  const english = <main className="doc-page" lang="en">
+    <div className="doc-topbar"><Link className="doc-back" href="/">← BACK</Link><nav className="doc-breadcrumb" aria-label="Breadcrumb"><Link href="/">METEOR RACE</Link> <span aria-hidden="true">›</span> <span>HOW TO PLAY</span></nav></div>
+    <header className="doc-header"><small>HOW TO PLAY</small><h1>HOW TO PLAY METEOR RACE</h1><p className="doc-lead">METEOR RACE is a turn-based strategy board game for two to four players. Use meteor blasts to propel your probe toward the CORE. A blast is not only a hazard—it is also your fastest route forward.</p></header>
+    <section className="doc-section"><h2>OBJECTIVE</h2><p>Be the first probe to enter the CORE at the center of the board. Normal movement, a blast, BOOSTER, or ORBITAL GRAVITY can all complete the race.</p></section>
+    <section className="doc-section"><h2>TURN FLOW</h2><ol className="doc-steps"><li><b>01 / MOVE</b><p>Move one cell vertically or horizontally. Diagonal movement is not allowed. Movement is required unless every route is blocked.</p></li><li><b>02 / PLACE</b><p>After moving, place one of your {balance.meteorSmallStart} small or {balance.meteorLargeStart} large starting meteors. The first player cannot place a meteor on the opening turn. Each player may pass placement once.</p></li><li><b>03 / METEOR</b><p>A small meteor blasts its surrounding ring. A large meteor moves nearby probes two cells and the outer ring one cell. Blasts move your own probe as well as rivals.</p></li></ol></section>
+    <section className="doc-section"><h2>LAST-METEOR BONUS</h2><p>After using every small and large meteor in your hand, you gain one bonus move during that turn. Your final meteor can propel you forward before you step into the CORE.</p></section>
+    <section className="doc-section"><h2>GAME MODES</h2><dl className="doc-defs"><dt>CLASSIC</dt><dd>Core meteor rules on a 9×9 or 11×11 board.</dd><dt>ITEM</dt><dd>Bring {balance.itemHandTotal} items, with up to {balance.itemSameMax} of the same kind. After moving, use an item instead of placing a meteor. See the <a href="/items">item list</a>.</dd><dt>2 VS 2</dt><dd>RED and YELLOW face BLUE and GREEN on a 13×13 or 15×15 board.</dd><dt>RANKED DUEL</dt><dd>A rated 1 VS 1 match available daily from 8:00–9:00 and 20:00–21:00 JST. ORBITAL GRAVITY activates every {balance.rankedGravityRounds} rounds to prevent a permanent stalemate. Leaving early reduces your rating.</dd></dl></section>
+    <section className="doc-section"><h2>RANKS</h2><p>IRON → BRONZE → SILVER → GOLD → PLATINUM → DIAMOND → ORBIT. CLASSIC and ITEM ratings are tracked separately.</p></section>
+    <section className="doc-section"><h2>WAYS TO PLAY</h2><p>Choose SINGLE against CPUs, LOCAL on one device, or ONLINE. CPU difficulty is available in EASY, NORMAL, and HARD. No installation or account registration is required.</p></section>
+    <nav className="doc-next"><Link className="doc-cta" href="/">START GAME</Link><a href="/items">VIEW ITEMS</a></nav>
+  </main>;
+  return <LocalizedDocument japanese={japanese} english={english} />;
 }

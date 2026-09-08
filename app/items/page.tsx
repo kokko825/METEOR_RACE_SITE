@@ -6,9 +6,11 @@ import {
   SELECTABLE_ITEMS,
   ITEM_ICONS,
   ITEM_TACTICS,
+  ITEM_TACTICS_EN,
   itemDetail,
   itemEffectFacts,
 } from "../item-content";
+import { LocalizedDocument } from "../components/localized-document";
 
 export const metadata: Metadata = {
   title: "アイテム一覧・効果解説",
@@ -43,7 +45,7 @@ const BREADCRUMB = {
 export default async function ItemsPage() {
   const balance = await getPublishedBalance();
 
-  return (
+  const japanese = (
     <main className="doc-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB) }} />
 
@@ -101,4 +103,15 @@ export default async function ItemsPage() {
       </nav>
     </main>
   );
+  const english = <main className="doc-page" lang="en">
+    <div className="doc-topbar"><Link className="doc-back" href="/">← BACK</Link><nav className="doc-breadcrumb" aria-label="Breadcrumb"><Link href="/">METEOR RACE</Link> <span aria-hidden="true">›</span> <span>ITEM LIST</span></nav></div>
+    <header className="doc-header"><small>ITEM LIST</small><h1>METEOR RACE ITEMS</h1><p className="doc-lead">In ITEM rules, choose {balance.itemHandTotal} items before the match, with up to {balance.itemSameMax} of the same kind. After moving, you may use one item instead of placing a meteor. This page covers all {SELECTABLE_ITEMS.length} items and their tactical roles.</p></header>
+    <section className="doc-section"><h2>LOADOUT ITEMS ({SELECTABLE_ITEMS.length})</h2><div className="doc-items">{SELECTABLE_ITEMS.map((kind) => {
+      const [range, effect] = itemEffectFacts(kind, balance, "en");
+      return <article key={kind} className="doc-item" id={`en-${kind}`}><h3><i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>{kind.toUpperCase()}</h3><p className="doc-item-effect">{itemDetail(kind, balance, "en")}</p><ul className="doc-item-facts"><li>{range}</li><li>{effect}</li></ul><p className="doc-item-tactics"><b>WHEN TO USE IT</b>{ITEM_TACTICS_EN[kind]}</p></article>;
+    })}</div></section>
+    <section className="doc-section"><h2>ORBITAL GRAVITY (RANKED DUELS)</h2><p>This is an automatic ranked-match event, not a loadout item. {itemDetail("gravity", balance, "en")}</p></section>
+    <nav className="doc-next"><Link className="doc-cta" href="/">START GAME</Link><a href="/guide">VIEW RULES</a></nav>
+  </main>;
+  return <LocalizedDocument japanese={japanese} english={english} />;
 }

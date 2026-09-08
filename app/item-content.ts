@@ -109,3 +109,14 @@ export const ITEM_TACTICS: Record<ItemKind, string> = {
   recall: "盤上に置いた自分の通常メテオを手札に戻せるので、終盤の弾切れを防げます。自分のホロメテオも一緒に消える点に注意してください。",
   gravity: "真剣タイマン限定の自動イベントです。",
 };
+
+export const ITEM_TACTICS_EN: Record<ItemKind, string> = {
+  shield: "Blocks a one-cell blast. A two-cell push from a large meteor or BLAST is reduced to one cell, not completely stopped. Your own blasts are reduced in the same way.",
+  booster: "The only pure advance item. It can jump over meteors and holo meteors, making it ideal for breaking through a blocked route. It remains ready until you actually move two cells.",
+  holo: "Most effective one cell before an opponent's CORE route. Blasts reduce its remaining duration, so a large meteor at close range can clear it quickly.",
+  orbit: "Rotates a whole board ring by 90 or 180 degrees, shifting favorable formations. Your own meteors and PULSE devices move with it.",
+  blast: "Creates the same blast as a large meteor without spending a meteor. It can repel a rival near the CORE or reduce a holo meteor's duration.",
+  pulse: "Probes inside the field cannot move under their own power, making it the most direct way to stop an advance. Blasts can still carry them out.",
+  recall: "Returns all of your normal meteors on the board to your hand, helping avoid an empty arsenal late in the match. Your holo meteors disappear instead.",
+  gravity: "An automatic event exclusive to ranked duels.",
+};
