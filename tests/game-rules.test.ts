@@ -1,4 +1,23 @@
 import assert from "node:assert/strict";
+import { gameStatusText } from "../app/game-status";
+
+// Result localization must preserve both the finishing player and their team.
+for (const variant of ["team", "team-item", "classic", "item"] as const) {
+  for (const winner of ["red", "blue", "green", "yellow"] as const) {
+    const state = initialGameState(13, "red", 4, false, 0, [], variant);
+    state.phase = "over";
+    state.winner = winner;
+    state.message = "日本語の結果";
+    const result = gameStatusText(state, "en");
+    assert.ok(result.startsWith(winner.toUpperCase()));
+    if (variant === "team" || variant === "team-item") {
+      assert.ok(result.includes(winner === "red" || winner === "yellow" ? "RED + YELLOW TEAM" : "BLUE + GREEN TEAM"));
+    } else assert.equal(result, `${winner.toUpperCase()} WINS!`);
+    assert.equal(gameStatusText(state, "ja"), state.message);
+    state.winner = "draw";
+    assert.ok(!gameStatusText(state, "en").includes("TEAM"));
+  }
+}
 import {
   applyMeteor,
   applyHoloSwitch,

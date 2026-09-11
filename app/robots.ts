@@ -13,8 +13,9 @@ export default function robots() {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        // JSON endpoints have nothing useful for search engines to index.
+        // Rendering may request these public, read-only settings. Keep private
+        // profile/room endpoints blocked; robots rules are not access control.
+        allow: ["/", "/api/balance$", "/api/site-config$"],
         disallow: ["/api/"],
       },
     ],

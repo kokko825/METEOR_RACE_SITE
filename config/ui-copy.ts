@@ -142,6 +142,7 @@ export const UI_COPY = {
   statusPlace: { ja: "{player}：メテオまたはアイテムを選択", en: "{player}: place a meteor or use an item" },
   statusSwitch: { ja: "{player}：{kind}の対象を選択", en: "{player}: choose a target for {kind}" },
   statusWinner: { ja: "{player} WIN!", en: "{player} WINS!" },
+  statusTeamWinner: { ja: "{player} / {team} TEAM WIN!", en: "{player} / {team} TEAM WINS!" },
   statusDraw: { ja: "同時到達 — DRAW", en: "SIMULTANEOUS ARRIVAL — DRAW" },
   statusCoreArrival: { ja: "CORE到達を確認中…", en: "CONFIRMING CORE ARRIVAL…" },
 } as const;

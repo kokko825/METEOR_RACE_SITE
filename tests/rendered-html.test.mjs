@@ -4,6 +4,14 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
+test("toolbar volume preserves integer settings without browser rounding", async () => {
+  const source = await read("../app/components/sound-controls.tsx");
+  assert.match(source, /step = 1/);
+  assert.doesNotMatch(source, /step=\{10\}/);
+  assert.match(source, /value=\{value\}/);
+  assert.match(source, /<output>\{value\}<\/output>/);
+});
+
 test("ships the METEOR RACE application shell and entry flow", async () => {
   const [page, layout] = await Promise.all([read("../app/page.tsx"), read("../app/layout.tsx")]);
   assert.match(layout, /METEOR RACE/);
