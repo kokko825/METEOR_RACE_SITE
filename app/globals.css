@@ -1405,6 +1405,15 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 
 /* AEQRIS guidance overlays the real match instead of replacing it. */
 .title-guide-actions{position:absolute;z-index:120;top:20px;right:20px;display:flex;align-items:stretch;gap:7px;pointer-events:auto}.title-guide-actions .title-settings{position:relative;inset:auto;z-index:auto;pointer-events:auto}.title-beginner{width:auto;min-width:112px;padding:0 11px;border-color:#32738a!important;border-radius:0;color:#bdefff!important;font-size:15px}.title-beginner span{margin-left:5px;font-size:9px;letter-spacing:.04em}.title-beginner:hover,.title-beginner:focus-visible{border-color:#6adcf4!important;box-shadow:0 0 16px rgba(71,202,234,.22)}
+/* Setup navigation participates in layout; never float controls over the heading. */
+.entry-flow{grid-template-rows:auto auto minmax(min-content,1fr);row-gap:12px}
+.entry-flow>.title-guide-actions{position:static;justify-self:end;justify-content:flex-end;flex-wrap:wrap;max-width:100%;z-index:auto}
+.entry-flow>.title-guide-actions .title-settings{width:auto;max-width:100%;height:auto;min-height:44px;white-space:normal}
+.entry-flow>header>div{min-width:0}
+.entry-flow>header{padding-right:0;gap:clamp(10px,3vw,20px)}
+.entry-flow>header>button{flex-shrink:0}
+.entry-flow>header b{overflow-wrap:anywhere}
+@media(max-width:700px){.entry-flow>header{position:static}.entry-flow>.title-guide-actions{gap:6px}}
 .tutorial-confirm-backdrop{position:fixed;z-index:2000;inset:0;display:grid;place-items:center;padding:20px;background:rgba(0,7,12,.82);backdrop-filter:blur(8px)}
 .tutorial-confirm{width:min(520px,100%);display:grid;gap:16px;padding:clamp(22px,5vw,38px);border:1px solid #5edcf5;background:linear-gradient(145deg,#0b2835,#041018);box-shadow:0 0 48px rgba(58,207,241,.2);color:#eafbff;text-align:center}
 .tutorial-confirm small{color:#6fdcf3;font-weight:900;letter-spacing:.15em}.tutorial-confirm h2,.tutorial-confirm p{margin:0}.tutorial-confirm p{color:#a7c2cd;line-height:1.7}.tutorial-confirm>div{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tutorial-confirm button{min-height:54px}
