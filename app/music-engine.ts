@@ -276,7 +276,7 @@ export class MusicManager {
   private master: GainNode | null = null;
   private started = false;
   private scene: Scene = "idle";
-  private enabled = true;
+  private enabled = false;
   private masterVolume = 100;
   private bgmVolume = 0;
   private assets: MusicAssetConfig = DEFAULT_MUSIC_ASSETS;

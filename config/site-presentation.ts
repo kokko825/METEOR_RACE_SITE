@@ -8,7 +8,8 @@ export const SITE_PRESENTATION = {
   adSlotTitle: 0,
   adSlotResult: 0,
   adSlotSettings: 0,
-  musicEnabled: 1,
+  // BGM完成後に1へ戻すと、再生・音量フェーダー・曲選択を再公開します。
+  musicEnabled: 0,
   musicCrossfadeMs: 400,
   musicBpm: 120,
   musicBeatsPerBar: 4,

@@ -273,7 +273,7 @@ function Game() {
     draw: 0,
     turns: 0,
   });
-  useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, reducedMotion, battleTrack });
+  const musicEnabled = useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, reducedMotion, battleTrack });
   const { playVolumeTick } = useUiFeedback({ soundEnabled, masterVolume, sfxVolume });
 
   useEffect(() => {
@@ -2102,15 +2102,15 @@ function Game() {
             <section>
               <h3>{t("soundHeading")}</h3>
               <VolumeRange className="drawer-volume" label={t("masterVolume")} value={masterVolume} onChange={setMasterVolume} onTick={playVolumeTick} />
-              <VolumeRange className="drawer-volume" label="BGM" value={bgmVolume} onChange={setBgmVolume} onTick={playVolumeTick} />
+              {musicEnabled && <VolumeRange className="drawer-volume" label="BGM" value={bgmVolume} onChange={setBgmVolume} onTick={playVolumeTick} />}
               <VolumeRange className="drawer-volume" label={t("soundEffects")} value={sfxVolume} onChange={setSfxVolume} onTick={playVolumeTick} />
               <button type="button" className={soundEnabled ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setSoundEnabled((value) => !value)}>{t("muteAll")} {soundEnabled ? "OFF" : "ON"}</button>
-              <label>BATTLE MUSIC
+              {musicEnabled && <label>BATTLE MUSIC
                 <select value={battleTrack} onChange={(event) => setBattleTrack(event.target.value as BattleTrackChoice)}>
                   {Object.entries(BATTLE_TRACK_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
                   <option value="random">RANDOM</option>
                 </select>
-              </label>
+              </label>}
             </section>
             <section>
               <h3>{t("playResearchHeading")}</h3>
@@ -2589,7 +2589,7 @@ function Game() {
               {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void returnOnlineLobby()}>MATCH ROOM</button>}
             </div>
             <div className="hud-tools">
-              <SoundMixer enabled={soundEnabled} masterVolume={masterVolume} bgmVolume={bgmVolume} sfxVolume={sfxVolume} masterLabel={t("masterVolume")} sfxLabel={t("soundEffects")} muteLabel={language === "ja" ? "消音する" : "Mute audio"} unmuteLabel={language === "ja" ? "音を出す" : "Enable audio"} setMasterVolume={setMasterVolume} setBgmVolume={setBgmVolume} setSfxVolume={setSfxVolume} onTick={playVolumeTick} onToggle={() => setSoundEnabled((current) => !current)} />
+              <SoundMixer musicEnabled={musicEnabled} enabled={soundEnabled} masterVolume={masterVolume} bgmVolume={bgmVolume} sfxVolume={sfxVolume} masterLabel={t("masterVolume")} sfxLabel={t("soundEffects")} muteLabel={language === "ja" ? "消音する" : "Mute audio"} unmuteLabel={language === "ja" ? "音を出す" : "Enable audio"} setMasterVolume={setMasterVolume} setBgmVolume={setBgmVolume} setSfxVolume={setSfxVolume} onTick={playVolumeTick} onToggle={() => setSoundEnabled((current) => !current)} />
               <div className="hud-icons">
                 {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""} ${unreadChatCount ? "has-unread" : ""}`} aria-label={unreadChatCount ? localize(`チャット欄・新着${unreadChatCount}件`, `Chat · ${unreadChatCount} unread`) : localize("チャット表示を切り替える", "Toggle chat")} aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); setUnreadChatCount(0); setChatToast(null); }}>{localize("チャット欄", "CHAT")}{unreadChatCount > 0 && <i className="chat-unread" aria-hidden="true">{unreadChatCount}</i>}</button>}
                 {mode === "online" && online.code && <button type="button" className={`chat-mute ${chatMuted ? "active danger" : ""}`} aria-label={localize("チャットをミュートする", "Mute chat")} aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}

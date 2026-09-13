@@ -22,7 +22,7 @@ type UseMusicSyncParams = {
  */
 export function useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, reducedMotion, battleTrack }: UseMusicSyncParams) {
   const [musicAssets, setMusicAssets] = useState<Partial<MusicAssetConfig>>({});
-  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [musicEnabled, setMusicEnabled] = useState(false);
   const recordedGoalMusic = useRef("");
 
   // Load site-config (ads/music toggles + shared theme URLs), start the
@@ -70,8 +70,8 @@ export function useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, redu
   }, [musicEnabled, soundEnabled]);
 
   useEffect(() => {
-    getMusicManager().setVolume(masterVolume, bgmVolume);
-  }, [masterVolume, bgmVolume]);
+    getMusicManager().setVolume(masterVolume, musicEnabled ? bgmVolume : 0);
+  }, [masterVolume, bgmVolume, musicEnabled]);
 
   useEffect(() => {
     getMusicManager().setBattleTrack(battleTrack);
@@ -96,4 +96,5 @@ export function useMusicSync({ game, soundEnabled, masterVolume, bgmVolume, redu
     const level = nearest <= 1 ? 4 : nearest === 2 ? 3 : nearest === 3 ? 2 : nearest === 4 ? 1 : 0;
     getMusicManager().dispatch({ type: "TENSION_CHANGED", level: level as 0 | 1 | 2 | 3 | 4 });
   }, [game]);
+  return musicEnabled;
 }
