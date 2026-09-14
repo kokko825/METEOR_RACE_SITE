@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { BATTLE_TRACK_LABELS, type BattleTrackChoice } from "../music-engine";
+import { UI_BEHAVIOR } from "../../config/ui-behavior";
 
 export type SiteLanguage = "ja" | "en";
 export type TextSize = "standard" | "large" | "xlarge";
@@ -22,9 +23,9 @@ function storedNumber(key: string, fallback: number) {
  */
 export function useLocalSettings() {
   const [nickname, setNickname] = useState("");
-  const [masterVolume, setMasterVolume] = useState(80);
-  const [bgmVolume, setBgmVolume] = useState(65);
-  const [sfxVolume, setSfxVolume] = useState(80);
+  const [masterVolume, setMasterVolume] = useState<number>(UI_BEHAVIOR.defaultVolumes.master);
+  const [bgmVolume, setBgmVolume] = useState<number>(UI_BEHAVIOR.defaultVolumes.bgm);
+  const [sfxVolume, setSfxVolume] = useState<number>(UI_BEHAVIOR.defaultVolumes.sfx);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [battleTrack, setBattleTrack] = useState<BattleTrackChoice>("random");
   const [language, setLanguage] = useState<SiteLanguage>("ja");
@@ -34,9 +35,9 @@ export function useLocalSettings() {
 
   useEffect(() => {
     setNickname((window.localStorage.getItem("meteor-race-nickname") ?? "").slice(0, 16));
-    setMasterVolume(storedNumber("meteor-race-master-volume", 80));
-    setBgmVolume(storedNumber("meteor-race-bgm-volume", 65));
-    setSfxVolume(storedNumber("meteor-race-sfx-volume", 80));
+    setMasterVolume(storedNumber("meteor-race-master-volume", UI_BEHAVIOR.defaultVolumes.master));
+    setBgmVolume(storedNumber("meteor-race-bgm-volume", UI_BEHAVIOR.defaultVolumes.bgm));
+    setSfxVolume(storedNumber("meteor-race-sfx-volume", UI_BEHAVIOR.defaultVolumes.sfx));
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(motionPreference.matches);
     const storedTrack = window.localStorage.getItem("meteor-race-battle-track");

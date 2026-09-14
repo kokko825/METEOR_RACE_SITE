@@ -2,18 +2,32 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+// Follow local CSS imports so assertions cover the actual stylesheet order.
+async function read(path, base = import.meta.url) {
+  const url = new URL(path, base);
+  let source = await readFile(url, "utf8");
+  if (url.pathname.endsWith(".css")) {
+    for (const match of [...source.matchAll(/@import "(\.[^"]+)";/g)]) {
+      source = source.replace(match[0], await read(match[1], url));
+    }
+  }
+  return source;
+}
+
+const readGameSurface = async () => (await Promise.all([
+  read("../app/page.tsx"), read("../app/components/manual-content.tsx"),
+])).join("\n");
 
 test("toolbar volume preserves integer settings without browser rounding", async () => {
   const source = await read("../app/components/sound-controls.tsx");
-  assert.match(source, /step = 1/);
+  assert.match(source, /step=\{1\}/);
   assert.doesNotMatch(source, /step=\{10\}/);
   assert.match(source, /value=\{value\}/);
   assert.match(source, /<output>\{value\}<\/output>/);
 });
 
 test("ships the METEOR RACE application shell and entry flow", async () => {
-  const [page, layout] = await Promise.all([read("../app/page.tsx"), read("../app/layout.tsx")]);
+  const [page, layout] = await Promise.all([readGameSurface(), read("../app/layout.tsx")]);
   assert.match(layout, /METEOR RACE/);
   assert.match(page, /entryStage === "title"/);
   assert.match(page, /entry-flow \$\{rankedOpen/);
@@ -55,7 +69,7 @@ test("keeps EASY CPU on small meteors without allowing placement stalls", async 
 });
 
 test("guides beginners on the real match board without restricting legal actions", async () => {
-  const [page, css, tutorial] = await Promise.all([read("../app/page.tsx"), read("../app/globals.css"), read("../config/tutorial-copy.ts")]);
+  const [page, css, tutorial] = await Promise.all([readGameSurface(), read("../app/globals.css"), read("../config/tutorial-copy.ts")]);
   assert.doesNotMatch(page, /<Tutorial onExit=/);
   assert.match(page, /title-guide-actions/);
   assert.match(page, /title-beginner/);
@@ -100,7 +114,7 @@ test("guides beginners on the real match board without restricting legal actions
 
 test("explains the last-meteor bonus move everywhere players learn the rules", async () => {
   const [page, guide, copy] = await Promise.all([
-    read("../app/page.tsx"), read("../app/guide/page.tsx"), read("../config/ui-copy.ts"),
+    readGameSurface(), read("../app/guide/page.tsx"), read("../config/ui-copy.ts"),
   ]);
   assert.match(page, /BONUS MOVE/);
   assert.match(page, /t\("bonusMoveRule"\)/);
@@ -110,7 +124,7 @@ test("explains the last-meteor bonus move everywhere players learn the rules", a
 
 test("keeps the public game discoverable by search engines", async () => {
   const [page, layout, guide, items, updates, sitemap, siteUrl, copy] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/layout.tsx"),
     read("../app/guide/page.tsx"),
     read("../app/items/page.tsx"),
@@ -164,7 +178,7 @@ test("serves read-only configuration from Git-versioned files", async () => {
 
 test("keeps public release history centralized and shows only three recent entries in settings", async () => {
   const [page, updates, updatesClient, notes, version] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/updates/page.tsx"),
     read("../app/updates/updates-client.tsx"),
     read("../config/release-notes.ts"),
@@ -189,7 +203,7 @@ test("keeps release history scrollable in the short desktop viewport layout", as
 
 test("consolidates legal pages and removes obsolete settings navigation", async () => {
   const [page, policy, sitemap, css] = await Promise.all([
-    read("../app/page.tsx"), read("../app/policy/page.tsx"), read("../app/sitemap.ts"), read("../app/globals.css"),
+    readGameSurface(), read("../app/policy/page.tsx"), read("../app/sitemap.ts"), read("../app/globals.css"),
   ]);
   assert.match(policy, /<h1>利用規約<\/h1>/);
   assert.match(policy, /プライバシー方針/);
@@ -223,7 +237,7 @@ test("keeps online room settings authoritative and bounded", async () => {
 
 test("ships the fixed battle HUD, manual, chat and room lock controls", async () => {
   const [page, rooms, chat, moderation, css, profile, communitySafety] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/api/rooms/route.ts"),
     read("../app/api/chat/route.ts"),
     read("../app/chat-moderation.ts"),
@@ -263,7 +277,7 @@ test("ships the fixed battle HUD, manual, chat and room lock controls", async ()
 
 test("offers a persistent Japanese and English language switch", async () => {
   const [page, settings, copy] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/hooks/use-local-settings.ts"),
     read("../config/ui-copy.ts"),
   ]);
@@ -279,7 +293,7 @@ test("offers a persistent Japanese and English language switch", async () => {
 
 test("localizes every player-facing label in match setup", async () => {
   const [page, copy] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../config/ui-copy.ts"),
   ]);
   for (const key of [
@@ -294,7 +308,7 @@ test("localizes every player-facing label in match setup", async () => {
 
 test("ships the bilingual ASTRA ACCORD world archive in the manual", async () => {
   const [page, copy, css] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../config/ui-copy.ts"),
     read("../app/globals.css"),
   ]);
@@ -311,7 +325,7 @@ test("ships the bilingual ASTRA ACCORD world archive in the manual", async () =>
 
 test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation", async () => {
   const [page, matchMeta, assets, css, layout] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/components/match-meta.tsx"),
     read("../config/asset-paths.ts"),
     read("../app/globals.css"),
@@ -324,7 +338,8 @@ test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation"
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
   assert.match(matchMeta, /AEQRIS \/\/ CORE到達管制/);
-  assert.match(page, /CORE APPROACH \{regulaProgress\}%/);
+  assert.match(page, /CORE APPROACH \{progress\}%/);
+  assert.match(page, /<WorldArchive language=\{language\} progress=\{regulaProgress\}/);
   assert.match(css, /\.regula-console\{/);
   assert.match(matchMeta, /className="match-meta"/);
   assert.match(css, /\.hud-mode \.match-meta \.regula-console\{position:static/);
@@ -341,7 +356,7 @@ test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation"
 
 test("keeps the manual inside its frame and presents device identity as company registry", async () => {
   const [page, copy, css, settings] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../config/ui-copy.ts"),
     read("../app/globals.css"),
     read("../app/hooks/use-local-settings.ts"),
@@ -363,7 +378,7 @@ test("keeps the manual inside its frame and presents device identity as company 
 
 test("keeps carryable items and player order as shared rule constants", async () => {
   const [rules, page, ai, pieces, rooms] = await Promise.all([
-    read("../app/game-rules.ts"), read("../app/page.tsx"), read("../app/ai-engine.ts"),
+    read("../app/game-rules.ts"), readGameSurface(), read("../app/ai-engine.ts"),
     read("../app/components/game-pieces.tsx"), read("../app/api/rooms/route.ts"),
   ]);
   assert.match(rules, /export const SELECTABLE_ITEMS/);
@@ -375,7 +390,7 @@ test("keeps carryable items and player order as shared rule constants", async ()
 
 test("documents every authorized item source and accepts balanced equipment proposals", async () => {
   const [page, lore, css, policy] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../config/item-lore.ts"),
     read("../app/globals.css"),
     read("../app/policy/page.tsx"),
@@ -395,14 +410,14 @@ test("tags Gmail notifications by submission category", async () => {
   const contact = await read("../app/api/contact/route.ts");
   for (const tag of ["ITEM IDEA", "BUG", "FEEDBACK", "CONTACT"]) assert.match(contact, new RegExp(`return "${tag}"`));
   assert.doesNotMatch(contact, /return "ACCOUNT"/);
-  const page = await read("../app/page.tsx");
+  const page = await readGameSurface();
   assert.doesNotMatch(page, /<option>アカウントについて<\/option>/);
   assert.match(contact, /Subject: \[METEOR RACE\]\[\$\{gmailSubjectTag\(report\.category\)\}\]\[\$\{report\.reference\}\]/);
 });
 
 test("keeps the board square and lets narrow phones scroll without fixed-control overlap", async () => {
   const [page, css] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/globals.css"),
   ]);
   assert.match(css, /@media \(min-width: 561px\) and \(max-width: 900px\)/);
@@ -426,7 +441,7 @@ test("keeps the board square and lets narrow phones scroll without fixed-control
 
 test("gives BOOSTER and BLAST distinct item colors", async () => {
   const [page, css] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/globals.css"),
   ]);
   assert.match(css, /--item-booster: #ffd43b/);
@@ -441,7 +456,7 @@ test("gives BOOSTER and BLAST distinct item colors", async () => {
 
 test("renders player inventory as a compact icon grid on every device", async () => {
   const [page, pieces, css] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/components/game-pieces.tsx"),
     read("../app/globals.css"),
   ]);
@@ -462,7 +477,7 @@ test("renders player inventory as a compact icon grid on every device", async ()
 
 test("keeps final rankings and rematch controls above a dimmed board", async () => {
   const [page, css] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/globals.css"),
   ]);
   assert.match(page, /className="result-overlay"/);
@@ -474,7 +489,7 @@ test("keeps final rankings and rematch controls above a dimmed board", async () 
 
 test("reveals results only after the CORE arrival motion settles", async () => {
   const [page, hook, behavior, copy] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/hooks/use-deferred-reveal.ts"),
     read("../config/ui-behavior.ts"),
     read("../config/ui-copy.ts"),
@@ -490,7 +505,7 @@ test("reveals results only after the CORE arrival motion settles", async () => {
 
 test("centralizes replaceable UI sounds and tactile feedback", async () => {
   const [page, controls, hook, engine, config, readme] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/components/sound-controls.tsx"),
     read("../app/hooks/use-ui-feedback.ts"),
     read("../app/ui-feedback.ts"),
@@ -507,16 +522,15 @@ test("centralizes replaceable UI sounds and tactile feedback", async () => {
   assert.match(config, /volumeTickIntervalMs: 42/);
   assert.match(readme, /config\/ui-feedback\.ts/);
   assert.match(page, /<SoundMixer/);
-  assert.match(controls, /shortLabel="ALL"/);
-  assert.match(controls, /shortLabel="BGM"/);
-  assert.match(controls, /shortLabel="SFX"/);
+  for (const id of ["ALL", "BGM", "SFX"]) assert.ok(controls.includes(`id: "${id}"`));
+  assert.match(controls, /shortLabel=\{props.compact \? channel.id : undefined\}/);
 });
 
 test("uses shared spacing tokens for the battle shell", async () => {
   const css = await read("../app/globals.css");
   const responsiveBoard = await read("../app/hooks/use-responsive-board.ts");
   const uiLayout = await read("../config/ui-layout.ts");
-  const page = await read("../app/page.tsx");
+  const page = await readGameSurface();
   assert.match(css, /--page-gutter-inline:/);
   assert.match(css, /--battle-hud-height: 76px/);
   assert.match(css, /height:var\(--battle-hud-height\)/);
@@ -546,7 +560,7 @@ test("uses shared spacing tokens for the battle shell", async () => {
 
 test("animates BLAST probe movement with lifted travel on every client", async () => {
   const [page, pieces, rooms, css] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/components/game-pieces.tsx"),
     read("../app/api/rooms/route.ts"),
     read("../app/globals.css"),
@@ -568,7 +582,7 @@ test("keeps desktop item-selection icons at their intended proportions", async (
 
 test("scales readable text and controls without resizing the board", async () => {
   const [page, css, hook, copy] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/globals.css"),
     read("../app/hooks/use-local-settings.ts"),
     read("../config/ui-copy.ts"),
@@ -607,7 +621,7 @@ test("falls back to a safe scrollable layout when a desktop window is resized", 
 
 test("keeps diagnostics out of ordinary player screens and item labels in sync", async () => {
   const [page, pieces, balance] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/components/game-pieces.tsx"),
     read("../config/game-balance.ts"),
   ]);
@@ -621,7 +635,7 @@ test("keeps diagnostics out of ordinary player screens and item labels in sync",
 
 test("supports replaceable wordmark and symbol artwork with text fallbacks", async () => {
   const [page, css, assets] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/globals.css"),
     read("../config/asset-paths.ts"),
   ]);
@@ -643,7 +657,7 @@ test("supports replaceable wordmark and symbol artwork with text fallbacks", asy
 
 test("keeps strong-play research anonymous, verified and optional", async () => {
   const [page, route, hook, policy] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/api/strong-plays/route.ts"),
     read("../app/hooks/use-local-settings.ts"),
     read("../app/policy/page.tsx"),
@@ -658,7 +672,7 @@ test("keeps strong-play research anonymous, verified and optional", async () => 
 
 test("keeps online hosts stable and team assignment host-only", async () => {
   const [page, rooms] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/api/rooms/route.ts"),
   ]);
   assert.match(page, /let requestInFlight = false/);
@@ -670,7 +684,7 @@ test("keeps online hosts stable and team assignment host-only", async () => {
 
 test("keeps room chat compact, rate-limited and non-destructive to navigation", async () => {
   const [page, chat, safety, css] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../app/api/chat/route.ts"),
     read("../config/community-safety.ts"),
     read("../app/globals.css"),
@@ -688,7 +702,7 @@ test("keeps room chat compact, rate-limited and non-destructive to navigation", 
 
 test("keeps bilingual schedules, AI diagnostics and tutorial steps consistent", async () => {
   const [page, tutorial] = await Promise.all([
-    read("../app/page.tsx"),
+    readGameSurface(),
     read("../config/tutorial-copy.ts"),
   ]);
   assert.match(page, /Daily 08:00–09:00 \/ 20:00–21:00 JST/);

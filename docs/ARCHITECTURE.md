@@ -26,6 +26,10 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 - BGM、色、発光 → `config/site-presentation.ts`
 - SEや画像のファイル → `public/assets/`
 - 駒、メテオ、所持欄 → `app/components/game-pieces.tsx`
+- プレイヤー旗の左右・人数別表示 → 同ファイルの `PlayerStack`（4色共通）
+- 遊び方・世界観の本文レイアウト → `app/components/manual-content.tsx`
+- 全体／BGM／SE音量の表示 → `app/components/sound-controls.tsx`（設定画面と下部バー共通）
+- 音量の初期値 → `config/ui-behavior.ts` の `defaultVolumes`
 - スマホで押せない、スクロールできない → `app/styles/responsive-safety.css`
 - 勝敗やアイテム効果 → `app/game-rules.ts`
 - CPUの手の選び方 → `app/ai-engine.ts`
@@ -34,6 +38,19 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 
 音楽・テーマ・広告の公開設定取得は `app/site-config-client.ts` に一本化しています。取得失敗時は初期値で継続し、次回の利用時に再試行します。
 小規模テストの変換処理は `tests/run-ts-suite.mjs` が共通担当です。各実行ファイルには必要なファイル一覧だけを記載します。
+
+## UIの編集方針
+
+`page.tsx` は進行・通信・入力の接続を担当し、所持欄と説明本文は表示部品へ渡します。
+フォームの送信やチュートリアルの状態まで、見た目の部品へ移さないでください。
+通常の表示変更でAIやオンライン状態を触る必要はありません。
+
+- 色ごとの所持欄をコピーして増やさず、`PlayerStack` を編集します。非公開アイテムの判定も共通です。
+- 音量の項目・刻み幅・表示条件は `VolumeControls`／`VolumeRange` が一元管理します。
+- BGM公開のON/OFFは `config/site-presentation.ts` の `musicEnabled` だけを変更します。0ではBGMと曲選択・フェーダーを休止します。
+- チーム名はルール側の `teamName` が担当します。英語結果でも同じチーム名を使います。
+- CSSの読み込み順と編集先は `app/styles/README.md` を確認してください。
+- `npm run test:ui` は実際のHTMLを生成し、人数・言語・アイテム非公開・BGM表示を検査します。画面の見た目を比較するブラウザ確認とは別です。
 
 1. `npm run check` — 警告0、型、設定、素材、ルール、UI構造、ビルド
 2. `npm run test:ai:quality` — 全盤面・全難易度の完走、後退、空振り、難易度差

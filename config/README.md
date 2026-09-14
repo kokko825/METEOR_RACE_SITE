@@ -24,6 +24,8 @@
 - 基本色や発光を変える → `site-presentation.ts`
 - 日本語・英語の文章を直す → `ui-copy.ts`
 - AIの画面上の待ち時間を変える → `ui-behavior.ts`
+- 全体／BGM／効果音の初期音量 → `ui-behavior.ts` の `defaultVolumes`（既存の個人設定は維持）
+- BGMを公開・休止する → `site-presentation.ts` の `musicEnabled`（1／0で再生と操作欄を連動）
 - 盤面の大きさや余白の比率を変える → `ui-layout.ts`
 
 ## 変更手順

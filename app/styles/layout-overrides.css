@@ -1,0 +1,344 @@
+/* One persistent utility bar across title, setup, lobby and battle screens. */
+.battle-hud.global-hud{position:fixed!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;margin:0!important}
+.battle-hud.global-hud{padding-right:env(safe-area-inset-right);padding-left:env(safe-area-inset-left)}
+.shell.entry-active .global-hud{z-index:950}
+.shell.entry-active .title-screen>footer{display:none}
+.shell.entry-active .entry-flow{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+.shell.online-lobby-only .control-strip{height:calc(100dvh - 76px)!important;min-height:0!important;padding-bottom:max(8px,env(safe-area-inset-bottom))!important}
+@media(max-width:760px){.shell.entry-active .title-screen nav{margin-bottom:82px}.shell.entry-active .entry-flow{padding-bottom:calc(82px + env(safe-area-inset-bottom))}}
+@media(max-width:900px){.shell.hud-mode{padding-bottom:calc(82px + env(safe-area-inset-bottom))!important}}
+
+/* Desktop uses the persistent lower HUD as the single turn indicator, leaving
+   more height to the board. Compact devices retain the board-top callout so
+   the active player remains visible when the lower controls wrap or scroll. */
+@media (min-width:901px) {
+  .hud-mode .turn-callout,
+  .hud-mode .status { display:none; }
+  .hud-mode > .game-layout { grid-template-columns:minmax(125px,160px) minmax(360px,720px) minmax(125px,160px); }
+  /* game-layout already ends above the 76px utility bar. Reserve another
+     61px for meteor/item controls so the square can never cover them. */
+  .hud-mode .arena { row-gap:6px; }
+  .hud-mode .board { width:min(100%,720px,calc(100dvh - 250px)); }
+  .title-screen nav { align-self:center; margin-bottom:0; }
+}
+
+/* Compact battle header: AEQRIS belongs beside the round counter. */
+.match-meta{display:flex;align-items:center;justify-content:center;gap:9px;margin-left:auto}
+@media (min-width:901px) {
+  .hud-mode > .topbar{height:var(--battle-header-height);gap:18px;padding-top:0;padding-bottom:10px}
+  .hud-mode .game-back{margin-right:4px}
+  .hud-mode .brand{margin-right:auto;min-width:0}
+  .hud-mode .brand p{position:static;line-height:1.4;white-space:nowrap}
+  .hud-mode .match-meta .regula-console{position:static;display:grid;width:250px;min-width:250px;min-height:48px;padding:7px 11px;transform:none;text-align:left}
+  .hud-mode .match-meta .round{align-self:center;margin:0;white-space:nowrap}
+  .hud-mode > .game-layout{height:calc(100dvh - 170px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin-top:var(--battle-section-gap)}
+}
+@media (min-width:701px) and (max-width:1050px) {
+  .hud-mode .match-meta .regula-console{display:grid;width:220px;min-width:220px}
+  .hud-mode .topbar .round::before{content:none}
+  .hud-mode .brand h1{font-size:clamp(18px,2.6vw,27px)}
+}
+@media (max-width:700px) {
+  .match-meta{margin-left:auto}
+  .match-meta .regula-console{display:none}
+  .topbar .match-meta .round{order:initial;width:auto}
+}
+
+/* Persistent three-channel mixer: master, music, and sound effects. */
+.hud-volume{grid-template-columns:38px minmax(132px,170px);gap:5px}
+.hud-volume>button{width:38px;height:44px}
+.hud-mixer{display:grid;gap:1px}
+.hud-mixer label{display:grid;grid-template-columns:24px minmax(70px,1fr) 22px;align-items:center;gap:4px;min-height:16px}
+.hud-mixer span,.hud-mixer output{color:#7299aa;font-size:7px;font-weight:800;letter-spacing:.04em}
+.hud-mixer input{width:100%;height:12px;margin:0;accent-color:#63ddff}
+.settings-drawer .drawer-volume{grid-template-columns:minmax(0,1fr) auto;align-items:center}.settings-drawer .drawer-volume input{grid-column:1/-1}.settings-drawer .drawer-volume output{color:#8ee6ff;font-size:10px}
+.release-summary-list{display:grid;gap:8px}.release-summary-list article{display:grid;gap:5px;padding:11px;border:1px solid #244c5d;background:linear-gradient(120deg,#08212c,#04131b)}.release-summary-list article>header{display:flex;justify-content:space-between;gap:10px}.release-summary-list article b{color:#7be3fb;font-size:10px;letter-spacing:.08em}.release-summary-list article time{color:#678895;font-size:9px}.release-summary-list article strong{color:#effbff;font-size:12px}.release-summary-list article p{color:#8faab5}.release-all-link{min-height:44px;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #3a7083;background:#0a2a37;color:#a9edff!important;font-size:11px;font-weight:900;letter-spacing:.1em;text-decoration:none}.release-all-link:hover,.release-all-link:focus-visible{border-color:#76e5ff;background:#0d3b4b;color:#fff!important}
+.release-page{min-height:100dvh;padding:clamp(20px,5vw,68px);background:radial-gradient(circle at 78% 8%,rgba(39,156,194,.2),transparent 31%),linear-gradient(145deg,#071b26,#02080d 55%,#08151e);color:#eafaff}.release-page-header,.release-history,.release-page>footer{width:min(940px,100%);margin-inline:auto}.release-page-header{display:grid;gap:8px;padding-bottom:24px;border-bottom:1px solid #2b596b}.release-page-header>a,.release-page>footer a{color:#86e5fb;text-decoration:none}.release-page-header small{margin-top:22px;color:#5eaec4;letter-spacing:.24em}.release-page-header h1{margin:0;font-size:clamp(36px,7vw,72px);letter-spacing:.05em}.release-page-header p{margin:0;color:#89a6b2}.release-history{display:grid;gap:0;margin-top:24px;padding:0;list-style:none}.release-history>li{display:grid;grid-template-columns:minmax(145px,.3fr) minmax(0,1fr);gap:clamp(18px,4vw,48px);padding:25px 0;border-bottom:1px solid #183745}.release-history>li.latest{margin:0 -14px;padding:25px 14px;border:1px solid #37758b;background:linear-gradient(110deg,rgba(14,62,78,.55),rgba(5,20,29,.5));box-shadow:0 0 30px rgba(69,202,236,.08)}.release-version{display:grid;align-content:start;gap:7px}.release-version b{color:#7be4fb;font-size:15px}.release-version time{color:#638391;font-size:10px}.release-detail{display:grid;gap:8px}.release-detail h2{margin:0;font-size:clamp(20px,3vw,29px)}.release-detail p{margin:0;color:#a6bec8;line-height:1.7}.release-detail ul{display:grid;gap:5px;margin:5px 0 0;padding-left:19px;color:#7795a2;font-size:12px}.release-tags{display:flex;gap:5px;flex-wrap:wrap}.release-tags span{padding:3px 6px;border:1px solid #326176;color:#75d8ee;font-size:8px;letter-spacing:.1em}.release-page>footer{display:flex;justify-content:space-between;gap:20px;padding-top:28px;color:#4e6d79;font-size:10px;letter-spacing:.12em}@media(max-width:600px){.release-page{padding:18px}.release-history>li{grid-template-columns:1fr;gap:12px}.release-version{display:flex;justify-content:space-between}.release-page>footer{display:grid}}
+@media(max-width:700px){.hud-volume{grid-template-columns:34px minmax(62px,92px)}.hud-volume>button{width:34px}.hud-mixer label:not(:first-child){display:none}.hud-mixer label{grid-template-columns:minmax(54px,1fr)}.hud-mixer label span,.hud-mixer label output{display:none}}
+@media(max-width:380px){.hud-volume{display:grid}}
+
+/* The fixed lower HUD already reserves its own visual area. Do not add that
+   clearance twice below the final title action on phones. */
+@media (max-width:760px) {
+  .shell.entry-active .title-screen { padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
+  .shell.entry-active .title-screen nav { margin-bottom:0; }
+}
+.item-board-snapshot.booster .snapshot-fx i:first-child {
+  background: linear-gradient(#fff, var(--item-booster) 30%, transparent);
+  filter: drop-shadow(0 0 7px var(--item-booster));
+}
+.item-board-snapshot.booster .snapshot-fx i:nth-child(2),
+.item-board-snapshot.booster .snapshot-fx i:nth-child(3) {
+  border-color: #ffe88a;
+  box-shadow: 0 0 11px var(--item-booster);
+}
+.item-board-snapshot.blast .snapshot-fx i:first-child {
+  filter: drop-shadow(0 0 9px var(--item-blast));
+}
+
+@media (max-width: 900px) {
+  .hud-mode .inventory {
+    grid-template-columns: repeat(5, minmax(24px, 1fr));
+    gap: 3px;
+    padding-top: 4px;
+  }
+  .hud-mode .inventory > span { margin:0; font-size:6px; }
+  .hud-mode .inventory > .inventory-slot {
+    min-height: 31px;
+    grid-template-columns: 1fr;
+    padding: 2px;
+  }
+  .hud-mode .inventory-item .item-icon { width:21px; height:21px; font-size:12px; }
+  .hud-mode .inventory > .inventory-slot > b { right:1px; bottom:1px; font-size:7px; }
+}
+
+@media (max-width: 560px) {
+  /* Phone HUD: each side uses one full-width card per row. */
+  .hud-mode .player-stack,
+  .hud-mode .player-stack:has(> .player-card:nth-child(2)) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(auto-fit, minmax(70px, auto));
+    gap: 6px;
+  }
+  .hud-mode .player-stack:not(:has(> .player-card:nth-child(2))) > .player-card,
+  .hud-mode .player-stack:has(> .player-card:nth-child(2)) > .player-card {
+    grid-column: 1;
+    grid-row: auto;
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 6px;
+    padding: 6px;
+    overflow: visible;
+  }
+  .hud-mode .player-stack .player-card .eyebrow,
+  .hud-mode .player-stack .player-card h2 {
+    grid-column: 1;
+    min-width: 42px;
+  }
+  .hud-mode .player-stack .player-card .inventory {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-left: 1px solid currentColor;
+    border-top: 0;
+    padding: 0 0 0 5px;
+  }
+  .hud-mode .player-stack .inventory > .inventory-slot {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Resized desktop windows use document flow instead of compressing the fixed
+   tactical HUD until controls overlap. Pointer capability keeps this separate
+   from the purpose-built phone and tablet layouts above. */
+@media (hover:hover) and (pointer:fine) and (max-width:1100px),
+       (hover:hover) and (pointer:fine) and (max-height:760px) {
+  html, body { overflow-x:hidden; overflow-y:auto; }
+  .shell.hud-mode {
+    width:100%;
+    height:auto;
+    min-height:100dvh;
+    padding:8px 12px 92px;
+    overflow:visible;
+  }
+  .hud-mode > .topbar {
+    position:sticky;
+    z-index:70;
+    top:0;
+    min-height:52px;
+    background:rgba(3,13,20,.97);
+  }
+  .hud-mode > .game-layout {
+    height:auto;
+    min-height:0;
+    overflow:visible;
+  }
+  .hud-mode .arena {
+    height:auto;
+    min-height:0;
+    overflow:visible;
+  }
+  .hud-mode .board,
+  .arena:has(.item-selection-overlay) .board {
+    width:min(100%,720px);
+    max-height:none;
+    flex:none;
+  }
+  .hud-mode .action-panel { position:relative; z-index:30; }
+  .battle-hud.global-hud { position:fixed!important; }
+}
+
+/* Keep the battle viewport inside a stable safe frame. */
+@media (min-width:901px) {
+  .shell.hud-mode {
+    padding-top:max(28px,calc(env(safe-area-inset-top) + 10px));
+    padding-right:max(22px,env(safe-area-inset-right));
+    padding-bottom:calc(84px + env(safe-area-inset-bottom));
+    padding-left:max(22px,env(safe-area-inset-left));
+  }
+  .hud-mode > .game-layout{height:calc(100dvh - 180px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+  .hud-mode .brand{gap:12px}
+  .hud-mode .brand-symbol{width:clamp(56px,4.7vw,72px);height:clamp(42px,3.8vw,56px)}
+  .hud-mode .header-wordmark{width:clamp(205px,18vw,280px);min-height:36px}
+  .hud-mode .brand p{margin-top:1px;color:#6e8c99;font-size:7px;line-height:1.15;letter-spacing:.12em;opacity:.72}
+}
+@media (min-width:561px) and (max-width:900px) {
+  .shell.hud-mode{padding-top:max(20px,calc(env(safe-area-inset-top) + 8px))}
+}
+@media (max-width:560px) {
+  .shell.hud-mode{padding-top:max(16px,calc(env(safe-area-inset-top) + 6px))}
+}
+
+/* All-ages game UI: readable at a glance, generous to click and tap. */
+.shell{--game-ui-text:13px;--game-ui-small:10px;--game-ui-button:13px;--game-ui-primary:16px}
+.shell.text-size-large{--game-ui-text:15px;--game-ui-small:12px;--game-ui-button:15px;--game-ui-primary:19px}
+.shell.text-size-xlarge{--game-ui-text:17px;--game-ui-small:14px;--game-ui-button:17px;--game-ui-primary:22px}
+.entry-flow button,.title-screen nav button,.settings-drawer button,.manual-tabs button,.online-panel button,.action-panel button,.battle-hud button,.comms-panel button{min-height:48px;font-size:var(--game-ui-button);line-height:1.25}
+.title-screen nav .title-start,.entry-confirm,.apply-room-settings,.setup-confirm-actions button{min-height:62px;font-size:var(--game-ui-primary)}
+.entry-panel>p,.entry-panel label,.choice-row button span,.settings-drawer label,.settings-drawer p,.online-panel small,.online-panel label,.comms-panel input{font-size:var(--game-ui-text);line-height:1.55}
+.eyebrow,.inventory>span,.action-label,.manual-now small,.manual-onepage small,.battle-hud small{font-size:var(--game-ui-small);line-height:1.35}
+.meteor-choice,.item-choice,.drawer-toggle,.quick-comms button{font-weight:800;letter-spacing:.04em}
+@media(max-width:560px){
+  .shell{--game-ui-text:12px;--game-ui-small:9px;--game-ui-button:12px;--game-ui-primary:15px}
+  .entry-flow button,.settings-drawer button,.online-panel button,.action-panel button,.battle-hud button,.comms-panel button{min-height:46px}
+}
+
+/* Keep the enlarged meteor/item controls outside the square board. */
+@media (min-width:901px) and (min-height:761px) {
+  .hud-mode .action-panel{max-height:124px;overflow-y:auto;overscroll-behavior:contain}
+}
+@media (min-width:901px) and (max-height:760px) {
+  html,body{height:100%;overflow:hidden}
+  .shell.hud-mode{height:100dvh;min-height:0;padding:8px 12px calc(82px + env(safe-area-inset-bottom));overflow:hidden}
+  .hud-mode>.topbar{position:relative;top:auto;min-height:52px;flex:0 0 52px}
+  .hud-mode>.game-layout{height:calc(100dvh - 148px - env(safe-area-inset-bottom));min-height:0;margin-top:6px;overflow:hidden}
+  .hud-mode .arena{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;place-items:center;gap:6px;overflow:hidden}
+  .hud-mode .action-panel{position:relative;z-index:30;flex:none;width:100%;max-height:124px;margin:0;overflow-y:auto;overscroll-behavior:contain}
+  .arena:has(.item-selection-overlay) .action-panel{max-height:258px}
+}
+
+/* Document routes must scroll even when the short desktop battle layout locks the viewport. */
+html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.doc-page){height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:auto}
+
+/* Loadout buttons separate long item names from their selected count. */
+.switch-setup-controls>.meteor-choice.item-choice{
+  min-height:58px;
+  display:grid;
+  grid-template-columns:26px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  column-gap:6px;
+  row-gap:2px;
+  align-items:center;
+  text-align:center;
+}
+.switch-setup-controls>.meteor-choice.item-choice>.item-icon{grid-column:1;grid-row:1/3}
+.switch-setup-controls>.meteor-choice.item-choice>span{grid-column:2;grid-row:1;min-width:0;line-height:1.1;white-space:nowrap}
+.switch-setup-controls>.meteor-choice.item-choice>b{grid-column:2;grid-row:2;min-width:0;margin:0;color:#fff;font-size:.82em;line-height:1;font-variant-numeric:tabular-nums}
+
+/* AEQRIS guidance overlays the real match instead of replacing it. */
+.title-guide-actions{position:absolute;z-index:120;top:20px;right:20px;display:flex;align-items:stretch;gap:7px;pointer-events:auto}.title-guide-actions .title-settings{position:relative;inset:auto;z-index:auto;pointer-events:auto}.title-beginner{width:auto;min-width:112px;padding:0 11px;border-color:#32738a!important;border-radius:0;color:#bdefff!important;font-size:15px}.title-beginner span{margin-left:5px;font-size:9px;letter-spacing:.04em}.title-beginner:hover,.title-beginner:focus-visible{border-color:#6adcf4!important;box-shadow:0 0 16px rgba(71,202,234,.22)}
+/* Setup navigation participates in layout; never float controls over the heading. */
+.entry-flow{grid-template-rows:auto auto minmax(min-content,1fr);row-gap:12px}
+.entry-flow>.title-guide-actions{position:static;justify-self:end;justify-content:flex-end;flex-wrap:wrap;max-width:100%;z-index:auto}
+.entry-flow>.title-guide-actions .title-settings{width:auto;max-width:100%;height:auto;min-height:44px;white-space:normal}
+.entry-flow>header>div{min-width:0}
+.entry-flow>header{padding-right:0;gap:clamp(10px,3vw,20px)}
+.entry-flow>header>button{flex-shrink:0}
+.entry-flow>header b{overflow-wrap:anywhere}
+@media(max-width:700px){.entry-flow>header{position:static}.entry-flow>.title-guide-actions{gap:6px}}
+.tutorial-confirm-backdrop{position:fixed;z-index:2000;inset:0;display:grid;place-items:center;padding:20px;background:rgba(0,7,12,.82);backdrop-filter:blur(8px)}
+.tutorial-confirm{width:min(520px,100%);display:grid;gap:16px;padding:clamp(22px,5vw,38px);border:1px solid #5edcf5;background:linear-gradient(145deg,#0b2835,#041018);box-shadow:0 0 48px rgba(58,207,241,.2);color:#eafbff;text-align:center}
+.tutorial-confirm small{color:#6fdcf3;font-weight:900;letter-spacing:.15em}.tutorial-confirm h2,.tutorial-confirm p{margin:0}.tutorial-confirm p{color:#a7c2cd;line-height:1.7}.tutorial-confirm>div{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tutorial-confirm button{min-height:54px}
+.tutorial-screen{min-height:100dvh;padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));background:radial-gradient(circle at 50% 35%,#123948 0,#06141d 45%,#02080d 100%);color:#ecfbff}
+.tutorial-screen>header{width:min(1120px,100%);min-height:62px;margin:0 auto 14px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:10px 14px;border:1px solid #285d6e;background:rgba(4,20,28,.92)}
+.tutorial-screen>header button{min-height:44px;padding:0 16px;border:1px solid #4a8799;background:#092832;color:#c9f6ff;font-weight:900}.tutorial-screen>header div{display:grid;text-align:center}.tutorial-screen>header small{color:#63cce4;font-size:10px;letter-spacing:.13em}.tutorial-screen>header strong{font-size:18px}.tutorial-screen>header>b{color:#ffcb54;font-size:10px;letter-spacing:.12em}
+.tutorial-arena{width:min(1120px,100%);margin:auto;display:grid;grid-template-columns:minmax(0,720px) minmax(280px,1fr);gap:18px;align-items:center}.tutorial-board{width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(9,1fr);border:2px solid #6fe7ff;background:#08212b;box-shadow:0 0 45px rgba(46,198,230,.18);transition:filter .2s}.tutorial-board.dimmed{filter:brightness(.33) saturate(.65)}
+.tutorial-cell{position:relative;display:grid;place-items:center;min-width:0;min-height:0;padding:0;border:1px solid rgba(73,155,177,.35);background:linear-gradient(145deg,rgba(12,53,67,.95),rgba(5,27,37,.95));overflow:visible}.tutorial-cell:disabled{cursor:default}.tutorial-cell.target{z-index:5;cursor:pointer;background:#123f4c;box-shadow:inset 0 0 18px rgba(101,232,255,.35)}.tutorial-target-ring{position:absolute;z-index:12;inset:12%;border:3px solid #ffe37a;border-radius:18%;box-shadow:0 0 12px #ffc83d,inset 0 0 10px rgba(255,219,73,.55);animation:tutorial-target 1s ease-in-out infinite alternate}.tutorial-cell .probe-token{z-index:10}.tutorial-cell .meteor{z-index:8}
+.tutorial-dialog{align-self:center;display:grid;gap:14px;padding:24px;border-left:4px solid #71def4;background:linear-gradient(120deg,rgba(7,36,47,.98),rgba(3,17,24,.98));box-shadow:0 18px 50px rgba(0,0,0,.3)}.tutorial-ai{width:max-content;padding:5px 9px;background:#72e3f7;color:#03202b;font-size:11px;font-weight:1000;letter-spacing:.18em}.tutorial-dialog h2,.tutorial-dialog p{margin:0}.tutorial-dialog h2{font-size:clamp(22px,3vw,34px);line-height:1.25}.tutorial-dialog p{margin-top:10px;color:#b0cad4;font-size:16px;line-height:1.8}.tutorial-dialog button{min-height:56px;border:1px solid #70def4;background:#0d4252;color:#fff;font-size:16px;font-weight:900;letter-spacing:.08em}
+@keyframes tutorial-target{to{transform:scale(.9);filter:brightness(1.35)}}
+@media(max-width:850px){.tutorial-screen{padding:12px 12px calc(18px + env(safe-area-inset-bottom))}.tutorial-screen>header{grid-template-columns:auto 1fr}.tutorial-screen>header>b{display:none}.tutorial-arena{grid-template-columns:1fr;gap:10px}.tutorial-board{width:min(100%,68dvh);margin:auto}.tutorial-dialog{position:relative;z-index:20;padding:16px;border-left:0;border-top:4px solid #71def4}.tutorial-dialog h2{font-size:21px}.tutorial-dialog p{font-size:14px;line-height:1.6}.tutorial-dialog button{min-height:50px}}
+@media(max-width:700px){.title-guide-actions{top:14px;right:14px;gap:4px}.title-guide-actions .title-manual{min-width:88px;height:42px}.title-guide-actions .title-beginner{min-width:44px;height:42px;padding:0 8px}.title-beginner span{display:none}}
+@media(max-width:520px){.tutorial-screen>header div strong{font-size:14px}.tutorial-screen>header small{font-size:8px}.tutorial-board{width:100%}.tutorial-dialog{gap:9px}.tutorial-dialog h2{font-size:18px}.tutorial-dialog p{font-size:13px}}
+.tutorial-active .arena{position:relative}.tutorial-coach{position:absolute;z-index:95;left:50%;top:clamp(72px,10vh,112px);width:min(620px,calc(100% - 24px));transform:translateX(-50%);display:grid;gap:9px;padding:16px 20px;border:1px solid #70def4;border-left:5px solid #70def4;background:linear-gradient(120deg,rgba(7,36,47,.97),rgba(3,17,24,.97));box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 28px rgba(60,215,244,.16);color:#ecfbff;pointer-events:none}.tutorial-coach.explain{top:50%;transform:translate(-50%,-50%)}.tutorial-coach small{color:#72e3f7;font-size:10px;font-weight:1000;letter-spacing:.16em}.tutorial-coach h2,.tutorial-coach p{margin:0}.tutorial-coach h2{font-size:clamp(18px,2.4vw,28px);line-height:1.3}.tutorial-coach p{color:#b8d0d8;font-size:14px;line-height:1.65}.tutorial-coach button{justify-self:end;min-height:46px;padding:0 18px;border:1px solid #70def4;background:#0d4252;color:#fff;font-weight:900;pointer-events:auto}.tutorial-active .board .cell.legal{z-index:3;box-shadow:inset 0 0 0 2px #ffe06a,0 0 14px rgba(255,211,74,.7)}.tutorial-active .action-panel{position:relative;z-index:96}.tutorial-active .manual-trigger,.tutorial-active .game-back{z-index:110}.tutorial-active .tutorial-coach.explain~.board{filter:brightness(.34) saturate(.65)}
+@media(max-width:700px){.tutorial-coach{top:58px;width:calc(100% - 12px);padding:12px 14px}.tutorial-coach.explain{top:45%}.tutorial-coach h2{font-size:17px}.tutorial-coach p{font-size:12px;line-height:1.5}.tutorial-coach button{min-height:42px}.tutorial-active .arena{padding-top:0}}
+
+/* Icon-only controls use drawn geometry so every font and device centers them identically. */
+.icon-close{position:relative;flex:0 0 auto;display:grid!important;place-items:center!important;padding:0!important;line-height:1!important;font-size:0!important;box-sizing:border-box}
+.icon-close::before,.icon-close::after{content:"";position:absolute;left:50%;top:50%;width:46%;height:2px;border-radius:2px;background:currentColor;transform:translate(-50%,-50%) rotate(45deg)}
+.icon-close::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.icon-close:hover,.icon-close:focus-visible{border-color:#70dfff!important;color:#fff;box-shadow:0 0 16px rgba(91,220,255,.22)}
+
+/* Keep the battle board visually separated from the top control deck. */
+@media(min-width:901px){.hud-mode>.game-layout{margin-top:18px;height:calc(100dvh - 190px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}}
+@media(min-width:901px) and (max-height:760px){.hud-mode>.game-layout{margin-top:12px;height:calc(100dvh - 154px - env(safe-area-inset-bottom))}}
+@media(min-width:561px) and (max-width:900px){.hud-mode>.game-layout{margin-top:10px}}
+@media(max-width:560px){.hud-mode>.game-layout{margin-top:6px}}
+
+/* Classic boards sit centrally; item boards reserve a little more room above the dense controls. */
+@media(min-width:901px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:14px;height:calc(100dvh - 204px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:20px;margin-bottom:8px;height:calc(100dvh - 204px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+}
+@media(min-width:901px) and (max-height:760px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:10px;height:calc(100dvh - 168px - env(safe-area-inset-bottom))}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:14px;margin-bottom:6px;height:calc(100dvh - 168px - env(safe-area-inset-bottom))}
+}
+@media(min-width:561px) and (max-width:900px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:10px}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:14px;margin-bottom:6px}
+}
+@media(max-width:560px){
+  .variant-classic.hud-mode>.game-layout,.variant-team.hud-mode>.game-layout{margin-block:6px}
+  .variant-item.hud-mode>.game-layout,.variant-team-item.hud-mode>.game-layout{margin-top:10px;margin-bottom:4px}
+}
+@media(max-width:700px){
+  .switch-setup-controls>.meteor-choice.item-choice{min-height:52px;grid-template-columns:21px minmax(0,1fr);column-gap:3px;padding:4px}
+  .switch-setup-controls>.meteor-choice.item-choice>span{font-size:clamp(7px,2.2vw,11px)}
+}
+
+@media(min-width:901px){
+  .hud-mode .arena>.board{width:min(100%,var(--board-available-size,720px),720px);max-height:none}
+  .variant-classic.hud-mode .arena,
+  .variant-team.hud-mode .arena{grid-template-rows:minmax(0,1fr) auto;row-gap:0}
+  .variant-classic.hud-mode .arena>.board,
+  .variant-team.hud-mode .arena>.board{grid-row:1;align-self:center}
+  .variant-classic.hud-mode .arena>.action-panel,
+  .variant-team.hud-mode .arena>.action-panel{grid-row:2}
+  .variant-classic.hud-mode .arena>.action-panel:not(:empty),
+.variant-team.hud-mode .arena>.action-panel:not(:empty){margin-top:6px}
+}
+
+/* The room controls may grow as members and CPUs are added. Keep START reachable. */
+.shell.online-lobby-only .control-strip{
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  scroll-padding-bottom:18px;
+}
+.shell.online-lobby-only .online-panel{
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:visible!important;
+  padding-bottom:max(16px,env(safe-area-inset-bottom));
+}
+.shell.online-lobby-only .online-panel>.ai-members-card{min-height:0}
+.shell.online-lobby-only .online-panel>.apply-room-settings,
+.shell.online-lobby-only .online-panel>.leave-room-button{
+  position:sticky;
+  bottom:0;
+  z-index:8;
+  box-shadow:0 -10px 24px rgba(2,10,15,.72);
+}
+@media(max-width:700px){
+  .shell.online-lobby-only .control-strip{padding-bottom:calc(16px + env(safe-area-inset-bottom))!important}
+  .shell.online-lobby-only .online-panel{padding-bottom:8px}
+}

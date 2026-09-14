@@ -2,6 +2,10 @@ import type { CSSProperties } from "react";
 import type { SiteLanguage } from "../hooks/use-local-settings";
 import { ITEM_ICONS, SELECTABLE_ITEMS } from "../item-content";
 import {
+  activePlayers,
+  isTeamVariant,
+  PLAYER_ORDER,
+  type GameState,
   teamOf,
   type ItemKind,
   type Meteor,
@@ -30,6 +34,37 @@ export function ItemIcon({ kind }: { kind: ItemKind }) {
 export function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {
   const teamClass = teamMode ? ` team-${teamOf(color)}` : "";
   return <div className={`probe-portrait ${color}${teamClass}`}><span>▲</span><i /><b /></div>;
+}
+
+/** Both sides share inventory visibility and turn highlighting; CSS owns placement. */
+export function PlayerStack({ side, game, resultVisible, displayName, canSeeLoadout, language }: {
+  side: "left" | "right";
+  game: GameState;
+  resultVisible: boolean;
+  displayName: (player: Player, index: number) => string;
+  canSeeLoadout: (player: Player) => boolean;
+  language: SiteLanguage;
+}) {
+  const players: Player[] = side === "left" ? ["red", "green"] : ["blue", "yellow"];
+  const active = activePlayers(game);
+  return (
+    <div className={`player-stack ${side}-stack`}>
+      {players.filter((player, index) => index === 0 || active.includes(player)).map((player) => {
+        const visible = canSeeLoadout(player);
+        const highlighted = resultVisible ? game.winner === player : game.turn === player;
+        return (
+          <aside key={player} className={`player-card ${player}-card ${highlighted ? "active" : ""}`}>
+            <span className="eyebrow">{displayName(player, PLAYER_ORDER.indexOf(player) + 1)}</span>
+            <h2>{player.toUpperCase()}</h2>
+            <ProbeIcon color={player} teamMode={isTeamVariant(game.variant)} />
+            <InventoryPanel inventory={game.inventory[player]} color={player}
+              items={visible ? game.itemHands?.[player] ?? [] : []}
+              loadoutHidden={!visible} language={language} />
+          </aside>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ProbeToken({

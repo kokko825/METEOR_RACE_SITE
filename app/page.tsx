@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
 import { rankTier } from "./duel-rating";
@@ -55,14 +55,14 @@ import {
 } from "./game-rules";
 import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
-import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, itemEffectFacts } from "./item-content";
+import { SELECTABLE_ITEMS, itemDetail, itemEffectFacts } from "./item-content";
 import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 import { LATEST_RELEASE_NOTES } from "../config/release-notes";
 import { useDeferredReveal } from "./hooks/use-deferred-reveal";
 import { useUiFeedback } from "./hooks/use-ui-feedback";
 import { useResponsiveBoard } from "./hooks/use-responsive-board";
-import { SoundMixer, VolumeRange } from "./components/sound-controls";
+import { SoundMixer, VolumeControls } from "./components/sound-controls";
 import { MatchMeta } from "./components/match-meta";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
@@ -75,16 +75,15 @@ import {
   type StrongPlayCandidate,
 } from "./strong-play";
 import { COMMUNITY_SAFETY } from "../config/community-safety";
-import { ITEM_LORE } from "../config/item-lore";
+import { RulesArchive, WorldArchive } from "./components/manual-content";
 import { ASSET_PATHS } from "../config/asset-paths";
 import { tutorialCopy, type TutorialCopyStep } from "../config/tutorial-copy";
 import {
   ITEM_DEMO_LABELS,
-  InventoryPanel,
+  PlayerStack,
   ItemIcon,
   MeteorIcon,
   ObstacleIcon,
-  ProbeIcon,
   ProbeToken,
   PulseDeviceIcon,
 } from "./components/game-pieces";
@@ -874,7 +873,6 @@ function Game() {
     setChatCooldownUntil(0);
   }, [online.code]);
 
-  const sendQuickChat = (message: string) => sendChat(message);
 
   const playBoom = useCallback(
     () => playBoomSfx(soundEnabled, masterVolume, sfxVolume),
@@ -1952,6 +1950,11 @@ function Game() {
     ? tutorialCopy(tutorialStep as TutorialCopyStep, language, tutorialOpening, tutorialHitRival)
     : null;
 
+  const volumeControls = {
+    language, musicEnabled, masterVolume, bgmVolume, sfxVolume,
+    setMasterVolume, setBgmVolume, setSfxVolume, onTick: playVolumeTick,
+  };
+
   return (
     <main className={`shell text-size-${textSize} variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${tutorialStep ? ` tutorial-active tutorial-${tutorialStep}` : ""}${reducedMotion ? " reduced-motion" : ""}`}>
       <div className="phone-portrait-lock" role="status" aria-live="polite">
@@ -2101,9 +2104,7 @@ function Game() {
             </section>
             <section>
               <h3>{t("soundHeading")}</h3>
-              <VolumeRange className="drawer-volume" label={t("masterVolume")} value={masterVolume} onChange={setMasterVolume} onTick={playVolumeTick} />
-              {musicEnabled && <VolumeRange className="drawer-volume" label="BGM" value={bgmVolume} onChange={setBgmVolume} onTick={playVolumeTick} />}
-              <VolumeRange className="drawer-volume" label={t("soundEffects")} value={sfxVolume} onChange={setSfxVolume} onTick={playVolumeTick} />
+              <VolumeControls {...volumeControls} />
               <button type="button" className={soundEnabled ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setSoundEnabled((value) => !value)}>{t("muteAll")} {soundEnabled ? "OFF" : "ON"}</button>
               {musicEnabled && <label>BATTLE MUSIC
                 <select value={battleTrack} onChange={(event) => setBattleTrack(event.target.value as BattleTrackChoice)}>
@@ -2145,33 +2146,22 @@ function Game() {
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label={t("manualLabel")}>
             <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{visibleGameMessage}</strong></div><button className="icon-close" type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
             {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
-              <section className="manual-world-hero"><div className="manual-world-orbit" style={{ "--regula-progress": `${regulaProgress}%` } as CSSProperties} aria-hidden="true"><i /><i /><i /><strong>AEQRIS</strong><span>ASTRA NETWORK</span><b>CORE APPROACH {regulaProgress}%</b></div>
-              <div className="manual-world-copy"><small>ARCHIVE / ASTRA ACCORD</small><p>{t("worldEra")}</p><p>{t("worldAccord")}</p><p>{t("worldRegula")}</p><p>{t("worldBroadcast")}</p><strong>{t("worldFinale")}</strong><b>METEOR RACE</b></div></section>
-              <section className="authorized-equipment"><header><small>AUTHORIZED EQUIPMENT / OFFICIAL SOURCES</small><h3>{language === "ja" ? "AEQRIS認可競技装備と提供元" : "AEQRIS-AUTHORIZED EQUIPMENT & SOURCES"}</h3><p>{language === "ja" ? "協賛企業の提供装備と、AEQRIS運営技術を競技用に認可。" : "Competition equipment includes partner-supplied units and authorized adaptations of AEQRIS operations technology."}</p></header><div>{ITEM_LORE.map((item) => <article key={item.kind} className={item.kind}><i aria-hidden="true">{ITEM_ICONS[item.kind]}</i><span><small>{language === "ja" ? ("operator" in item && item.operator ? `${item.company} / AEQRIS運営機能` : `${item.company}社 提供`) : ("operator" in item && item.operator ? `${item.company} / AEQRIS OPERATIONS` : `PROVIDED BY ${item.company}`)}</small><b>{item.kind.toUpperCase()}</b><p>{language === "ja" ? item.ja : item.en}</p></span></article>)}</div></section>
+              <WorldArchive language={language} progress={regulaProgress} />
               <section className="supplier-proposal"><header><small>NEW SUPPLIER PROGRAM</small><h3>{language === "ja" ? "新規装備提案" : "PROPOSE NEW EQUIPMENT"}</h3><p>{language === "ja" ? "新たなAEQRIS認可競技装備のアイデアを実際に募集しています。採用候補として検討しますので、ぜひあなたの案をお送りください。" : "Submit an idea for new AEQRIS-authorized competition equipment."}</p></header><form onSubmit={(event) => { event.preventDefault(); void sendItemProposal(); }}><label>{language === "ja" ? "アイテム名" : "ITEM NAME"}<input maxLength={40} value={proposalName} onChange={(event) => setProposalName(event.target.value)} required /></label><label>{language === "ja" ? "効果案" : "EFFECT"}<textarea maxLength={300} value={proposalEffect} onChange={(event) => setProposalEffect(event.target.value)} required /></label><label>{language === "ja" ? "面白いと思う理由" : "WHY IT IS FUN"}<textarea maxLength={300} value={proposalReason} onChange={(event) => setProposalReason(event.target.value)} required /></label><label>{language === "ja" ? "強すぎないための制約" : "BALANCE LIMIT"}<textarea maxLength={240} value={proposalLimit} onChange={(event) => setProposalLimit(event.target.value)} required /></label><label>{language === "ja" ? "掲載名（任意）" : "CREDIT NAME (OPTIONAL)"}<input maxLength={24} value={proposalCredit} onChange={(event) => setProposalCredit(event.target.value)} disabled={!proposalCreditAllowed} /></label><label className="proposal-check"><input type="checkbox" checked={proposalCreditAllowed} onChange={(event) => setProposalCreditAllowed(event.target.checked)} />{language === "ja" ? "採用時の名前掲載を許可する" : "Allow this name to be credited if adopted"}</label><p>{language === "ja" ? "提案は調整・改変して採用する場合あり。個人情報や第三者作品の送信は禁止。" : "Ideas may be adjusted before adoption. Do not submit personal information or third-party work."} <a href="/policy#submissions">{language === "ja" ? "投稿規約" : "Policy"}</a></p><button type="submit">{language === "ja" ? "AEQRISへ提案を送る" : "SEND TO AEQRIS"}</button>{proposalStatus && <strong role="status">{proposalStatus}</strong>}</form></section>
-            </div> : <div className="manual-onepage">
-              <section className="manual-rules"><header><small>01</small><h3>{t("turnLoopHeading")}</h3></header><div className="manual-rule-content"><div className="manual-turn-loop">
-                <article><span>01</span><i>✥</i><div><b>MOVE</b><p>{t("manualMove")}</p></div></article><em>↓</em>
-                <article><span>02</span><i>◆</i><div><b>METEOR</b><p>{t("manualMeteor")}</p></div></article><em>↓</em>
-                <article><span>03</span><i>{ITEM_ICONS.shield}</i><div><b>ITEM</b><p>{t("manualItem")}</p></div></article>
-                <strong>{t("manualNext")}</strong>
-              </div><div className="manual-notes"><p>{t("noDiagonal")}</p><p>{t("blastPropulsion")}</p><p>{t("anyCoreArrival")}</p><p>{t("firstTurnRule")}</p><p>{t("bonusMoveRule")}</p></div></div></section>
-              <section className="manual-items"><header><small>02</small><h3>{t("itemArchiveHeading")}</h3></header><div className="manual-item-grid">{SELECTABLE_ITEMS.map((kind) => <article key={kind} className={kind}><i aria-hidden="true">{ITEM_ICONS[kind]}</i><div><b>{kind.toUpperCase()}</b><p>{itemDetail(kind, balance, language)}</p></div></article>)}</div></section>
-            </div>}
+            </div> : <RulesArchive language={language} balance={balance} />}
           </aside>
         </div>
       )}
 
       <section className="game-layout">
-        <div className="player-stack left-stack">
-          <aside className={`player-card red-card ${(resultVisible ? game.winner === "red" : game.turn === "red") ? "active" : ""}`}>
-          <span className="eyebrow">{displayNameForPlayer("red", 1)}</span>
-          <h2>RED</h2>
-          <ProbeIcon color="red" teamMode={isTeamVariant(game.variant)} />
-          <InventoryPanel inventory={game.inventory.red} color="red" items={canSeeLoadout("red") ? game.itemHands?.red ?? [] : []} loadoutHidden={!canSeeLoadout("red")} language={language} />
-          </aside>
-          {activePlayers(game).includes("green") && <aside className={`player-card green-card ${(resultVisible ? game.winner === "green" : game.turn === "green") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("green", 3)}</span><h2>GREEN</h2><ProbeIcon color="green" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.green} color="green" items={canSeeLoadout("green") ? game.itemHands?.green ?? [] : []} loadoutHidden={!canSeeLoadout("green")} language={language} /></aside>}
-        </div>
+        <PlayerStack
+          side="left"
+          game={game}
+          resultVisible={resultVisible}
+          displayName={displayNameForPlayer}
+          canSeeLoadout={canSeeLoadout}
+          language={language}
+        />
 
         <section className="arena" ref={arenaRef}>
           {tutorialStep && tutorialStep !== "rival-moving" && tutorialStep !== "free-play" && tutorialStep !== "complete" && (
@@ -2541,15 +2531,14 @@ function Game() {
           </div>
         </section>
 
-        <div className="player-stack right-stack">
-          <aside className={`player-card blue-card ${(resultVisible ? game.winner === "blue" : game.turn === "blue") ? "active" : ""}`}>
-          <span className="eyebrow">{displayNameForPlayer("blue", 2)}</span>
-          <h2>BLUE</h2>
-          <ProbeIcon color="blue" teamMode={isTeamVariant(game.variant)} />
-          <InventoryPanel inventory={game.inventory.blue} color="blue" items={canSeeLoadout("blue") ? game.itemHands?.blue ?? [] : []} loadoutHidden={!canSeeLoadout("blue")} language={language} />
-          </aside>
-          {activePlayers(game).includes("yellow") && <aside className={`player-card yellow-card ${(resultVisible ? game.winner === "yellow" : game.turn === "yellow") ? "active" : ""}`}><span className="eyebrow">{displayNameForPlayer("yellow", 4)}</span><h2>YELLOW</h2><ProbeIcon color="yellow" teamMode={isTeamVariant(game.variant)} /><InventoryPanel inventory={game.inventory.yellow} color="yellow" items={canSeeLoadout("yellow") ? game.itemHands?.yellow ?? [] : []} loadoutHidden={!canSeeLoadout("yellow")} language={language} /></aside>}
-        </div>
+        <PlayerStack
+          side="right"
+          game={game}
+          resultVisible={resultVisible}
+          displayName={displayNameForPlayer}
+          canSeeLoadout={canSeeLoadout}
+          language={language}
+        />
       </section>
 
       {!entryStage && mode === "online" && online.code && chatOpen && !chatMuted && (
@@ -2565,7 +2554,7 @@ function Game() {
           <div className="quick-comms">{QUICK_CHAT_MESSAGES.map((message, index) => {
             const english = ["Good luck!", "Nice!", "Oops!", "Thinking…", "Rematch!", "GG!"][index] ?? message;
             const label = language === "ja" ? message : english;
-            return <button key={message} type="button" disabled={chatPending || chatCooldownRemaining > 0} onClick={() => void sendQuickChat(label)}>{label}</button>;
+            return <button key={message} type="button" disabled={chatPending || chatCooldownRemaining > 0} onClick={() => void sendChat(label)}>{label}</button>;
           })}</div>
         </aside>
       )}
@@ -2589,7 +2578,7 @@ function Game() {
               {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void returnOnlineLobby()}>MATCH ROOM</button>}
             </div>
             <div className="hud-tools">
-              <SoundMixer musicEnabled={musicEnabled} enabled={soundEnabled} masterVolume={masterVolume} bgmVolume={bgmVolume} sfxVolume={sfxVolume} masterLabel={t("masterVolume")} sfxLabel={t("soundEffects")} muteLabel={language === "ja" ? "消音する" : "Mute audio"} unmuteLabel={language === "ja" ? "音を出す" : "Enable audio"} setMasterVolume={setMasterVolume} setBgmVolume={setBgmVolume} setSfxVolume={setSfxVolume} onTick={playVolumeTick} onToggle={() => setSoundEnabled((current) => !current)} />
+              <SoundMixer {...volumeControls} enabled={soundEnabled} onToggle={() => setSoundEnabled((current) => !current)} />
               <div className="hud-icons">
                 {mode === "online" && online.code && <button type="button" className={`chat-toggle ${chatOpen ? "active" : ""} ${unreadChatCount ? "has-unread" : ""}`} aria-label={unreadChatCount ? localize(`チャット欄・新着${unreadChatCount}件`, `Chat · ${unreadChatCount} unread`) : localize("チャット表示を切り替える", "Toggle chat")} aria-pressed={chatOpen} onClick={() => { setChatOpen((current) => !current); setChatMuted(false); setUnreadChatCount(0); setChatToast(null); }}>{localize("チャット欄", "CHAT")}{unreadChatCount > 0 && <i className="chat-unread" aria-hidden="true">{unreadChatCount}</i>}</button>}
                 {mode === "online" && online.code && <button type="button" className={`chat-mute ${chatMuted ? "active danger" : ""}`} aria-label={localize("チャットをミュートする", "Mute chat")} aria-pressed={chatMuted} onClick={() => { setChatMuted((current) => !current); setChatOpen(false); }}>⊘</button>}

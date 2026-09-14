@@ -158,9 +158,7 @@ export function resolveCoreArrivals(state: GameState, next: GameState, reached: 
       phase: "over",
       bonusMove: false,
       winner: first,
-      message: isTeamVariant(state.variant)
-        ? `${playerName(first)} / ${teamOf(first) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"} TEAM WIN!`
-        : `${playerName(first)} WIN!`,
+      message: winnerMessage(first, state.variant),
     };
   }
   const finishOrder = [...(state.finishOrder ?? [])];
@@ -443,6 +441,15 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
 export const teamOf = (player: Player): "sun" | "moon" =>
   player === "red" || player === "yellow" ? "sun" : "moon";
 
+export const teamName = (player: Player) =>
+  teamOf(player) === "sun" ? "RED + YELLOW" : "BLUE + GREEN";
+
+function winnerMessage(winner: Player, variant: GameVariant) {
+  return isTeamVariant(variant)
+    ? `${playerName(winner)} / ${teamName(winner)} TEAM WIN!`
+    : `${playerName(winner)} WIN!`;
+}
+
 function stateKey(state: GameState, nextTurn: Player) {
   const meteors = [...state.meteors]
     .sort((a, b) => a.r - b.r || a.c - b.c)
@@ -628,12 +635,7 @@ export function applyMove(state: GameState, target: Pos): GameState {
       phase: "over",
       bonusMove: false,
       winner: state.turn,
-      message:
-        isTeamVariant(state.variant)
-          ? `${playerName(state.turn)} / ${
-              teamOf(state.turn) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"
-            } TEAM WIN!`
-          : `${playerName(state.turn)} WIN!`,
+      message: winnerMessage(state.turn, state.variant),
       log: [...log, `${playerName(state.turn)}が中央へ到達`],
     }, [state.turn]);
   }
@@ -1119,11 +1121,7 @@ export function applyMeteor(
       message:
         winner === "draw"
           ? "同時到達 — DRAW"
-          : isTeamVariant(state.variant)
-            ? `${playerName(winner)} / ${
-                teamOf(winner) === "sun" ? "RED + YELLOW" : "BLUE + GREEN"
-              } TEAM WIN!`
-            : `${playerName(winner)} WIN!`,
+          : winnerMessage(winner, state.variant),
       log: [...log, winner === "draw" ? "両機が中央へ到達" : `${playerName(winner)}が爆風で中央へ到達`],
     }, reached);
   } else {

@@ -1,5 +1,6 @@
 /** 画面演出とAI表示速度の調整値です。ゲームの強さやルールには影響しません。 */
 export const UI_BEHAVIOR = {
+  defaultVolumes: { master: 80, bgm: 65, sfx: 80 },
   aiDefaultDelayMs: 420,
   aiMinimumDelayMs: 120,
   aiBonusMoveMinimumDelayMs: 420,
