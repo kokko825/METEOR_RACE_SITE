@@ -4,7 +4,6 @@
 .shell.entry-active .global-hud{z-index:950}
 .shell.entry-active .title-screen>footer{display:none}
 .shell.entry-active .entry-flow{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
-.shell.online-lobby-only .control-strip{height:calc(100dvh - 76px)!important;min-height:0!important;padding-bottom:max(8px,env(safe-area-inset-bottom))!important}
 @media(max-width:760px){.shell.entry-active .title-screen nav{margin-bottom:82px}.shell.entry-active .entry-flow{padding-bottom:calc(82px + env(safe-area-inset-bottom))}}
 @media(max-width:900px){.shell.hud-mode{padding-bottom:calc(82px + env(safe-area-inset-bottom))!important}}
 
@@ -317,6 +316,10 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 
 /* The room controls may grow as members and CPUs are added. Keep START reachable. */
 .shell.online-lobby-only .control-strip{
+  display:block;
+  height:calc(100dvh - var(--battle-hud-height))!important;
+  min-height:0!important;
+  padding-block:16px calc(20px + env(safe-area-inset-bottom))!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
   overscroll-behavior:contain;
@@ -328,17 +331,49 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   min-height:0!important;
   max-height:none!important;
   overflow:visible!important;
+  align-content:start;
+  grid-auto-rows:max-content;
   padding-bottom:max(16px,env(safe-area-inset-bottom));
 }
-.shell.online-lobby-only .online-panel>.ai-members-card{min-height:0}
+.shell.online-lobby-only .online-panel>*{min-width:0}
+.shell.online-lobby-only .online-panel>.ai-members-card{
+  min-height:min-content;
+  grid-template-columns:minmax(0,1fr);
+  gap:10px;
+}
+.shell.online-lobby-only .ai-member-controls{
+  min-width:0;
+  grid-template-columns:minmax(0,1fr) minmax(140px,1fr);
+  justify-content:stretch;
+}
+.shell.online-lobby-only .ai-level-inline{min-width:0}
+.shell.online-lobby-only .room-members>div{
+  min-width:0;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-content:start;
+}
+.shell.online-lobby-only .room-members>div>b{overflow-wrap:anywhere}
+.shell.online-lobby-only .member-actions{grid-column:1/-1;flex-wrap:wrap}
+.shell.online-lobby-only .room-members button{white-space:normal;overflow-wrap:anywhere}
+.shell.online-lobby-only .online-panel>.online-count:not(.ai-members-card){grid-column:1/-1}
 .shell.online-lobby-only .online-panel>.apply-room-settings,
 .shell.online-lobby-only .online-panel>.leave-room-button{
-  position:sticky;
-  bottom:0;
-  z-index:8;
-  box-shadow:0 -10px 24px rgba(2,10,15,.72);
+  position:static;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  box-shadow:none;
 }
 @media(max-width:700px){
-  .shell.online-lobby-only .control-strip{padding-bottom:calc(16px + env(safe-area-inset-bottom))!important}
-  .shell.online-lobby-only .online-panel{padding-bottom:8px}
+  .shell.online-lobby-only .online-panel{gap:10px;padding:10px}
+  .shell.online-lobby-only .online-panel>*{grid-column:1/-1}
+  .shell.online-lobby-only .online-panel>.room-members:not(.team-room-members){grid-template-columns:minmax(0,1fr)}
+  .shell.online-lobby-only .online-panel>.team-room-members>div{grid-template-columns:minmax(0,1fr)!important}
+  .shell.online-lobby-only .room-members>div{padding:10px;gap:8px}
+  .shell.online-lobby-only .room-members button{min-height:44px!important;font-size:var(--game-ui-button)}
+  .shell.online-lobby-only .online-panel>.room-rule-console{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .shell.online-lobby-only .room-rule-console>div{grid-template-columns:minmax(0,1fr);min-width:0}
+  .shell.online-lobby-only .room-rule-console>label{grid-column:1/-1}
+}
+@media(max-width:360px){
+  .shell.online-lobby-only .ai-member-controls{grid-template-columns:minmax(0,1fr)}
 }

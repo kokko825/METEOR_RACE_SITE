@@ -143,6 +143,7 @@ test("keeps the public game discoverable by search engines", async () => {
   assert.match(items, /alternates: \{ canonical: "\/items" \}/);
   assert.match(updates, /alternates: \{ canonical: "\/updates" \}/);
   assert.match(sitemap, /`\$\{SITE_URL\}\/updates`/);
+  assert.match(sitemap, /lastModified: RELEASE_NOTES\[0\]\.date/);
   assert.match(siteUrl, /CONTENT_LAST_MODIFIED = "2026-09-08"/);
 });
 
@@ -718,5 +719,6 @@ test("keeps the online room start controls reachable when the lobby grows", asyn
   const css = await read("../app/globals.css");
   assert.match(css, /\.shell\.online-lobby-only \.control-strip\{[^}]*overflow-y:auto!important/);
   assert.match(css, /\.shell\.online-lobby-only \.online-panel\{[^}]*max-height:none!important[^}]*overflow:visible!important/);
-  assert.match(css, /\.online-panel>\.apply-room-settings,[\s\S]*\.online-panel>\.leave-room-button\{[^}]*position:sticky/);
+  assert.match(css, /\.online-panel>\.apply-room-settings,[\s\S]*\.online-panel>\.leave-room-button\{[^}]*position:static/);
+  assert.match(css, /grid-auto-rows:max-content/);
 });

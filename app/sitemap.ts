@@ -1,4 +1,5 @@
 import { SITE_URL, CONTENT_LAST_MODIFIED } from "./site-url";
+import { RELEASE_NOTES } from "../config/release-notes";
 
 /**
  * Served at /sitemap.xml. Lists public pages only; /api/* contains data
@@ -32,7 +33,7 @@ export default function sitemap() {
     },
     {
       url: `${SITE_URL}/updates`,
-      lastModified: CONTENT_LAST_MODIFIED,
+      lastModified: RELEASE_NOTES[0].date,
       changeFrequency: "weekly" as const,
       priority: 0.5,
     },
