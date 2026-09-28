@@ -771,6 +771,7 @@ function Game() {
 
   useEffect(() => {
     if (!online.code || !online.isHost || online.status !== "waiting") return;
+    let active = true;
     const timer = window.setTimeout(() => {
       void roomRequest({
         action: "update_lobby_settings",
@@ -780,12 +781,17 @@ function Game() {
         aiCount: onlineAiCount,
         difficulty: aiDifficulty,
       }).then((data) => {
-        setOnline((current) => ({ ...current, version: data.version, pending: false, error: "" }));
+        if (!active) return;
+        setSize(data.lobbySize);
+        setOnlineAiCount(data.lobbyAiCount as 0 | 1 | 2 | 3);
+        setOnlinePlayerCount(Math.max(1, data.joinedPlayers) as 1 | 2 | 3 | 4);
+        setOnline((current) => ({ ...current, ...data, pending: false, error: "" }));
       }).catch((error) => {
+        if (!active) return;
         setOnline((current) => ({ ...current, error: error instanceof Error ? error.message : "ルーム設定を同期できませんでした" }));
       });
     }, 160);
-    return () => window.clearTimeout(timer);
+    return () => { active = false; window.clearTimeout(timer); };
   }, [online.code, online.isHost, online.status, variant, size, onlineAiCount, aiDifficulty]);
 
   const swapOwnRole = async (targetRole: Player) => {

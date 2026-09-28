@@ -26,6 +26,8 @@ function assertDifficultyGap(variant, size) {
     AI_LAB_GAMES: "48",
     AI_LAB_ASSERT_QUALITY: "0",
     AI_LAB_SCENARIO: `${variant}-${size}`,
+    AI_LAB_PLAYERS: "2",
+    AI_LAB_RANKED: "0",
     AI_LAB_RED_DIFFICULTY: "normal",
     AI_LAB_BLUE_DIFFICULTY: "easy",
   });
@@ -34,6 +36,8 @@ function assertDifficultyGap(variant, size) {
     AI_LAB_GAMES: "32",
     AI_LAB_ASSERT_QUALITY: "0",
     AI_LAB_SCENARIO: `${variant}-${size}`,
+    AI_LAB_PLAYERS: "2",
+    AI_LAB_RANKED: "0",
     AI_LAB_RED_DIFFICULTY: "hard",
     AI_LAB_BLUE_DIFFICULTY: "normal",
   });

@@ -373,6 +373,7 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
   let moves = 0;
   let retreats = 0;
+  let forcedRetreats = 0;
   let meteorPlacements = 0;
   let selfPropellingMeteors = 0;
   let rivalSetbackMeteors = 0;
@@ -399,7 +400,10 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
       const afterDistance =
         Math.abs(decision.target.r - mid) + Math.abs(decision.target.c - mid);
       moves += 1;
-      if (afterDistance > beforeDistance) retreats += 1;
+      if (afterDistance > beforeDistance) {
+        retreats += 1;
+        if (legalMoves(state).every(move => Math.abs(move.r - mid) + Math.abs(move.c - mid) > beforeDistance)) forcedRetreats += 1;
+      }
       state = applyMove(state, decision.target);
     }
     else if (decision.type === "meteor") {
@@ -444,6 +448,7 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     state,
     moves,
     retreats,
+    forcedRetreats,
     meteorPlacements,
     selfPropellingMeteors,
     rivalSetbackMeteors,
@@ -485,7 +490,9 @@ const allScenarios: Array<{ variant: GameVariant; size: number; count: number; r
 ];
 const scenarioFilter = process.env.AI_LAB_SCENARIO;
 const scenarios = scenarioFilter
-  ? allScenarios.filter(({ variant, size }) => `${variant}-${size}` === scenarioFilter)
+  ? allScenarios.filter(({ variant, size, count, ranked }) => `${variant}-${size}` === scenarioFilter &&
+      (!process.env.AI_LAB_PLAYERS || count === Number(process.env.AI_LAB_PLAYERS)) &&
+      (process.env.AI_LAB_RANKED === undefined || Boolean(ranked) === (process.env.AI_LAB_RANKED === "1")))
   : allScenarios;
 
 const requestedDifficulty = process.argv[2] as AiDifficulty | undefined;
@@ -499,6 +506,7 @@ for (const difficulty of difficulties) {
     let turns = 0;
     let moves = 0;
     let retreats = 0;
+    let forcedRetreats = 0;
     let meteorPlacements = 0;
     let selfPropellingMeteors = 0;
     let rivalSetbackMeteors = 0;
@@ -538,6 +546,7 @@ for (const difficulty of difficulties) {
       turns += final.turnCount;
       moves += result.moves;
       retreats += result.retreats;
+      forcedRetreats += result.forcedRetreats;
       meteorPlacements += result.meteorPlacements;
       selfPropellingMeteors += result.selfPropellingMeteors;
       rivalSetbackMeteors += result.rivalSetbackMeteors;
@@ -562,6 +571,7 @@ for (const difficulty of difficulties) {
       });
     }
     const retreatRate = moves === 0 ? null : Math.round((retreats / moves) * 1000) / 10;
+    const voluntaryRetreatRate = moves === 0 ? null : Math.round(((retreats - forcedRetreats) / moves) * 1000) / 10;
     const report = {
         difficulty,
         ...scenario,
@@ -569,6 +579,8 @@ for (const difficulty of difficulties) {
         wins,
         averageTurns: Math.round((turns / games) * 10) / 10,
         retreatRate,
+        voluntaryRetreatRate,
+        forcedRetreats,
         meteorActions: {
           placements: meteorPlacements,
           selfPropelling: selfPropellingMeteors,
@@ -585,7 +597,10 @@ for (const difficulty of difficulties) {
       assert.equal(emptyBlasts, 0, `${difficulty} ${scenario.variant}-${scenario.size} must not create empty blasts`);
       assert.ok(report.averageTurns < 100, `${difficulty} ${scenario.variant}-${scenario.size} must finish before stalling`);
       const retreatCeiling = isItemVariant(scenario.variant) ? 12 : difficulty === "easy" ? 8 : 10;
-      assert.ok(retreatRate !== null && retreatRate <= retreatCeiling, `${difficulty} ${scenario.variant}-${scenario.size} retreat rate ${retreatRate}% exceeds ${retreatCeiling}%`);
+      // A legal move can be forced away from CORE by blockers. Keep the gross
+      // rate visible, but only voluntary retreats measure decision quality.
+      assert.ok(voluntaryRetreatRate !== null && voluntaryRetreatRate <= retreatCeiling, `${difficulty} ${scenario.variant}-${scenario.size} voluntary retreat rate ${voluntaryRetreatRate}% exceeds ${retreatCeiling}%`);
+      if (difficulty === "easy") assert.equal(voluntaryRetreatRate, 0, "EASY must not randomly retreat when forward/sideways movement is available");
     }
     console.log(JSON.stringify(report));
   }

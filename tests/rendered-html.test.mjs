@@ -65,7 +65,8 @@ test("keeps EASY CPU on small meteors without allowing placement stalls", async 
   assert.match(ai, /difficulty === "easy" && easyHasSmallMeteor && placement\.size === "large"/);
   assert.match(ai, /if \(!ranked\.length && \(state\.passAvailable\?\.\[player\] \?\? true\)\)/);
   assert.match(ai, /If every sampled square is occupied, fall back to an exhaustive scan/);
-  assert.match(ai, /bestValue - 18/);
+  assert.match(ai, /selectWithDifficulty\(ranked, difficulty, random, isItemVariant/);
+  assert.doesNotMatch(ai, /bestValue - 18|understandableChoices/);
 });
 
 test("guides beginners on the real match board without restricting legal actions", async () => {

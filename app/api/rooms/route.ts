@@ -124,6 +124,19 @@ function roomMemberEmails(room: RoomRow) {
   return [room.host_email, room.guest_email, room.player3_email, room.player4_email, ...spectators.map((member) => member.email)];
 }
 
+/** Keep lobby previews and actual matches within the same seat/board limits. */
+function normalizeRoomSettings(variant: GameVariant, size: number, aiCount: number, humans: number) {
+  const requestedAi = Number.isFinite(aiCount) ? Math.round(aiCount) : 0;
+  const bots = isTeamVariant(variant) ? 4 - humans : Math.max(0, Math.min(4 - humans, requestedAi));
+  const board = [9, 11, 13, 15].includes(size) ? size : 9;
+  return {
+    roomLobbyAiCount: bots,
+    roomLobbySize: isTeamVariant(variant) ? Math.max(13, board)
+      : isItemVariant(variant) ? Math.max(11, board)
+      : humans + bots > 2 ? 11 : Math.min(11, board),
+  };
+}
+
 function roomPayload(room: RoomRow, email: string) {
   const memberEmails = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
   const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
@@ -134,6 +147,7 @@ function roomPayload(room: RoomRow, email: string) {
   const role: Player | null = memberIndex >= 0 ? seats[memberIndex] ?? null : null;
   const roomCount = memberEmails.filter(Boolean).length + spectators.length;
   const joinedPlayers = memberEmails.filter((member, index) => Boolean(member && seats[index])).length;
+  const lobby = normalizeRoomSettings(state.roomLobbyVariant ?? state.variant ?? "classic", state.roomLobbySize ?? state.size, state.roomLobbyAiCount ?? (state.botPlayers ?? []).length, joinedPlayers);
   return {
     code: room.code,
     role,
@@ -145,8 +159,8 @@ function roomPayload(room: RoomRow, email: string) {
     roomCount,
     spectatorCount: roomCount - joinedPlayers,
     lobbyVariant: state.roomLobbyVariant ?? state.variant ?? "classic",
-    lobbySize: state.roomLobbySize ?? state.size ?? 9,
-    lobbyAiCount: state.roomLobbyAiCount ?? (state.botPlayers ?? []).length,
+    lobbySize: lobby.roomLobbySize,
+    lobbyAiCount: lobby.roomLobbyAiCount,
     lobbyAiDifficulty: state.roomLobbyAiDifficulty ?? "normal",
     memberNames: [...memberEmails
       .map((member, index) =>
@@ -284,7 +298,7 @@ export async function POST(request: Request) {
             roomLobbyVariant: createVariant,
             roomLobbySize: size,
             roomLobbyAiCount: requestedAi,
-            roomLobbyAiDifficulty: "normal",
+            roomLobbyAiDifficulty: body.difficulty === "easy" || body.difficulty === "hard" ? body.difficulty : "normal",
           }),
           "waiting",
           now,
@@ -348,9 +362,8 @@ export async function POST(request: Request) {
         await applyDuelRatingChange(email, state.variant, ABANDON_PENALTY);
       }
     }
-    const nextSeats = remaining
-      .map((entry) => entry.seat)
-      .filter((seat): seat is Player => Boolean(seat));
+    // Null is a spectator seat, not an empty member slot. Preserve its index.
+    const nextSeats = remaining.map((entry) => entry.seat);
     state.roomMemberNames = memberEmails
       .map((member, index) => ({ member, name: names[index] }))
       .filter((entry) => Boolean(entry.member) && entry.member !== email)
@@ -509,6 +522,7 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "switch_team") {
+    if (email !== room.host_email) return json({ error: "チーム変更はルームリーダーだけが行えます" }, 403);
     if (room.status === "playing") return json({ error: "チーム変更は待機中に行ってください" }, 409);
     const members = [room.host_email, room.guest_email, room.player3_email, room.player4_email];
     const memberIndex = members.indexOf(email);
@@ -565,8 +579,9 @@ export async function POST(request: Request) {
     const nextVariant: GameVariant = body.variant === "team" || body.variant === "item" || body.variant === "team-item" ? body.variant : "classic";
     const requestedSize = [9, 11, 13, 15].includes(body.size ?? 9) ? body.size! : 9;
     state.roomLobbyVariant = nextVariant;
-    state.roomLobbySize = isTeamVariant(nextVariant) ? Math.max(13, requestedSize) : isItemVariant(nextVariant) ? Math.max(11, requestedSize) : Math.min(11, requestedSize);
-    state.roomLobbyAiCount = Math.max(0, Math.min(3, Math.round(body.aiCount ?? 0)));
+    const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
+    const humans = [room.host_email, room.guest_email, room.player3_email, room.player4_email].filter((member, index) => member && seats[index]).length;
+    Object.assign(state, normalizeRoomSettings(nextVariant, requestedSize, body.aiCount ?? 0, humans));
     state.roomLobbyAiDifficulty = body.difficulty === "easy" || body.difficulty === "hard" ? body.difficulty : "normal";
     await env.DB.prepare("UPDATE game_rooms SET state_json = ?, version = version + 1, updated_at = ? WHERE code = ?")
       .bind(JSON.stringify(state), Date.now(), code).run();
@@ -655,7 +670,7 @@ export async function POST(request: Request) {
     const playerList: Player[] = PLAYER_ORDER.slice(0, players);
     const previousSeats = currentSeats;
     const preferredRoles: Array<Player | null> = [
-      ...(previous.roomPreferredRoles ?? previousSeats),
+      ...previousSeats,
     ];
     const humanSeats: Player[] = [];
     const activeMemberIndices = memberEmails.map((member, index) => member && previousSeats[index] ? index : -1).filter((index) => index >= 0).slice(0, humanCount);
@@ -676,12 +691,7 @@ export async function POST(request: Request) {
     const botPlayers = playerList.filter((player) => !humanSeats.includes(player));
     const requestedSize =
       body.size === 15 ? 15 : body.size === 13 ? 13 : body.size === 11 ? 11 : 9;
-    const size =
-      isTeamVariant(variant) && (requestedSize === 9 || requestedSize === 11)
-          ? 13
-        : players > 2 && requestedSize === 9
-          ? 11
-          : requestedSize;
+    const size = normalizeRoomSettings(variant, requestedSize, aiCount, humanCount).roomLobbySize;
     const turnOrder =
       isTeamVariant(variant)
         ? [...TEAM_TURN_ORDER]
