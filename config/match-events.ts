@@ -1,5 +1,6 @@
 /** Casual event battles. One event per match; timings are measured in full rounds. */
 export const MATCH_EVENT_RULES = { interval: 5, warningRounds: 2, outerOrbitChancePercent: 2 } as const;
+export const MATCH_EVENT_FX = { leadMs: 180, moveMs: 900, settleMs: 120, heartbeatMs: 2200 } as const;
 export const MATCH_EVENTS = {
   off: { ja: "OFF", en: "OFF" },
   geyser: { ja: "間欠泉", en: "Geyser" },

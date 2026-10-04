@@ -1,7 +1,7 @@
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
 import { MATCH_EVENT_RULES, normalizeMatchEvent, type MatchEventKind } from "../config/match-events";
 
-export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; clockwise: boolean; dr: number; dc: number };
+export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; secondRing?: number; clockwise: boolean; dr: number; dc: number };
 export type MatchEventState = { kind: MatchEventKind; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
 
 export type Player = "red" | "blue" | "green" | "yellow";
@@ -814,8 +814,8 @@ function eventPush(state: GameState, direction: (player: Player) => Pos | undefi
 export function applyMatchEvent(state: GameState, event: EventForecast): GameState {
   if (event.kind === "gravity") return applyGravity(state);
   if (event.kind === "orbit") {
-    const rotate = <T extends Pos>(p: T): T => ringOf(state, p) === event.ring
-      ? { ...p, ...rotatePos(state.size, p, event.clockwise) } : p;
+    const rotate = <T extends Pos>(p: T): T => ringOf(state, p) === event.ring || ringOf(state, p) === event.secondRing
+      ? { ...p, ...rotatePos(state.size, p, ringOf(state, p) === event.ring ? event.clockwise : !event.clockwise) } : p;
     return { ...state,
       probes: Object.fromEntries(PLAYER_ORDER.map((p) => [p, rotate(state.probes[p])])) as Record<Player, Pos>,
       meteors: state.meteors.map(rotate), obstacles: activeObstacles(state).map(rotate),
@@ -873,10 +873,12 @@ function advanceMatchEvent(state: GameState): GameState {
     const objects = [...players.map((p) => state.probes[p]), ...state.meteors, ...(state.obstacles ?? []), ...(state.pulseDevices ?? [])];
     const rings = Array.from({ length: mid - 1 }, (_, i) => i + 1);
     const density = (ring: number) => objects.filter((p) => Math.max(Math.abs(p.r - mid), Math.abs(p.c - mid)) === ring).length;
-    const highest = Math.max(...rings.map(density));
-    const crowded = rings.filter((ring) => density(ring) === highest);
-    const ring = draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > highest ? mid : crowded[draw(crowded.length)];
-    event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring,
+    const pick = (pool: number[]) => { const max = Math.max(...pool.map(density)); const best = pool.filter((r) => density(r) === max); return best[draw(best.length)]; };
+    const split = Math.floor(mid / 2);
+    const ring = pick(rings.filter((r) => r <= split));
+    const outer = rings.filter((r) => r > split);
+    const secondRing = draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > Math.max(...outer.map(density)) ? mid : pick(outer);
+    event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring, secondRing,
       clockwise: draw(2) === 1, dr: direction.r, dc: direction.c }, seed };
   }
   if (event.remaining <= 0 && event.forecast) {

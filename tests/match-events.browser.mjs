@@ -4,7 +4,7 @@ const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin=process.env.TEST_ORIGIN || 'http://localhost:3000';
 const kind=process.env.TEST_EVENT || 'geyser';
-const marker=kind==='geyser'?'.event-vent-mound':kind==='orbit'?'.event-direction.orbit':kind==='wind'?'.event-direction.wind':'.cell.event-range';
+const marker=kind==='geyser'?'.event-vent-crack':kind==='orbit'?'.event-direction.orbit':kind==='wind'?'.event-board-effect.wind':'.event-board-effect.gravity';
 assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname));
 const browser=await chromium.launch({headless:true,...(process.env.TEST_BROWSER_PATH?{executablePath:process.env.TEST_BROWSER_PATH}:{})});
 try {
@@ -36,6 +36,9 @@ try {
     assert.ok(await page.locator(marker).count()>0,'Forecast markers visible');
     if(kind==='geyser') assert.equal(await page.locator(marker).count(),4,'Four forecast vents visible');
     assert.match(await page.locator('.event-status').innerText(),/2/);
+    if(kind==='orbit') assert.equal(await page.locator(marker).count(),8,'Two rings with four arrows each');
+    if(kind==='gravity'||kind==='wind') assert.equal(await page.locator('.event-board-effect').count(),1,'One shared effect, not a layer per cell');
+    assert.equal(await page.locator(marker).first().evaluate(el=>getComputedStyle(el).pointerEvents),'none');
     for(let action=0;action<40;action++) {
       if((await page.locator('.event-status b').innerText()).includes('5')) break;
       const choices=page.locator('.cell.legal, .cell.placeable');

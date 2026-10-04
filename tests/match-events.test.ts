@@ -9,6 +9,14 @@ for (let seed = 0; seed < 100; seed++) {
   state.probes.red = { r: 3, c: 5 }; state.probes.blue = { r: 5, c: 7 };
   state = round(round(round(state)));
   assert.equal(state.matchEvent!.forecast!.ring, 2, "Forecast targets the most populated inner ring");
+  assert.ok(state.matchEvent!.forecast!.secondRing! > 2, "Second ring is in the outer half");
+}
+{
+  const state = start("orbit", 2, 11);
+  state.probes.red = { r: 3, c: 5 }; state.probes.blue = { r: 1, c: 5 };
+  const next = applyMatchEvent(state, { ...event("orbit"), ring: 2, secondRing: 4 });
+  assert.deepEqual(next.probes.red, { r: 5, c: 7 });
+  assert.deepEqual(next.probes.blue, { r: 5, c: 1 });
 }
 
 for (const kind of ["geyser", "orbit", "gravity", "wind"] as const) for (const count of [2, 3, 4]) {

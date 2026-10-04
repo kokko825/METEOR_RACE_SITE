@@ -1,5 +1,11 @@
 /** 画面演出とAI表示速度の調整値です。ゲームの強さやルールには影響しません。 */
 export const UI_BEHAVIOR = {
+  roomPollMs: 900,
+  lobbyPollMs: 2000,
+  backgroundRoomPollMs: 5000,
+  chatPollMs: 2200,
+  backgroundChatPollMs: 6000,
+  chatToastMs: 3600,
   defaultVolumes: { master: 80, bgm: 65, sfx: 80 },
   aiDefaultDelayMs: 420,
   aiMinimumDelayMs: 120,

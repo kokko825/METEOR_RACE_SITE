@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { MATCH_EVENTS, type MatchEventKind } from "../config/match-events";
-import { EventControls, EventStatus, EventCellEffect, eventCellClass } from "./components/match-events";
+import { EventControls, EventStatus, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle } from "./components/match-events";
+import { useFieldEvent } from "./hooks/use-field-event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
@@ -170,10 +171,12 @@ function Game() {
   const [variant, setVariant] = useState<GameVariant>("classic");
   const [rankedMode, setRankedMode] = useState(false);
   const [eventKind, setEventKind] = useState<MatchEventKind>("off");
-  const [eventFiring, setEventFiring] = useState(false);
-  const playedFieldEvent = useRef(0);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
+  const eventFiring = useFieldEvent(game.matchEvent?.serial ?? 0);
+  const boardPlayers = useMemo(() => activePlayers(game), [game]);
+  const boardObstacles = useMemo(() => activeObstacles(game), [game]);
+  const boardPulseDevices = useMemo(() => activePulseDevices(game), [game]);
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [mode, setMode] = useState<Mode>("human");
   const [setupMode, setSetupMode] = useState<Mode>("human");
@@ -954,20 +957,6 @@ function Game() {
     showSwitchFx("gravity", game.turn);
   }, [game.rankedGravityPulse, game.turn, showSwitchFx]);
 
-  useEffect(() => {
-    const serial = game.matchEvent?.serial ?? 0;
-    if (!serial) { playedFieldEvent.current = 0; setEventFiring(false); return; }
-    if (serial === playedFieldEvent.current) return;
-    playedFieldEvent.current = serial;
-    setEventFiring(true);
-    const event = game.matchEvent?.last;
-    if (event?.kind === "orbit") setOrbitFx({ ring: event.ring, clockwise: event.clockwise, quarterTurns: 1, nonce: Date.now() });
-  }, [game.matchEvent?.serial, game.matchEvent?.last]);
-  useEffect(() => {
-    if (!eventFiring) return;
-    const timer = window.setTimeout(() => { setEventFiring(false); setOrbitFx(null); }, 1000);
-    return () => window.clearTimeout(timer);
-  }, [eventFiring]);
 
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
@@ -1449,11 +1438,11 @@ function Game() {
 
   useEffect(() => {
     if (mode !== "online" || !online.code) return;
-    const pollInterval = document.hidden ? 5000 : online.status === "playing" ? 900 : 2000;
+    const pollInterval = document.hidden ? UI_BEHAVIOR.backgroundRoomPollMs : online.status === "playing" ? UI_BEHAVIOR.roomPollMs : UI_BEHAVIOR.lobbyPollMs;
     let requestInFlight = false;
     let active = true;
     const poll = window.setInterval(async () => {
-      if (isAnimating || online.pending || requestInFlight) return;
+      if (isAnimating || eventFiring || online.pending || requestInFlight) return;
       requestInFlight = true;
       try {
         const response = await fetch(`/api/rooms?code=${encodeURIComponent(online.code)}`, {
@@ -1592,7 +1581,7 @@ function Game() {
       active = false;
       window.clearInterval(poll);
     };
-  }, [mode, online.code, online.version, online.pending, online.status, online.isHost, online.joinedPlayers, isAnimating, playBoom, playItemSound]);
+  }, [mode, online.code, online.version, online.pending, online.status, online.isHost, online.joinedPlayers, isAnimating, eventFiring, playBoom, playItemSound]);
 
   useEffect(() => {
     if (mode !== "online" || !online.code || chatMuted) {
@@ -1604,6 +1593,8 @@ function Game() {
     }
     let active = true;
     const loadChat = async () => {
+      if (chatRequestInFlight || !active) return;
+      chatRequestInFlight = true;
       try {
         const response = await fetch(`/api/chat?code=${encodeURIComponent(online.code)}`, {
           headers: playerRequestHeaders(),
@@ -1617,7 +1608,7 @@ function Game() {
             setUnreadChatCount((current) => Math.min(99, current + newMessages.length));
             const latest = newMessages[newMessages.length - 1];
             setChatToast(latest);
-            window.setTimeout(() => setChatToast((current) => current?.id === latest.id ? null : current), 3600);
+            window.setTimeout(() => { if (active) setChatToast((current) => current?.id === latest.id ? null : current); }, UI_BEHAVIOR.chatToastMs);
           }
           messages.forEach((message) => knownChatIds.current.add(message.id));
           chatInitialized.current = true;
@@ -1625,10 +1616,13 @@ function Game() {
         }
       } catch {
         // Chat is optional; a temporary failure must never interrupt the match.
+      } finally {
+        chatRequestInFlight = false;
       }
     };
+    let chatRequestInFlight = false;
     void loadChat();
-    const timer = window.setInterval(loadChat, document.hidden ? 6000 : 2200);
+    const timer = window.setInterval(loadChat, document.hidden ? UI_BEHAVIOR.backgroundChatPollMs : UI_BEHAVIOR.chatPollMs);
     return () => { active = false; window.clearInterval(timer); };
   }, [mode, online.code, chatMuted, chatOpen]);
 
@@ -2259,14 +2253,16 @@ function Game() {
             </div>
           )}
           <div
-            className={`board turn-${displayAccent}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}${resultVisible ? " result-dim" : ""}`}
+            className={`board turn-${displayAccent}${eventFiring ? " field-event-firing" : ""}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}${resultVisible ? " result-dim" : ""}`}
             data-perspective={perspectiveSlot}
             style={{
+              ...eventFxStyle,
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${game.size}, minmax(0, 1fr))`,
             }}
             aria-label={tf("boardAria", { size: game.size })}
           >
+            <EventBoardEffect event={game.matchEvent} perspective={perspectiveSlot} firing={eventFiring} />
             {Array.from({ length: game.size * game.size }, (_, index) => {
               const viewR = Math.floor(index / game.size);
               const viewC = index % game.size;
@@ -2276,18 +2272,22 @@ function Game() {
                 perspectiveSlot,
               );
               const pos = { r, c };
-              const orbitShift = orbitFx && orbitRingAt(r, c) === orbitFx.ring
+              const fieldOrbit = eventFiring && game.matchEvent?.last?.kind === "orbit" ? game.matchEvent.last : undefined;
+              const ringHere = orbitRingAt(r, c);
+              const cellOrbit = fieldOrbit && (ringHere === fieldOrbit.ring || ringHere === fieldOrbit.secondRing)
+                ? { ring: ringHere, clockwise: ringHere === fieldOrbit.ring ? fieldOrbit.clockwise : !fieldOrbit.clockwise, quarterTurns: 1 } : orbitFx;
+              const orbitShift = cellOrbit && ringHere === cellOrbit.ring
                 ? (() => {
-                    const from = orbitFx.quarterTurns === 2
+                    const from = cellOrbit.quarterTurns === 2
                       ? { r: game.size - 1 - r, c: game.size - 1 - c }
-                      : orbitFx.clockwise
+                      : cellOrbit.clockwise
                         ? { r: game.size - 1 - c, c: r }
                         : { r: c, c: game.size - 1 - r };
                     return boardToViewDelta({ r: from.r - r, c: from.c - c }, perspectiveSlot);
                   })()
                 : null;
               const probe =
-                activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
+                boardPlayers.find((player) => samePos(pos, game.probes[player])) ?? null;
               const probePush = probe ? blastFx?.pushed[probe] : undefined;
               const eventFrom = probe && eventFiring && game.matchEvent?.last?.kind !== "orbit" ? game.matchEvent?.from?.[probe] : undefined;
               const eventPush = eventFrom && !samePos(eventFrom, pos) ? { from: eventFrom, dr: pos.r - eventFrom.r, dc: pos.c - eventFrom.c } : undefined;
@@ -2297,9 +2297,9 @@ function Game() {
                   : samePos(pos, probePush.from)
               );
               const meteor = game.meteors.find((m) => samePos(m, pos));
-              const obstacle = activeObstacles(game).find((item) => samePos(item, pos));
+              const obstacle = boardObstacles.find((item) => samePos(item, pos));
               const pulseDevice = (game.pulseDevices ?? []).find((item) => samePos(item, pos));
-              const pulseField = activePulseDevices(game).find((device) => distance(device, pos) <= (game.balance?.pulseRadius ?? activeBalance.pulseRadius));
+              const pulseField = boardPulseDevices.find((device) => distance(device, pos) <= (game.balance?.pulseRadius ?? activeBalance.pulseRadius));
               const legal =
                 playerBoardInputEnabled &&
                 game.phase === "move" &&
@@ -2315,7 +2315,7 @@ function Game() {
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",
                     orbitSelecting && activeOrbitRing === orbitRingAt(r, c) ? "orbit-preview" : "",
-                    orbitShift ? `orbit-shift ${orbitFx?.clockwise ? "clockwise" : "counterclockwise"}` : "",
+                    orbitShift ? `orbit-shift ${cellOrbit?.clockwise ? "clockwise" : "counterclockwise"}` : "",
                   ].join(" ")}
                   onClick={() => handleCell(r, c)}
                   style={orbitShift ? ({

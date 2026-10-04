@@ -6,6 +6,7 @@
 - `site-presentation.ts`：色、広告、BGMのURLと再生設定
 - `ai-strategy.ts`：AIの細かな判断重み（上級調整）
 - `ui-behavior.ts`：AI表示速度と演出タイミング
+- `match-events.ts`：盤面イベントの周期・予告巡数・外周抽選率・演出の溜め/移動/終了時間
 - `ui-layout.ts`：盤面の最大寸法、画面に占める比率、操作欄との間隔
 - `ui-copy.ts`：日本語・英語の画面文章
 - `community-safety.ts`：チャット文字数、保存期間、定型文、禁止表現
@@ -24,6 +25,8 @@
 - 基本色や発光を変える → `site-presentation.ts`
 - 日本語・英語の文章を直す → `ui-copy.ts`
 - AIの画面上の待ち時間を変える → `ui-behavior.ts`
+- オンライン・チャットの通信間隔と通知時間 → `ui-behavior.ts`
+- イベントの予告と発動演出 → `match-events.ts`（時間）、`app/components/match-events.tsx`（表示）、`app/styles/match-events.css`（形・色）。進行同期は `app/hooks/use-field-event.ts`、ゲーム上の効果判定は `app/game-rules.ts`。
 - 全体／BGM／効果音の初期音量 → `ui-behavior.ts` の `defaultVolumes`（既存の個人設定は維持）
 - BGMを公開・休止する → `site-presentation.ts` の `musicEnabled`（1／0で再生と操作欄を連動）
 - 盤面の大きさや余白の比率を変える → `ui-layout.ts`
