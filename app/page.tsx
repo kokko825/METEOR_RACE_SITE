@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { MATCH_EVENTS, type MatchEventKind } from "../config/match-events";
+import { EventControls, EventStatus, eventCellClass } from "./components/match-events";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
@@ -167,6 +169,9 @@ function Game() {
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
   const [rankedMode, setRankedMode] = useState(false);
+  const [eventKind, setEventKind] = useState<MatchEventKind>("off");
+  const [eventFiring, setEventFiring] = useState(false);
+  const playedFieldEvent = useRef(0);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [game, setGame] = useState<GameState>(() => initialState(9, "red"));
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
@@ -241,7 +246,7 @@ function Game() {
   const resultIdentity = `${game.turnCount}:${game.winner ?? "none"}:${game.finishOrder?.join("-") ?? ""}`;
   const resultVisible = useDeferredReveal({
     active: (!tutorialStep || tutorialStep === "complete") && game.phase === "over" && Boolean(game.winner),
-    blocked: isAnimating,
+    blocked: isAnimating || eventFiring,
     identity: resultIdentity,
     delayMs: UI_BEHAVIOR.resultRevealDelayMs,
   });
@@ -357,6 +362,7 @@ function Game() {
       ? online.role
       : game.turn;
   const canControl =
+    !eventFiring &&
     (mode === "online" || !needsNewGame) &&
     (mode !== "online" ||
       (online.status === "playing" &&
@@ -494,6 +500,7 @@ function Game() {
         nickname,
         variant,
         ranked: rankedMode,
+        eventKind,
         difficulty: aiDifficulty,
       });
       setGame(data.state);
@@ -568,6 +575,7 @@ function Game() {
       setAiDifficulty((data.lobbyAiDifficulty ?? "normal") as AiDifficulty);
       setOnlineAiCount((data.state.botPlayers ?? []).length as 0 | 1 | 2 | 3);
       setVariant(data.lobbyVariant ?? data.state.variant ?? "classic");
+      setEventKind(data.lobbyEvent ?? "off");
       setSize(data.lobbySize ?? data.state.size);
       setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
       setRoomCodeInput(data.code);
@@ -775,6 +783,7 @@ function Game() {
     const timer = window.setTimeout(() => {
       void roomRequest({
         action: "update_lobby_settings",
+        eventKind,
         code: online.code,
         variant,
         size,
@@ -792,7 +801,7 @@ function Game() {
       });
     }, 160);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [online.code, online.isHost, online.status, variant, size, onlineAiCount, aiDifficulty]);
+  }, [online.code, online.isHost, online.status, variant, size, onlineAiCount, aiDifficulty, eventKind]);
 
   const swapOwnRole = async (targetRole: Player) => {
     if (!online.code || !online.isHost || !online.role || targetRole === online.role) return;
@@ -944,6 +953,21 @@ function Game() {
     playedRankedGravity.current = pulse;
     showSwitchFx("gravity", game.turn);
   }, [game.rankedGravityPulse, game.turn, showSwitchFx]);
+
+  useEffect(() => {
+    const serial = game.matchEvent?.serial ?? 0;
+    if (!serial) { playedFieldEvent.current = 0; setEventFiring(false); return; }
+    if (serial === playedFieldEvent.current) return;
+    playedFieldEvent.current = serial;
+    setEventFiring(true);
+    const event = game.matchEvent?.last;
+    if (event?.kind === "orbit") setOrbitFx({ ring: event.ring, clockwise: event.clockwise, quarterTurns: 1, nonce: Date.now() });
+  }, [game.matchEvent?.serial, game.matchEvent?.last]);
+  useEffect(() => {
+    if (!eventFiring) return;
+    const timer = window.setTimeout(() => { setEventFiring(false); setOrbitFx(null); }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [eventFiring]);
 
   const moveProbe = (target: Pos) => {
     if (!canControl || game.phase !== "move" || !moves.some((p) => samePos(p, target))) return;
@@ -1236,6 +1260,7 @@ function Game() {
           difficulty: aiDifficulty,
           variant,
           ranked: rankedMode,
+          eventKind,
         });
         setGame(data.state);
         setVariant(data.state.variant ?? "classic");
@@ -1318,6 +1343,8 @@ function Game() {
           variant,
           activeBalance,
           rankedMode,
+          eventKind,
+          Math.floor(Math.random() * 4294967296),
         ),
       );
     }
@@ -1354,6 +1381,8 @@ function Game() {
         game.variant ?? "classic",
         game.balance ?? activeBalance,
         Boolean(game.ranked),
+        game.matchEvent?.kind ?? "off",
+        Math.floor(Math.random() * 4294967296),
       ),
     );
   };
@@ -1513,6 +1542,7 @@ function Game() {
           setSize(data.status === "waiting" ? (data.lobbySize ?? data.state.size) : data.state.size);
           setVariant(data.status === "waiting" ? (data.lobbyVariant ?? data.state.variant ?? "classic") : (data.state.variant ?? "classic"));
           if (data.status === "waiting") {
+            setEventKind(data.lobbyEvent ?? "off");
             setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
             setAiDifficulty((data.lobbyAiDifficulty ?? "normal") as AiDifficulty);
           }
@@ -1664,6 +1694,8 @@ function Game() {
           game.variant ?? "classic",
           game.balance ?? activeBalance,
           Boolean(game.ranked),
+          game.matchEvent?.kind ?? "off",
+          Math.floor(Math.random() * 4294967296),
         ),
       );
     }, Math.max(UI_BEHAVIOR.aiMinimumDelayMs, aiSpeed));
@@ -2038,6 +2070,7 @@ function Game() {
                 <div className="choice-row"><button className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>FREE FOR ALL</strong><span>{t("freeForAll")}</span></button><button className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>{t("teamBattle")}</span></button></div>
                 <div className="entry-settings"><label>BOARD SIZE<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? "PLAYERS" : "CPU ADD"}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>AI LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div>
               </>}
+              {setupMode !== "online" && <EventControls value={eventKind} onChange={setEventKind} language={language} />}
               <button className="entry-confirm" onClick={() => { applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? t("onlineLobby") : "BATTLE START"}</button>
             </div>
           )}
@@ -2073,7 +2106,7 @@ function Game() {
             <p>{t("titleTagline")}</p>
           </div>
         </div>
-        <MatchMeta language={language} progress={regulaProgress} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
+        <MatchMeta eventDetails={<EventStatus event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} />} language={language} progress={regulaProgress} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <div className="topbar-guide-actions">
           {!tutorialStep && (mode !== "online" || !online.code) ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
           <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
@@ -2256,6 +2289,8 @@ function Game() {
               const probe =
                 activePlayers(game).find((player) => samePos(pos, game.probes[player])) ?? null;
               const probePush = probe ? blastFx?.pushed[probe] : undefined;
+              const eventFrom = probe && eventFiring && game.matchEvent?.last?.kind !== "orbit" ? game.matchEvent?.from?.[probe] : undefined;
+              const eventPush = eventFrom && !samePos(eventFrom, pos) ? { from: eventFrom, dr: pos.r - eventFrom.r, dc: pos.c - eventFrom.c } : undefined;
               const probePushMatches = probePush && (
                 blastFx?.stage === "settle"
                   ? samePos(pos, { r: probePush.from.r + probePush.dr, c: probePush.from.c + probePush.dc })
@@ -2275,6 +2310,7 @@ function Game() {
                   key={`${r}-${c}`}
                   className={[
                     "cell",
+                    eventCellClass(eventFiring && game.matchEvent ? { ...game.matchEvent, forecast: game.matchEvent.last } : game.matchEvent, pos, mid),
                     r === mid && c === mid ? "core" : "",
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",
@@ -2296,6 +2332,7 @@ function Game() {
                   aria-label={localize(`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}${pulseDevice ? " 電磁パルス発生装置" : ""}`, `Cell ${r},${c}${probe ? ` ${playerName(probe)} probe` : ""}${meteor ? ` ${meteor.size} meteor` : ""}${obstacle ? " holo meteor" : ""}${pulseDevice ? " pulse device" : ""}`)}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
+                  {eventFiring && game.matchEvent?.last?.kind === "geyser" && game.matchEvent.last.vents?.some((vent) => samePos(vent, pos)) && !probe && !meteor && !obstacle && !pulseDevice && <span className="shockwave small event-geyser-wave" />}
                   {blastFx && blastFx.stage !== "settle" && samePos(pos, blastFx.target) && (
                     <>
                       {blastFx.stage === "probe" && (
@@ -2361,9 +2398,9 @@ function Game() {
                       push={
                         probePushMatches
                           ? pushForPerspective(probePush, perspectiveSlot)
-                          : undefined
+                          : eventPush ? pushForPerspective(eventPush, perspectiveSlot) : undefined
                       }
-                      settling={blastFx?.stage === "settle" && Boolean(probePushMatches)}
+                      settling={(blastFx?.stage === "settle" && Boolean(probePushMatches)) || Boolean(eventPush)}
                       language={language}
                     />
                   )}
@@ -2803,7 +2840,8 @@ function Game() {
               </div>
             )}
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
-            {online.code && <div className="room-settings-summary" aria-label={localize("現在のルーム設定", "Current room settings")}><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b></div>}
+            {online.code && online.isHost && !rankedMode && online.status === "waiting" && <EventControls value={eventKind} onChange={setEventKind} language={language} />}
+            {online.code && <div className="room-settings-summary" aria-label={localize("現在のルーム設定", "Current room settings")}><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b><span className="event-summary">{localize("イベント", "Event")} · {MATCH_EVENTS[eventKind][language]}</span></div>}
             {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder="NICKNAME" aria-label={t("nickname")} maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label={localize("ルームコード", "Room code")} maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>{localize("← ゲームモードへ戻る", "← BACK TO GAME MODE")}</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>

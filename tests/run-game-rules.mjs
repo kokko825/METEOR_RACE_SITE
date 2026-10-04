@@ -8,4 +8,5 @@ await runTsSuite(".rules-test-fast", [
   "app/i18n.ts",
   "app/game-status.ts",
   "tests/game-rules.test.ts",
+  "tests/match-events.test.ts",
 ], "tests/game-rules.test.ts");

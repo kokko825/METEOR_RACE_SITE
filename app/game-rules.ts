@@ -1,4 +1,8 @@
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
+import { MATCH_EVENT_RULES, normalizeMatchEvent, type MatchEventKind } from "../config/match-events";
+
+export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; clockwise: boolean; dr: number; dc: number };
+export type MatchEventState = { kind: MatchEventKind; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
 
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
@@ -56,6 +60,7 @@ export type GameState = {
   rankedGravityRoundsRemaining?: number;
   rankedRoundActed?: Player[];
   rankedGravityPulse?: number;
+  matchEvent?: MatchEventState;
 };
 
 export type MeteorResolution = {
@@ -146,7 +151,7 @@ export function coreWinner(state: GameState, reached: Player[]): Player {
   return reached[0];
 }
 
-export function resolveCoreArrivals(state: GameState, next: GameState, reached: Player[]): GameState {
+export function resolveCoreArrivals(state: GameState, next: GameState, reached: Player[], roundEventHandled = false): GameState {
   if (!reached.length) return next;
   const first = coreWinner(state, reached);
   const ordered = [first, ...reached.filter((player) => player !== first)];
@@ -213,16 +218,16 @@ export function resolveCoreArrivals(state: GameState, next: GameState, reached: 
       break;
     }
   }
-  return {
-    ...next,
-    players: remaining,
-    turn,
-    phase: "move",
-    bonusMove: false,
-    winner: null,
-    finishOrder,
-    message: `${playerName(first)} GOAL!　${finishOrder.length}位確定。${playerName(turn)}の移動`,
-  };
+  let resumed: GameState = { ...next, players: remaining, turn, phase: "move", bonusMove: false,
+    winner: null, finishOrder, message: `${playerName(first)} GOAL!　${finishOrder.length}位確定。${playerName(turn)}の移動` };
+  // Goal actions bypass finishTurn; still close the current actor's event round.
+  if (resumed.matchEvent && !roundEventHandled && next.turnCount === state.turnCount) {
+    resumed = { ...advanceMatchEvent({ ...resumed, turn: state.turn }), turn };
+    const core = { r: Math.floor(resumed.size / 2), c: Math.floor(resumed.size / 2) };
+    const arrivals = remaining.filter((p) => samePos(resumed.probes[p], core));
+    if (arrivals.length) return resolveCoreArrivals(resumed, resumed, arrivals, true);
+  }
+  return resumed;
 }
 
 export function initialGameState(
@@ -235,6 +240,8 @@ export function initialGameState(
   variant: GameVariant = "classic",
   balance: BalanceConfig = DEFAULT_BALANCE,
   ranked = false,
+  eventKind: MatchEventKind = "off",
+  eventSeed = 1,
 ): GameState {
   void obstaclesEnabled;
   if (isTeamVariant(variant)) {
@@ -272,7 +279,7 @@ export function initialGameState(
   const setupTurn = isItemVariant(variant)
     ? players.find((player) => !activeBotPlayers.includes(player)) ?? first
     : first;
-  return {
+  return withMatchEvent({
     size,
     balance: normalizeBalance(balance),
     variant,
@@ -329,7 +336,7 @@ export function initialGameState(
     rankedGravityRoundsRemaining: balance.rankedGravityRounds,
     rankedRoundActed: [],
     rankedGravityPulse: 0,
-  };
+  }, eventKind, eventSeed);
 }
 
 export function applySetupItem(state: GameState, kind: ItemKind, player = state.turn): GameState {
@@ -474,6 +481,7 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.boosterMoves ?? {}),
     JSON.stringify(state.capsuleMeteors ?? {}),
     state.bonusMove ? "bonus" : "normal",
+    JSON.stringify(state.matchEvent ?? null),
   ].join("/");
 }
 
@@ -499,6 +507,9 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
     pulseDevices,
   };
   let rankedGravityTriggered = false;
+  const oldEventSerial = turnDraft.matchEvent?.serial ?? 0;
+  turnDraft = advanceMatchEvent(turnDraft);
+  const eventTriggered = (turnDraft.matchEvent?.serial ?? 0) !== oldEventSerial;
   if (turnDraft.ranked) {
     const rankedPlayers = activePlayers(turnDraft);
     const acted = [...new Set([...(turnDraft.rankedRoundActed ?? []), turnDraft.turn])]
@@ -539,7 +550,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
   };
   const drawByRepeat = repetitions[key] >= 3;
   const drawByLimit = nextCount >= gameBalance(turnDraft).matchTurnLimit;
-  if (rankedGravityTriggered) {
+  if (rankedGravityTriggered || eventTriggered) {
     const core = { r: Math.floor(turnDraft.size / 2), c: Math.floor(turnDraft.size / 2) };
     const reached = activePlayers(turnDraft).filter((player) => samePos(turnDraft.probes[player], core));
     if (reached.length) {
@@ -551,9 +562,9 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
         turnCount: nextCount,
         playerTurns,
         repetitions,
-        message: "ORBITAL GRAVITY",
-        log: [...draft.log, ...turnLogs],
-      }, reached);
+        message: rankedGravityTriggered ? "ORBITAL GRAVITY" : "FIELD EVENT",
+        log: [...turnDraft.log, ...turnLogs],
+      }, reached, true);
     }
   }
   if (drawByRepeat || drawByLimit) {
@@ -589,7 +600,7 @@ export function finishTurn(draft: GameState, extraLog?: string): GameState {
             ? "obstacle"
             : "small",
     message: `${playerName(nextTurn)}：探査機を1マス移動`,
-    log: [...draft.log, ...turnLogs],
+    log: [...turnDraft.log, ...turnLogs],
   };
 }
 
@@ -773,6 +784,100 @@ export function applyGravity(state: GameState, forceThroughObstacles = false): G
     (device) => !clearedTargets.some((target) => samePos(target, device)),
   );
   return { ...state, probes, inventory, meteors, obstacles, pulseDevices };
+}
+
+/** Persist the seed/forecast in GameState so clients and AI replay identical events. */
+export function withMatchEvent(state: GameState, kind: unknown, seed = 1): GameState {
+  const normalized = state.ranked ? "off" : normalizeMatchEvent(kind);
+  return { ...state, matchEvent: normalized === "off" ? undefined : {
+    kind: normalized, seed: seed >>> 0, remaining: MATCH_EVENT_RULES.interval, acted: [], serial: 0,
+  } };
+}
+
+function eventPush(state: GameState, direction: (player: Player) => Pos | undefined): GameState {
+  const players = activePlayers(state);
+  const proposals = new Map<Player, Pos>();
+  for (const player of players) {
+    const target = direction(player);
+    if (!target || target.r < 0 || target.c < 0 || target.r >= state.size || target.c >= state.size) continue;
+    if ([...state.meteors, ...activeObstacles(state), ...activePulseDevices(state)].some((p) => samePos(p, target)) ||
+        players.some((p) => samePos(state.probes[p], target))) continue;
+    proposals.set(player, target);
+  }
+  const probes = { ...state.probes };
+  for (const [player, target] of proposals) {
+    if ([...proposals.values()].filter((p) => samePos(p, target)).length === 1) probes[player] = target;
+  }
+  return { ...state, probes };
+}
+
+export function applyMatchEvent(state: GameState, event: EventForecast): GameState {
+  if (event.kind === "gravity") return applyGravity(state);
+  if (event.kind === "orbit") {
+    const rotate = <T extends Pos>(p: T): T => ringOf(state, p) === event.ring
+      ? { ...p, ...rotatePos(state.size, p, event.clockwise) } : p;
+    return { ...state,
+      probes: Object.fromEntries(PLAYER_ORDER.map((p) => [p, rotate(state.probes[p])])) as Record<Player, Pos>,
+      meteors: state.meteors.map(rotate), obstacles: activeObstacles(state).map(rotate),
+      pulseDevices: activePulseDevices(state).map(rotate),
+    };
+  }
+  if (event.kind === "wind") return eventPush(state, (p) => ({ r: state.probes[p].r + event.dr, c: state.probes[p].c + event.dc }));
+  if (event.kind !== "geyser") return state;
+  // A covered vent cannot erupt. HOLO and PULSE devices also physically cover it.
+  const occupied = [...state.meteors, ...activeObstacles(state), ...activePulseDevices(state), ...activePlayers(state).map((p) => state.probes[p])];
+  const vents = (event.vents ?? [event.target]).filter((vent) => !occupied.some((p) => samePos(p, vent)));
+  if (!vents.length) return state;
+  const pushed = eventPush(state, (p) => {
+    const pos = state.probes[p];
+    const vent = vents.find((v) => distance(pos, v) === 1);
+    if (!vent || (state.shieldTurns?.[p] ?? 0) > 0) return undefined;
+    return { r: pos.r + Math.sign(pos.r - vent.r), c: pos.c + Math.sign(pos.c - vent.c) };
+  });
+  const inventory = cloneInventory(state.inventory);
+  const meteors = state.meteors.filter((m) => {
+    if (!vents.some((v) => distance(m, v) <= 1)) return true;
+    if (!m.consumable) inventory[m.owner][m.size] += 1;
+    return false;
+  });
+  const obstacles = activeObstacles(state).flatMap((m) => {
+    if (!vents.some((v) => distance(m, v) <= 1) || m.turns === -1) return [m];
+    const turns = (m.turns ?? 1) - activePlayers(state).length;
+    return turns > 0 ? [{ ...m, turns }] : [];
+  });
+  return { ...pushed, inventory, meteors, obstacles };
+}
+
+function advanceMatchEvent(state: GameState): GameState {
+  const current = state.matchEvent;
+  if (!current || current.kind === "off" || state.ranked) return state;
+  const players = activePlayers(state);
+  const acted = [...new Set([...current.acted, state.turn])].filter((p) => players.includes(p));
+  if (!players.every((p) => acted.includes(p))) return { ...state, matchEvent: { ...current, acted } };
+  let event: MatchEventState = { ...current, acted: [], remaining: current.remaining - 1 };
+  if (event.remaining === MATCH_EVENT_RULES.warningRounds) {
+    let seed = event.seed;
+    const draw = (limit: number) => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return Math.floor(seed / 4294967296 * limit); };
+    const mid = Math.floor(state.size / 2);
+    const vents: Pos[] = [];
+    for (const direction of [{ r: -1, c: 0 }, { r: 1, c: 0 }, { r: 0, c: -1 }, { r: 0, c: 1 }]) {
+      const candidates: Pos[] = [];
+      for (let offset = 3; offset < mid; offset++) for (let side = -1; side <= 1; side++) {
+        const pos = { r: mid + direction.r * offset + direction.c * side, c: mid + direction.c * offset + direction.r * side };
+        if (vents.every((vent) => distance(vent, pos) > 2)) candidates.push(pos);
+      }
+      vents.push(candidates.length ? candidates[draw(candidates.length)] : { r: mid + direction.r * (mid - 1), c: mid + direction.c * (mid - 1) });
+    }
+    const direction = [{ r: -1, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 0, c: -1 }][draw(4)];
+    event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring: draw(mid) + 1,
+      clockwise: draw(2) === 1, dr: direction.r, dc: direction.c }, seed };
+  }
+  if (event.remaining <= 0 && event.forecast) {
+    const next = applyMatchEvent(state, event.forecast);
+    return { ...next, matchEvent: { ...event, remaining: MATCH_EVENT_RULES.interval, serial: event.serial + 1,
+      last: event.forecast, from: state.probes, forecast: undefined }, log: [...next.log, `FIELD EVENT: ${event.kind}`] };
+  }
+  return { ...state, matchEvent: event };
 }
 
 export function applyUseItem(state: GameState, kind: ItemKind): GameState {

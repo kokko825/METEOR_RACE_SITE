@@ -10,6 +10,8 @@ import { COMMUNITY_SAFETY } from "../../../config/community-safety";
 
 export const dynamic = "force-dynamic";
 
+import { normalizeMatchEvent, type MatchEventKind } from "../../../config/match-events";
+
 type RoomRow = {
   code: string;
   host_email: string;
@@ -162,6 +164,7 @@ function roomPayload(room: RoomRow, email: string) {
     lobbySize: lobby.roomLobbySize,
     lobbyAiCount: lobby.roomLobbyAiCount,
     lobbyAiDifficulty: state.roomLobbyAiDifficulty ?? "normal",
+    lobbyEvent: normalizeMatchEvent(state.roomLobbyEvent ?? state.matchEvent?.kind),
     memberNames: [...memberEmails
       .map((member, index) =>
         member
@@ -224,6 +227,7 @@ export async function POST(request: Request) {
     meteorSize?: MeteorSize;
     nickname?: string;
     variant?: GameVariant;
+    eventKind?: MatchEventKind;
     useCapsule?: boolean;
     itemKind?: ItemKind;
     ring?: number;
@@ -296,6 +300,7 @@ export async function POST(request: Request) {
             roomMemberNames: [normalizeNickname(body.nickname, email)],
             roomPreferredRoles: ["red"],
             roomLobbyVariant: createVariant,
+            roomLobbyEvent: body.ranked ? "off" : normalizeMatchEvent(body.eventKind),
             roomLobbySize: size,
             roomLobbyAiCount: requestedAi,
             roomLobbyAiDifficulty: body.difficulty === "easy" || body.difficulty === "hard" ? body.difficulty : "normal",
@@ -579,6 +584,7 @@ export async function POST(request: Request) {
     const nextVariant: GameVariant = body.variant === "team" || body.variant === "item" || body.variant === "team-item" ? body.variant : "classic";
     const requestedSize = [9, 11, 13, 15].includes(body.size ?? 9) ? body.size! : 9;
     state.roomLobbyVariant = nextVariant;
+    state.roomLobbyEvent = state.ranked ? "off" : normalizeMatchEvent(body.eventKind);
     const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
     const humans = [room.host_email, room.guest_email, room.player3_email, room.player4_email].filter((member, index) => member && seats[index]).length;
     Object.assign(state, normalizeRoomSettings(nextVariant, requestedSize, body.aiCount ?? 0, humans));
@@ -712,6 +718,8 @@ export async function POST(request: Request) {
       variant,
       liveBalance,
       ranked,
+      normalizeMatchEvent(body.eventKind ?? previous.roomLobbyEvent),
+      crypto.getRandomValues(new Uint32Array(1))[0],
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -775,6 +783,8 @@ export async function POST(request: Request) {
       previous.variant ?? "classic",
       liveBalance,
       Boolean(previous.ranked),
+      normalizeMatchEvent(previous.matchEvent?.kind),
+      crypto.getRandomValues(new Uint32Array(1))[0],
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =

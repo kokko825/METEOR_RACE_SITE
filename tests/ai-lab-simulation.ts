@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { normalizeMatchEvent } from "../config/match-events.js";
 import { chooseAiDecision, estimateAiFinishTurns, type AiDifficulty } from "../app/ai-engine.js";
 import {
   applyBlastSwitch,
@@ -534,6 +535,8 @@ for (const difficulty of difficulties) {
         scenario.variant,
         undefined,
         Boolean(scenario.ranked),
+        normalizeMatchEvent(process.env.AI_LAB_EVENT),
+        index + 17,
       );
       const result = play(
         initial,

@@ -5,6 +5,7 @@ import ts from "typescript";
 
 /** Compile explicit dependencies. npm run typecheck checks their types separately. */
 export async function runTsSuite(directory, files, entry) {
+  if (files.includes("app/game-rules.ts") && !files.includes("config/match-events.ts")) files = [...files, "config/match-events.ts"];
   const output = path.resolve(directory);
   for (const file of files) {
     const destination = path.join(output, file.replace(/\.tsx?$/, ".js"));
