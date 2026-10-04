@@ -13,7 +13,7 @@
 - 中央重力は斜めを含む中央方向へ機体だけを1マス引く。配置物は動かさず破壊もしない。追い風は上下左右と斜めの8方向から抽選し、機体だけを予告方向へ1マス押す。いずれも移動先に他機・配置物がある場合や盤外の場合は動かない。
 - 移動は発動前の占有状態で判定し、同じ移動先へ競合した場合は止まる。CORE到達は通常の勝利/順位処理に接続する。
 - 再戦は種類を保持し予告・カウントを初期化。乱数seedと確定した予告は対戦状態に保存する。
-- 調整元は `config/match-events.ts`。ルール検査は `tests/match-events.test.ts`、画面検査は `tests/match-events.browser.mjs`。
+- 調整元は `config/match-events.ts`。ルール検査は `tests/match-events.test.ts`、画面検査は `tests/browser/match-events.browser.mjs`。
 
 以下は旧仕様本文。値の相違がある場合は上記追加仕様と現行設定ファイルを参照。
 

@@ -11,6 +11,29 @@
 
 公開版: https://meteorrace.follnest.com/
 
+## まず開くフォルダ
+
+```text
+MeteorRace/
+├─ config/           数値・文章・音楽設定を調整する
+├─ public/assets/    ロゴ・画像・BGM・SEを入れる
+├─ docs/             ゲーム仕様・AI仕様・公開手順を読む
+│  └─ verification/ 過去の検証記録
+├─ app/              ゲーム本体（components / hooks / styles / api）
+├─ tests/            ルール・AI・設定のテストと実行入口
+│  ├─ browser/       実画面の操作テスト
+│  └─ integration/   ローカル通信テスト
+├─ scripts/          素材生成・検査などの補助ツール
+├─ db/・drizzle/     データ定義・DB変更履歴
+├─ build/・worker/   ビルド補助・サーバー起動処理
+├─ examples/         開発用サンプル（ゲーム本体ではない）
+├─ .cache/           自動生成される検証・型検査キャッシュ
+└─ _local/archives/  このPCだけに保存する旧公開アーカイブ
+```
+
+普段は **config・public/assets・docs** の3か所から探します。ルートの設定ファイルは開発ツールが参照するため、そのままにしています。
+`.dev.vars`（秘密設定）、`.wrangler`（ローカルDB）、`.git`（履歴）は移動・公開しないでください。
+
 ## 最終版の内容
 
 - CLASSIC：2〜4人対戦

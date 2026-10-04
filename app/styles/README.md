@@ -18,4 +18,4 @@
 
 待機ルームは `layout-overrides.css` 末尾で配置を確定します。外側の `.control-strip` だけをスクロールさせ、開始・退出ボタンは通常の文書フローに置きます。下端への固定はCPU設定を覆うため使用しません。
 
-ブラウザ回帰検査：ローカル開発サーバーを起動後、`node tests/lobby-layout.browser.mjs`。PlaywrightとChromiumが必要です。共有インストールの場合は `PLAYWRIGHT_MODULE` と `TEST_BROWSER_PATH` で指定できます。公開サーバーでは実行できないよう制限しています。日本語・英語、個人・チーム戦、3 CPU、6画面幅、3文字サイズの72条件で領域の重なりと主要操作のヒットテストを検査します。実機Safariの検査は別途必要です。
+ブラウザ回帰検査：ローカル開発サーバーを起動後、`node tests/browser/lobby-layout.browser.mjs`。PlaywrightとChromiumが必要です。共有インストールの場合は `PLAYWRIGHT_MODULE` と `TEST_BROWSER_PATH` で指定できます。公開サーバーでは実行できないよう制限しています。日本語・英語、個人・チーム戦、3 CPU、6画面幅、3文字サイズの72条件で領域の重なりと主要操作のヒットテストを検査します。実機Safariの検査は別途必要です。

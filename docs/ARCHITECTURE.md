@@ -17,6 +17,10 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 | `app/ai-engine.ts` | CPUの候補生成、先読み、評価 | AI変更時 |
 | `app/page.tsx` | 画面状態と各処理を接続する中心画面 | 大きな機能変更時 |
 | `tests/` | ルール、UI構造、全モードCPU試合 | 仕様変更と同時 |
+| `tests/browser/`・`tests/integration/` | 実画面とローカル通信の検証 | 仕様変更と同時 |
+| `docs/verification/` | 日付付き検証記録・品質監査 | 検査後 |
+| `.cache/` | テスト・TypeScriptの生成物 | 編集しない |
+| `_local/archives/` | 旧公開アーカイブ（Git対象外） | 通常触らない |
 
 ## 変更内容から編集先を探す
 

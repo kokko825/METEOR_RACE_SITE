@@ -22,7 +22,7 @@
 
 ## テスト方法と限界
 
-`tests/online-room.integration.mjs`、`tests/lobby-layout.browser.mjs`、`tests/tutorial.browser.mjs` は起動中のローカル開発サーバーに対して実行する。実データへの書き込みを避けるためlocalhostに限定する。
+`tests/integration/online-room.integration.mjs`、`tests/browser/lobby-layout.browser.mjs`、`tests/browser/tutorial.browser.mjs` は起動中のローカル開発サーバーに対して実行する。実データへの書き込みを避けるためlocalhostに限定する。
 
 AI後退率は総数を残しつつ、全ての移動先がCOREから遠ざかる強制後退を別計上する。EASYの自発的な後退ゼロも検査する。
 

@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/.cache/
+/_local/
 
 # next.js
 /.next/

@@ -7,8 +7,8 @@
 | ゲーム仕様 | [GAME_SPEC.md](./GAME_SPEC.md) |
 | AIの判断 | [AI_SPEC.md](./AI_SPEC.md) |
 | コードの役割 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| 品質確認の記録 | [QUALITY_AUDIT.md](./QUALITY_AUDIT.md) |
-| 最新の検証結果 | [2026-09-29 検証記録](./VERIFICATION-2026-09-29.md) |
+| 品質確認の記録 | [QUALITY_AUDIT.md](./verification/QUALITY_AUDIT.md) |
+| 過去の検証結果 | [2026-09-29 検証記録](./verification/VERIFICATION-2026-09-29.md) |
 | 公開・復旧の手順 | [DEPLOYMENT.md](./DEPLOYMENT.md) |
 | 無料運用の計画 | [FREE_SITE_OPERATION_PLAN.md](./FREE_SITE_OPERATION_PLAN.md) |
 

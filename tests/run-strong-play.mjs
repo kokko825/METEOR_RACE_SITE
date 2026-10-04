@@ -1,6 +1,6 @@
 import { runTsSuite } from "./run-ts-suite.mjs";
 
-await runTsSuite(".strong-play-test-fast", [
+await runTsSuite("strong-play", [
   "config/game-balance.ts",
   "app/balance-config.ts",
   "app/game-rules.ts",
