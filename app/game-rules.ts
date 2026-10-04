@@ -869,7 +869,14 @@ function advanceMatchEvent(state: GameState): GameState {
       vents.push(candidates.length ? candidates[draw(candidates.length)] : { r: mid + direction.r * (mid - 1), c: mid + direction.c * (mid - 1) });
     }
     const direction = [{ r: -1, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 0, c: -1 }][draw(4)];
-    event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring: draw(mid) + 1,
+    // Prefer populated inner rings; reserve the outer edge for rare variation.
+    const objects = [...players.map((p) => state.probes[p]), ...state.meteors, ...(state.obstacles ?? []), ...(state.pulseDevices ?? [])];
+    const rings = Array.from({ length: mid - 1 }, (_, i) => i + 1);
+    const density = (ring: number) => objects.filter((p) => Math.max(Math.abs(p.r - mid), Math.abs(p.c - mid)) === ring).length;
+    const highest = Math.max(...rings.map(density));
+    const crowded = rings.filter((ring) => density(ring) === highest);
+    const ring = draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > highest ? mid : crowded[draw(crowded.length)];
+    event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring,
       clockwise: draw(2) === 1, dr: direction.r, dc: direction.c }, seed };
   }
   if (event.remaining <= 0 && event.forecast) {

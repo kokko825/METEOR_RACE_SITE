@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { MATCH_EVENTS, type MatchEventKind } from "../config/match-events";
-import { EventControls, EventStatus, eventCellClass } from "./components/match-events";
+import { EventControls, EventStatus, EventCellEffect, eventCellClass } from "./components/match-events";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
@@ -2332,6 +2332,7 @@ function Game() {
                   aria-label={localize(`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}${pulseDevice ? " 電磁パルス発生装置" : ""}`, `Cell ${r},${c}${probe ? ` ${playerName(probe)} probe` : ""}${meteor ? ` ${meteor.size} meteor` : ""}${obstacle ? " holo meteor" : ""}${pulseDevice ? " pulse device" : ""}`)}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
+                  <EventCellEffect event={game.matchEvent} pos={pos} mid={mid} perspective={perspectiveSlot} firing={eventFiring} />
                   {eventFiring && game.matchEvent?.last?.kind === "geyser" && game.matchEvent.last.vents?.some((vent) => samePos(vent, pos)) && !probe && !meteor && !obstacle && !pulseDevice && <span className="shockwave small event-geyser-wave" />}
                   {blastFx && blastFx.stage !== "settle" && samePos(pos, blastFx.target) && (
                     <>

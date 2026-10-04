@@ -1,4 +1,5 @@
-import { MATCH_EVENTS, MATCH_EVENT_RULES, type MatchEventKind } from "../../config/match-events";
+import { MATCH_EVENTS, type MatchEventKind } from "../../config/match-events";
+import type { CSSProperties } from "react";
 import { boardToViewDelta, distance, samePos, type MatchEventState, type Pos } from "../game-rules";
 
 export function EventControls({ value, onChange, language }: { value: MatchEventKind; onChange: (value: MatchEventKind) => void; language: "ja" | "en" }) {
@@ -18,10 +19,32 @@ export function EventStatus({ event, language, perspective = 0, firing = false }
   return <span className={`event-status${forecast ? " announced" : ""}`} role="status">
     <b>{MATCH_EVENTS[event.kind][language]} · {firing ? (language === "ja" ? "発動" : "ACTIVE") : language === "ja" ? `あと${event.remaining}巡` : `${event.remaining} rounds`}</b>
     {forecast ? <small>{event.kind === "wind" ? arrow : event.kind === "orbit" ? `${language === "ja" ? "中央から" : "Ring"} ${forecast.ring} · ${forecast.clockwise ? "↻" : "↺"} 90°`
-      : event.kind === "geyser" ? (language === "ja" ? "光る噴出口から爆風。上に機体・配置物があると不発" : "Highlighted vent: covered vents do not erupt")
-      : language === "ja" ? "機体のみ中央へ。配置物・他機は通り抜け不可" : "Probes inward; objects and other probes block movement"}</small>
-      : <small>{language === "ja" ? `発動${MATCH_EVENT_RULES.warningRounds}巡前に範囲・方向を表示` : "Target and direction revealed 2 rounds before activation"}</small>}
+      : event.kind === "geyser" ? (language === "ja" ? "噴出口 ×4" : "4 vents")
+      : "→ CORE"}</small> : null}
   </span>;
+}
+
+/** Decorative only: never intercept board input, including during forecasts. */
+export function EventCellEffect({ event, pos, mid, perspective, firing }: { event?: MatchEventState; pos: Pos; mid: number; perspective: number; firing: boolean }) {
+  const f = firing ? event?.last : event?.forecast;
+  if (!f) return null;
+  const arrow = (dr: number, dc: number) => { const d = boardToViewDelta({ r: dr, c: dc }, perspective); return d.r < 0 ? "↑" : d.r > 0 ? "↓" : d.c > 0 ? "→" : "←"; };
+  if (f.kind === "geyser" && (f.vents ?? [f.target]).some((v) => samePos(v, pos))) return <span aria-hidden="true" className="event-vent-mound"><i /><i /><i /></span>;
+  if (f.kind === "orbit" && Math.max(Math.abs(pos.r - mid), Math.abs(pos.c - mid)) === f.ring && (pos.r === mid || pos.c === mid)) {
+    const sign = f.clockwise ? 1 : -1;
+    return <span aria-hidden="true" className={`event-direction orbit${firing ? " firing" : ""}`}>{arrow(Math.sign(pos.c - mid) * sign, -Math.sign(pos.r - mid) * sign)}</span>;
+  }
+  if (f.kind === "wind") {
+    const edge = f.dc > 0 ? pos.c === 0 : f.dc < 0 ? pos.c === mid * 2 : f.dr > 0 ? pos.r === 0 : pos.r === mid * 2;
+    if (!edge && !firing) return null;
+    const d = boardToViewDelta({ r: f.dr, c: f.dc }, perspective);
+    return <span aria-hidden="true" className={`event-direction wind${firing ? " firing" : ""}`} style={{ "--wind-x": `${d.c * 200}%`, "--wind-y": `${d.r * 200}%` } as CSSProperties}>{arrow(f.dr, f.dc)}</span>;
+  }
+  if (f.kind === "gravity" && firing) {
+    const d = boardToViewDelta({ r: mid - pos.r, c: mid - pos.c }, perspective);
+    return <span aria-hidden="true" className="event-gravity-stream" style={{ "--gravity-x": `${d.c * 100}%`, "--gravity-y": `${d.r * 100}%` } as CSSProperties} />;
+  }
+  return null;
 }
 
 export function eventCellClass(event: MatchEventState | undefined, pos: Pos, mid: number): string {

@@ -4,6 +4,13 @@ const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: {
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
 
+for (let seed = 0; seed < 100; seed++) {
+  let state = start("orbit", 2, 11, seed);
+  state.probes.red = { r: 3, c: 5 }; state.probes.blue = { r: 5, c: 7 };
+  state = round(round(round(state)));
+  assert.equal(state.matchEvent!.forecast!.ring, 2, "Forecast targets the most populated inner ring");
+}
+
 for (const kind of ["geyser", "orbit", "gravity", "wind"] as const) for (const count of [2, 3, 4]) {
   let state = start(kind, count);
   for (let r = 1; r <= 2; r++) { state = round(state); assert.equal(state.matchEvent?.forecast, undefined); }

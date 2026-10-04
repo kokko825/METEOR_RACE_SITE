@@ -3,10 +3,12 @@ import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin=process.env.TEST_ORIGIN || 'http://localhost:3000';
+const kind=process.env.TEST_EVENT || 'geyser';
+const marker=kind==='geyser'?'.event-vent-mound':kind==='orbit'?'.event-direction.orbit':kind==='wind'?'.event-direction.wind':'.cell.event-range';
 assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname));
 const browser=await chromium.launch({headless:true,...(process.env.TEST_BROWSER_PATH?{executablePath:process.env.TEST_BROWSER_PATH}:{})});
 try {
-  for(const language of ['ja','en']) for(const [width,height] of [[390,720],[1440,900]]) {
+  for(const language of (process.env.TEST_EVENT?['ja']:['ja','en'])) for(const [width,height] of (process.env.TEST_EVENT?[[390,720]]:[[390,720],[1440,900]])) {
     const page=await browser.newPage({viewport:{width,height}});
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(lang=>{localStorage.setItem('meteor-race-language',lang);localStorage.setItem('meteor-race-master-volume','0');},language);
@@ -16,13 +18,13 @@ try {
     await page.locator('.entry-confirm').click();
     const select=page.locator('.entry-panel .event-controls select');
     assert.equal(await select.locator('option').count(),5);
-    await select.selectOption('geyser');
+    await select.selectOption(kind);
     await page.locator('.entry-confirm').click();
     await page.locator('.event-status').waitFor();
     assert.match(await page.locator('.event-status').innerText(),/5/);
     // Stay away from CORE and spend meteors on the edge until a forecast appears.
     for(let action=0;action<40;action++) {
-      if(await page.locator('.event-vent').count()) break;
+      if(await page.locator(marker).count()) break;
       const choices=page.locator('.cell.legal, .cell.placeable');
       await choices.first().waitFor();
       const index=await choices.evaluateAll(cells=>{
@@ -31,7 +33,8 @@ try {
       });
       await choices.nth(index).click(); await page.waitForTimeout(1150);
     }
-    assert.equal(await page.locator('.event-vent').count(),4,'Four forecast vents visible');
+    assert.ok(await page.locator(marker).count()>0,'Forecast markers visible');
+    if(kind==='geyser') assert.equal(await page.locator(marker).count(),4,'Four forecast vents visible');
     assert.match(await page.locator('.event-status').innerText(),/2/);
     for(let action=0;action<40;action++) {
       if((await page.locator('.event-status b').innerText()).includes('5')) break;
@@ -50,5 +53,5 @@ try {
     assert.deepEqual(errors,[]);
     await page.close();
   }
-  console.log('PASS: event selector, local play, 2-round/four-vent forecast, square board, Japanese/English on phone and PC');
+  console.log(`PASS: ${kind} selector, forecast, activation, square board and no overflow`);
 } finally {await browser.close();}
