@@ -24,7 +24,7 @@ export function EventStatus({ event, language, perspective = 0, firing = false }
   if (!event || event.kind === "off") return null;
   const forecast = event.forecast ?? (firing ? event.last : undefined);
   const delta = forecast ? boardToViewDelta({ r: forecast.dr, c: forecast.dc }, perspective) : null;
-  const arrow = delta ? delta.r < 0 ? "↑" : delta.r > 0 ? "↓" : delta.c > 0 ? "→" : "←" : "";
+  const arrow = delta ? [["↖", "↑", "↗"], ["←", "", "→"], ["↙", "↓", "↘"]][Math.sign(delta.r) + 1][Math.sign(delta.c) + 1] : "";
   return <span className={`event-status${forecast ? " announced" : ""}`} role="status">
     <b>{MATCH_EVENTS[event.kind][language]} · {firing ? (language === "ja" ? "発動" : "ACTIVE") : language === "ja" ? `あと${event.remaining}巡` : `${event.remaining} rounds`}</b>
     {forecast ? <small>{event.kind === "wind" ? arrow : event.kind === "orbit" ? `${language === "ja" ? "中央から" : "Ring"} ${forecast.ring}${forecast.clockwise ? "↻" : "↺"}${forecast.secondRing ? ` / ${forecast.secondRing}${forecast.clockwise ? "↺" : "↻"}` : ""} 90°`
@@ -38,7 +38,14 @@ export function EventCellEffect({ event, pos, mid, perspective, firing }: { even
   const f = firing ? event?.last : event?.forecast;
   if (!f) return null;
   const arrow = (dr: number, dc: number) => { const d = boardToViewDelta({ r: dr, c: dc }, perspective); return d.r < 0 ? "↑" : d.r > 0 ? "↓" : d.c > 0 ? "→" : "←"; };
-  if (f.kind === "geyser" && (f.vents ?? [f.target]).some((v) => samePos(v, pos))) return <svg aria-hidden="true" className="event-vent-crack" viewBox="0 0 100 100"><path d="M12 21 37 39 46 33 52 51 75 39 91 42 M52 51 40 66 45 87 M40 66 18 70 M52 51 66 68 83 77 M37 39 33 16" /></svg>;
+  if (f.kind === "geyser" && (f.vents ?? [f.target]).some((v) => samePos(v, pos))) return <svg aria-hidden="true" className="event-vent-crack" viewBox="0 0 100 100">
+    <path className="crack-void" d="M0 0H100V100H0Z" />
+    <path className="crack-slab slab-a" d="M0 0H42L38 22 49 39 42 48 26 40 12 45 0 34Z" />
+    <path className="crack-slab slab-b" d="M48 0H100V35L78 46 61 41 52 47 55 38 44 21Z" />
+    <path className="crack-slab slab-c" d="M0 41 12 51 26 47 44 55 36 73 44 100H0Z" />
+    <path className="crack-slab slab-d" d="M100 42V100H51L44 73 52 55 63 49 79 53Z" />
+    <path className="crack-rim" d="M0 34 12 45 26 40 42 48 49 39 38 22 42 0 M100 35 78 46 61 41 52 47 M0 41 12 51 26 47 44 55 36 73 44 100 M100 42 79 53 63 49 52 55 44 73 51 100" />
+  </svg>;
   const ring = Math.max(Math.abs(pos.r - mid), Math.abs(pos.c - mid));
   if (f.kind === "orbit" && (ring === f.ring || ring === f.secondRing) && (pos.r === mid || pos.c === mid)) {
     const sign = (f.clockwise ? 1 : -1) * (ring === f.ring ? 1 : -1);

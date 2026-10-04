@@ -1,5 +1,5 @@
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
-import { MATCH_EVENT_RULES, normalizeMatchEvent, type MatchEventKind } from "../config/match-events";
+import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, normalizeMatchEvent, type MatchEventKind } from "../config/match-events";
 
 export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; secondRing?: number; clockwise: boolean; dr: number; dc: number };
 export type MatchEventState = { kind: MatchEventKind; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
@@ -812,7 +812,13 @@ function eventPush(state: GameState, direction: (player: Player) => Pos | undefi
 }
 
 export function applyMatchEvent(state: GameState, event: EventForecast): GameState {
-  if (event.kind === "gravity") return applyGravity(state);
+  if (event.kind === "gravity") {
+    const mid = Math.floor(state.size / 2);
+    return eventPush(state, (player) => {
+      const pos = state.probes[player];
+      return { r: pos.r + Math.sign(mid - pos.r), c: pos.c + Math.sign(mid - pos.c) };
+    });
+  }
   if (event.kind === "orbit") {
     const rotate = <T extends Pos>(p: T): T => ringOf(state, p) === event.ring || ringOf(state, p) === event.secondRing
       ? { ...p, ...rotatePos(state.size, p, ringOf(state, p) === event.ring ? event.clockwise : !event.clockwise) } : p;
@@ -868,15 +874,16 @@ function advanceMatchEvent(state: GameState): GameState {
       }
       vents.push(candidates.length ? candidates[draw(candidates.length)] : { r: mid + direction.r * (mid - 1), c: mid + direction.c * (mid - 1) });
     }
-    const direction = [{ r: -1, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 0, c: -1 }][draw(4)];
+    const direction = MATCH_WIND_DIRECTIONS[draw(MATCH_WIND_DIRECTIONS.length)];
     // Prefer populated inner rings; reserve the outer edge for rare variation.
     const objects = [...players.map((p) => state.probes[p]), ...state.meteors, ...(state.obstacles ?? []), ...(state.pulseDevices ?? [])];
     const rings = Array.from({ length: mid - 1 }, (_, i) => i + 1);
     const density = (ring: number) => objects.filter((p) => Math.max(Math.abs(p.r - mid), Math.abs(p.c - mid)) === ring).length;
     const pick = (pool: number[]) => { const max = Math.max(...pool.map(density)); const best = pool.filter((r) => density(r) === max); return best[draw(best.length)]; };
     const split = Math.floor(mid / 2);
-    const ring = pick(rings.filter((r) => r <= split));
-    const outer = rings.filter((r) => r > split);
+    const gap = MATCH_EVENT_RULES.orbitRingSeparation;
+    const ring = pick(rings.filter((r) => r <= split && r + gap < mid));
+    const outer = rings.filter((r) => r > split && r - ring >= gap);
     const secondRing = draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > Math.max(...outer.map(density)) ? mid : pick(outer);
     event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring, secondRing,
       clockwise: draw(2) === 1, dr: direction.r, dc: direction.c }, seed };

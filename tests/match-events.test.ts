@@ -4,6 +4,21 @@ const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: {
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
 
+const windDirections = new Set<string>();
+for (let seed = 0; seed < 200; seed++) {
+  const f = round(round(round(start("wind", 2, 11, Math.imul(seed, 2654435761) >>> 0)))).matchEvent!.forecast!;
+  windDirections.add(`${f.dr},${f.dc}`);
+}
+assert.equal(windDirections.size, 8, "Forecast can choose all eight wind directions");
+for (const dr of [-1, 0, 1]) for (const dc of [-1, 0, 1]) {
+  if (!dr && !dc) continue;
+  const state = start("wind"); state.probes.red = { r: 4, c: 4 }; state.probes.blue = { r: 0, c: 0 };
+  const f = { ...event("wind"), dr, dc };
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, { r: 4 + dr, c: 4 + dc });
+  state.meteors = [{ r: 4 + dr, c: 4 + dc, id: 1, size: "small", owner: "blue" }];
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, state.probes.red, "Wind cannot enter an occupied destination");
+}
+
 for (let seed = 0; seed < 100; seed++) {
   let state = start("orbit", 2, 11, seed);
   state.probes.red = { r: 3, c: 5 }; state.probes.blue = { r: 5, c: 7 };
@@ -37,6 +52,8 @@ for (const kind of ["geyser", "orbit", "gravity", "wind"] as const) for (const c
   assert.equal(JSON.stringify(state.matchEvent?.last), forecast);
 }
 for (const size of [9, 11, 13, 15]) for (let seed = 0; seed < 100; seed++) {
+  const orbit = round(round(round(start("orbit", 2, size, seed)))).matchEvent!.forecast!;
+  assert.ok(orbit.secondRing! - orbit.ring >= 2, `Nonadjacent rings: ${size}/${seed}`);
   let state = start("geyser", 2, size, seed);
   state = round(round(round(state)));
   const vents = state.matchEvent!.forecast!.vents!;
@@ -61,6 +78,17 @@ for (const size of [9, 11, 13, 15]) for (let seed = 0; seed < 100; seed++) {
   state.matchEvent = { ...state.matchEvent!, remaining: 1, forecast: f };
   const won = round(state);
   assert.equal(won.phase, "over"); assert.equal(won.winner, "red");
+}
+{
+  const state = start("gravity");
+  state.probes.red = { r: 6, c: 6 }; state.probes.blue = { r: 0, c: 0 };
+  assert.deepEqual(applyMatchEvent(state, event("gravity")).probes.red, { r: 5, c: 5 });
+  state.meteors = [{ r: 5, c: 5, owner: "blue", size: "small", id: 1 }];
+  assert.deepEqual(applyMatchEvent(state, event("gravity")).probes.red, state.probes.red);
+  state.meteors = []; state.probes.red = { r: 3, c: 3 }; state.probes.blue = { r: 5, c: 5 };
+  assert.deepEqual(applyMatchEvent(state, event("gravity")).probes, state.probes, "Two probes targeting CORE both stop");
+  state.probes.blue = { r: 0, c: 0 };
+  assert.deepEqual(applyMatchEvent(state, event("gravity")).probes.red, { r: 4, c: 4 });
 }
 {
   const state = start("gravity"); state.probes.red = { r: 6, c: 4 };
