@@ -1,8 +1,9 @@
-import { MATCH_EVENTS, MATCH_EVENT_FX, type MatchEventKind } from "../../config/match-events";
+import { MATCH_EVENTS, MATCH_EVENT_FX, MATCH_EVENT_ORDER, normalizeMatchEvents, type MatchEventKind } from "../../config/match-events";
 import type { CSSProperties } from "react";
 import { boardToViewDelta, distance, samePos, type MatchEventState, type Pos } from "../game-rules";
 export const eventFxStyle = { "--event-lead": `${MATCH_EVENT_FX.leadMs}ms`, "--event-move": `${MATCH_EVENT_FX.moveMs}ms`, "--event-heartbeat": `${MATCH_EVENT_FX.heartbeatMs}ms` } as CSSProperties;
 export function EventBoardEffect({ event, perspective, firing }: { event?: MatchEventState; perspective: number; firing: boolean }) {
+  if (!firing && event?.forecasts) return <>{event.forecasts.map((forecast) => <EventBoardEffect key={forecast.kind} event={{ ...event, kind: forecast.kind, forecast, forecasts: undefined }} perspective={perspective} firing={false} />)}</>;
   const f = firing ? event?.last : event?.forecast;
   if (!f || (f.kind !== "gravity" && f.kind !== "wind")) return null;
   const d = boardToViewDelta({ r: f.dr, c: f.dc }, perspective);
@@ -11,17 +12,18 @@ export function EventBoardEffect({ event, perspective, firing }: { event?: Match
   </div>;
 }
 
-export function EventControls({ value, onChange, language }: { value: MatchEventKind; onChange: (value: MatchEventKind) => void; language: "ja" | "en" }) {
-  return <label className="event-controls">{language === "ja" ? "盤面イベント" : "Field event"}
-    <select aria-label={language === "ja" ? "盤面イベント" : "Field event"} value={value} onChange={(e) => onChange(e.target.value as MatchEventKind)}>
-      {Object.entries(MATCH_EVENTS).map(([kind, label]) => <option key={kind} value={kind}>{label[language]}</option>)}
-    </select>
-    <small>{language === "ja" ? "5巡ごとに発動・2巡前に予告" : "Every 5 rounds · 2-round warning"}</small>
-  </label>;
+export function EventControls({ value, onChange, language, interval, onIntervalChange }: { value: MatchEventKind[]; onChange: (value: MatchEventKind[]) => void; language: "ja" | "en"; interval: number; onIntervalChange: (value: number) => void }) {
+  return <fieldset className="event-controls"><legend>{language === "ja" ? "盤面イベント（複数選択可）" : "Field events (multiple allowed)"}</legend>
+    <button type="button" aria-pressed={!value.length} onClick={() => onChange([])}>OFF</button>
+    {MATCH_EVENT_ORDER.map((kind) => <label key={kind}><input type="checkbox" value={kind} checked={value.includes(kind)} onChange={() => onChange(normalizeMatchEvents(value.includes(kind) ? value.filter((v) => v !== kind) : [...value, kind]))} />{MATCH_EVENTS[kind][language]}</label>)}
+    <label>{language === "ja" ? "発動周期（巡）" : "Interval (rounds)"}<select aria-label={language === "ja" ? "発動周期" : "Event interval"} value={interval} onChange={(e) => onIntervalChange(Number(e.target.value))}>{Array.from({ length: 97 }, (_, i) => <option key={i + 3} value={i + 3}>{i + 3}</option>)}</select></label>
+    <small>{language === "ja" ? "2巡前に予告・表示順に発動" : "2-round warning · resolves in listed order"}</small>
+  </fieldset>;
 }
 
 export function EventStatus({ event, language, perspective = 0, firing = false }: { event?: MatchEventState; language: "ja" | "en"; perspective?: number; firing?: boolean }) {
   if (!event || event.kind === "off") return null;
+  if (!firing && (event.kinds?.length ?? 0) > 1) return <span className="event-sequence">{event.kinds!.map((kind, index) => <span key={kind}>{index > 0 && " → "}<EventStatus event={{ ...event, kinds: undefined, kind, forecast: event.forecasts?.find((f) => f.kind === kind) }} language={language} perspective={perspective} /></span>)}</span>;
   const forecast = event.forecast ?? (firing ? event.last : undefined);
   const delta = forecast ? boardToViewDelta({ r: forecast.dr, c: forecast.dc }, perspective) : null;
   const arrow = delta ? [["↖", "↑", "↗"], ["←", "", "→"], ["↙", "↓", "↘"]][Math.sign(delta.r) + 1][Math.sign(delta.c) + 1] : "";
@@ -35,6 +37,7 @@ export function EventStatus({ event, language, perspective = 0, firing = false }
 
 /** Decorative only: never intercept board input, including during forecasts. */
 export function EventCellEffect({ event, pos, mid, perspective, firing }: { event?: MatchEventState; pos: Pos; mid: number; perspective: number; firing: boolean }) {
+  if (!firing && event?.forecasts) return <>{event.forecasts.map((forecast) => <EventCellEffect key={forecast.kind} event={{ ...event, forecast, forecasts: undefined }} pos={pos} mid={mid} perspective={perspective} firing={false} />)}</>;
   const f = firing ? event?.last : event?.forecast;
   if (!f) return null;
   const arrow = (dr: number, dc: number) => { const d = boardToViewDelta({ r: dr, c: dc }, perspective); return d.r < 0 ? "↑" : d.r > 0 ? "↓" : d.c > 0 ? "→" : "←"; };
@@ -55,6 +58,7 @@ export function EventCellEffect({ event, pos, mid, perspective, firing }: { even
 }
 
 export function eventCellClass(event: MatchEventState | undefined, pos: Pos, mid: number): string {
+  if (event?.forecasts) return event.forecasts.map((forecast) => eventCellClass({ ...event, forecast, forecasts: undefined }, pos, mid)).filter(Boolean).join(" ");
   const f = event?.forecast;
   if (!f) return "";
   if (f.kind === "geyser") return (f.vents ?? [f.target]).some((v) => samePos(pos, v)) ? "event-vent" : (f.vents ?? [f.target]).some((v) => distance(pos, v) === 1) ? "event-range" : "";

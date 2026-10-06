@@ -10,7 +10,7 @@ import { COMMUNITY_SAFETY } from "../../../config/community-safety";
 
 export const dynamic = "force-dynamic";
 
-import { normalizeMatchEvent, type MatchEventKind } from "../../../config/match-events";
+import { normalizeMatchEvents, normalizeEventInterval, type MatchEventKind } from "../../../config/match-events";
 
 type RoomRow = {
   code: string;
@@ -164,7 +164,8 @@ function roomPayload(room: RoomRow, email: string) {
     lobbySize: lobby.roomLobbySize,
     lobbyAiCount: lobby.roomLobbyAiCount,
     lobbyAiDifficulty: state.roomLobbyAiDifficulty ?? "normal",
-    lobbyEvent: normalizeMatchEvent(state.roomLobbyEvent ?? state.matchEvent?.kind),
+    lobbyEvent: normalizeMatchEvents(state.roomLobbyEvent ?? state.matchEvent?.kinds ?? state.matchEvent?.kind),
+    lobbyEventInterval: normalizeEventInterval(state.roomLobbyEventInterval ?? state.matchEvent?.interval),
     memberNames: [...memberEmails
       .map((member, index) =>
         member
@@ -227,7 +228,8 @@ export async function POST(request: Request) {
     meteorSize?: MeteorSize;
     nickname?: string;
     variant?: GameVariant;
-    eventKind?: MatchEventKind;
+    eventKind?: MatchEventKind | MatchEventKind[];
+    eventInterval?: number;
     useCapsule?: boolean;
     itemKind?: ItemKind;
     ring?: number;
@@ -300,7 +302,8 @@ export async function POST(request: Request) {
             roomMemberNames: [normalizeNickname(body.nickname, email)],
             roomPreferredRoles: ["red"],
             roomLobbyVariant: createVariant,
-            roomLobbyEvent: body.ranked ? "off" : normalizeMatchEvent(body.eventKind),
+            roomLobbyEvent: body.ranked ? [] : normalizeMatchEvents(body.eventKind),
+            roomLobbyEventInterval: normalizeEventInterval(body.eventInterval),
             roomLobbySize: size,
             roomLobbyAiCount: requestedAi,
             roomLobbyAiDifficulty: body.difficulty === "easy" || body.difficulty === "hard" ? body.difficulty : "normal",
@@ -584,7 +587,8 @@ export async function POST(request: Request) {
     const nextVariant: GameVariant = body.variant === "team" || body.variant === "item" || body.variant === "team-item" ? body.variant : "classic";
     const requestedSize = [9, 11, 13, 15].includes(body.size ?? 9) ? body.size! : 9;
     state.roomLobbyVariant = nextVariant;
-    state.roomLobbyEvent = state.ranked ? "off" : normalizeMatchEvent(body.eventKind);
+    state.roomLobbyEvent = state.ranked ? [] : normalizeMatchEvents(body.eventKind ?? state.roomLobbyEvent ?? state.matchEvent?.kinds ?? state.matchEvent?.kind);
+    state.roomLobbyEventInterval = normalizeEventInterval(body.eventInterval ?? state.roomLobbyEventInterval ?? state.matchEvent?.interval);
     const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
     const humans = [room.host_email, room.guest_email, room.player3_email, room.player4_email].filter((member, index) => member && seats[index]).length;
     Object.assign(state, normalizeRoomSettings(nextVariant, requestedSize, body.aiCount ?? 0, humans));
@@ -718,8 +722,9 @@ export async function POST(request: Request) {
       variant,
       liveBalance,
       ranked,
-      normalizeMatchEvent(body.eventKind ?? previous.roomLobbyEvent),
+      normalizeMatchEvents(body.eventKind ?? previous.roomLobbyEvent ?? previous.matchEvent?.kinds ?? previous.matchEvent?.kind),
       crypto.getRandomValues(new Uint32Array(1))[0],
+      normalizeEventInterval(body.eventInterval ?? previous.roomLobbyEventInterval ?? previous.matchEvent?.interval),
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -783,8 +788,9 @@ export async function POST(request: Request) {
       previous.variant ?? "classic",
       liveBalance,
       Boolean(previous.ranked),
-      normalizeMatchEvent(previous.matchEvent?.kind),
+      normalizeMatchEvents(previous.matchEvent?.kinds ?? previous.matchEvent?.kind),
       crypto.getRandomValues(new Uint32Array(1))[0],
+      normalizeEventInterval(previous.matchEvent?.interval),
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =

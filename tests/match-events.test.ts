@@ -1,8 +1,33 @@
 import assert from "node:assert/strict";
+import { MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval } from "../config/match-events";
 import { applyMatchEvent, finishTurn, initialGameState, distance, resolveCoreArrivals, type EventForecast, type GameState } from "../app/game-rules";
 const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: { r: 2, c: 4 }, ring: 2, clockwise: true, dr: 0, dc: 1 });
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
+
+assert.deepEqual(normalizeMatchEvents(["wind", "orbit", "wind", "invalid", "off"]), ["orbit", "wind"]);
+assert.equal(normalizeEventInterval(1), 3); assert.equal(normalizeEventInterval(100), 99);
+for (let mask = 1; mask < 16; mask++) for (const count of [2, 3, 4]) for (const interval of [3, 5, 9]) {
+  const kinds = MATCH_EVENT_ORDER.filter((_, i) => mask & (1 << i));
+  let state = initialGameState(15, "red", count, false, 0, [], "classic", undefined, false, kinds, 731, interval);
+  for (let n = 0; n < interval - 2; n++) state = round(state);
+  assert.deepEqual(state.matchEvent!.forecasts!.map((f) => f.kind), kinds);
+  state = round(state);
+  const saved = structuredClone(state);
+  state = round(state);
+  assert.deepEqual(state, round(saved), "Multi-event replay is deterministic");
+  const stages = state.matchEvent!.stages!;
+  assert.deepEqual(stages.map((s) => s.forecast.kind), kinds);
+  for (let i = 1; i < stages.length; i++) assert.deepEqual(stages[i].before, stages[i - 1].after);
+  assert.equal(state.matchEvent!.remaining, interval);
+}
+{
+  const state = initialGameState(9, "red", 2, false, 0, [], "classic", undefined, false, ["geyser", "wind"], 1, 3);
+  state.probes.red = { r: 3, c: 4 }; state.probes.blue = { r: 0, c: 0 };
+  state.matchEvent = { ...state.matchEvent!, remaining: 1, forecast: event("geyser"), forecasts: [event("geyser"), event("wind")] };
+  const won = round(state);
+  assert.equal(won.winner, "red"); assert.equal(won.matchEvent!.stages!.length, 1, "CORE arrival stops subsequent effects");
+}
 
 const windDirections = new Set<string>();
 for (let seed = 0; seed < 200; seed++) {

@@ -1,8 +1,10 @@
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
-import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, normalizeMatchEvent, type MatchEventKind } from "../config/match-events";
+import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, normalizeMatchEvents, normalizeEventInterval, type MatchEventKind } from "../config/match-events";
 
 export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; secondRing?: number; clockwise: boolean; dr: number; dc: number };
-export type MatchEventState = { kind: MatchEventKind; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
+type EventBoard = Pick<GameState, "players" | "probes" | "meteors" | "obstacles" | "pulseDevices" | "inventory">;
+export type EventStage = { forecast: EventForecast; before: EventBoard; after: EventBoard };
+export type MatchEventState = { kind: MatchEventKind; kinds?: MatchEventKind[]; interval?: number; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; forecasts?: EventForecast[]; stages?: EventStage[]; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
 
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
@@ -240,8 +242,9 @@ export function initialGameState(
   variant: GameVariant = "classic",
   balance: BalanceConfig = DEFAULT_BALANCE,
   ranked = false,
-  eventKind: MatchEventKind = "off",
+  eventKind: MatchEventKind | MatchEventKind[] = "off",
   eventSeed = 1,
+  eventInterval: number = MATCH_EVENT_RULES.interval,
 ): GameState {
   void obstaclesEnabled;
   if (isTeamVariant(variant)) {
@@ -336,7 +339,7 @@ export function initialGameState(
     rankedGravityRoundsRemaining: balance.rankedGravityRounds,
     rankedRoundActed: [],
     rankedGravityPulse: 0,
-  }, eventKind, eventSeed);
+  }, eventKind, eventSeed, eventInterval);
 }
 
 export function applySetupItem(state: GameState, kind: ItemKind, player = state.turn): GameState {
@@ -787,10 +790,11 @@ export function applyGravity(state: GameState, forceThroughObstacles = false): G
 }
 
 /** Persist the seed/forecast in GameState so clients and AI replay identical events. */
-export function withMatchEvent(state: GameState, kind: unknown, seed = 1): GameState {
-  const normalized = state.ranked ? "off" : normalizeMatchEvent(kind);
-  return { ...state, matchEvent: normalized === "off" ? undefined : {
-    kind: normalized, seed: seed >>> 0, remaining: MATCH_EVENT_RULES.interval, acted: [], serial: 0,
+export function withMatchEvent(state: GameState, kind: unknown, seed = 1, period: number = MATCH_EVENT_RULES.interval): GameState {
+  const kinds = state.ranked ? [] : normalizeMatchEvents(kind);
+  const interval = normalizeEventInterval(period);
+  return { ...state, matchEvent: !kinds.length ? undefined : {
+    kind: kinds[0], kinds, interval, seed: seed >>> 0, remaining: interval, acted: [], serial: 0,
   } };
 }
 
@@ -887,11 +891,22 @@ function advanceMatchEvent(state: GameState): GameState {
     const secondRing = draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > Math.max(...outer.map(density)) ? mid : pick(outer);
     event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring, secondRing,
       clockwise: draw(2) === 1, dr: direction.r, dc: direction.c }, seed };
+    event.forecasts = normalizeMatchEvents(event.kinds ?? event.kind).map((kind) => ({ ...event.forecast!, kind }));
   }
   if (event.remaining <= 0 && event.forecast) {
-    const next = applyMatchEvent(state, event.forecast);
-    return { ...next, matchEvent: { ...event, remaining: MATCH_EVENT_RULES.interval, serial: event.serial + 1,
-      last: event.forecast, from: state.probes, forecast: undefined }, log: [...next.log, `FIELD EVENT: ${event.kind}`] };
+    let next = state;
+    const stages: EventStage[] = [];
+    const board = (s: GameState): EventBoard => ({ players: s.players, probes: s.probes, meteors: s.meteors, obstacles: s.obstacles, pulseDevices: s.pulseDevices, inventory: s.inventory });
+    for (const forecast of event.forecasts ?? [event.forecast]) {
+      const before = board(next);
+      next = applyMatchEvent(next, forecast);
+      stages.push({ forecast, before, after: board(next) });
+      const mid = Math.floor(next.size / 2);
+      // Arrival is final: later effects must not pull a finisher back out of CORE.
+      if (activePlayers(next).some((p) => samePos(next.probes[p], { r: mid, c: mid }))) break;
+    }
+    return { ...next, matchEvent: { ...event, remaining: normalizeEventInterval(event.interval), serial: event.serial + 1,
+      stages, last: stages[stages.length - 1].forecast, from: state.probes, forecast: undefined, forecasts: undefined }, log: [...next.log, ...stages.map((s) => `FIELD EVENT: ${s.forecast.kind}`)] };
   }
   return { ...state, matchEvent: event };
 }
