@@ -3,6 +3,7 @@ import type { SiteLanguage } from "../hooks/use-local-settings";
 import type { BalanceConfig } from "../balance-config";
 import { uiText } from "../i18n";
 import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, ITEM_ROLES } from "../item-content";
+import { MATCH_EVENTS, MATCH_EVENT_ORDER, MATCH_EVENT_INFO, MATCH_EVENT_LORE } from "../../config/match-events";
 import { ITEM_LORE } from "../../config/item-lore";
 
 /** Display-only manual content. Forms, modal state and submission stay in page.tsx. */
@@ -145,9 +146,17 @@ export function RulesArchive({
           </div>
         </div>
       </section>
+      <section className="manual-events">
+        <header><small>02</small><h3>{language === "ja" ? "盤面イベント" : "Field events"}</h3></header>
+        <div className="manual-event-content">
+          <p>{MATCH_EVENT_LORE[language]}</p>
+          <p>{language === "ja" ? "対戦設定でON/OFFと発動周期を選べます。発動の2巡前に場所や方向を予告。同時発動はORBIT → 間欠泉 → 追い風 → 中央重力の順です。" : "Choose events and their interval in match setup. Positions and directions are forecast two rounds ahead. Simultaneous events resolve in this order: orbit → geyser → wind → gravity."}</p>
+          <div>{MATCH_EVENT_ORDER.map((kind) => <article key={kind}><b><i aria-hidden="true">{MATCH_EVENT_INFO[kind].icon}</i> {MATCH_EVENTS[kind][language]}</b><p>{MATCH_EVENT_INFO[kind][language]}</p></article>)}</div>
+        </div>
+      </section>
       <section className="manual-items">
         <header>
-          <small>02</small>
+          <small>03</small>
           <h3>{t("itemArchiveHeading")}</h3>
         </header>
         <div className="manual-item-grid">

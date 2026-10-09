@@ -58,9 +58,9 @@ export function PlayerStack({ side, game, resultVisible, displayName, canSeeLoad
         return (
           <aside key={player} className={`player-card ${player}-card ${highlighted ? "active" : ""}`}>
             <span className="eyebrow">{displayName(player, PLAYER_ORDER.indexOf(player) + 1)}</span>
-            <h2><span className="player-number">{PLAYER_ORDER.indexOf(player) + 1}</span> {player.toUpperCase()}</h2>
+            <h2>{player.toUpperCase()}</h2>
             {teamMode && <small className="player-team">{language === "ja" ? "チーム" : "TEAM"} {side === "left" ? "A" : "B"}</small>}
-            <ProbeIcon color={player} teamMode={isTeamVariant(game.variant)} />
+            <div className="probe-portrait-slot"><ProbeIcon color={player} teamMode={isTeamVariant(game.variant)} /></div>
             <InventoryPanel inventory={game.inventory[player]} color={player}
               items={visible ? game.itemHands?.[player] ?? [] : []}
               loadoutHidden={!visible} language={language} />
@@ -117,7 +117,6 @@ export function ProbeToken({
       >
         <i>▲</i>
       </span>
-      <b className="probe-number" aria-hidden="true">{PLAYER_ORDER.indexOf(player) + 1}</b>
     </span>
   );
 }
@@ -158,7 +157,7 @@ export function InventoryPanel({ inventory, color, items, loadoutHidden = false,
     .filter(({ count }) => count > 0);
   return (
     <div className="inventory">
-      <span>{language === "ja" ? "ARSENAL / 所持メテオ" : "ARSENAL / METEORS"}</span>
+      <span>{language === "ja" ? "装備" : "ARSENAL"}</span>
       <div className="inventory-slot meteor-slot" aria-label={language === "ja" ? `小メテオ 残り${inventory.small}個` : `Small meteors: ${inventory.small} remaining`} title={`SMALL METEOR ×${inventory.small}`}><i className={`mini-meteor ${color}`}>●</i><b>×{inventory.small}</b></div>
       <div className="inventory-slot meteor-slot" aria-label={language === "ja" ? `大メテオ 残り${inventory.large}個` : `Large meteors: ${inventory.large} remaining`} title={`LARGE METEOR ×${inventory.large}`}><i className={`mini-meteor large ${color}`}>✦</i><b>×{inventory.large}</b></div>
       {loadoutHidden && <div className="inventory-slot loadout-hidden" aria-label={language === "ja" ? "アイテム構成は戦闘開始まで非公開" : "Item loadout remains hidden until the match begins"} title="SECRET LOADOUT"><i>◆</i><b>?</b></div>}

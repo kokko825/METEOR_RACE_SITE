@@ -3,8 +3,9 @@ export const UI_LAYOUT = {
   desktopBreakpointPx: 901,
   boardMaximumPx: 720,
   boardMinimumMeasurePx: 160,
-  classicBoardVerticalFill: 0.78,
+  classicBoardVerticalFill: 0.9,
   itemBoardVerticalFill: 0.9,
   actionPanelGapPx: 6,
   battleActionReservePx: 124,
+  classicActionReservePx: 92,
 } as const;

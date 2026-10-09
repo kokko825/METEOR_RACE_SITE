@@ -553,7 +553,7 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(responsiveBoard, /arena\.clientHeight - actionHeight/);
   assert.match(responsiveBoard, /arena\.clientHeight \* verticalFill/);
   assert.match(responsiveBoard, /UI_LAYOUT\.battleActionReservePx/);
-  assert.match(uiLayout, /classicBoardVerticalFill: 0\.78/);
+  assert.match(uiLayout, /classicBoardVerticalFill: 0\.9/);
   assert.match(uiLayout, /battleActionReservePx: 124/);
   assert.match(page, /useResponsiveBoard\([\s\S]*?arenaRef,[\s\S]*?actionPanelRef,/);
   assert.match(css, /\.hud-mode \.action-panel\{[^}]*max-height:124px;[^}]*overflow-y:auto/);

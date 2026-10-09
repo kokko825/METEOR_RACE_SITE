@@ -48,7 +48,6 @@ export const AI_STRATEGY = {
     normalDelegatedThreatRisk: 120,
   },
   placement: {
-    developmentRounds: 2,
     openingHarassment: 2_500,
     remoteHarassmentPerCell: 620,
     ownAdvance: 90,

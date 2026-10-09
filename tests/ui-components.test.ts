@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PlayerStack } from "../app/components/game-pieces";
+import { EventControls, EventStatus } from "../app/components/match-events";
+import { PlayerStack, ProbeToken } from "../app/components/game-pieces";
 import { VolumeControls } from "../app/components/sound-controls";
 import { RulesArchive, WorldArchive } from "../app/components/manual-content";
 import { activePlayers, initialGameState } from "../app/game-rules";
@@ -94,3 +95,17 @@ assert.equal(minutesUntilRanked(new Date("2026-10-10T22:59:00Z")), 1);
 assert.equal(minutesUntilRanked(new Date("2026-10-10T23:00:00Z")), 0);
 assert.equal(minutesUntilRanked(new Date("2026-10-11T00:00:00Z")), 660);
 console.log("ui-components: rendered controls, loadout privacy, players and manuals passed");
+for (const language of ["ja", "en"] as const) {
+  const controls = renderToStaticMarkup(createElement(EventControls, { value: ["geyser"], onChange: noop, language, interval: 5, onIntervalChange: noop }));
+  assert.equal((controls.match(/aria-pressed="true"/g) ?? []).length, 1);
+  assert.equal((controls.match(/aria-pressed="false"/g) ?? []).length, 3);
+  assert.ok(!controls.includes('type="checkbox"'));
+  assert.ok(controls.includes("AEQRIS"));
+  const manual = renderToStaticMarkup(createElement(RulesArchive, { language, balance: DEFAULT_BALANCE }));
+  assert.ok(manual.includes("manual-events"));
+}
+const token = renderToStaticMarkup(createElement(ProbeToken, { player: "red", rotation: 0 }));
+assert.ok(!token.includes("probe-number"));
+const status = renderToStaticMarkup(createElement(EventStatus, { language: "en", event: { kind: "geyser", kinds: ["geyser", "wind"], interval: 5, remaining: 3, seed: 1, acted: [], serial: 0 } }));
+assert.ok(!status.includes("<details"));
+assert.ok(status.includes("Geyser") && status.includes("Wind"));

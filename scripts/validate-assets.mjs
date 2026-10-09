@@ -31,4 +31,13 @@ const publicEntries = await readdir(resolve("public"));
 const leftovers = forbiddenRootAssets.filter((name) => publicEntries.includes(name));
 if (leftovers.length) throw new Error(`public直下に未整理の素材があります: ${leftovers.join(", ")}`);
 
+const japaneseFontCss = await readFile("app/styles/japanese-font.css", "utf8");
+const fontPaths = [...japaneseFontCss.matchAll(/url\((\/assets\/fonts\/noto-sans-jp\/[^)]+\.woff2)\)/g)].map(match => match[1]);
+if (fontPaths.length < 1 || /url\(https?:/.test(japaneseFontCss)) throw new Error("Japanese font must be self-hosted");
+for (const fontPath of fontPaths) {
+  const font = await readFile(resolve(`public${fontPath}`));
+  if (font.subarray(0, 4).toString() !== "wOF2") throw new Error(`Invalid WOFF2: ${fontPath}`);
+}
+await access(resolve("public/assets/fonts/noto-sans-jp/OFL.txt"));
+
 console.log(`assets: ${requiredAssets.length} required files verified`);

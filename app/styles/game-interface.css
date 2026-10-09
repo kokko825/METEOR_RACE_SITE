@@ -18,6 +18,9 @@
 :root {
   --font-geist-sans: "Geist";
   --font-geist-mono: "Geist Mono";
+  --font-ui-display: "Geist", "Noto Sans JP", sans-serif;
+  --font-ui-body: "Noto Sans JP", "Geist", sans-serif;
+  --font-ui-technical: "Geist Mono", "Noto Sans JP", monospace;
   --ink: #e8f7ff;
   --muted: #7592a5;
   --space: #03070d;
@@ -58,7 +61,7 @@ body {
     linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
     var(--space);
   background-size: auto, auto, 42px 42px, 42px 42px, auto;
-  font-family: var(--font-geist-sans), "Noto Sans JP", sans-serif;
+  font-family: var(--font-geist-sans), "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
   min-height: 100vh;
 }
 

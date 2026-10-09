@@ -21,3 +21,15 @@ export const normalizeMatchEvents = (value: unknown): MatchEventKind[] => {
 };
 export const normalizeMatchEvent = (value: unknown): MatchEventKind =>
   typeof value === "string" && Object.hasOwn(MATCH_EVENTS, value) ? value as MatchEventKind : "off";
+/** Shared player-facing explanations for setup and the manual. */
+export const MATCH_EVENT_LORE = {
+  ja: "惑星の環境が引き起こすアクシデントを、AEQRISが盤面上に再現。複数のイベントを組み合わせて対戦できます。",
+  en: "AEQRIS simulates hazards caused by planetary environments on the field. Combine events for a different kind of match.",
+} as const;
+export const MATCH_EVENT_INFO = {
+  off: { icon: "−", ja: "", en: "" },
+  geyser: { icon: "♨", ja: "4か所の噴出口から小メテオ相当の爆風が発生。噴出口に探査機や配置物がある場合、その場所は噴出しません。", en: "Four vents create small-meteor blasts. A vent occupied by a probe or placed object does not erupt." },
+  orbit: { icon: "↻", ja: "隣り合わない2つのリングが、互いに逆方向へ90度回転。探査機も配置物も一緒に移動します。", en: "Two nonadjacent rings rotate 90 degrees in opposite directions, carrying probes and placed objects." },
+  gravity: { icon: "◎", ja: "すべての探査機を、斜めも含めCOREへ1マス引き寄せます。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pulls every probe one cell toward CORE, including diagonally. Meteors stay put; probes and obstacles block movement." },
+  wind: { icon: "➜", ja: "8方向から選ばれた方向へ、すべての探査機を1マス押します。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pushes all probes one cell in one of eight directions. Meteors stay put; probes and obstacles block movement." },
+} as const;

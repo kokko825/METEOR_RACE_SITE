@@ -27,6 +27,9 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 - メテオ数、継続巡数、効果範囲 → `config/game-balance.ts`
 - EASY／NORMAL／HARDの性格 → `config/ai-strategy.ts`
 - 日本語・英語の文章 → `config/ui-copy.ts`
+- イベント名・世界観説明・遊び方 → `config/match-events.ts`
+- タイトル・本文・管制ラベルの書体 → `app/styles/game-interface.css` 冒頭の `--font-ui-*`
+- 日本語フォント → `public/assets/fonts/noto-sans-jp/`（Noto Sans JP、SIL OFL）。`app/styles/japanese-font.css` は生成物で直接編集しない。公式配布からの更新は `node scripts/sync-japanese-font.mjs`。分割ファイルは使用文字に応じて読み込まれる。
 - BGM、色、発光 → `config/site-presentation.ts`
 - SEや画像のファイル → `public/assets/`
 - 駒、メテオ、所持欄 → `app/components/game-pieces.tsx`

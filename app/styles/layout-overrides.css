@@ -397,17 +397,16 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .blast-diagram{display:grid;grid-template-columns:repeat(5,1fr);width:min(100%,180px);aspect-ratio:1;gap:3px}
 .blast-diagram span{display:grid;place-items:center;background:#091b26;border:1px solid #355364;font-size:16px}
 .blast-diagram .blast{background:#65351d;color:#ffe5cb}.blast-diagram .origin{background:#a33b20;color:white}
-.probe-number{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#07131d;font-size:clamp(9px,1vw,13px);font-weight:950;z-index:3;text-shadow:0 0 2px #fff}
-.player-number{display:inline-grid;place-items:center;min-width:1.4em;border:1px solid currentColor;border-radius:4px}
 .player-team{color:#b9d3df;font-size:13px;font-weight:800;letter-spacing:.06em}
-.hud-mode .player-card .probe-portrait{max-height:100px;min-height:48px}
+.probe-portrait-slot{position:relative;height:76px;flex-shrink:0}
+.probe-portrait-slot>.probe-portrait{position:absolute;left:50%;top:50%;translate:-50% -50%}
+.shell.hud-mode .player-stack .player-card .probe-portrait{width:96px;height:118px;min-height:118px;max-height:none;margin:0;scale:.62}
 .hud-mode .player-card .inventory{font-size:14px;gap:7px}
 .hud-mode .player-card .inventory-slot b{font-size:14px}
 .topbar .match-meta{flex-wrap:wrap;min-width:0;gap:8px}
 .topbar .match-meta>.event-status,.topbar .match-meta>.event-sequence{flex-basis:100%;margin:0;font-size:13px;line-height:1.5}
-.topbar .event-sequence{position:relative;display:block;white-space:normal}
-.topbar .event-sequence summary{cursor:pointer;padding:6px 10px;border:1px solid #376372;background:#081e29;list-style-position:inside}
-.topbar .event-sequence>div{position:absolute;right:0;top:100%;z-index:95;min-width:250px;max-width:calc(100vw - 24px);padding:12px;background:#06151f;border:1px solid #54899c;box-shadow:0 10px 25px #0009;display:grid;gap:8px}
+.topbar .event-sequence{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;white-space:normal;font-size:13px}
+.topbar .event-sequence>div{display:flex;flex-wrap:wrap;gap:6px 12px}.topbar .event-sequence i{font-style:normal;color:#8edced}
 .topbar .event-sequence>div>span{display:flex;gap:8px;align-items:center}
 .topbar .event-sequence .event-status{white-space:normal;margin:0}
 .topbar .event-status b,.topbar .event-status small{font-size:13px;line-height:1.5}
@@ -445,8 +444,14 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .shell.hud-mode .player-card>h2{font-size:18px!important;line-height:1.3!important;letter-spacing:.03em!important;margin:0!important;white-space:normal;overflow-wrap:anywhere}
   .shell.hud-mode .player-card{overflow-x:hidden!important}
   .shell.hud-mode .player-team{font-size:13px;line-height:1.4}
-  .shell.hud-mode .player-card .probe-portrait{height:60px;min-height:40px;flex:0 0 60px;margin:0}
-  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .probe-portrait{display:none}
+  .shell.hud-mode .player-card .probe-portrait{height:118px;min-height:118px;flex:none;margin:0}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2))>.player-card{display:grid!important;grid-template-columns:minmax(0,1fr) 42px;grid-template-rows:auto auto auto minmax(0,1fr);gap:4px}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .eyebrow{grid-area:1/1}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) h2{grid-area:2/1}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .player-team{grid-area:3/1}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .probe-portrait-slot{grid-area:1/2/4/3;height:64px;width:42px}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .inventory{grid-area:4/1/5/3;align-self:end}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .probe-portrait{scale:.4}
   .shell.hud-mode .player-card .inventory{margin:0;padding:6px 0;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px;height:auto!important}
   .shell.hud-mode .player-card .inventory>span{font-size:11px!important;line-height:1.4!important;letter-spacing:0!important;grid-column:1/-1}
   .shell.hud-mode .player-card .inventory-slot{display:flex!important;justify-content:center;align-items:center;min-width:0!important;min-height:36px;height:auto!important;gap:4px;padding:4px}
@@ -467,6 +472,7 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .player-team{font-size:11px}
   .hud-mode .turn-callout{display:none}
   .hud-mode .arena>.status{display:flex;font-size:14px;line-height:1.5;white-space:normal;height:auto;min-height:40px;overflow:visible}
+  .hud-mode .probe-portrait-slot{display:none}
   .hud-mode .player-card{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-rows:auto auto auto!important;gap:6px!important;height:auto!important;min-height:90px!important;padding:8px!important;overflow:visible!important}
   .hud-mode .player-card>.eyebrow{grid-area:1/1!important;font-size:11px!important;overflow-wrap:anywhere;white-space:normal}
   .hud-mode .player-card>h2{grid-area:1/2!important;font-size:12px!important;white-space:nowrap;margin:0!important}
@@ -479,7 +485,49 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .arena:has(.readable-loadout) .switch-setup-controls>.meteor-choice{min-height:46px!important;font-size:11px!important}
 }
 @media(min-width:701px) and (max-width:900px){
+  .shell.hud-mode>.game-layout{height:auto!important;grid-template-rows:auto auto!important;overflow:visible!important}
+  .shell.hud-mode .player-stack,.shell.hud-mode .player-stack:has(>.player-card:nth-child(2)){height:auto!important;grid-template-columns:1fr!important;grid-template-rows:none!important;grid-auto-rows:auto;gap:8px}
   .shell.hud-mode{padding:16px 16px calc(var(--battle-hud-height) + 20px)!important}
   .hud-mode .arena>.board{width:min(100%,max(320px,calc(100dvh - var(--battle-hud-height) - 360px)));max-height:none}
   .hud-mode .player-card .probe-portrait{display:none}
+  .hud-mode:has(.player-stack>.player-card:nth-child(2)) .arena>.board{width:min(100%,max(300px,calc(100dvh - var(--battle-hud-height) - 440px)))}
+}
+/* Typography follows information roles, not individual Japanese character types. */
+.entry-panel h2,.manual-onepage h3,.settings-drawer h2,.choice-row strong{font-family:var(--font-ui-display);font-weight:750;line-height:1.3}
+.entry-panel p,.difficulty-description,.event-intro,.manual-rule-content p,.manual-event-content p,.manual-item-grid p,.tutorial-copy p{font-family:var(--font-ui-body);font-weight:400;letter-spacing:.015em}
+.entry-flow>header b,.entry-panel h3,.round,.regula-console small,.player-card>.eyebrow,.event-options small{font-family:var(--font-ui-technical);font-weight:500}
+.regula-console small,.entry-flow>header b{letter-spacing:.06em}
+.choice-row>button:focus-visible,.rank-choice>button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+/* Shared selection language: recessed idle choices, raised active choices. */
+.choice-row>button:not(.selected),.rank-choice>button:not(.selected){background:#07131d;color:#b7ccd6;border-color:#344c59;box-shadow:inset 0 3px 7px #0006}
+.choice-row>button.selected,.rank-choice>button.selected,.room-rule-console button.on{background:linear-gradient(135deg,#174b60,#102b3b);border-color:#75dcec;color:#f1fcff;box-shadow:inset 0 1px #b9f5ff66,0 3px 9px #0005}
+.entry-panel .choice-row strong{letter-spacing:.02em;font-weight:750}
+.entry-panel h2{font-size:clamp(26px,2.4vw,36px);letter-spacing:.02em}
+.difficulty-description{display:block;color:#bdcfd8;font-size:14px;line-height:1.6;font-weight:500;letter-spacing:0;text-transform:none;margin-top:8px}
+.entry-settings{align-items:start}
+@media(min-width:901px){
+ .shell.hud-mode .regula-console{padding:3px 8px}
+ .shell.hud-mode>.topbar{gap:5px 18px;padding-bottom:4px!important}
+}
+@media(min-width:1000px){
+ .entry-flow{padding:16px 32px!important;grid-template-rows:auto auto auto;align-content:start;gap:14px;padding-bottom:calc(var(--battle-hud-height) + 20px)!important}
+ .entry-flow>.title-guide-actions{grid-area:1/1;justify-self:end;align-self:center}
+ .entry-flow>header{grid-area:1/1;justify-self:start;position:static;max-width:calc(100% - 280px)}
+ .entry-flow>.entry-panel:has(>.entry-settings){display:grid;grid-template-columns:1.15fr 1fr;gap:6px 20px;max-width:1100px;width:100%;margin:0 auto}
+ .entry-panel:has(>.entry-settings)>h2{grid-area:1/1;font-size:28px}
+ .entry-panel:has(>.entry-settings)>p{grid-area:1/2;align-self:center;text-align:right}
+ .entry-panel:has(>.entry-settings)>h3:first-of-type{grid-area:2/1}
+ .entry-panel:has(>.entry-settings)>.choice-row:nth-of-type(1){grid-area:3/1}
+ .entry-panel:has(>.entry-settings)>h3:nth-of-type(2){grid-area:4/1}
+ .entry-panel:has(>.entry-settings)>.choice-row:nth-of-type(2){grid-area:5/1}
+ .entry-panel:has(>.entry-settings)>.entry-settings{grid-area:2/2/6/3;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+ .entry-panel:has(>.entry-settings)>.entry-settings>label:last-child{grid-column:1/-1}
+ .entry-panel .entry-settings label,.entry-panel .cpu-stepper{padding:10px;gap:6px;letter-spacing:.03em}
+ .entry-panel .cpu-stepper{grid-template-columns:1fr 34px 26px 34px}
+ .entry-panel .cpu-stepper button{min-width:0;width:34px;padding:0}
+ .entry-panel:has(>.entry-settings)>.event-controls{grid-column:1/-1}
+ .entry-panel:has(>.entry-settings)>.entry-confirm{grid-column:1/-1;min-height:50px}
+ .entry-panel:has(>.entry-settings) .choice-row button{min-height:72px;padding:10px 14px}
+ .entry-panel:has(>.entry-settings) .choice-row strong{font-size:20px}
+ .entry-flow:has(.entry-settings)>footer{display:none}
 }

@@ -1,8 +1,15 @@
-.event-controls{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;min-width:0;padding:.6rem;border:1px solid #397589;background:#081e29;color:#c6f1ff}
-.event-controls select{min-width:0;max-width:100%;flex:1 1 10rem;padding:.5rem;background:#071019;color:#fff;border:1px solid #65bbd1}
-.event-controls small{flex-basis:100%;font-size:.75rem;line-height:1.4}
-.event-controls{margin:0}.event-controls>label{display:flex;align-items:center;gap:.35rem;min-height:36px}.event-controls input{width:18px;height:18px;accent-color:#70d9ec}.event-controls button{padding:.35rem .6rem}.event-controls button[aria-pressed=true]{outline:2px solid #70d9ec}.event-controls select{flex:0 1 5rem}.event-sequence{display:flex;flex-wrap:wrap;gap:.3rem}.event-sequence>span{display:flex;align-items:center;gap:.2rem}.event-sequence .event-status{font-size:.7rem}
-.event-status{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;max-width:24rem;font-size:.8rem;line-height:1.3;color:#b8dde7}.event-status small{font-size:.72rem}.event-status.announced{color:#ffdf8a}
+.event-controls{display:grid;gap:12px;min-width:0;margin:0;padding:14px;border:1px solid #397589;background:#081923;color:#d7edf5}
+.event-controls legend{padding:0 8px;font-weight:700;letter-spacing:.03em}
+.event-intro{margin:0;font-size:14px;line-height:1.65;color:#bdd0d9}
+.event-toggle-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.event-toggle-grid button{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:60px;padding:10px;background:#071017;color:#a4bcc8;border:1px solid #31434e;border-radius:8px;box-shadow:inset 0 3px 7px #0006;text-align:left;font-size:14px}
+.event-toggle-grid button i{font-size:24px;font-style:normal}.event-toggle-grid button b{font-size:11px;letter-spacing:.04em}
+.event-toggle-grid button[aria-pressed=true]{color:#eefcff;background:linear-gradient(135deg,#194d61,#10303d);border-color:#6cdef2;box-shadow:inset 0 1px #aff5ff77,0 3px 9px #0006}
+.event-toggle-grid button[aria-pressed=true] b{color:#8cefff}.event-toggle-grid button:focus-visible{outline:3px solid white;outline-offset:3px}
+.event-options{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.event-options label{display:flex;align-items:center;gap:10px;font-size:14px}.event-options select{width:74px;min-height:40px;padding:6px;background:#071019;color:white;border:1px solid #65bbd1;font:inherit}.event-options small{font-size:13px;color:#b8ced8;line-height:1.5}
+.event-sequence{min-width:0}.event-status{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;font-size:13px;line-height:1.5;color:#b8dde7}.event-status small{font-size:12px}.event-status.announced{color:#ffdf8a}
+.manual-event-content{padding:14px;color:#d0e1e9;line-height:1.65;font-size:max(14px,var(--game-ui-body))}.manual-event-content>div{display:grid;grid-template-columns:1fr 1fr;gap:12px}.manual-event-content article{padding:14px;background:#0a202c;border:1px solid #315768}.manual-event-content p{margin:0 0 12px}.manual-event-content article p{margin:8px 0 0}.manual-event-content i{font-style:normal;color:#80def2}
+@media(max-width:700px){.event-toggle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.manual-event-content>div{grid-template-columns:1fr}}
 .room-rule-console>.event-controls,.room-settings-summary .event-summary{grid-column:1/-1}
 .cell.event-range{outline:1px dashed #e7b74a55;outline-offset:-3px}
 .event-vent-crack,.event-direction,.event-board-effect{pointer-events:none!important;position:absolute;user-select:none}

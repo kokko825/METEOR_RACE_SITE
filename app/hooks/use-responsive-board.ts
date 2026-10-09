@@ -12,6 +12,7 @@ export function useResponsiveBoard(
   arenaRef: RefObject<HTMLElement | null>,
   actionRef: RefObject<HTMLElement | null>,
   verticalFill: number,
+  hasItems: boolean,
 ) {
   useEffect(() => {
     const arena = arenaRef.current;
@@ -27,7 +28,7 @@ export function useResponsiveBoard(
       // Reserve action rows before they appear. Measuring the current buttons
       // would shrink the board when movement changes to meteor placement.
       const fontSize = parseFloat(getComputedStyle(arena).getPropertyValue("--game-ui-button")) || 16;
-      const actionHeight = Math.max(UI_LAYOUT.battleActionReservePx, fontSize * 8);
+      const actionHeight = Math.max(hasItems ? UI_LAYOUT.battleActionReservePx : UI_LAYOUT.classicActionReservePx, fontSize * (hasItems ? 8 : 5));
       const availableHeight = arena.clientHeight - actionHeight - (actionHeight > 0 ? UI_LAYOUT.actionPanelGapPx : 0);
       const size = Math.floor(Math.min(
         UI_LAYOUT.boardMaximumPx,
@@ -59,5 +60,5 @@ export function useResponsiveBoard(
       window.removeEventListener("resize", scheduleUpdate);
       arena.style.removeProperty("--board-available-size");
     };
-  }, [actionRef, arenaRef, verticalFill]);
+  }, [actionRef, arenaRef, verticalFill, hasItems]);
 }
