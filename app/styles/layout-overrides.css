@@ -544,15 +544,28 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .shell.hud-mode .arena:has(.readable-loadout){display:flex!important;flex-direction:column;justify-content:center;gap:10px;overflow:visible;height:100%!important;min-height:0}
 .arena:has(.readable-loadout)>.board{display:none}
 .arena:has(.readable-loadout) .readable-loadout{position:relative;inset:auto;transform:none;width:100%;max-height:none;overflow:visible;padding:10px;gap:10px;pointer-events:auto}
-.arena .readable-loadout .item-preview-flags{display:flex;align-items:stretch;justify-content:center;gap:8px}
-.arena .readable-loadout .item-preview-flag{display:flex;flex:1 1 0;max-width:34%;min-width:0;min-height:0;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:12px 8px;text-align:center;clip-path:none;border:1px solid var(--item-color);background:linear-gradient(160deg,color-mix(in srgb,var(--item-color) 14%,#06121c),#06121c);cursor:pointer}
-.arena .readable-loadout .item-preview-flag.selected{box-shadow:inset 0 0 0 2px var(--item-color)}
-.arena .readable-loadout .item-icon{font-size:28px;flex-shrink:0}
-.arena .readable-loadout .item-preview-flag b{font-size:14px;letter-spacing:.02em;overflow-wrap:anywhere}
-.loadout-slot{font-size:11px;color:#a7bac5}
-.loadout-card-facts{font-size:13px;color:var(--item-color);font-weight:700}
-.loadout-card-description{font-size:14px;line-height:1.6;color:#d8eaf2;text-align:left;overflow-wrap:anywhere}
-.arena .readable-loadout .loadout-detail{display:none}
+.loadout-rows{display:grid;gap:8px}
+.loadout-empty{margin:0;padding:20px;color:#b5ccd8;text-align:center}
+.loadout-row{margin:0;padding:0;--item-color:#8bd6ed;border:1px solid color-mix(in srgb,var(--item-color) 42%,#183342);border-left:3px solid var(--item-color);background:linear-gradient(110deg,color-mix(in srgb,var(--item-color) 12%,#071522),#07111b 65%);box-shadow:inset 0 1px #ffffff09,0 4px 12px #0003;min-width:0}
+.loadout-row.shield{--item-color:var(--item-shield,#4dd8ff)}.loadout-row.booster{--item-color:var(--item-booster)}.loadout-row.holo{--item-color:var(--item-holo,#dc75ff)}.loadout-row.orbit{--item-color:var(--item-orbit,#74eea5)}.loadout-row.blast{--item-color:var(--item-blast)}.loadout-row.pulse{--item-color:var(--item-pulse,#ff3bd4)}.loadout-row.recall{--item-color:var(--item-recall,#76a8ff)}
+.loadout-row>summary{display:grid;grid-template-columns:64px minmax(0,1fr) 24px;align-items:center;gap:14px;padding:10px 14px;cursor:pointer;list-style:none;min-height:72px}
+.loadout-row>summary::-webkit-details-marker{display:none}
+.loadout-row>summary:focus-visible{outline:2px solid white;outline-offset:2px}
+.loadout-emblem{display:grid;justify-items:center;align-content:center;gap:3px;color:var(--item-color);border-right:1px solid color-mix(in srgb,var(--item-color) 25%,transparent);padding-right:14px;min-width:0}
+.arena .readable-loadout .loadout-emblem .item-icon{position:static!important;transform:none!important;display:grid!important;place-items:center;width:34px!important;height:34px!important;font-size:28px!important;line-height:1!important;margin:0!important;flex:none}
+.loadout-emblem small{font-size:10px;letter-spacing:.15em;color:#8197a7}
+.loadout-copy{display:grid;gap:5px;min-width:0}
+.loadout-heading{display:flex;align-items:baseline;justify-content:space-between;gap:6px 14px;flex-wrap:wrap}
+.loadout-heading b{color:var(--item-color);font-family:var(--font-ui-technical);font-size:17px;letter-spacing:.08em;line-height:1.3}
+.loadout-heading>span{font-size:12px;line-height:1.4;color:#a9c4d2}
+.loadout-role{color:#e0eef6;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.loadout-expand{color:var(--item-color);font-size:18px;text-align:center}
+.loadout-row[open] .loadout-expand{transform:rotate(45deg)}
+.loadout-row[open]{border-color:var(--item-color)}
+.loadout-row>.loadout-card-description{margin:0 14px 12px 92px;padding-top:9px;border-top:1px solid #ffffff14;color:#c6dbe6;font-size:14px;line-height:1.6}
+.arena:has(.readable-loadout) .meteor-choice.item-choice{border-radius:3px;background:linear-gradient(160deg,#142734,#08111b);box-shadow:inset 0 1px #ffffff0d;transition:background .15s,border-color .15s}
+.arena:has(.readable-loadout) .meteor-choice.item-choice.selected{background:linear-gradient(135deg,color-mix(in srgb,currentColor 12%,#0a1a27),#102230);box-shadow:inset 0 -2px currentColor}
+.arena:has(.readable-loadout) .setup-confirm-actions{gap:12px}
 .shell.hud-mode .arena:has(.readable-loadout) .action-panel{flex:none;position:static!important;width:100%;max-height:none!important;height:auto!important;overflow:visible!important;transform:none}
 .arena:has(.readable-loadout) .switch-setup-controls{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .arena:has(.readable-loadout) .switch-setup-controls>.meteor-choice{min-height:44px;font-size:13px}
@@ -563,12 +576,16 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 @media(max-width:700px){
  .shell.hud-mode .arena:has(.readable-loadout){height:auto!important;gap:8px}
  .arena:has(.readable-loadout) .readable-loadout{padding:8px}
- .arena .readable-loadout .item-preview-flag{padding:9px 4px;gap:5px}
- .arena .readable-loadout .item-preview-flag b{font-size:12px}
- .arena .readable-loadout .loadout-card-description,.arena .readable-loadout .loadout-card-facts{display:none}
- .arena .readable-loadout .loadout-detail{display:block;padding:5px 0}
- .arena .readable-loadout .loadout-detail p{font-size:14px;line-height:1.5;margin:6px 0 0}
- .arena .readable-loadout .loadout-detail strong{font-size:14px}
+ .loadout-row>summary{grid-template-columns:46px minmax(0,1fr) 18px;gap:9px;padding:9px;min-height:78px}
+ .loadout-emblem{padding-right:9px}
+ .loadout-heading b{font-size:15px}
+ .loadout-heading>span{font-size:11px}
+ .loadout-role{font-size:13px}
+ .loadout-row>.loadout-card-description{margin-left:65px;font-size:13px}
 }
+/* Short windows and expanded details must remain reachable without clipping. */
+.shell.hud-mode:has(.readable-loadout){overflow-y:auto}
+.shell.hud-mode .arena:has(.readable-loadout){justify-content:safe center}
+.shell.hud-mode:has(.readable-loadout)>.game-layout{min-height:min-content!important}
 /* There is no round or CORE progress to report while loadouts are being chosen. */
 .shell:has(.readable-loadout)>.topbar>.match-meta{display:none!important}

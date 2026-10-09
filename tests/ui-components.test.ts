@@ -57,10 +57,15 @@ for (const language of ["ja", "en"] as const) {
   assert.ok(rules.includes(language === "ja" ? "または" : "OR"));
   assert.ok(rules.includes("blast-diagram"));
   const loadout = renderToStaticMarkup(createElement(LoadoutPreview, { items: ["booster", "shield", "blast"], balance: DEFAULT_BALANCE, language }));
-  assert.equal((loadout.match(/aria-pressed=/g) ?? []).length, 3);
-  assert.ok(loadout.includes("loadout-detail"));
+  assert.equal((loadout.match(/<details /g) ?? []).length, 3);
+  assert.ok(loadout.includes("loadout-rows"));
   assert.equal((loadout.match(/class="loadout-card-description"/g) ?? []).length, 3);
-  assert.ok(loadout.includes('class="item-preview-flag blast selected"'));
+  assert.ok(loadout.includes('class="loadout-row blast"'));
+  for (const item of ["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as const) {
+    const row = renderToStaticMarkup(createElement(LoadoutPreview, { items: [item], balance: DEFAULT_BALANCE, language }));
+    assert.ok(row.includes('class="loadout-emblem"') && row.includes('class="loadout-copy"'));
+    assert.ok(row.includes('class="loadout-card-description"'));
+  }
   const team = initialGameState(13, "red", 4, false, 0, [], "team");
   const left = renderToStaticMarkup(createElement(PlayerStack, { side: "left", game: team, resultVisible: false, language, displayName: p => p, canSeeLoadout: () => true }));
   assert.ok(left.includes("red-card") && left.includes("yellow-card"));
