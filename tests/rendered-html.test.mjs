@@ -19,6 +19,13 @@ const readGameSurface = async () => (await Promise.all([
   read("../app/components/loadout-preview.tsx"),
 ])).join("\n");
 
+test("short setup panels center while long forms retain intrinsic height", async () => {
+  const css = await read("../app/styles/layout-overrides.css");
+  assert.match(css, /\.entry-flow>\.entry-panel\{margin:auto;min-width:0\}/);
+  assert.match(css, /grid-template-rows:auto auto minmax\(min-content,1fr\) auto/);
+  assert.match(css, /grid-template-rows:auto minmax\(min-content,1fr\) auto/);
+});
+
 test("manual sections grow with their content instead of sharing a fixed viewport height", async () => {
   const css = await read("../app/styles/layout-overrides.css");
   assert.match(css, /\.manual-drawer \.manual-onepage\{[^}]*grid-template-rows:none;grid-auto-rows:max-content/);

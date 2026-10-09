@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval } from "../config/match-events";
+import { MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals } from "../config/match-events";
 import { applyMatchEvent, finishTurn, initialGameState, distance, resolveCoreArrivals, type EventForecast, type GameState } from "../app/game-rules";
 const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: { r: 2, c: 4 }, ring: 2, clockwise: true, dr: 0, dc: 1 });
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
@@ -144,3 +144,27 @@ assert.equal(start("off").matchEvent, undefined);
   assert.deepEqual(next.matchEvent?.acted, []);
 }
 console.log("match-events: forecasts, 400 vent layouts, blocked vents, collisions, wins and replay passed");
+assert.deepEqual(normalizeEventIntervals({ wind: 2, gravity: 500, geyser: NaN }), { orbit: 5, geyser: 5, wind: 3, gravity: 99 });
+for (const count of [2, 3, 4]) {
+  const intervals = { orbit: 3, geyser: 5, wind: 7, gravity: 9 };
+  let state = initialGameState(15, "red", count, false, 0, [], "classic", undefined, false, MATCH_EVENT_ORDER, 42, intervals);
+  for (let n = 1; n <= 45; n++) {
+    state.turnCount = 0; // Exercise repeated event cycles independently of the match timeout.
+    state.probes = { red: { r: 0, c: 0 }, blue: { r: 14, c: 14 }, green: { r: 0, c: 14 }, yellow: { r: 14, c: 0 } };
+    const saved = JSON.parse(JSON.stringify(state)) as GameState;
+    const previousSerial = state.matchEvent!.serial;
+    state = round(state);
+    assert.deepEqual(JSON.parse(JSON.stringify(state)), JSON.parse(JSON.stringify(round(saved))), "Independent periods replay identically after network serialization");
+    const due = MATCH_EVENT_ORDER.filter(k => n % intervals[k as keyof typeof intervals] === 0);
+    assert.deepEqual(state.matchEvent!.serial > previousSerial ? state.matchEvent!.stages!.map(s => s.forecast.kind) : [], due, `periods: round ${n}/${count} players`);
+    for (const kind of MATCH_EVENT_ORDER) {
+      const interval = intervals[kind as keyof typeof intervals];
+      const remaining = interval - n % interval;
+      assert.equal(state.matchEvent!.schedule![kind]!.remaining, remaining, `${kind} round ${n} / players ${count} phase ${state.phase}`);
+      assert.equal(Boolean(state.matchEvent!.schedule![kind]!.forecast), remaining <= 2, "Each event announces exactly two rounds ahead");
+    }
+    const stages = state.matchEvent!.stages ?? [];
+    for (let i = 1; i < stages.length; i++) assert.deepEqual(stages[i].before, stages[i - 1].after);
+  }
+}
+console.log("match-events: independent 3/5/7/9-round clocks, simultaneous order and online replay passed");

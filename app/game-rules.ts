@@ -1,10 +1,10 @@
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
-import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, normalizeMatchEvents, normalizeEventInterval, type MatchEventKind } from "../config/match-events";
+import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals, type EventIntervals, type EventTiming, type MatchEventKind } from "../config/match-events";
 
 export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; secondRing?: number; clockwise: boolean; dr: number; dc: number };
 type EventBoard = Pick<GameState, "players" | "probes" | "meteors" | "obstacles" | "pulseDevices" | "inventory">;
 export type EventStage = { forecast: EventForecast; before: EventBoard; after: EventBoard };
-export type MatchEventState = { kind: MatchEventKind; kinds?: MatchEventKind[]; interval?: number; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; forecasts?: EventForecast[]; stages?: EventStage[]; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
+export type MatchEventState = { kind: MatchEventKind; kinds?: MatchEventKind[]; interval?: number; intervals?: EventIntervals; schedule?: Partial<Record<MatchEventKind, { remaining: number; forecast?: EventForecast }>>; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; forecasts?: EventForecast[]; stages?: EventStage[]; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
 
 export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
@@ -244,7 +244,7 @@ export function initialGameState(
   ranked = false,
   eventKind: MatchEventKind | MatchEventKind[] = "off",
   eventSeed = 1,
-  eventInterval: number = MATCH_EVENT_RULES.interval,
+  eventInterval: EventTiming = MATCH_EVENT_RULES.interval,
 ): GameState {
   void obstaclesEnabled;
   if (isTeamVariant(variant)) {
@@ -460,6 +460,17 @@ function winnerMessage(winner: Player, variant: GameVariant) {
     : `${playerName(winner)} WIN!`;
 }
 
+/** Animation snapshots are not game-position data. Use stable fields after JSON transport. */
+function eventPositionKey(event?: MatchEventState) {
+  if (!event) return "off";
+  const kinds = normalizeMatchEvents(event.kinds ?? event.kind);
+  return JSON.stringify([event.seed, event.acted, kinds.map((kind) => [
+    kind, event.intervals?.[kind] ?? event.interval,
+    event.schedule?.[kind]?.remaining ?? event.remaining,
+    event.schedule?.[kind]?.forecast ?? event.forecasts?.find((f) => f.kind === kind) ?? null,
+  ])]);
+}
+
 function stateKey(state: GameState, nextTurn: Player) {
   const meteors = [...state.meteors]
     .sort((a, b) => a.r - b.r || a.c - b.c)
@@ -484,7 +495,7 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.boosterMoves ?? {}),
     JSON.stringify(state.capsuleMeteors ?? {}),
     state.bonusMove ? "bonus" : "normal",
-    JSON.stringify(state.matchEvent ?? null),
+    eventPositionKey(state.matchEvent),
   ].join("/");
 }
 
@@ -790,11 +801,14 @@ export function applyGravity(state: GameState, forceThroughObstacles = false): G
 }
 
 /** Persist the seed/forecast in GameState so clients and AI replay identical events. */
-export function withMatchEvent(state: GameState, kind: unknown, seed = 1, period: number = MATCH_EVENT_RULES.interval): GameState {
+export function withMatchEvent(state: GameState, kind: unknown, seed = 1, period: EventTiming = MATCH_EVENT_RULES.interval): GameState {
   const kinds = state.ranked ? [] : normalizeMatchEvents(kind);
   const interval = normalizeEventInterval(period);
+  const intervals = typeof period === "object" ? normalizeEventIntervals(period) : undefined;
   return { ...state, matchEvent: !kinds.length ? undefined : {
-    kind: kinds[0], kinds, interval, seed: seed >>> 0, remaining: interval, acted: [], serial: 0,
+    kind: kinds[0], kinds, interval,
+    ...(intervals ? { intervals, schedule: Object.fromEntries(kinds.map((k) => [k, { remaining: intervals[k]! }])) } : {}),
+    seed: seed >>> 0, remaining: intervals ? Math.min(...kinds.map((k) => intervals[k]!)) : interval, acted: [], serial: 0,
   } };
 }
 
@@ -858,7 +872,40 @@ export function applyMatchEvent(state: GameState, event: EventForecast): GameSta
   return { ...pushed, inventory, meteors, obstacles };
 }
 
+/** Independent clocks reuse the same event resolver, in the established order. */
 function advanceMatchEvent(state: GameState): GameState {
+  const current = state.matchEvent;
+  if (!current?.intervals || state.ranked) return advanceEventGroup(state);
+  const kinds = normalizeMatchEvents(current.kinds ?? current.kind);
+  let next = state;
+  let seed = current.seed;
+  let acted = current.acted;
+  const schedule = { ...current.schedule };
+  const stages: EventStage[] = [];
+  for (const kind of kinds) {
+    const clock = schedule[kind] ?? { remaining: current.remaining };
+    const result = advanceEventGroup({ ...next, matchEvent: {
+      kind, interval: current.intervals[kind], seed, remaining: clock.remaining,
+      acted: current.acted, serial: current.serial, forecast: clock.forecast,
+    } });
+    const tick = result.matchEvent!;
+    schedule[kind] = { remaining: tick.remaining, forecast: tick.forecast };
+    seed = tick.seed;
+    acted = tick.acted;
+    if (tick.serial !== current.serial) stages.push(...(tick.stages ?? []));
+    next = result;
+    const mid = Math.floor(next.size / 2);
+    if (activePlayers(next).some((p) => samePos(next.probes[p], { r: mid, c: mid }))) break;
+  }
+  const forecasts = kinds.flatMap((kind) => schedule[kind]?.forecast ? [schedule[kind]!.forecast!] : []);
+  return { ...next, matchEvent: {
+    ...current, schedule, seed, acted, forecasts, forecast: forecasts[0],
+    remaining: Math.min(...kinds.map((kind) => schedule[kind]?.remaining ?? current.remaining)),
+    ...(stages.length ? { stages, serial: current.serial + 1, last: stages[stages.length - 1].forecast, from: state.probes } : {}),
+  } };
+}
+
+function advanceEventGroup(state: GameState): GameState {
   const current = state.matchEvent;
   if (!current || current.kind === "off" || state.ranked) return state;
   const players = activePlayers(state);

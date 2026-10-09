@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { MATCH_EVENTS, normalizeMatchEvents, normalizeEventInterval, type MatchEventKind } from "../config/match-events";
+import { MATCH_EVENTS, normalizeMatchEvents, normalizeEventIntervals, type MatchEventKind } from "../config/match-events";
 import { EventControls, EventStatus, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle } from "./components/match-events";
 import { useFieldEvent } from "./hooks/use-field-event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -60,7 +60,7 @@ import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
 import { SELECTABLE_ITEMS } from "./item-content";
 import { LoadoutPreview } from "./components/loadout-preview";
-import { boardTargetPreview } from "./board-preview";
+import { boardTargetPreview, beforeFieldEvents } from "./board-preview";
 import { isRankedOpen, minutesUntilRanked, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 import { LATEST_RELEASE_NOTES } from "../config/release-notes";
@@ -175,10 +175,11 @@ function Game() {
   const [variant, setVariant] = useState<GameVariant>("classic");
   const [rankedMode, setRankedMode] = useState(false);
   const [eventKind, setEventKind] = useState<MatchEventKind[]>([]);
-  const [eventInterval, setEventInterval] = useState(5);
+  const [eventInterval, setEventInterval] = useState(() => normalizeEventIntervals(5));
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [liveGame, setGame] = useState<GameState>(() => initialState(9, "red"));
-  const { game, firing: eventFiring, effectKey: eventEffectKey } = useFieldEvent(liveGame);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const { game, firing: eventFiring, moving: eventMoving, effectKey: eventEffectKey } = useFieldEvent(liveGame, isAnimating);
   const boardPlayers = useMemo(() => activePlayers(game), [game]);
   const boardObstacles = useMemo(() => activeObstacles(game), [game]);
   const boardPulseDevices = useMemo(() => activePulseDevices(game), [game]);
@@ -251,7 +252,6 @@ function Game() {
   const [pulseFx, setPulseFx] = useState<PulseFx | null>(null);
   const [hoveredOrbitRing, setHoveredOrbitRing] = useState<number | null>(null);
   const [selectedOrbitRing, setSelectedOrbitRing] = useState<number | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
   const resultIdentity = `${game.turnCount}:${game.winner ?? "none"}:${game.finishOrder?.join("-") ?? ""}`;
   const resultVisible = useDeferredReveal({
     active: (!tutorialStep || tutorialStep === "complete") && game.phase === "over" && Boolean(game.winner),
@@ -606,7 +606,7 @@ function Game() {
       setOnlineAiCount((data.state.botPlayers ?? []).length as 0 | 1 | 2 | 3);
       setVariant(data.lobbyVariant ?? data.state.variant ?? "classic");
       setEventKind((current) => { const next = normalizeMatchEvents(data.lobbyEvent); return current.join() === next.join() ? current : next; });
-      setEventInterval(normalizeEventInterval(data.lobbyEventInterval));
+      setEventInterval((current) => { const next = normalizeEventIntervals(data.lobbyEventInterval); return JSON.stringify(current) === JSON.stringify(next) ? current : next; });
       setSize(data.lobbySize ?? data.state.size);
       setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
       setRoomCodeInput(data.code);
@@ -1083,7 +1083,8 @@ function Game() {
         void submitOnlineAction("meteor", target, chosenSize, capsule);
         return true;
       }
-      const probes = resolution.state.probes;
+      const beforeEvents = beforeFieldEvents(game, resolution.state);
+      const probes = beforeEvents.probes;
       setIsAnimating(true);
       setBlastFx({
         stage: "probe",
@@ -1106,7 +1107,7 @@ function Game() {
         setGame((current) => ({
           ...current,
           probes,
-          obstacles: resolution.state.obstacles,
+          obstacles: beforeEvents.obstacles,
         }));
         setBlastFx((effect) => (effect ? { ...effect, stage: "recover" } : effect));
       }, Math.max(70, Math.round(1100 * effectScale)));
@@ -1168,7 +1169,7 @@ function Game() {
   const resolveBlast = (target: Pos) => {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
     const next = applyBlastSwitch(game, target);
-    const pushed = pushedProbesBetween(game, next);
+    const pushed = pushedProbesBetween(game, beforeFieldEvents(game, next));
     showSwitchFx("blast", player);
     setPulseFx({ kind: "blast", target, radius: game.balance?.blastRadius ?? activeBalance.blastRadius, nonce: Date.now() });
     window.setTimeout(() => setPulseFx(null), 950);
@@ -1416,7 +1417,7 @@ function Game() {
         Boolean(game.ranked),
         game.matchEvent?.kinds ?? game.matchEvent?.kind ?? "off",
         Math.floor(Math.random() * 4294967296),
-        game.matchEvent?.interval,
+        game.matchEvent?.intervals ?? game.matchEvent?.interval,
       ),
     );
   };
@@ -1577,7 +1578,7 @@ function Game() {
           setVariant(data.status === "waiting" ? (data.lobbyVariant ?? data.state.variant ?? "classic") : (data.state.variant ?? "classic"));
           if (data.status === "waiting") {
             setEventKind((current) => { const next = normalizeMatchEvents(data.lobbyEvent); return current.join() === next.join() ? current : next; });
-            setEventInterval(normalizeEventInterval(data.lobbyEventInterval));
+            setEventInterval((current) => { const next = normalizeEventIntervals(data.lobbyEventInterval); return JSON.stringify(current) === JSON.stringify(next) ? current : next; });
             setOnlineAiCount((data.lobbyAiCount ?? data.state.botPlayers?.length ?? 0) as 0 | 1 | 2 | 3);
             setAiDifficulty((data.lobbyAiDifficulty ?? "normal") as AiDifficulty);
           }
@@ -1736,7 +1737,7 @@ function Game() {
           Boolean(game.ranked),
           game.matchEvent?.kinds ?? game.matchEvent?.kind ?? "off",
           Math.floor(Math.random() * 4294967296),
-          game.matchEvent?.interval,
+          game.matchEvent?.intervals ?? game.matchEvent?.interval,
         ),
       );
     }, Math.max(UI_BEHAVIOR.aiMinimumDelayMs, aiSpeed));
@@ -2303,7 +2304,7 @@ function Game() {
                 perspectiveSlot,
               );
               const pos = { r, c };
-              const fieldOrbit = eventFiring && game.matchEvent?.last?.kind === "orbit" ? game.matchEvent.last : undefined;
+              const fieldOrbit = eventMoving && game.matchEvent?.last?.kind === "orbit" ? game.matchEvent.last : undefined;
               const ringHere = orbitRingAt(r, c);
               const cellOrbit = fieldOrbit && (ringHere === fieldOrbit.ring || ringHere === fieldOrbit.secondRing)
                 ? { ring: ringHere, clockwise: ringHere === fieldOrbit.ring ? fieldOrbit.clockwise : !fieldOrbit.clockwise, quarterTurns: 1 } : orbitFx;
@@ -2320,7 +2321,7 @@ function Game() {
               const probe =
                 boardPlayers.find((player) => samePos(pos, game.probes[player])) ?? null;
               const probePush = probe ? blastFx?.pushed[probe] : undefined;
-              const eventFrom = probe && eventFiring && game.matchEvent?.last?.kind !== "orbit" ? game.matchEvent?.from?.[probe] : undefined;
+              const eventFrom = probe && eventMoving && game.matchEvent?.last?.kind !== "orbit" ? game.matchEvent?.from?.[probe] : undefined;
               const eventPush = eventFrom && !samePos(eventFrom, pos) ? { from: eventFrom, dr: pos.r - eventFrom.r, dc: pos.c - eventFrom.c } : undefined;
               const probePushMatches = probePush && (
                 blastFx?.stage === "settle"
@@ -2341,7 +2342,7 @@ function Game() {
                   key={`${r}-${c}`}
                   className={[
                     "cell",
-                    eventCellClass(eventFiring && game.matchEvent ? { ...game.matchEvent, forecast: game.matchEvent.last } : game.matchEvent, pos, mid),
+                    eventCellClass(eventFiring && game.matchEvent ? { ...game.matchEvent, forecast: game.matchEvent.last, forecasts: undefined } : game.matchEvent, pos, mid),
                     r === mid && c === mid ? "core" : "",
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",
@@ -2886,7 +2887,7 @@ function Game() {
             )}
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
             {online.code && online.isHost && !rankedMode && online.status === "waiting" && <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />}
-            {online.code && <div className="room-settings-summary" aria-label={localize("現在のルーム設定", "Current room settings")}><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b><span className="event-summary">{localize("イベント", "Event")} · {eventKind.length ? `${eventKind.map((kind) => MATCH_EVENTS[kind][language]).join(" → ")} / ${eventInterval}${localize("巡ごと", " rounds")}` : "OFF"}</span></div>}
+            {online.code && <div className="room-settings-summary" aria-label={localize("現在のルーム設定", "Current room settings")}><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b><span className="event-summary">{localize("イベント", "Event")} · {eventKind.length ? eventKind.map((kind) => `${MATCH_EVENTS[kind][language]} / ${eventInterval[kind]}${localize("巡ごと", " rounds")}`).join(" · ") : "OFF"}</span></div>}
             {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder={t("nickname")} aria-label={t("nickname")} maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder={localize("ルームコード", "ROOM CODE")} aria-label={localize("ルームコード", "Room code")} maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>{localize("ルームを作る", "CREATE ROOM")}</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>{localize("ルームに入る", "JOIN ROOM")}</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>{localize("← ゲームモードへ戻る", "← BACK TO GAME MODE")}</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>

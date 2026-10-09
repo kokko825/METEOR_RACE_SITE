@@ -1,3 +1,4 @@
+import { beforeFieldEvents } from "../../board-preview";
 import { env } from "cloudflare:workers";
 import { PLAYER_ORDER, TEAM_TURN_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
@@ -10,7 +11,7 @@ import { COMMUNITY_SAFETY } from "../../../config/community-safety";
 
 export const dynamic = "force-dynamic";
 
-import { normalizeMatchEvents, normalizeEventInterval, type MatchEventKind } from "../../../config/match-events";
+import { normalizeMatchEvents, normalizeEventTiming, type EventTiming, type MatchEventKind } from "../../../config/match-events";
 
 type RoomRow = {
   code: string;
@@ -165,7 +166,7 @@ function roomPayload(room: RoomRow, email: string) {
     lobbyAiCount: lobby.roomLobbyAiCount,
     lobbyAiDifficulty: state.roomLobbyAiDifficulty ?? "normal",
     lobbyEvent: normalizeMatchEvents(state.roomLobbyEvent ?? state.matchEvent?.kinds ?? state.matchEvent?.kind),
-    lobbyEventInterval: normalizeEventInterval(state.roomLobbyEventInterval ?? state.matchEvent?.interval),
+    lobbyEventInterval: normalizeEventTiming(state.roomLobbyEventInterval ?? state.matchEvent?.intervals ?? state.matchEvent?.interval),
     memberNames: [...memberEmails
       .map((member, index) =>
         member
@@ -229,7 +230,7 @@ export async function POST(request: Request) {
     nickname?: string;
     variant?: GameVariant;
     eventKind?: MatchEventKind | MatchEventKind[];
-    eventInterval?: number;
+    eventInterval?: EventTiming;
     useCapsule?: boolean;
     itemKind?: ItemKind;
     ring?: number;
@@ -303,7 +304,7 @@ export async function POST(request: Request) {
             roomPreferredRoles: ["red"],
             roomLobbyVariant: createVariant,
             roomLobbyEvent: body.ranked ? [] : normalizeMatchEvents(body.eventKind),
-            roomLobbyEventInterval: normalizeEventInterval(body.eventInterval),
+            roomLobbyEventInterval: normalizeEventTiming(body.eventInterval),
             roomLobbySize: size,
             roomLobbyAiCount: requestedAi,
             roomLobbyAiDifficulty: body.difficulty === "easy" || body.difficulty === "hard" ? body.difficulty : "normal",
@@ -588,7 +589,7 @@ export async function POST(request: Request) {
     const requestedSize = [9, 11, 13, 15].includes(body.size ?? 9) ? body.size! : 9;
     state.roomLobbyVariant = nextVariant;
     state.roomLobbyEvent = state.ranked ? [] : normalizeMatchEvents(body.eventKind ?? state.roomLobbyEvent ?? state.matchEvent?.kinds ?? state.matchEvent?.kind);
-    state.roomLobbyEventInterval = normalizeEventInterval(body.eventInterval ?? state.roomLobbyEventInterval ?? state.matchEvent?.interval);
+    state.roomLobbyEventInterval = normalizeEventTiming(body.eventInterval ?? state.roomLobbyEventInterval ?? state.matchEvent?.intervals ?? state.matchEvent?.interval);
     const seats = JSON.parse(room.seat_order_json) as Array<Player | null>;
     const humans = [room.host_email, room.guest_email, room.player3_email, room.player4_email].filter((member, index) => member && seats[index]).length;
     Object.assign(state, normalizeRoomSettings(nextVariant, requestedSize, body.aiCount ?? 0, humans));
@@ -724,7 +725,7 @@ export async function POST(request: Request) {
       ranked,
       normalizeMatchEvents(body.eventKind ?? previous.roomLobbyEvent ?? previous.matchEvent?.kinds ?? previous.matchEvent?.kind),
       crypto.getRandomValues(new Uint32Array(1))[0],
-      normalizeEventInterval(body.eventInterval ?? previous.roomLobbyEventInterval ?? previous.matchEvent?.interval),
+      normalizeEventTiming(body.eventInterval ?? previous.roomLobbyEventInterval ?? previous.matchEvent?.intervals ?? previous.matchEvent?.interval),
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -790,7 +791,7 @@ export async function POST(request: Request) {
       Boolean(previous.ranked),
       normalizeMatchEvents(previous.matchEvent?.kinds ?? previous.matchEvent?.kind),
       crypto.getRandomValues(new Uint32Array(1))[0],
-      normalizeEventInterval(previous.matchEvent?.interval),
+      normalizeEventTiming(previous.matchEvent?.intervals ?? previous.matchEvent?.interval),
     );
     nextState.players = turnOrder;
     (nextState as typeof nextState & { roomMemberNames: string[] }).roomMemberNames =
@@ -901,13 +902,14 @@ export async function POST(request: Request) {
       itemEffect = { kind: "holo", player: state.pendingSwitches?.[0]?.player ?? state.turn };
     } else if (body.action === "switch_blast" && body.target) {
       nextState = applyBlastSwitch(state, body.target);
+      const beforeEvents = beforeFieldEvents(state, nextState);
       const pushed = Object.fromEntries(
         activePlayers(state)
-          .filter((player) => !samePos(state.probes[player], nextState.probes[player]))
+          .filter((player) => !samePos(state.probes[player], beforeEvents.probes[player]))
           .map((player) => [player, {
             from: state.probes[player],
-            dr: nextState.probes[player].r - state.probes[player].r,
-            dc: nextState.probes[player].c - state.probes[player].c,
+            dr: beforeEvents.probes[player].r - state.probes[player].r,
+            dc: beforeEvents.probes[player].c - state.probes[player].c,
           }]),
       );
       itemEffect = {

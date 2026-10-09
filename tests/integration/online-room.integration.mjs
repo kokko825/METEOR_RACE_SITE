@@ -18,9 +18,10 @@ for(let repeat=0;repeat<3;repeat++){
     const joined=await call(guest,{action:'join',nickname:'QA guest'});
     assert.equal(joined.data.lobbyAiCount,2,'Human arrival replaces a CPU slot');
     assert.equal((await call(guest,{action:'switch_team'})).status,403,'Legacy action must enforce host permission');
-    const lobby=await call(host,{action:'update_lobby_settings',variant:'classic',size:9,aiCount:3,difficulty:'hard',eventKind:['wind','geyser'],eventInterval:7});
+    const lobby=await call(host,{action:'update_lobby_settings',variant:'classic',size:9,aiCount:3,difficulty:'hard',eventKind:['wind','geyser'],eventInterval: repeat === 0 ? 7 : { geyser: 3, wind: 7, orbit: 5, gravity: 5 }});
     assert.deepEqual(lobby.data.lobbyEvent,['geyser','wind']);
-    assert.equal(lobby.data.lobbyEventInterval,7);
+    const timing = repeat === 0 ? 7 : { orbit: 5, geyser: 3, wind: 7, gravity: 5 };
+    assert.deepEqual(lobby.data.lobbyEventInterval,timing);
     assert.equal((await call(guest,{action:'update_lobby_settings',eventKind:'wind'})).status,403);
     assert.equal(lobby.data.lobbyAiCount,2);
     assert.equal(lobby.data.lobbySize,11,'Four-player preview cannot use a 9x9 board');
@@ -30,7 +31,7 @@ for(let repeat=0;repeat<3;repeat++){
     assert.equal(started.status,200);
     assert.equal(started.data.state.matchEvent.kind,'geyser');
     assert.deepEqual(started.data.state.matchEvent.kinds,['geyser','wind']);
-    assert.equal(started.data.state.matchEvent.interval,7);
+    assert.deepEqual(started.data.state.matchEvent.intervals ?? started.data.state.matchEvent.interval,timing);
     const peer=await fetch(origin+`/api/rooms?code=${code}`,{headers:{'x-meteor-player-id':guest}}).then(r=>r.json());
     assert.deepEqual(peer.state.matchEvent,started.data.state.matchEvent);
     assert.equal(started.data.role,'blue','Start must retain the exchanged seat');
@@ -38,7 +39,7 @@ for(let repeat=0;repeat<3;repeat++){
     assert.equal(started.data.state.size,11);
     const returned=await call(host,{action:'return_lobby'});
     assert.deepEqual(returned.data.lobbyEvent,['geyser','wind']);
-    assert.equal(returned.data.lobbyEventInterval,7);
+    assert.deepEqual(returned.data.lobbyEventInterval,timing);
     const joinedThird=await call(third,{action:'join',nickname:'QA third'});
     const thirdRole=joinedThird.data.role;
     await call(host,{action:'manage_member',targetIndex:0,memberAction:'spectate'});
@@ -48,7 +49,7 @@ for(let repeat=0;repeat<3;repeat++){
     const team=await call(host,{action:'update_lobby_settings',variant:'team-item',size:11,aiCount:0,difficulty:'easy'});
     assert.equal(team.data.lobbySize,13);
     assert.deepEqual(team.data.lobbyEvent,['geyser','wind'],'Unrelated settings must preserve event selection');
-    assert.equal(team.data.lobbyEventInterval,7);
+    assert.deepEqual(team.data.lobbyEventInterval,timing);
     assert.equal(team.data.lobbyAiCount,3,'Team preview fills four seats');
     const items=await call(host,{action:'new_game',version:team.data.version,variant:'item',size:9,humanCount:1,aiCount:1,difficulty:'easy'});
     assert.equal(items.status,200);

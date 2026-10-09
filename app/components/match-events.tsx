@@ -1,4 +1,4 @@
-import { MATCH_EVENT_INFO, MATCH_EVENT_LORE, MATCH_EVENTS, MATCH_EVENT_FX, MATCH_EVENT_ORDER, normalizeMatchEvents, type MatchEventKind } from "../../config/match-events";
+import { MATCH_EVENT_INFO, MATCH_EVENT_LORE, MATCH_EVENTS, MATCH_EVENT_FX, MATCH_EVENT_ORDER, normalizeMatchEvents, type EventIntervals, type MatchEventKind } from "../../config/match-events";
 import type { CSSProperties } from "react";
 import { boardToViewDelta, distance, samePos, type MatchEventState, type Pos } from "../game-rules";
 export const eventFxStyle = { "--event-lead": `${MATCH_EVENT_FX.leadMs}ms`, "--event-move": `${MATCH_EVENT_FX.moveMs}ms`, "--event-heartbeat": `${MATCH_EVENT_FX.heartbeatMs}ms` } as CSSProperties;
@@ -8,11 +8,11 @@ export function EventBoardEffect({ event, perspective, firing }: { event?: Match
   if (!f || (f.kind !== "gravity" && f.kind !== "wind")) return null;
   const d = boardToViewDelta({ r: f.dr, c: f.dc }, perspective);
   return <div aria-hidden="true" className={`event-board-effect ${f.kind} ${firing ? "firing" : "forecast"}`} style={{ "--wind-angle": `${Math.atan2(d.r, d.c) * 180 / Math.PI}deg` } as CSSProperties}>
-    {f.kind === "gravity" ? <><i className="gravity-halo" /><i className="gravity-core" /></> : <div className="wind-bearing"><i className="wind-arrow" /></div>}
+    {f.kind === "gravity" ? <><i className="gravity-halo" /><i className="gravity-accretion" /><i className="gravity-core" /></> : <div className="wind-bearing"><i className="wind-arrow" />{firing && <div className="wind-dust"><i className="dust-cloud" />{Array.from({ length: 18 }, (_, i) => <i className="dust-streak" key={i} style={{ "--dust-y": `${(i * 37 + 7) % 100}%`, "--dust-delay": `${-(i % 6) * 90}ms`, "--dust-length": `${12 + i % 5 * 5}%` } as CSSProperties} />)}</div>}</div>}
   </div>;
 }
 
-export function EventControls({ value, onChange, language, interval, onIntervalChange }: { value: MatchEventKind[]; onChange: (value: MatchEventKind[]) => void; language: "ja" | "en"; interval: number; onIntervalChange: (value: number) => void }) {
+export function EventControls({ value, onChange, language, interval, onIntervalChange }: { value: MatchEventKind[]; onChange: (value: MatchEventKind[]) => void; language: "ja" | "en"; interval: EventIntervals; onIntervalChange: (value: EventIntervals) => void }) {
   return <fieldset className="event-controls">
     <legend>{language === "ja" ? "盤面イベント" : "Field events"}</legend>
     <p className="event-intro">{MATCH_EVENT_LORE[language]}</p>
@@ -24,7 +24,7 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
       </button>)}
     </div>
     <div className="event-options">
-      <label>{language === "ja" ? "発動周期（巡）" : "Interval (rounds)"}<select aria-label={language === "ja" ? "発動周期" : "Event interval"} value={interval} onChange={(e) => onIntervalChange(Number(e.target.value))}>{Array.from({ length: 97 }, (_, i) => <option key={i + 3} value={i + 3}>{i + 3}</option>)}</select></label>
+      {value.map((kind) => <label key={kind}>{MATCH_EVENTS[kind][language]} {language === "ja" ? "周期（巡）" : "(rounds)"}<select aria-label={`${MATCH_EVENTS[kind][language]} ${language === "ja" ? "発動周期" : "interval"}`} value={interval[kind] ?? 5} onChange={(e) => onIntervalChange({ ...interval, [kind]: Number(e.target.value) })}>{Array.from({ length: 97 }, (_, i) => <option key={i + 3} value={i + 3}>{i + 3}</option>)}</select></label>)}
       <small>{language === "ja" ? "複数選択可 · 2巡前に予告 · 左から順に発動" : "Combine events · 2-round warning · resolves in listed order"}</small>
     </div>
   </fieldset>;
@@ -32,7 +32,7 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
 
 export function EventStatus({ event, language, perspective = 0, firing = false, compact = false }: { event?: MatchEventState; language: "ja" | "en"; perspective?: number; firing?: boolean; compact?: boolean }) {
   if (!event || event.kind === "off") return null;
-  if (!firing && (event.kinds?.length ?? 0) > 1) return <div className="event-sequence" role="status"><b>{language === "ja" ? `イベントまで${event.remaining}巡` : `Events in ${event.remaining} rounds`}</b><div>{event.kinds!.map((kind) => <span key={kind}><i aria-hidden="true">{MATCH_EVENT_INFO[kind].icon}</i><EventStatus event={{ ...event, kinds: undefined, kind, forecast: event.forecasts?.find((f) => f.kind === kind) }} language={language} perspective={perspective} compact /></span>)}</div></div>;
+  if (!firing && (event.kinds?.length ?? 0) > 1) return <div className="event-sequence" role="status"><b>{language === "ja" ? `イベントまで${event.remaining}巡` : `Events in ${event.remaining} rounds`}</b><div>{event.kinds!.map((kind) => <span key={kind}><i aria-hidden="true">{MATCH_EVENT_INFO[kind].icon}</i><EventStatus event={{ ...event, kinds: undefined, kind, remaining: event.schedule?.[kind]?.remaining ?? event.remaining, forecast: event.forecasts?.find((f) => f.kind === kind) }} language={language} perspective={perspective} /></span>)}</div></div>;
   const forecast = firing ? event.last : event.forecast;
   const kind = firing ? event.last?.kind ?? event.kind : event.kind;
   const delta = forecast ? boardToViewDelta({ r: forecast.dr, c: forecast.dc }, perspective) : null;
@@ -72,7 +72,7 @@ export function eventCellClass(event: MatchEventState | undefined, pos: Pos, mid
   const f = event?.forecast;
   if (!f) return "";
   if (f.kind === "geyser") return (f.vents ?? [f.target]).some((v) => samePos(pos, v)) ? "event-vent" : (f.vents ?? [f.target]).some((v) => distance(pos, v) === 1) ? "event-range" : "";
-  if (f.kind === "orbit" && [f.ring, f.secondRing].includes(Math.max(Math.abs(pos.r - mid), Math.abs(pos.c - mid)))) return "event-range";
+  if (f.kind === "orbit" && [f.ring, f.secondRing].includes(Math.max(Math.abs(pos.r - mid), Math.abs(pos.c - mid)))) return "event-range event-orbit-tile";
   if (f.kind === "gravity" && pos.r === mid && pos.c === mid) return "event-gravity-core";
   return "";
 }

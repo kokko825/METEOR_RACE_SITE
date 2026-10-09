@@ -15,3 +15,9 @@ export function boardTargetPreview(state: GameState, target: Pos): GameState | n
   } catch { /* Invalid targets never commit or display a predicted result. */ }
   return null;
 }
+/** Exclude subsequent field events from the preceding meteor/item animation. */
+export function beforeFieldEvents(before: GameState, after: GameState): GameState {
+  const first = (after.matchEvent?.serial ?? 0) > (before.matchEvent?.serial ?? 0)
+    ? after.matchEvent?.stages?.[0] : undefined;
+  return first ? { ...after, ...first.before } : after;
+}

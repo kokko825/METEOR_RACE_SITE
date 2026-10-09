@@ -1,6 +1,6 @@
 /** Casual event battles; simultaneous events resolve in the order below. */
 export const MATCH_EVENT_RULES = { interval: 5, warningRounds: 2, outerOrbitChancePercent: 2, orbitRingSeparation: 2 } as const;
-export const MATCH_EVENT_FX = { leadMs: 180, moveMs: 900, settleMs: 120, heartbeatMs: 2200 } as const;
+export const MATCH_EVENT_FX = { leadMs: 650, moveMs: 900, settleMs: 120, heartbeatMs: 2200 } as const;
 export const MATCH_WIND_DIRECTIONS = [
   { r: -1, c: 0 }, { r: -1, c: 1 }, { r: 0, c: 1 }, { r: 1, c: 1 },
   { r: 1, c: 0 }, { r: 1, c: -1 }, { r: 0, c: -1 }, { r: -1, c: -1 },
@@ -13,8 +13,15 @@ export const MATCH_EVENTS = {
   wind: { ja: "追い風", en: "Wind" },
 } as const;
 export type MatchEventKind = keyof typeof MATCH_EVENTS;
+export type EventIntervals = Partial<Record<MatchEventKind, number>>;
+export type EventTiming = number | EventIntervals;
 export const MATCH_EVENT_ORDER: MatchEventKind[] = ["orbit", "geyser", "wind", "gravity"];
 export const normalizeEventInterval = (value: unknown): number => typeof value === "number" && Number.isFinite(value) ? Math.min(99, Math.max(3, Math.trunc(value))) : MATCH_EVENT_RULES.interval;
+export const normalizeEventIntervals = (value: unknown): EventIntervals => Object.fromEntries(
+  MATCH_EVENT_ORDER.map((kind) => [kind, normalizeEventInterval(value && typeof value === "object" && !Array.isArray(value) ? (value as EventIntervals)[kind] : value)]),
+);
+/** Old rooms retain their shared numeric period; new rooms persist per-event periods. */
+export const normalizeEventTiming = (value: unknown): EventTiming => value && typeof value === "object" && !Array.isArray(value) ? normalizeEventIntervals(value) : normalizeEventInterval(value);
 export const normalizeMatchEvents = (value: unknown): MatchEventKind[] => {
   const values = Array.isArray(value) ? value : [value];
   return MATCH_EVENT_ORDER.filter((kind) => values.includes(kind));
