@@ -35,7 +35,7 @@ export const MATCH_EVENT_LORE = {
 } as const;
 export const MATCH_EVENT_INFO = {
   off: { icon: "−", ja: "", en: "" },
-  geyser: { icon: "♨", ja: "4か所の噴出口から小メテオ相当の爆風が発生。噴出口に探査機や配置物がある場合、その場所は噴出しません。", en: "Four vents create small-meteor blasts. A vent occupied by a probe or placed object does not erupt." },
+  geyser: { icon: "♨", ja: "4か所の噴出口から蒸気が噴き出し、周囲の探査機を1マス押します。配置物は壊れず、移動先が塞がっていれば動きません。噴出口が塞がっている場所は噴出しません。", en: "Four steam vents push nearby probes one cell. Placed objects remain intact and block movement. Covered vents do not erupt." },
   orbit: { icon: "↻", ja: "隣り合わない2つのリングが、互いに逆方向へ90度回転。探査機も配置物も一緒に移動します。", en: "Two nonadjacent rings rotate 90 degrees in opposite directions, carrying probes and placed objects." },
   gravity: { icon: "◎", ja: "すべての探査機を、斜めも含めCOREへ1マス引き寄せます。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pulls every probe one cell toward CORE, including diagonally. Meteors stay put; probes and obstacles block movement." },
   wind: { icon: "➜", ja: "8方向から選ばれた方向へ、すべての探査機を1マス押します。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pushes all probes one cell in one of eight directions. Meteors stay put; probes and obstacles block movement." },

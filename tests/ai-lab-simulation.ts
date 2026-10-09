@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { normalizeMatchEvent } from "../config/match-events.js";
-import { chooseAiDecision, estimateAiFinishTurns, type AiDifficulty } from "../app/ai-engine.js";
+import { writeFileSync } from "node:fs";
+import { normalizeMatchEvent, normalizeMatchEvents } from "../config/match-events.js";
+import { chooseAiDecision, estimateAiFinishTurns, eventForecastValue, type AiDifficulty } from "../app/ai-engine.js";
 import {
   applyBlastSwitch,
   applyHoloSwitch,
@@ -24,6 +25,8 @@ import {
   type GameVariant,
   type ItemKind,
   type Player,
+  SELECTABLE_ITEMS,
+  skipBlockedMove,
 } from "../app/game-rules.js";
 
 {
@@ -383,11 +386,13 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let emptyBlasts = 0;
   let passes = 0;
   const itemUses: Partial<Record<ItemKind, number>> = {};
+  const eventUses: Record<string, number> = {};
   const random = () => {
     seed = (Math.imul(seed >>> 0, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  while (state.phase !== "over" && guard < 260) {
+  while (state.phase !== "over" && guard < 600) {
+    const previousEventSerial = state.matchEvent?.serial ?? 0;
     const seatDifficulty = process.env[`AI_LAB_${state.turn.toUpperCase()}_DIFFICULTY`] as AiDifficulty | undefined;
     const decision = chooseAiDecision(state, seatDifficulty ?? difficulty, random);
     if (decision.type === "setup") {
@@ -442,11 +447,14 @@ function play(state: GameState, difficulty: AiDifficulty, seed: number) {
     else if (decision.type === "pulse") state = applyPulseSwitch(state, decision.target);
     else if (decision.type === "orbit") state = applyOrbitSwitch(state, decision.ring, decision.clockwise, decision.quarterTurns);
     else if (decision.type === "recall") state = applyRecallItem(state, decision.meteorId);
+    else if (state.phase === "move") state = skipBlockedMove(state);
     else state = finishTurn(state, "AI skip");
+    if ((state.matchEvent?.serial ?? 0) > previousEventSerial) for (const stage of state.matchEvent?.stages ?? []) eventUses[stage.forecast.kind] = (eventUses[stage.forecast.kind] ?? 0) + 1;
     guard += 1;
   }
   return {
     state,
+    eventUses,
     moves,
     retreats,
     forcedRetreats,
@@ -494,8 +502,9 @@ const scenarios = scenarioFilter
   ? allScenarios.filter(({ variant, size, count, ranked }) => `${variant}-${size}` === scenarioFilter &&
       (!process.env.AI_LAB_PLAYERS || count === Number(process.env.AI_LAB_PLAYERS)) &&
       (process.env.AI_LAB_RANKED === undefined || Boolean(ranked) === (process.env.AI_LAB_RANKED === "1")))
-  : allScenarios;
+  : process.env.AI_LAB_ITEMS_ONLY === "1" ? allScenarios.filter(s => isItemVariant(s.variant) && !s.ranked) : allScenarios;
 
+const reports: unknown[] = [];
 const requestedDifficulty = process.argv[2] as AiDifficulty | undefined;
 const difficulties: AiDifficulty[] = requestedDifficulty
   ? [requestedDifficulty]
@@ -505,6 +514,8 @@ for (const difficulty of difficulties) {
   for (const scenario of scenarios) {
     const wins: Record<string, number> = { red: 0, blue: 0, green: 0, yellow: 0, draw: 0 };
     let turns = 0;
+    const eventUses: Record<string, number> = {};
+    let maxTurns = 0;
     let moves = 0;
     let retreats = 0;
     let forcedRetreats = 0;
@@ -517,7 +528,7 @@ for (const difficulty of difficulties) {
     let passes = 0;
     const itemUses: Partial<Record<ItemKind, number>> = {};
     const outcomes: Array<{ winner: string; finishOrder: Player[]; active: Player[]; distances: Record<string, number>; coreBlockedBy: string[] }> = [];
-    const games = Math.max(1, Number(process.env.AI_LAB_GAMES ?? 4));
+    const games = Math.max(1, Number(process.env.AI_LAB_GAMES ?? 4)) + (process.env.AI_LAB_300 === "1" && scenario === scenarios[0] ? 1 : 0);
     for (let index = 0; index < games; index += 1) {
       const players = (["red", "blue", "green", "yellow"] as Player[]).slice(0, scenario.count);
       const first = players[index % players.length];
@@ -535,9 +546,22 @@ for (const difficulty of difficulties) {
         scenario.variant,
         undefined,
         Boolean(scenario.ranked),
-        normalizeMatchEvent(process.env.AI_LAB_EVENT),
+        process.env.AI_LAB_EVENTS ? normalizeMatchEvents(process.env.AI_LAB_EVENTS.split(",")) : normalizeMatchEvent(process.env.AI_LAB_EVENT),
         index + 17,
+        process.env.AI_LAB_EVENT_INTERVALS ? JSON.parse(process.env.AI_LAB_EVENT_INTERVALS) : 5,
       );
+      if (process.env.AI_LAB_300 === "1") {
+        // Simulate every remaining rank instead of using the human-left shortcut.
+        initial.botPlayers = [];
+        if (index % 3 !== 0) {
+          let setup = initial;
+          for (let seat = 0; seat < scenario.count; seat++) {
+            for (let slot = 0; slot < 3; slot++) setup = applySetupItem(setup, SELECTABLE_ITEMS[(index + seat * 3 + slot) % SELECTABLE_ITEMS.length]);
+            setup = confirmSetupItems(setup);
+          }
+          Object.assign(initial, setup);
+        }
+      }
       const result = play(
         initial,
         difficulty,
@@ -547,6 +571,8 @@ for (const difficulty of difficulties) {
       assert.equal(final.phase, "over", `${difficulty} ${scenario.variant} AI match must finish`);
       wins[final.winner ?? "draw"] += 1;
       turns += final.turnCount;
+      maxTurns = Math.max(maxTurns, final.turnCount);
+      for (const [kind, count] of Object.entries(result.eventUses)) eventUses[kind] = (eventUses[kind] ?? 0) + count;
       moves += result.moves;
       retreats += result.retreats;
       forcedRetreats += result.forcedRetreats;
@@ -579,6 +605,8 @@ for (const difficulty of difficulties) {
         difficulty,
         ...scenario,
         games,
+        eventUses,
+        maxTurns,
         wins,
         averageTurns: Math.round((turns / games) * 10) / 10,
         retreatRate,
@@ -605,6 +633,20 @@ for (const difficulty of difficulties) {
       assert.ok(voluntaryRetreatRate !== null && voluntaryRetreatRate <= retreatCeiling, `${difficulty} ${scenario.variant}-${scenario.size} voluntary retreat rate ${voluntaryRetreatRate}% exceeds ${retreatCeiling}%`);
       if (difficulty === "easy") assert.equal(voluntaryRetreatRate, 0, "EASY must not randomly retreat when forward/sideways movement is available");
     }
+    reports.push(report);
     console.log(JSON.stringify(report));
   }
+}
+if (process.env.AI_LAB_REPORT) writeFileSync(process.env.AI_LAB_REPORT, JSON.stringify({ events: process.env.AI_LAB_EVENTS, intervals: process.env.AI_LAB_EVENT_INTERVALS ?? 5, reports }, null, 2) + "\n");
+{
+  const state = initialGameState(9, "red", 2);
+  state.probes.red = { r: 3, c: 4 }; state.probes.blue = { r: 0, c: 0 };
+  state.matchEvent = { kind: "geyser", remaining: 1, seed: 1, acted: [], serial: 0,
+    forecast: { kind: "geyser", target: { r: 4, c: 4 }, ring: 0, clockwise: true, dr: 0, dc: 0 } };
+  const exposed = eventForecastValue(state, "red", "hard");
+  state.meteors = [{ r: 2, c: 4, owner: "red", size: "small", id: 1 }];
+  assert.ok(eventForecastValue(state, "red", "hard") > exposed, "Forecast recognizes a meteor as a steam stopper");
+  assert.equal(eventForecastValue(state, "red", "easy"), 0, "EASY does not acquire extra forecast depth");
+  state.matchEvent.remaining = 2;
+  assert.equal(eventForecastValue(state, "red", "hard"), 0, "Distant forecasts are not treated as guaranteed moves");
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals } from "../config/match-events";
-import { applyMatchEvent, finishTurn, initialGameState, distance, resolveCoreArrivals, type EventForecast, type GameState } from "../app/game-rules";
+import { applyMatchEvent, skipBlockedMove, finishTurn, initialGameState, distance, resolveCoreArrivals, type EventForecast, type GameState } from "../app/game-rules";
 const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: { r: 2, c: 4 }, ring: 2, clockwise: true, dr: 0, dc: 1 });
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
@@ -168,3 +168,31 @@ for (const count of [2, 3, 4]) {
   }
 }
 console.log("match-events: independent 3/5/7/9-round clocks, simultaneous order and online replay passed");
+{
+  const state = start("geyser");
+  state.probes.red = { r: 3, c: 4 }; state.probes.blue = { r: 0, c: 0 };
+  state.meteors = [{ r: 4, c: 4, id: 10, owner: "red", size: "small" }, { r: 2, c: 3, id: 11, owner: "blue", size: "large" }];
+  state.obstacles = [{ r: 1, c: 4, id: 12, owner: "blue", turns: 8 }];
+  state.pulseDevices = [{ r: 1, c: 3, id: 13, owner: "blue", turns: 8 }];
+  const after = applyMatchEvent(state, event("geyser"));
+  assert.deepEqual(after.probes.red, state.probes.red, "A meteor stops steam-driven movement");
+  for (const key of ["meteors", "obstacles", "pulseDevices", "inventory"] as const) assert.deepEqual(after[key], state[key], "Steam neither damages nor refunds placed objects");
+  state.meteors = state.meteors.filter(m => m.id !== 10);
+  assert.deepEqual(applyMatchEvent(state, event("geyser")).probes.red, { r: 4, c: 4 }, "An open route allows steam propulsion");
+}
+{
+  const state = initialGameState(9, "red", 2);
+  state.turnCount = 4;
+  state.probes.red = { r: 8, c: 4 };
+  state.pulseDevices = [{ r: 7, c: 4, id: 3, owner: "blue", turns: 8 }];
+  const skipped = skipBlockedMove(state);
+  assert.equal(skipped.phase, "place");
+  assert.equal(skipped.turn, "red");
+  assert.equal(skipped.turnCount, 4);
+  assert.deepEqual(skipped.inventory, state.inventory);
+  state.pulseDevices = [];
+  state.meteors = [{ r: 7, c: 4, id: 1, owner: "blue", size: "small" }, { r: 8, c: 3, id: 2, owner: "blue", size: "small" }, { r: 8, c: 5, id: 3, owner: "blue", size: "large" }];
+  assert.equal(skipBlockedMove(state).phase, "place", "Surrounded probes can still place meteors");
+  state.meteors = [];
+  assert.throws(() => skipBlockedMove(state), "Skipping an available movement is forbidden");
+}

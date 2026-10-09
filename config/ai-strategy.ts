@@ -19,6 +19,9 @@ export const AI_STRATEGY = {
     freeForAllRivalAdvance: 800,
     freeForAllRivalFinish: 900_000,
   },
+  events: {
+    forecastProgress: { easy: 0, normal: 12, hard: 24 },
+  },
   pacing: {
     multiplayerWarningWithMeteor: 50,
     multiplayerWarningEmpty: 20,

@@ -1,6 +1,6 @@
 import { beforeFieldEvents } from "../../board-preview";
 import { env } from "cloudflare:workers";
-import { PLAYER_ORDER, TEAM_TURN_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, finishTurn, initialGameState, isItemVariant, isPulseLocked, isTeamVariant, legalMoves, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
+import { PLAYER_ORDER, TEAM_TURN_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, skipBlockedMove, initialGameState, isItemVariant, isTeamVariant, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
 import { DEFAULT_BALANCE, normalizeBalance } from "../../balance-config";
 import { isRankedOpen } from "../../ranked-schedule";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
@@ -857,33 +857,8 @@ export async function POST(request: Request) {
       nextState = cancelPendingItem(state);
     } else if (body.action === "move" && body.target) {
       nextState = applyMove(state, body.target);
-    } else if (
-      body.action === "skip_move" &&
-      state.phase === "move" &&
-      (state.bonusMove || state.turnCount === 0 || (state.immobilizedMoves?.[state.turn] ?? 0) > 0 || isPulseLocked(state, state.turn)) &&
-      legalMoves(state).length === 0
-    ) {
-      if ((state.immobilizedMoves?.[state.turn] ?? 0) > 0) {
-        nextState = {
-          ...state,
-          immobilizedMoves: {
-            ...(state.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
-            [state.turn]: Math.max(0, (state.immobilizedMoves?.[state.turn] ?? 0) - 1),
-          },
-          phase: "place",
-          message: `${state.turn.toUpperCase()}：電磁拘束中・メテオまたはアイテムを使用`,
-          log: [...state.log, `${state.turn.toUpperCase()}はBLASTの電磁拘束で移動不能`],
-        };
-      } else if (isPulseLocked(state, state.turn)) {
-        nextState = {
-          ...state,
-          phase: "place",
-          message: `${state.turn.toUpperCase()}：PULSE範囲内・メテオまたはアイテムを使用`,
-          log: [...state.log, `${state.turn.toUpperCase()}はPULSE範囲内のため移動不能`],
-        };
-      } else {
-        nextState = finishTurn({ ...state, bonusMove: false }, "移動先なし・手番終了");
-      }
+    } else if (body.action === "skip_move") {
+      nextState = skipBlockedMove(state);
     } else if (body.action === "pass") {
       nextState = applyPass(state);
     } else if (body.action === "obstacle" && body.target) {

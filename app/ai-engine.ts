@@ -3,6 +3,7 @@ import {
   activeObstacles,
   activePulseDevices,
   applyBlastSwitch,
+  applyMatchEvent,
   applyMeteor,
   applyMove,
   applyHoloSwitch,
@@ -560,6 +561,26 @@ function threatPenalty(state: GameState, player: Player, difficulty: AiDifficult
   return penalty;
 }
 
+/** A modest forecast preference, not a guaranteed future: other players still act. */
+export function eventForecastValue(state: GameState, player: Player, difficulty: AiDifficulty) {
+  const weight = AI_STRATEGY.events.forecastProgress[difficulty];
+  const event = state.matchEvent;
+  if (!weight || !event || event.remaining > 1) return 0;
+  const forecasts = (event.forecasts ?? (event.forecast ? [event.forecast] : []))
+    .filter(f => (event.schedule?.[f.kind]?.remaining ?? event.remaining) <= 1);
+  let projected = state;
+  for (const forecast of forecasts) {
+    projected = applyMatchEvent(projected, forecast);
+    if (activePlayers(projected).some(p => coreDistance(projected, p) === 0)) break;
+  }
+  const friends = activePlayers(state).filter(p => allied(state, p, player));
+  const rivals = activePlayers(state).filter(p => !allied(state, p, player));
+  const progress = (players: Player[]) => players.length
+    ? Math.min(...players.map(p => coreDistance(state, p))) - Math.min(...players.map(p => coreDistance(projected, p)))
+    : 0;
+  return (progress(friends) - progress(rivals)) * weight;
+}
+
 function scoreResult(
   state: GameState,
   player: Player,
@@ -568,7 +589,7 @@ function scoreResult(
 ) {
   const terminal = terminalValue(state, player);
   if (terminal !== null) return terminal;
-  let score = positionValue(state, player) - threatPenalty(state, player, difficulty);
+  let score = positionValue(state, player) - threatPenalty(state, player, difficulty) + eventForecastValue(state, player, difficulty);
   if (previous && !isTeamVariant(state.variant) && activePlayers(previous).length > 2) {
     const rivals = activePlayers(previous).filter((candidate) => candidate !== player);
     const newlyFinishedRivals = (state.finishOrder ?? []).filter(

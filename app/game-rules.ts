@@ -829,6 +829,21 @@ function eventPush(state: GameState, direction: (player: Player) => Pos | undefi
   return { ...state, probes };
 }
 
+/** Shared by local play, online rooms and simulations. Only movement is skipped. */
+export function skipBlockedMove(state: GameState): GameState {
+  if (state.phase !== "move" || legalMoves(state).length) throw new Error("移動できるマスがあります");
+  const locked = (state.immobilizedMoves?.[state.turn] ?? 0) > 0 || isPulseLocked(state, state.turn);
+  if (locked) return { ...state, phase: "place", immobilizedMoves: {
+    ...(state.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
+    [state.turn]: Math.max(0, (state.immobilizedMoves?.[state.turn] ?? 0) - 1),
+  }, message: `${playerName(state.turn)}：移動不能。メテオまたはアイテムを使用` };
+  const hasAction = state.inventory[state.turn].small + state.inventory[state.turn].large > 0 ||
+    canPlaceObstacle(state) || (state.capsuleMeteors?.[state.turn] ?? 0) > 0 ||
+    (state.itemHands?.[state.turn]?.length ?? 0) > 0;
+  if (state.turnCount === 0 || state.bonusMove || !hasAction) return finishTurn({ ...state, bonusMove: false }, "移動先なし・手番終了");
+  return { ...state, phase: "place", message: `${playerName(state.turn)}：移動不能。メテオまたはアイテムを使用` };
+}
+
 export function applyMatchEvent(state: GameState, event: EventForecast): GameState {
   if (event.kind === "gravity") {
     const mid = Math.floor(state.size / 2);
@@ -852,24 +867,12 @@ export function applyMatchEvent(state: GameState, event: EventForecast): GameSta
   const occupied = [...state.meteors, ...activeObstacles(state), ...activePulseDevices(state), ...activePlayers(state).map((p) => state.probes[p])];
   const vents = (event.vents ?? [event.target]).filter((vent) => !occupied.some((p) => samePos(p, vent)));
   if (!vents.length) return state;
-  const pushed = eventPush(state, (p) => {
+  return eventPush(state, (p) => {
     const pos = state.probes[p];
     const vent = vents.find((v) => distance(pos, v) === 1);
     if (!vent || (state.shieldTurns?.[p] ?? 0) > 0) return undefined;
     return { r: pos.r + Math.sign(pos.r - vent.r), c: pos.c + Math.sign(pos.c - vent.c) };
   });
-  const inventory = cloneInventory(state.inventory);
-  const meteors = state.meteors.filter((m) => {
-    if (!vents.some((v) => distance(m, v) <= 1)) return true;
-    if (!m.consumable) inventory[m.owner][m.size] += 1;
-    return false;
-  });
-  const obstacles = activeObstacles(state).flatMap((m) => {
-    if (!vents.some((v) => distance(m, v) <= 1) || m.turns === -1) return [m];
-    const turns = (m.turns ?? 1) - activePlayers(state).length;
-    return turns > 0 ? [{ ...m, turns }] : [];
-  });
-  return { ...pushed, inventory, meteors, obstacles };
 }
 
 /** Independent clocks reuse the same event resolver, in the established order. */

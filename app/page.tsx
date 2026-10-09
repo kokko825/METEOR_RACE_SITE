@@ -30,16 +30,14 @@ import {
   applyObstacle,
   applyPass,
   boardToViewDelta,
-  canPlaceObstacle,
   canUseItem,
   cancelPendingItem,
   confirmSetupItems,
   distance,
-  finishTurn,
+  skipBlockedMove as resolveBlockedMove,
   initialGameState as initialState,
   legalMoves,
   isItemVariant,
-  isPulseLocked,
   isTeamVariant,
   meteorName,
   orthogonallyAdjacent,
@@ -1012,43 +1010,9 @@ function Game() {
 
   const skipBlockedMove = () => {
     if (game.phase !== "move" || moves.length > 0) return;
-    if ((game.immobilizedMoves?.[game.turn] ?? 0) > 0 || isPulseLocked(game, game.turn)) {
-      if (mode === "online") void submitOnlineAction("skip_move");
-      commit({
-        ...game,
-        immobilizedMoves: {
-          ...(game.immobilizedMoves ?? { red: 0, blue: 0, green: 0, yellow: 0 }),
-          [game.turn]: Math.max(0, (game.immobilizedMoves?.[game.turn] ?? 0) - 1),
-        },
-        phase: "place",
-        message: `${playerName(game.turn)}：電磁拘束中・メテオまたはアイテムを使用`,
-        log: [...game.log, `${playerName(game.turn)}はPULSE範囲内のため移動不能`],
-      });
-      return;
-    }
-    if (game.turnCount === 0) {
-      commit(finishTurn(game, "先攻の初手終了"));
-      return;
-    }
-    if (game.bonusMove) {
-      if (mode === "online") void submitOnlineAction("skip_move");
-      commit(finishTurn({ ...game, bonusMove: false }, "ボーナス移動先なし・手番終了"));
-      return;
-    }
-    const hasMeteor =
-      game.inventory[game.turn].small + game.inventory[game.turn].large > 0 ||
-      canPlaceObstacle(game);
-    const log = [...game.log, `${playerName(game.turn)}は移動不能`];
-    if (!hasMeteor) {
-      commit(finishTurn({ ...game, log }, "手持ちメテオもないため手番終了"));
-    } else {
-      commit({
-        ...game,
-        phase: "place",
-        message: `${playerName(game.turn)}：移動不能。メテオを配置`,
-        log,
-      });
-    }
+    const next = resolveBlockedMove(game);
+    if (mode === "online") void submitOnlineAction("skip_move");
+    commit(next);
   };
 
   const placeMeteor = (target: Pos, sizeOverride?: MeteorSize, useCapsule = false): boolean => {
