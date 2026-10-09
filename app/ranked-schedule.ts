@@ -13,3 +13,10 @@ export function isRankedOpen(now = new Date()) {
 }
 
 export const RANKED_SCHEDULE_LABEL = "毎日 8:00–9:00 / 20:00–21:00（日本時間）";
+
+export function minutesUntilRanked(now = new Date()) {
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const minute = jst.getUTCHours() * 60 + jst.getUTCMinutes();
+  if (isRankedOpen(now)) return 0;
+  return Math.min(...RANKED_WINDOWS_JST.map(({ start }) => (start * 60 - minute + 1440) % 1440));
+}

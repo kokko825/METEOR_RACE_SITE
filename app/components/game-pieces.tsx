@@ -45,7 +45,10 @@ export function PlayerStack({ side, game, resultVisible, displayName, canSeeLoad
   canSeeLoadout: (player: Player) => boolean;
   language: SiteLanguage;
 }) {
-  const players: Player[] = side === "left" ? ["red", "green"] : ["blue", "yellow"];
+  const teamMode = isTeamVariant(game.variant);
+  const players: Player[] = teamMode
+    ? PLAYER_ORDER.filter((player) => teamOf(player) === teamOf(side === "left" ? "red" : "blue"))
+    : side === "left" ? ["red", "green"] : ["blue", "yellow"];
   const active = activePlayers(game);
   return (
     <div className={`player-stack ${side}-stack`}>
@@ -55,7 +58,8 @@ export function PlayerStack({ side, game, resultVisible, displayName, canSeeLoad
         return (
           <aside key={player} className={`player-card ${player}-card ${highlighted ? "active" : ""}`}>
             <span className="eyebrow">{displayName(player, PLAYER_ORDER.indexOf(player) + 1)}</span>
-            <h2>{player.toUpperCase()}</h2>
+            <h2><span className="player-number">{PLAYER_ORDER.indexOf(player) + 1}</span> {player.toUpperCase()}</h2>
+            {teamMode && <small className="player-team">{language === "ja" ? "チーム" : "TEAM"} {side === "left" ? "A" : "B"}</small>}
             <ProbeIcon color={player} teamMode={isTeamVariant(game.variant)} />
             <InventoryPanel inventory={game.inventory[player]} color={player}
               items={visible ? game.itemHands?.[player] ?? [] : []}
@@ -113,6 +117,7 @@ export function ProbeToken({
       >
         <i>▲</i>
       </span>
+      <b className="probe-number" aria-hidden="true">{PLAYER_ORDER.indexOf(player) + 1}</b>
     </span>
   );
 }

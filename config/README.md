@@ -19,6 +19,8 @@
 - アイテム個数・効果範囲・継続巡数 → `game-balance.ts`
 - AIを前進型／妨害型へ寄せる → まず `game-balance.ts` の `ai...Weight`
 - AIの個別判断を細かく変える → `ai-strategy.ts`
+- 序盤の発展を優先する巡数 → 同ファイルの `placement.developmentRounds`（次手勝利への防御を除く）
+- アイテムの一行の役割・設定由来の効果説明 → `app/item-content.ts`
 - BGMやSEを差し替える → `site-presentation.ts` と `public/assets/audio/`
 - ロゴ・OG画像・説明画像を差し替える → `asset-paths.ts` と `public/assets/`
 - チャット規制や保存期間を変える → `community-safety.ts`
@@ -41,4 +43,9 @@
 編集する正本は `C:\Users\user\Documents\MeteorRace` です。GitHubへ反映して公開します。D1の古い値には上書きされません。
 
 チュートリアル文章は `tutorial-copy.ts`、企業・装備の世界観は `item-lore.ts`、選択音や確定音の差し替えは `ui-feedback.ts`、更新履歴は `release-notes.ts` です。
+画面のバージョン番号も `release-notes.ts` の先頭から取得します。別の番号を手動で重複管理しません。
 設定項目を増やすときは、初期値だけでなく対応する検証と日英の説明も確認してください。
+
+## 変更履歴
+
+- 2026-10-10：序盤AI・アイテム説明・版番号の調整先を整理。

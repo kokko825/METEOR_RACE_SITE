@@ -272,12 +272,16 @@ function earlyItemDevelopment(state: GameState, player: Player) {
     .every((rival) => coreDistance(state, rival) > 4);
 }
 
-function earlyPlacementStrategyBonus(state: GameState, placement: Placement, next: GameState) {
+function earlyPlacementStrategyBonus(state: GameState, placement: Placement, next: GameState, difficulty: AiDifficulty) {
   const player = state.turn;
-  if (!earlyItemDevelopment(state, player)) return 0;
-
   const center = centerOf(state);
   const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
+  const openingCycle = state.turnCount < activePlayers(state).length * AI_STRATEGY.placement.developmentRounds;
+  // Small boards start inside the old four-cell threshold. NORMAL should still
+  // develop there, but never at the expense of an immediate win or defence.
+  const openingDevelopment = difficulty !== "hard" && openingCycle &&
+    !rivals.some((rival) => isImmediateWinAvailable(state, rival));
+  if (!earlyItemDevelopment(state, player) && !openingDevelopment) return 0;
   const ownAdvance = coreDistance(state, player) - coreDistance(next, player);
   const rivalSetback = rivals.reduce(
     (sum, rival) => sum + Math.max(0, coreDistance(next, rival) - coreDistance(state, rival)),
@@ -293,7 +297,6 @@ function earlyPlacementStrategyBonus(state: GameState, placement: Placement, nex
   const survivesAsObstacle = next.meteors.some(
     (meteor) => meteor.owner === player && samePos(meteor, placement.target),
   );
-  const openingCycle = state.turnCount < activePlayers(state).length;
   const openingHarassmentPenalty =
     openingCycle && rivalSetback > 0 && ownAdvance <= 0 ? AI_STRATEGY.placement.openingHarassment : 0;
 
@@ -799,7 +802,7 @@ function bestPlacement(
         scoreResult(next, player, difficulty, state) +
         pulseMeteorEscapeBonus(state, next, player) +
         plannedRecallBonus(state, placement, next) +
-        earlyPlacementStrategyBonus(state, placement, next),
+        earlyPlacementStrategyBonus(state, placement, next, difficulty),
     });
   }
   if (!options.length && (state.passAvailable?.[state.turn] ?? true)) {
@@ -1027,7 +1030,7 @@ export function chooseAiDecision(
         scoreResult(next, player, difficulty, state) +
         pulseMeteorEscapeBonus(state, next, player) +
         plannedRecallBonus(state, placement, next) +
-        earlyPlacementStrategyBonus(state, placement, next),
+        earlyPlacementStrategyBonus(state, placement, next, difficulty),
     });
   }
   const passValue = (state.passAvailable?.[player] ?? true)

@@ -58,8 +58,10 @@ import {
 } from "./game-rules";
 import { chooseAiDecision, type AiDifficulty } from "./ai-engine";
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
-import { SELECTABLE_ITEMS, itemDetail, itemEffectFacts } from "./item-content";
-import { isRankedOpen, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
+import { SELECTABLE_ITEMS } from "./item-content";
+import { LoadoutPreview } from "./components/loadout-preview";
+import { boardTargetPreview } from "./board-preview";
+import { isRankedOpen, minutesUntilRanked, RANKED_SCHEDULE_LABEL } from "./ranked-schedule";
 import { APP_VERSION, APP_VERSION_LABEL } from "./version";
 import { LATEST_RELEASE_NOTES } from "../config/release-notes";
 import { useDeferredReveal } from "./hooks/use-deferred-reveal";
@@ -82,7 +84,6 @@ import { RulesArchive, WorldArchive } from "./components/manual-content";
 import { ASSET_PATHS } from "../config/asset-paths";
 import { tutorialCopy, type TutorialCopyStep } from "../config/tutorial-copy";
 import {
-  ITEM_DEMO_LABELS,
   PlayerStack,
   ItemIcon,
   MeteorIcon,
@@ -163,9 +164,12 @@ function Game() {
   useSiteTheme();
   const [entryStage, setEntryStage] = useState<"title" | "rule" | "play" | "match" | "setup" | null>("title");
   const [tutorialConfirmOpen, setTutorialConfirmOpen] = useState(false);
+  const [pendingBoardTarget, setPendingBoardTarget] = useState<{ source: GameState; target: Pos } | null>(null);
+  const boardPointerType = useRef("mouse");
   const [tutorialStep, setTutorialStep] = useState<TutorialStep | null>(null);
   const [tutorialOpening, setTutorialOpening] = useState<"forward" | "side" | "back">("forward");
   const [tutorialHitRival, setTutorialHitRival] = useState(false);
+  const [tutorialMovedSelf, setTutorialMovedSelf] = useState(false);
   const [size, setSize] = useState(9);
   const [first, setFirst] = useState<Player>("red");
   const [variant, setVariant] = useState<GameVariant>("classic");
@@ -324,7 +328,8 @@ function Game() {
   const rankRating = isItemVariant(variant) ? itemRankRating : classicRankRating;
   const regulaCore = { r: Math.floor(game.size / 2), c: Math.floor(game.size / 2) };
   const regulaClosestDistance = Math.min(...activePlayers(game).map((player) => distance(game.probes[player], regulaCore)));
-  const regulaProgress = game.phase === "over" ? 100 : Math.max(0, Math.min(99, Math.round((1 - regulaClosestDistance / Math.max(1, game.size - 1)) * 100)));
+  const startingCoreDistance = Math.floor(game.size / 2) - (game.size === 9 ? 0 : 1);
+  const regulaProgress = game.phase === "over" ? 100 : Math.max(0, Math.min(99, Math.round((1 - regulaClosestDistance / Math.max(1, startingCoreDistance)) * 100)));
   useEffect(() => {
     fetch("/api/balance", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : Promise.reject())
@@ -383,6 +388,25 @@ function Game() {
         ? false
         : !(game.botPlayers ?? []).includes(game.turn);
   const playerBoardInputEnabled = canControl && showTurnActionControls && !isAnimating;
+  const previewTarget = playerBoardInputEnabled && pendingBoardTarget?.source === game ? pendingBoardTarget.target : null;
+  const previewState = useMemo(() => previewTarget ? boardTargetPreview(game, previewTarget) : null, [game, previewTarget]);
+  const previewRadius = !previewTarget ? 0 : game.phase === "place" ? (game.selected === "large" ? 2 : 1)
+    : game.pendingSwitches?.[0]?.kind === "blast" ? balance.blastRadius
+    : game.pendingSwitches?.[0]?.kind === "pulse" ? balance.pulseRadius : 0;
+  const tutorialSuggestedTarget = useMemo(() => {
+    if (tutorialStep !== "meteor" || game.phase !== "place") return null;
+    const core = { r: Math.floor(game.size / 2), c: Math.floor(game.size / 2) };
+    let best: Pos | null = null;
+    let gain = 0;
+    for (let r = 0; r < game.size; r++) for (let c = 0; c < game.size; c++) {
+      const target = { r, c };
+      const next = boardTargetPreview(game, target);
+      if (!next) continue;
+      const advance = distance(game.probes[game.turn], core) - distance(next.probes[game.turn], core);
+      if (advance > gain) { gain = advance; best = target; }
+    }
+    return best;
+  }, [game, tutorialStep]);
 
   useEffect(() => {
     setStats({
@@ -921,6 +945,7 @@ function Game() {
     setTutorialStep("welcome");
     setTutorialOpening("forward");
     setTutorialHitRival(false);
+    setTutorialMovedSelf(false);
     setEntryStage(null);
     setMode("human");
     setSetupMode("human");
@@ -1089,6 +1114,7 @@ function Game() {
         if (tutorialStep === "meteor" && game.turn === "red") {
           const hitRival = Boolean(resolution.pushed.blue);
           setTutorialHitRival(hitRival);
+          setTutorialMovedSelf(Boolean(resolution.pushed.red));
           setTutorialStep(resolution.state.phase === "over" && resolution.state.winner === "red" ? "complete" : "meteor-result");
         }
         setBlastFx(null);
@@ -1230,6 +1256,17 @@ function Game() {
         }
       } catch { return; }
     }
+  };
+
+  const chooseBoardTarget = (r: number, c: number) => {
+    if (!playerBoardInputEnabled) return;
+    const target = { r, c };
+    const needsPreview = boardPointerType.current === "touch" || window.matchMedia("(max-width: 700px)").matches;
+    if (needsPreview && boardTargetPreview(game, target)) {
+      setPendingBoardTarget({ source: game, target });
+      return;
+    }
+    handleCell(r, c);
   };
 
   const applyNewGameSettings = async () => {
@@ -1988,7 +2025,7 @@ function Game() {
   };
 
   const tutorialPanelCopy = tutorialStep && ["welcome", "goal", "first-move", "first-praise", "rival", "rival-result", "second-move", "meteor", "meteor-result", "large", "free"].includes(tutorialStep)
-    ? tutorialCopy(tutorialStep as TutorialCopyStep, language, tutorialOpening, tutorialHitRival)
+    ? tutorialCopy(tutorialStep as TutorialCopyStep, language, tutorialOpening, tutorialHitRival, tutorialMovedSelf)
     : null;
 
   const volumeControls = {
@@ -2053,28 +2090,33 @@ function Game() {
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>{t("back")}</button><div><small>{entryStage === "play" ? t("ruleGuide") : t("gameStart")}</small><b>{entryStage === "play" ? t("howToPlay") : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>{localize("COREへ先に到達せよ", "REACH THE CORE FIRST")}</h2><p>{localize("毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。", "Each turn, move your probe one cell vertically or horizontally, then place a meteor. Blasts are not merely hazards—they are propulsion.")}</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>{localize("探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。", "Move one cell vertically or horizontally and build a route toward the CORE.")}</p></article><article><b>02</b><strong>PLACE</strong><p>{localize("小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。", "Place from two small and one large meteor. The first player cannot place one on the opening turn.")}</p></article><article><b>03</b><strong>METEOR</strong><p>{localize("小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。", "Small meteors blast one surrounding ring. Large blasts are stronger near the center and move any probe.")}</p></article><article><b>04</b><strong>BONUS MOVE</strong><p>{localize("手持ちのメテオをすべて使い切ると、その手番中にもう1回移動できます。", "Use your last meteor to gain one bonus move during that turn.")}</p></article><article><b>GOAL</b><strong>CORE</strong><p>{localize("移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。", "Movement, BOOSTER, blasts, and GRAVITY can all carry you into the CORE.")}</p></article></div>
 <nav className="play-guide-links"><a href="/guide">{localize("遊び方をもっと詳しく", "DETAILED GUIDE")}</a><a href="/items">{localize("アイテム一覧", "ITEM LIST")}</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")}</button></div>}
-          {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>{t("choosePlayStyle")}</h2><p>{t("chooseOpponent")}</p><h3>PLAY STYLE</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>SINGLE</strong><span>{t("cpuBattle")}</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>LOCAL</strong><span>{t("localBattle")}</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>ONLINE</strong><span>{t("onlineBattle")}</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>{t("next")}</button></div>}
+          {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>{t("choosePlayStyle")}</h2><p>{t("chooseOpponent")}</p><h3>{localize("プレイ方法", "PLAY STYLE")}</h3><div className="choice-row three"><button className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>{localize("ひとりで", "SINGLE")}</strong><span>{t("cpuBattle")}</span></button><button className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>{localize("同じ端末で", "LOCAL")}</strong><span>{t("localBattle")}</span></button><button className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>{localize("オンライン", "ONLINE")}</strong><span>{t("onlineBattle")}</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>{t("next")}</button></div>}
           {entryStage === "match" && (
             <div className="entry-panel compact-flow">
               <h2>{setupMode === "online" ? t("onlineMatch") : t("matchSetup")}</h2>
               <p>{setupMode === "cpu" ? "SINGLE" : setupMode === "human" ? "LOCAL" : "ONLINE"}</p>
               {setupMode === "online" ? <>
-                <h3>ONLINE TYPE</h3>
+                <h3>{localize("オンラインの遊び方", "ONLINE TYPE")}</h3>
                 <div className="rank-choice">
-                  <button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}><strong>CASUAL ROOM</strong><span>{t("casualRoomNote")}</span></button>
-                  <button className={rankedMode ? "selected" : "locked"} disabled={!rankedOpen} onClick={() => { setRankedMode(true); setVariant(isItemVariant(variant) ? "item" : "classic"); setOnlinePlayerCount(2); setOnlineAiCount(0); }}><strong>{rankedOpen ? t("rankedDuel") : t("rankedClosed")}</strong><span>{rankedOpen ? t("rankedOpen") : language === "en" ? "Daily 08:00–09:00 / 20:00–21:00 JST" : RANKED_SCHEDULE_LABEL}</span></button>
+                  <button className={!rankedMode ? "selected" : ""} onClick={() => setRankedMode(false)}><strong>{localize("カジュアルルーム", "CASUAL ROOM")}</strong><span>{t("casualRoomNote")}</span></button>
+                  <button className={rankedMode ? "selected" : "locked"} disabled={!rankedOpen} onClick={() => { setRankedMode(true); setVariant(isItemVariant(variant) ? "item" : "classic"); setOnlinePlayerCount(2); setOnlineAiCount(0); }}><strong>{rankedOpen ? t("rankedDuel") : t("rankedClosed")}</strong><span>{rankedOpen ? t("rankedOpen") : localize(`次の受付まで約${minutesUntilRanked(new Date(currentTime))}分`, `Opens in about ${minutesUntilRanked(new Date(currentTime))} minutes`)}</span></button>
                 </div>
+                <p className="entry-explanation">{language === "ja" ? RANKED_SCHEDULE_LABEL : "Daily 08:00–09:00 / 20:00–21:00 JST"}</p>
                 {rankedMode && <><h3>{t("rankedRules")}</h3><div className="choice-row"><button className={!isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>{t("rankedClassic")}</strong><span>{rankTier(classicRankRating)} {classicRankRating}</span></button><button className={isItemVariant(variant) ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>{t("rankedItem")}</strong><span>{rankTier(itemRankRating)} {itemRankRating}</span></button></div></>}
                 <p className={rankedOpen ? "rank-window open" : "rank-window"}>{rankedMode ? t("rankedRateNote") : t("casualLobbyNote")}</p>
               </> : <>
-                <h3>RULE</h3>
-                <div className="choice-row"><button className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>CLASSIC</strong><span>{t("classicRuleNote")}</span></button><button className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>ITEM</strong><span>{t("itemRuleNote")}</span></button></div>
-                <h3>MATCH TYPE</h3>
-                <div className="choice-row"><button className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>FREE FOR ALL</strong><span>{t("freeForAll")}</span></button><button className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>{t("teamBattle")}</span></button></div>
-                <div className="entry-settings"><label>BOARD SIZE<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? "PLAYERS" : "CPU ADD"}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>AI LEVEL<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div>
+                <h3>{localize("ルール", "RULE")}</h3>
+                <div className="choice-row"><button className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>{localize("通常戦", "CLASSIC")}</strong><span>{t("classicRuleNote")}</span></button><button className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>{localize("アイテム戦", "ITEM")}</strong><span>{t("itemRuleNote")}</span></button></div>
+                <h3>{localize("対戦形式", "MATCH TYPE")}</h3>
+                <div className="choice-row"><button className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>{localize("個人戦", "FREE FOR ALL")}</strong><span>{t("freeForAll")}</span></button><button className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>{t("teamBattle")}</span></button></div>
+                <div className="entry-settings"><label>{localize("盤面サイズ", "BOARD SIZE")}<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? localize("対戦人数", "PLAYERS") : localize("追加CPU", "CPU ADD")}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>{localize("CPUの強さ", "AI LEVEL")}<select value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select></label>}</div>
               </>}
-              {setupMode !== "online" && <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />}
-              <button className="entry-confirm" onClick={() => { applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? t("onlineLobby") : "BATTLE START"}</button>
+              {setupMode !== "online" && <>
+                <p className="entry-explanation">{setupMode === "human" ? localize(`人間2人 ＋ CPU${localAiCount}体 ＝ ${2 + localAiCount}人対戦`, `2 humans + ${localAiCount} CPUs = ${2 + localAiCount} players`) : localize(`あなた ＋ CPU${aiPlayerCount - 1}体 ＝ ${aiPlayerCount}人対戦`, `You + ${aiPlayerCount - 1} CPUs = ${aiPlayerCount} players`)}</p>
+                {(setupMode !== "human" || localAiCount > 0) && <p className="entry-explanation">{t(aiDifficulty === "easy" ? "easyDescription" : aiDifficulty === "hard" ? "hardDescription" : "normalDescription")}</p>}
+                <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />
+              </>}
+              <button className="entry-confirm" onClick={() => { applyNewGameSettings(); setEntryStage(null); window.setTimeout(() => (setupMode === "online" ? document.getElementById("match-setup") : document.querySelector(".topbar"))?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" }), 30); }}>{setupMode === "online" ? t("onlineLobby") : localize("対戦開始", "BATTLE START")}</button>
             </div>
           )}
           <footer><span>MODE SELECT</span><i /><span>MATCH SETUP</span></footer>
@@ -2109,7 +2151,7 @@ function Game() {
             <p>{t("titleTagline")}</p>
           </div>
         </div>
-        <MatchMeta eventDetails={<EventStatus event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} />} language={language} progress={regulaProgress} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
+        <MatchMeta eventDetails={<EventStatus event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} />} language={language} progress={regulaProgress} distance={regulaClosestDistance} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <div className="topbar-guide-actions">
           {!tutorialStep && (mode !== "online" || !online.code) ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
           <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
@@ -2211,9 +2253,10 @@ function Game() {
               <small>AEQRIS // FIELD TRAINING</small>
               <h2>{tutorialPanelCopy?.title}</h2>
               <p>{tutorialPanelCopy?.body}</p>
+              {tutorialStep === "meteor" && tutorialSuggestedTarget && <p>{localize("◎のマスなら、自分をCOREへ進められます。他のマスを選んでも構いません。", "The ◎ cell propels you toward the CORE. Other placements are also welcome.")}</p>}
               {tutorialStep === "welcome" && <button type="button" onClick={() => setTutorialStep("goal")}>{tutorialPanelCopy?.action}</button>}
               {tutorialStep === "goal" && <button type="button" onClick={() => setTutorialStep("first-move")}>{tutorialPanelCopy?.action}</button>}
-              {tutorialStep === "first-praise" && <button type="button" onClick={() => setTutorialStep("rival")}>{tutorialPanelCopy?.action}</button>}
+              {tutorialStep === "first-praise" && <button type="button" onClick={() => setTutorialStep("rival-moving")}>{tutorialPanelCopy?.action}</button>}
               {tutorialStep === "rival" && <button type="button" onClick={() => setTutorialStep("rival-moving")}>{tutorialPanelCopy?.action}</button>}
               {tutorialStep === "rival-result" && <button type="button" onClick={() => setTutorialStep("second-move")}>{tutorialPanelCopy?.action}</button>}
               {tutorialStep === "meteor-result" && <button type="button" onClick={() => setTutorialStep("large")}>{tutorialPanelCopy?.action}</button>}
@@ -2232,34 +2275,13 @@ function Game() {
           <div className={`turn-callout ${displayAccent}`} aria-live="polite">
             <span>{resultPlayer ? localize("WINNER / 勝者", "WINNER") : localize("CURRENT TURN / 現在の手番", "CURRENT TURN")}</span>
             <b>{resultPlayer ? playerName(resultPlayer) : turnDisplayName}</b>
-            <i>{playerName(displayAccent)}</i>
           </div>
           <div className="status" aria-live="polite">
             <span className={`status-dot ${displayAccent}`} />
             {visibleGameMessage}
           </div>
           {game.phase === "setup" && isItemVariant(game.variant) && (
-            <div className="item-selection-overlay" aria-live="polite">
-              <header><small>LOADOUT PREVIEW</small><strong>{t("selectedItems")}</strong></header>
-              <div className={`item-preview-flags count-${Math.min(3, game.itemHands?.[setupPlayer]?.length ?? 0)}`}>
-                {(game.itemHands?.[setupPlayer] ?? []).length === 0 && <p>{t("emptyLoadout")}</p>}
-                {(game.itemHands?.[setupPlayer] ?? []).map((kind, index) => {
-                  const facts = itemEffectFacts(kind, game.balance ?? activeBalance, language);
-                  return (
-                    <article className={`item-preview-flag ${kind}`} key={`${kind}-${index}`}>
-                      <header><ItemIcon kind={kind} /><b>{kind.toUpperCase()}</b></header>
-                      <div className="item-preview-spec" aria-label={tf("itemEffectAria", { kind: kind.toUpperCase() })}>
-                        <strong>{ITEM_DEMO_LABELS[kind]}</strong>
-                        <span>{facts[0]}</span>
-                        <small>{facts[1]}</small>
-                      </div>
-                      <p>{itemDetail(kind, game.balance ?? activeBalance, language)}</p>
-                      <em>{index + 1}</em>
-                    </article>
-                  );
-                })}
-              </div>
-            </div>
+            <LoadoutPreview key={setupPlayer} items={game.itemHands?.[setupPlayer] ?? []} balance={game.balance ?? activeBalance} language={language} />
           )}
           <div
             key={eventFiring ? `event-${eventEffectKey}` : "board"}
@@ -2324,10 +2346,14 @@ function Game() {
                     r === mid && c === mid ? "core" : "",
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",
+                    previewTarget && samePos(pos, previewTarget) ? "target-preview" : "",
+                    previewTarget && previewRadius > 0 && distance(pos, previewTarget) <= previewRadius ? "target-range" : "",
+                    tutorialSuggestedTarget && samePos(pos, tutorialSuggestedTarget) ? "tutorial-suggestion" : "",
                     orbitSelecting && activeOrbitRing === orbitRingAt(r, c) ? "orbit-preview" : "",
                     orbitShift ? `orbit-shift ${cellOrbit?.clockwise ? "clockwise" : "counterclockwise"}` : "",
                   ].join(" ")}
-                  onClick={() => handleCell(r, c)}
+                  onPointerDown={(event) => { boardPointerType.current = event.pointerType; }}
+                  onClick={() => chooseBoardTarget(r, c)}
                   style={orbitShift ? ({
                     "--orbit-from-x": `${orbitShift.c * 100}%`,
                     "--orbit-from-y": `${orbitShift.r * 100}%`,
@@ -2342,6 +2368,8 @@ function Game() {
                   aria-label={localize(`座標 ${r},${c}${probe ? ` ${playerName(probe)}探査機` : ""}${meteor ? ` ${meteorName(meteor.size)}` : ""}${obstacle ? " お邪魔メテオ" : ""}${pulseDevice ? " 電磁パルス発生装置" : ""}`, `Cell ${r},${c}${probe ? ` ${playerName(probe)} probe` : ""}${meteor ? ` ${meteor.size} meteor` : ""}${obstacle ? " holo meteor" : ""}${pulseDevice ? " pulse device" : ""}`)}
                 >
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
+                  {tutorialSuggestedTarget && samePos(pos, tutorialSuggestedTarget) && <span className="suggestion-mark" aria-hidden="true">◎</span>}
+                  {previewState && activePlayers(game).filter((p) => samePos(previewState.probes[p], pos) && !samePos(game.probes[p], pos)).map((p) => <span key={p} className={`preview-probe ${p}`} aria-hidden="true">{PLAYER_ORDER.indexOf(p) + 1}</span>)}
                   <EventCellEffect event={game.matchEvent} pos={pos} mid={mid} perspective={perspectiveSlot} firing={eventFiring} />
                   {eventFiring && game.matchEvent?.last?.kind === "geyser" && game.matchEvent.last.vents?.some((vent) => samePos(vent, pos)) && !probe && !meteor && !obstacle && !pulseDevice && <span className="shockwave small event-geyser-wave" />}
                   {blastFx && blastFx.stage !== "settle" && samePos(pos, blastFx.target) && (
@@ -2423,7 +2451,8 @@ function Game() {
 
           {resultVisible && (
             <section className="result-overlay" role="dialog" aria-modal="true" aria-label={localize("対戦結果", "Match result")}>
-              <header><small>MATCH RESULT</small><strong>{displayGameMessage}</strong></header>
+              <header><small>{tutorialStep === "complete" ? localize("チュートリアル完了", "TRAINING COMPLETE") : "MATCH RESULT"}</small><strong>{tutorialStep === "complete" ? localize("おめでとうございます。COREに到達しました！", "Congratulations! You reached the CORE!") : displayGameMessage}</strong></header>
+              {tutorialStep === "complete" && <p>{localize("移動と爆風の使い方を学びました。お疲れ様でした。", "You have learned movement and blast propulsion. Well done!")}</p>}
               {(game.finishOrder?.length ?? 0) > 0 && (
                 <ol className="finish-ranking" aria-label={localize("最終順位", "Final ranking")}>
                   {game.finishOrder?.map((player, index) => (
@@ -2440,6 +2469,7 @@ function Game() {
               >
                 {tutorialStep === "complete" ? localize("チュートリアルを終える", "FINISH TUTORIAL") : mode === "online" ? localize("マッチルームへ戻る", "RETURN TO MATCH ROOM") : localize("同じメンバーでもう一度", "PLAY AGAIN")}
               </button>
+              {tutorialStep === "complete" && <button type="button" className="secondary-action" onClick={() => { setTutorialStep(null); setMode("cpu"); setSetupMode("cpu"); setAiPlayerCount(2); restartCurrentGame(); }}>{localize("EASYと対戦する", "PLAY AGAINST EASY")}</button>}
               <AdSlot position="result" />
             </section>
           )}
@@ -2450,6 +2480,11 @@ function Game() {
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
+            {previewTarget && previewState && <div className="target-confirm" role="group" aria-label={localize("操作の確認", "Confirm action")}>
+              <span>{localize("白枠が対象・点線が移動先", "White: target · Dashed: destination")}</span>
+              <button type="button" className="primary-action" onClick={() => { const target = previewTarget; setPendingBoardTarget(null); handleCell(target.r, target.c); }}>{t("confirm")}</button>
+              <button type="button" className="secondary-action" onClick={() => setPendingBoardTarget(null)}>{localize("選び直す", "Cancel")}</button>
+            </div>}
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">{tf("selectItems", { total: balance.itemHandTotal, same: balance.itemSameMax })}</span>
@@ -2853,7 +2888,7 @@ function Game() {
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
             {online.code && online.isHost && !rankedMode && online.status === "waiting" && <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />}
             {online.code && <div className="room-settings-summary" aria-label={localize("現在のルーム設定", "Current room settings")}><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b><span className="event-summary">{localize("イベント", "Event")} · {eventKind.length ? `${eventKind.map((kind) => MATCH_EVENTS[kind][language]).join(" → ")} / ${eventInterval}${localize("巡ごと", " rounds")}` : "OFF"}</span></div>}
-            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder="NICKNAME" aria-label={t("nickname")} maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder="ROOM CODE" aria-label={localize("ルームコード", "Room code")} maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>CREATE ROOM</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>JOIN ROOM</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>{localize("← ゲームモードへ戻る", "← BACK TO GAME MODE")}</button></>}
+            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder={t("nickname")} aria-label={t("nickname")} maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder={localize("ルームコード", "ROOM CODE")} aria-label={localize("ルームコード", "Room code")} maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>{localize("ルームを作る", "CREATE ROOM")}</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>{localize("ルームに入る", "JOIN ROOM")}</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>{localize("← ゲームモードへ戻る", "← BACK TO GAME MODE")}</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>
             )}

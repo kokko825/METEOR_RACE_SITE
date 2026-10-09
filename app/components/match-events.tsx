@@ -23,14 +23,15 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
 
 export function EventStatus({ event, language, perspective = 0, firing = false }: { event?: MatchEventState; language: "ja" | "en"; perspective?: number; firing?: boolean }) {
   if (!event || event.kind === "off") return null;
-  if (!firing && (event.kinds?.length ?? 0) > 1) return <span className="event-sequence">{event.kinds!.map((kind, index) => <span key={kind}>{index > 0 && " → "}<EventStatus event={{ ...event, kinds: undefined, kind, forecast: event.forecasts?.find((f) => f.kind === kind) }} language={language} perspective={perspective} /></span>)}</span>;
-  const forecast = event.forecast ?? (firing ? event.last : undefined);
+  if (!firing && (event.kinds?.length ?? 0) > 1) return <details className="event-sequence"><summary>{language === "ja" ? `盤面イベント ${event.kinds!.length}種類 · あと${event.remaining}巡` : `${event.kinds!.length} field events · ${event.remaining} rounds`}</summary><div>{event.kinds!.map((kind, index) => <span key={kind}>{index + 1}. <EventStatus event={{ ...event, kinds: undefined, kind, forecast: event.forecasts?.find((f) => f.kind === kind) }} language={language} perspective={perspective} /></span>)}</div></details>;
+  const forecast = firing ? event.last : event.forecast;
+  const kind = firing ? event.last?.kind ?? event.kind : event.kind;
   const delta = forecast ? boardToViewDelta({ r: forecast.dr, c: forecast.dc }, perspective) : null;
   const arrow = delta ? [["↖", "↑", "↗"], ["←", "", "→"], ["↙", "↓", "↘"]][Math.sign(delta.r) + 1][Math.sign(delta.c) + 1] : "";
   return <span className={`event-status${forecast ? " announced" : ""}`} role="status">
-    <b>{MATCH_EVENTS[event.kind][language]} · {firing ? (language === "ja" ? "発動" : "ACTIVE") : language === "ja" ? `あと${event.remaining}巡` : `${event.remaining} rounds`}</b>
-    {forecast ? <small>{event.kind === "wind" ? arrow : event.kind === "orbit" ? `${language === "ja" ? "中央から" : "Ring"} ${forecast.ring}${forecast.clockwise ? "↻" : "↺"}${forecast.secondRing ? ` / ${forecast.secondRing}${forecast.clockwise ? "↺" : "↻"}` : ""} 90°`
-      : event.kind === "geyser" ? (language === "ja" ? "噴出口 ×4" : "4 vents")
+    <b>{MATCH_EVENTS[kind][language]} · {firing ? (language === "ja" ? "発動" : "ACTIVE") : language === "ja" ? `あと${event.remaining}巡` : `${event.remaining} rounds`}</b>
+    {forecast ? <small>{kind === "wind" ? arrow : kind === "orbit" ? `${language === "ja" ? "中央から" : "Ring"} ${forecast.ring}${forecast.clockwise ? "↻" : "↺"}${forecast.secondRing ? ` / ${forecast.secondRing}${forecast.clockwise ? "↺" : "↻"}` : ""} 90°`
+      : kind === "geyser" ? (language === "ja" ? "噴出口 ×4" : "4 vents")
       : "→ CORE"}</small> : null}
   </span>;
 }

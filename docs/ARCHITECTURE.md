@@ -32,6 +32,9 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 - 駒、メテオ、所持欄 → `app/components/game-pieces.tsx`
 - プレイヤー旗の左右・人数別表示 → 同ファイルの `PlayerStack`（4色共通）
 - 遊び方・世界観の本文レイアウト → `app/components/manual-content.tsx`
+- アイテム旗と選択中の説明 → `app/components/loadout-preview.tsx`（効果数値は `app/item-content.ts` の設定由来の文章）
+- タッチ操作の結果予告 → `app/board-preview.ts`（ゲーム本体と同じルールを呼び、状態を保存しない）
+- 公開バージョンと履歴 → `config/release-notes.ts`（`app/version.ts` は先頭の版番号を参照）
 - 全体／BGM／SE音量の表示 → `app/components/sound-controls.tsx`（設定画面と下部バー共通）
 - 音量の初期値 → `config/ui-behavior.ts` の `defaultVolumes`
 - スマホで押せない、スクロールできない → `app/styles/responsive-safety.css`
@@ -68,3 +71,7 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 - `app/api/strong-plays/route.ts` は、勝者側から1試合最大8件をD1へ匿名保存します。名前、メール、チャット、ルームコード、PLAYER IDは受け取りません。送信された点数を信用せず、行動前後の盤面からサーバー側で再計算した結果だけを保存します。
 - 90日で削除し、全体も5,000件を上限にします。ここから本番AIが自動学習することはありません。
 - 改善要望が来たら `npm run analyze:strong-plays -- --days=30 --category=escape` のように集計し、関連局面をAI LABで検証します。
+
+## 変更履歴
+
+- 2026-10-10：操作予告・アイテム説明・バージョン表示の編集先を追加。

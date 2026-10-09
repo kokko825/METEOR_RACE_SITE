@@ -16,6 +16,7 @@ async function read(path, base = import.meta.url) {
 
 const readGameSurface = async () => (await Promise.all([
   read("../app/page.tsx"), read("../app/components/manual-content.tsx"),
+  read("../app/components/loadout-preview.tsx"),
 ])).join("\n");
 
 test("toolbar volume preserves integer settings without browser rounding", async () => {
@@ -120,7 +121,8 @@ test("explains the last-meteor bonus move everywhere players learn the rules", a
   assert.match(page, /BONUS MOVE/);
   assert.match(page, /t\("bonusMoveRule"\)/);
   assert.match(guide, /ボーナス移動が発生/);
-  assert.match(copy, /手持ちのメテオをすべて使い切ると/);
+  assert.match(copy, /手持ちメテオが0個なら追加で1マス/);
+  assert.match(copy, /ボーナス移動の代わりにアイテム/);
 });
 
 test("keeps the public game discoverable by search engines", async () => {
@@ -193,9 +195,7 @@ test("keeps public release history centralized and shows only three recent entri
   assert.match(updates, /UpdatesClient/);
   assert.match(updatesClient, /RELEASE_NOTES\.map/);
   assert.match(updatesClient, /note\.title\[language\]/);
-  const appVersion = version.match(/APP_VERSION = "([^"]+)"/)?.[1];
-  assert.ok(appVersion);
-  assert.match(notes, new RegExp(`version:\\s*"${appVersion.replaceAll(".", "\\.")}"`));
+  assert.match(version, /APP_VERSION = RELEASE_NOTES\[0\]\.version/);
 });
 
 test("keeps release history scrollable in the short desktop viewport layout", async () => {
@@ -305,7 +305,7 @@ test("localizes every player-facing label in match setup", async () => {
     "onlineLobby",
   ]) assert.match(copy, new RegExp(`${key}: \\{ ja: ".+", en: ".+" \\}`));
   assert.match(page, /setupMode === "online" \? t\("onlineMatch"\) : t\("matchSetup"\)/);
-  assert.match(page, /language === "en" \? "Daily 08:00–09:00 \/ 20:00–21:00 JST"/);
+  assert.match(page, /language === "ja" \? RANKED_SCHEDULE_LABEL : "Daily 08:00–09:00 \/ 20:00–21:00 JST"/);
 });
 
 test("ships the bilingual ASTRA ACCORD world archive in the manual", async () => {
@@ -340,7 +340,8 @@ test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation"
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
   assert.match(matchMeta, /AEQRIS \/\/ CORE到達管制/);
-  assert.match(page, /CORE APPROACH \{progress\}%/);
+  assert.match(page, /INTERSTELLAR NETWORK/);
+  assert.match(matchMeta, /COREまで\$\{distance\}マス/);
   assert.match(page, /<WorldArchive language=\{language\} progress=\{regulaProgress\}/);
   assert.match(css, /\.regula-console\{/);
   assert.match(matchMeta, /className="match-meta"/);

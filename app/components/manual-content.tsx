@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { SiteLanguage } from "../hooks/use-local-settings";
 import type { BalanceConfig } from "../balance-config";
 import { uiText } from "../i18n";
-import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail } from "../item-content";
+import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, ITEM_ROLES } from "../item-content";
 import { ITEM_LORE } from "../../config/item-lore";
 
 /** Display-only manual content. Forms, modal state and submission stay in page.tsx. */
@@ -27,7 +27,7 @@ export function WorldArchive({
           <i />
           <strong>AEQRIS</strong>
           <span>ASTRA NETWORK</span>
-          <b>CORE APPROACH {progress}%</b>
+          <b>INTERSTELLAR NETWORK</b>
         </div>
         <div className="manual-world-copy">
           <small>ARCHIVE / ASTRA ACCORD</small>
@@ -111,9 +111,9 @@ export function RulesArchive({
                 <p>{t("manualMeteor")}</p>
               </div>
             </article>
-            <em>↓</em>
+            <em>{language === "ja" ? "または" : "OR"}</em>
             <article>
-              <span>03</span>
+              <span>02</span>
               <i>{ITEM_ICONS.shield}</i>
               <div>
                 <b>ITEM</b>
@@ -129,6 +129,20 @@ export function RulesArchive({
             <p>{t("firstTurnRule")}</p>
             <p>{t("bonusMoveRule")}</p>
           </div>
+          <div className="manual-blast-examples">
+            {([1, 2] as const).map((radius) => (
+              <figure key={radius}>
+                <div className="blast-diagram" role="img" aria-label={language === "ja" ? `${radius === 1 ? "小" : "大"}メテオの爆風範囲。数字は押し出すマス数` : `${radius === 1 ? "Small" : "Large"} meteor blast. Numbers show push distance`}>
+                  {Array.from({ length: 25 }, (_, i) => {
+                    const range = Math.max(Math.abs(Math.floor(i / 5) - 2), Math.abs(i % 5 - 2));
+                    return <span key={i} className={range === 0 ? "origin" : range <= radius ? "blast" : ""}>{range === 0 ? "◆" : range <= radius ? radius + 1 - range : ""}</span>;
+                  })}
+                </div>
+                <figcaption>{language === "ja" ? `${radius === 1 ? "小" : "大"}メテオ：数字の分、中心から外へ` : `${radius === 1 ? "Small" : "Large"}: pushed outward by the number shown`}</figcaption>
+              </figure>
+            ))}
+            <p>{language === "ja" ? "爆風は斜めにも届きます。探査機は他の探査機や障害物の手前で止まり、爆風に巻き込まれた通常メテオは持ち主へ戻ります。" : "Blasts also push diagonally. Probes stop before another probe or obstacle. Normal meteors caught in the blast return to their owners."}</p>
+          </div>
         </div>
       </section>
       <section className="manual-items">
@@ -142,6 +156,7 @@ export function RulesArchive({
               <i aria-hidden="true">{ITEM_ICONS[kind]}</i>
               <div>
                 <b>{kind.toUpperCase()}</b>
+                <p className="item-role">{ITEM_ROLES[kind][language]}</p>
                 <p>{itemDetail(kind, balance, language)}</p>
               </div>
             </article>

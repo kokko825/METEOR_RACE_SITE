@@ -12,6 +12,17 @@ import type { BalanceConfig } from "./balance-config";
 
 export { SELECTABLE_ITEMS };
 
+export const ITEM_ROLES: Record<ItemKind, { ja: string; en: string }> = {
+  shield: { ja: "爆風を弱めて身を守る", en: "Soften blasts to hold your ground" },
+  booster: { ja: "障害物を飛び越えて前進", en: "Leap over obstacles and advance" },
+  holo: { ja: "進路に障害物を作る", en: "Build a roadblock" },
+  orbit: { ja: "機体も配置物もまとめて回す", en: "Rotate probes and objects together" },
+  blast: { ja: "爆風で前進・妨害する", en: "Blast yourself forward or rivals away" },
+  pulse: { ja: "範囲内の自力移動を止める", en: "Stop voluntary movement in an area" },
+  recall: { ja: "使ったメテオを手元に戻す", en: "Recover your placed meteors" },
+  gravity: { ja: "全機をCOREへ引き寄せる", en: "Pull probes toward the CORE" },
+};
+
 export const ITEM_ICONS: Record<ItemKind, string> = {
   shield: "⬡",
   booster: "▲",
@@ -89,7 +100,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
   switch (kind) {
     case "shield": return [`有効：${balance.shieldRounds}巡`, "敵と自分の爆風を1マス軽減"];
     case "booster": return [`使用：${balance.boosterUses}回`, "縦横2マス進みメテオを飛び越える"];
-    case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, "破壊不能の障害物として設置"];
+    case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, balance.holoUnlimited ? "消滅しない障害物を設置" : "爆風を受けると残り時間が短縮"];
     case "orbit": return ["回転：90度／180度", "選択したリング上の配置を移動"];
     case "blast": return [`範囲：中心＋外周${balance.blastRadius}マス`, "爆風だけを指定地点に発生"];
     case "pulse": return [`範囲：中心＋外周${balance.pulseRadius}マス`, "2巡の間、自力移動を封じる"];
@@ -101,22 +112,22 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
 /** One-line tactical note per item — written for the guide page, where a reader has no board in front of them. */
 export const ITEM_TACTICS: Record<ItemKind, string> = {
   shield: "小メテオ相当の1マス爆風は防げます。大メテオやBLASTの2マス分の爆風は1マスに軽減されるため、完全には止まりません。自分の爆風にも同じように適用されます。",
-  booster: "唯一の純粋な前進アイテム。メテオやお邪魔メテオを飛び越えられるので、進路が塞がれた局面の突破口になります。実際に2マス進むまで効果が残るのが強みです。",
+  booster: "メテオやお邪魔メテオを飛び越えられるので、進路が塞がれた局面の突破口になります。実際に2マス進むまで効果が残ります。",
   holo: "相手がCOREへ入る一歩手前のマスに置くのが最も効きます。ただし完全な不動物ではなく、隣接するメテオの爆風を受けると残り時間が削られます。大メテオを至近距離で当てられると一気に消えるため、爆風の届かない位置を選ぶのが確実です。",
   orbit: "90度または180度で盤面をまとめて回し、相手の有利な配置ごとずらせます。自分のメテオやPULSE装置も一緒に動く点に注意が必要です。",
-  blast: "手持ちのメテオを消費せずに、大メテオと同じ爆風だけを起こせます。COREに近い相手を弾き飛ばす、逆転向けの一手です。お邪魔メテオを削る手段としても有効です。",
-  pulse: "範囲内の探査機は自力移動ができなくなります。相手の前進を丸ごと止められる、最も直接的な妨害手段です。",
+  blast: "自分をCOREへ進めたり、相手を遠ざけたりできます。メテオを残さず推進力を得られ、ホロメテオの残り時間も削れます。",
+  pulse: "範囲内では自分も相手も自力移動ができません。メテオやアイテムは使えるため、爆風で範囲外へ脱出できます。",
   recall: "盤上に置いた自分の通常メテオを手札に戻せるので、終盤の弾切れを防げます。自分のホロメテオも一緒に消える点に注意してください。",
   gravity: "真剣タイマン限定の自動イベントです。",
 };
 
 export const ITEM_TACTICS_EN: Record<ItemKind, string> = {
   shield: "Blocks a one-cell blast. A two-cell push from a large meteor or BLAST is reduced to one cell, not completely stopped. Your own blasts are reduced in the same way.",
-  booster: "The only pure advance item. It can jump over meteors and holo meteors, making it ideal for breaking through a blocked route. It remains ready until you actually move two cells.",
+  booster: "Jump over meteors and holo meteors to break through a blocked route. It remains ready until you actually move two cells.",
   holo: "Most effective one cell before an opponent's CORE route. Blasts reduce its remaining duration, so a large meteor at close range can clear it quickly.",
   orbit: "Rotates a whole board ring by 90 or 180 degrees, shifting favorable formations. Your own meteors and PULSE devices move with it.",
-  blast: "Creates the same blast as a large meteor without spending a meteor. It can repel a rival near the CORE or reduce a holo meteor's duration.",
-  pulse: "Probes inside the field cannot move under their own power, making it the most direct way to stop an advance. Blasts can still carry them out.",
+  blast: "Propel yourself toward the CORE or push rivals away without leaving a meteor. It can also reduce a holo meteor's duration.",
+  pulse: "Prevents voluntary movement for every probe inside, including yours. Meteors and items remain available; blasts can carry probes out.",
   recall: "Returns all of your normal meteors on the board to your hand, helping avoid an empty arsenal late in the match. Your holo meteors disappear instead.",
   gravity: "An automatic event exclusive to ranked duels.",
 };

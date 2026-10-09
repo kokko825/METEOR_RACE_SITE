@@ -24,10 +24,10 @@ export function useResponsiveBoard(
         return;
       }
 
-      const actionHeight = Math.max(
-        UI_LAYOUT.battleActionReservePx,
-        action.childElementCount > 0 ? action.getBoundingClientRect().height : 0,
-      );
+      // Reserve action rows before they appear. Measuring the current buttons
+      // would shrink the board when movement changes to meteor placement.
+      const fontSize = parseFloat(getComputedStyle(arena).getPropertyValue("--game-ui-button")) || 16;
+      const actionHeight = Math.max(UI_LAYOUT.battleActionReservePx, fontSize * 8);
       const availableHeight = arena.clientHeight - actionHeight - (actionHeight > 0 ? UI_LAYOUT.actionPanelGapPx : 0);
       const size = Math.floor(Math.min(
         UI_LAYOUT.boardMaximumPx,

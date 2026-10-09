@@ -33,7 +33,7 @@ const COPY: Record<SiteLanguage, Record<Exclude<TutorialCopyStep, "first-praise"
   },
 };
 
-export function tutorialCopy(step: TutorialCopyStep, language: SiteLanguage, opening: Opening, hitRival: boolean): TutorialLine {
+export function tutorialCopy(step: TutorialCopyStep, language: SiteLanguage, opening: Opening, hitRival: boolean, movedSelf = false): TutorialLine {
   if (step === "first-praise") {
     const titles = language === "ja"
       ? { forward: "素晴らしいです。COREへ前進できました", side: "横へずらすのも立派な戦略です", back: "後退から進路を作る判断も有効です" }
@@ -42,8 +42,8 @@ export function tutorialCopy(step: TutorialCopyStep, language: SiteLanguage, ope
   }
   if (step === "meteor-result") {
     return {
-      title: language === "ja" ? (hitRival ? "お見事です。相手を爆風で動かしました" : "メテオは障害物にも、次の推進力にもなります") : (hitRival ? "WELL DONE. THE BLAST MOVED YOUR RIVAL" : "METEORS CAN BLOCK ROUTES OR SET UP YOUR NEXT BOOST"),
-      body: language === "ja" ? "大メテオは中心に近いほど強く、内周を2マス、外周を1マス動かします。以降も小・大を自由に選べます。" : "A large meteor is strongest near its center: the inner ring moves probes two cells and the outer ring moves them one. You may freely choose either meteor from now on.",
+      title: language === "ja" ? (movedSelf ? "素晴らしいです。爆風を推進力にできました" : hitRival ? "お見事です。相手を爆風で動かしました" : "メテオは障害物にも、次の推進力にもなります") : (movedSelf ? "WELL DONE. YOU USED BLAST PROPULSION" : hitRival ? "WELL DONE. THE BLAST MOVED YOUR RIVAL" : "METEORS CAN BLOCK ROUTES OR SET UP YOUR NEXT BOOST"),
+      body: language === "ja" ? "爆風は中心から外側へ機体を押し出します。自分の後ろに配置すれば前進にも使えます。爆風に巻き込まれた通常メテオは持ち主の手元へ戻ります。" : "Blasts push probes away from the impact. Placing a meteor behind yourself can propel you forward. Normal meteors caught in a blast return to their owners.",
       action: language === "ja" ? "大メテオの説明へ" : "LARGE METEOR GUIDE",
     };
   }
