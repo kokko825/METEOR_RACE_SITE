@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENTS, normalizeMatchEvents, normalizeEventIntervals, type MatchEventKind } from "../config/match-events";
-import { EventControls, EventStatus, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle } from "./components/match-events";
+import { EventControls, EventSummary, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle } from "./components/match-events";
 import { useFieldEvent } from "./hooks/use-field-event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
@@ -2109,7 +2109,7 @@ function Game() {
             <p>{t("titleTagline")}</p>
           </div>
         </div>
-        <MatchMeta eventDetails={<EventStatus event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} />} language={language} progress={regulaProgress} distance={regulaClosestDistance} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
+        <MatchMeta eventDetails={game.phase !== "setup" ? <EventSummary event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} /> : undefined} language={language} progress={regulaProgress} distance={regulaClosestDistance} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <div className="topbar-guide-actions">
           {!tutorialStep && (mode !== "online" || !online.code) ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
           <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
@@ -2239,7 +2239,7 @@ function Game() {
             {visibleGameMessage}
           </div>
           {game.phase === "setup" && isItemVariant(game.variant) && (
-            <LoadoutPreview key={setupPlayer} items={game.itemHands?.[setupPlayer] ?? []} balance={game.balance ?? activeBalance} language={language} />
+            <LoadoutPreview key={`${setupPlayer}-${(game.itemHands?.[setupPlayer] ?? []).join("-")}`} items={game.itemHands?.[setupPlayer] ?? []} balance={game.balance ?? activeBalance} language={language} />
           )}
           <div
             key={eventFiring ? `event-${eventEffectKey}` : "board"}

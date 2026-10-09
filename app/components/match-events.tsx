@@ -30,6 +30,15 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
   </fieldset>;
 }
 
+/** Keep telemetry to one line; schedules remain available on demand. */
+export function EventSummary({ event, language, perspective = 0, firing = false }: { event?: MatchEventState; language: "ja" | "en"; perspective?: number; firing?: boolean }) {
+  if (!event || event.kind === "off") return null;
+  return <details className="event-summary-menu">
+    <summary>{firing ? (language === "ja" ? "イベント発動中" : "EVENT ACTIVE") : language === "ja" ? `イベント あと${event.remaining}巡` : `Event in ${event.remaining} rounds`}</summary>
+    <div className="event-summary-popover"><EventStatus event={event} language={language} perspective={perspective} firing={firing} /></div>
+  </details>;
+}
+
 export function EventStatus({ event, language, perspective = 0, firing = false, compact = false }: { event?: MatchEventState; language: "ja" | "en"; perspective?: number; firing?: boolean; compact?: boolean }) {
   if (!event || event.kind === "off") return null;
   if (!firing && (event.kinds?.length ?? 0) > 1) return <div className="event-sequence" role="status"><b>{language === "ja" ? `イベントまで${event.remaining}巡` : `Events in ${event.remaining} rounds`}</b><div>{event.kinds!.map((kind) => <span key={kind}><i aria-hidden="true">{MATCH_EVENT_INFO[kind].icon}</i><EventStatus event={{ ...event, kinds: undefined, kind, remaining: event.schedule?.[kind]?.remaining ?? event.remaining, forecast: event.forecasts?.find((f) => f.kind === kind) }} language={language} perspective={perspective} /></span>)}</div></div>;

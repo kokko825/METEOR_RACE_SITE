@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { EventControls, EventStatus } from "../app/components/match-events";
+import { EventControls, EventStatus, EventSummary } from "../app/components/match-events";
 import { PlayerStack, ProbeToken } from "../app/components/game-pieces";
 import { VolumeControls } from "../app/components/sound-controls";
 import { RulesArchive, WorldArchive } from "../app/components/manual-content";
@@ -59,6 +59,8 @@ for (const language of ["ja", "en"] as const) {
   const loadout = renderToStaticMarkup(createElement(LoadoutPreview, { items: ["booster", "shield", "blast"], balance: DEFAULT_BALANCE, language }));
   assert.equal((loadout.match(/aria-pressed=/g) ?? []).length, 3);
   assert.ok(loadout.includes("loadout-detail"));
+  assert.equal((loadout.match(/class="loadout-card-description"/g) ?? []).length, 3);
+  assert.ok(loadout.includes('class="item-preview-flag blast selected"'));
   const team = initialGameState(13, "red", 4, false, 0, [], "team");
   const left = renderToStaticMarkup(createElement(PlayerStack, { side: "left", game: team, resultVisible: false, language, displayName: p => p, canSeeLoadout: () => true }));
   assert.ok(left.includes("red-card") && left.includes("yellow-card"));
@@ -109,6 +111,10 @@ assert.ok(!token.includes("probe-number"));
 const status = renderToStaticMarkup(createElement(EventStatus, { language: "en", event: { kind: "geyser", kinds: ["geyser", "wind"], interval: 5, remaining: 3, seed: 1, acted: [], serial: 0 } }));
 assert.ok(!status.includes("<details"));
 assert.ok(status.includes("Geyser") && status.includes("Wind"));
+const summary = renderToStaticMarkup(createElement(EventSummary, { language: "en", event: { kind: "geyser", kinds: ["geyser", "wind"], remaining: 3, seed: 1, acted: [], serial: 0 } }));
+assert.ok(summary.includes("<summary>Event in 3 rounds</summary>"));
+assert.ok(!summary.includes("<details open"));
+assert.ok(summary.includes("Geyser") && summary.includes("Wind"));
 const independentControls = renderToStaticMarkup(createElement(EventControls, { value: ["geyser", "wind"], onChange: noop, language: "en", interval: { geyser: 3, wind: 7 }, onIntervalChange: noop }));
 assert.equal((independentControls.match(/<select/g) ?? []).length, 2);
 assert.ok(independentControls.includes('aria-label="Geyser interval"'));
