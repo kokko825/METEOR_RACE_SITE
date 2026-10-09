@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { MATCH_EVENTS, normalizeMatchEvents, normalizeEventIntervals, type MatchEventKind } from "../config/match-events";
+import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENTS, normalizeMatchEvents, normalizeEventIntervals, type MatchEventKind } from "../config/match-events";
 import { EventControls, EventStatus, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle } from "./components/match-events";
 import { useFieldEvent } from "./hooks/use-field-event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -498,11 +498,10 @@ function Game() {
     if (competitiveNine && obstaclesEnabled) setObstaclesEnabled(false);
   }, [competitiveNine, obstaclesEnabled]);
 
+  const boardSizes = eventBoardSizes(rankedMode ? [] : eventKind, isTeamVariant(variant), isItemVariant(variant));
   useEffect(() => {
-    if (variant === "team" && size !== 13 && size !== 15) setSize(13);
-    if (variant === "team-item" && size !== 13 && size !== 15) setSize(13);
-    if (variant === "item" && ![11, 13, 15].includes(size)) setSize(11);
-  }, [variant, size]);
+    setSize((current) => normalizeEventBoardSize(current, rankedMode ? [] : eventKind, isTeamVariant(variant), isItemVariant(variant)));
+  }, [variant, eventKind, rankedMode, size]);
 
   const roomRequest = async (payload: Record<string, unknown>) => {
     const response = await fetch("/api/rooms", {
@@ -1302,12 +1301,7 @@ function Game() {
           ? 2 + localAiCount
           : onlinePlayerCount + onlineAiCount;
     const playerCount = isTeamVariant(variant) ? 4 : configuredPlayerCount;
-    const nextSize =
-      isTeamVariant(variant) && (size === 9 || size === 11)
-          ? 13
-        : playerCount > 2 && size === 9
-          ? 11
-          : size;
+    const nextSize = normalizeEventBoardSize(playerCount > 2 ? Math.max(11, size) : size, rankedMode ? [] : eventKind, isTeamVariant(variant), isItemVariant(variant));
     const nextObstaclesEnabled =
       playerCount === 2 && nextSize === 9 ? false : obstaclesEnabled;
     const nextPlayers = PLAYER_ORDER.slice(0, playerCount);
@@ -2075,7 +2069,7 @@ function Game() {
                 <div className="choice-row"><button aria-pressed={variant === "classic" || variant === "team"} className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>{localize("クラシック", "CLASSIC")}</strong><span>{t("classicRuleNote")}</span></button><button aria-pressed={variant === "item" || variant === "team-item"} className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>{localize("アイテム戦", "ITEM")}</strong><span>{t("itemRuleNote")}</span></button></div>
                 <h3>{localize("対戦形式", "MATCH TYPE")}</h3>
                 <div className="choice-row"><button aria-pressed={!isTeamVariant(variant)} className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>{localize("個人戦", "FREE FOR ALL")}</strong><span>{localize("それぞれがCOREを目指す", "Every probe for itself")}</span></button><button aria-pressed={isTeamVariant(variant)} className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>{t("teamBattle")}</span></button></div>
-                <div className="entry-settings"><label>{localize("盤面サイズ", "BOARD SIZE")}<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{(isTeamVariant(variant) ? [13,15] : variant === "classic" ? [9,11] : [11,13,15]).map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? localize("対戦人数", "PLAYERS") : localize("追加CPU", "CPU ADD")}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>{localize("CPUの強さ", "AI LEVEL")}<select aria-label={localize("CPUの強さ", "AI LEVEL")} value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select><span className="difficulty-description">{t(aiDifficulty === "easy" ? "easyDescription" : aiDifficulty === "hard" ? "hardDescription" : "normalDescription")}</span></label>}</div>
+                <div className="entry-settings"><label>{localize("盤面サイズ", "BOARD SIZE")}<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{boardSizes.map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? localize("対戦人数", "PLAYERS") : localize("追加CPU", "CPU ADD")}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>{localize("CPUの強さ", "AI LEVEL")}<select aria-label={localize("CPUの強さ", "AI LEVEL")} value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select><span className="difficulty-description">{t(aiDifficulty === "easy" ? "easyDescription" : aiDifficulty === "hard" ? "hardDescription" : "normalDescription")}</span></label>}</div>
               </>}
               {setupMode !== "online" && <>
                 <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />
@@ -2763,10 +2757,7 @@ function Game() {
                 setNeedsNewGame(true);
               }}
             >
-              <option value={9} disabled={setupPlayerCount > 2 || variant !== "classic"}>9 × 9</option>
-              <option value={11} disabled={isTeamVariant(variant)}>11 × 11</option>
-              <option value={13} disabled={variant !== "team" && !isItemVariant(variant)}>13 × 13</option>
-              <option value={15} disabled={!isItemVariant(variant) && !isTeamVariant(variant)}>15 × 15</option>
+              {boardSizes.map((boardSize) => <option key={boardSize} value={boardSize} disabled={boardSize === 9 && setupPlayerCount > 2}>{boardSize} × {boardSize}</option>)}
             </select>
           </label>
           <label>
@@ -2849,7 +2840,7 @@ function Game() {
                 <span>ROOM CAPACITY</span><strong>{localize(`${online.roomCount ?? online.memberNames.length}人入室 · ${online.joinedPlayers}人参加 · ${online.spectatorCount ?? 0}人観戦`, `${online.roomCount ?? online.memberNames.length} IN ROOM · ${online.joinedPlayers} PLAYING · ${online.spectatorCount ?? 0} WATCHING`)}</strong>
               </div>
             )}
-            {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{(isTeamVariant(variant)?[13,15]:isItemVariant(variant)?[11,13,15]:[9,11]).map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
+            {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{boardSizes.map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
             {online.code && online.isHost && !rankedMode && online.status === "waiting" && <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />}
             {online.code && <div className="room-settings-summary" aria-label={localize("現在のルーム設定", "Current room settings")}><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b><span className="event-summary">{localize("イベント", "Event")} · {eventKind.length ? eventKind.map((kind) => `${MATCH_EVENTS[kind][language]} / ${eventInterval[kind]}${localize("巡ごと", " rounds")}`).join(" · ") : "OFF"}</span></div>}
             {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder={t("nickname")} aria-label={t("nickname")} maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder={localize("ルームコード", "ROOM CODE")} aria-label={localize("ルームコード", "Room code")} maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>{localize("ルームを作る", "CREATE ROOM")}</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>{localize("ルームに入る", "JOIN ROOM")}</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>{localize("← ゲームモードへ戻る", "← BACK TO GAME MODE")}</button></>}

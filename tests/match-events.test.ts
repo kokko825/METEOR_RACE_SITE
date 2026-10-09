@@ -1,10 +1,21 @@
 import assert from "node:assert/strict";
-import { MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals } from "../config/match-events";
+import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals } from "../config/match-events";
 import { applyMatchEvent, skipBlockedMove, finishTurn, initialGameState, distance, resolveCoreArrivals, type EventForecast, type GameState } from "../app/game-rules";
 const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: { r: 2, c: 4 }, ring: 2, clockwise: true, dr: 0, dc: 1 });
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
 
+for (const team of [false, true]) for (const item of [false, true]) for (let count = 0; count <= 4; count++) {
+  const events = MATCH_EVENT_ORDER.slice(0, count);
+  const minimum = team || count >= 2 ? 13 : item || count === 1 ? 11 : 9;
+  assert.equal(eventBoardSizes(events, team, item)[0], minimum);
+  for (const requested of [9, 11, 13, 15]) {
+    const actual = normalizeEventBoardSize(requested, events, team, item);
+    assert.ok(eventBoardSizes(events, team, item).includes(actual));
+    assert.ok(actual >= minimum);
+    if (count > 0 && requested >= minimum) assert.equal(actual, requested);
+  }
+}
 assert.deepEqual(normalizeMatchEvents(["wind", "orbit", "wind", "invalid", "off"]), ["orbit", "wind"]);
 assert.equal(normalizeEventInterval(1), 3); assert.equal(normalizeEventInterval(100), 99);
 for (let mask = 1; mask < 16; mask++) for (const count of [2, 3, 4]) for (const interval of [3, 5, 9]) {

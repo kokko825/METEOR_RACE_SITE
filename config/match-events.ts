@@ -28,6 +28,15 @@ export const normalizeMatchEvents = (value: unknown): MatchEventKind[] => {
 };
 export const normalizeMatchEvent = (value: unknown): MatchEventKind =>
   typeof value === "string" && Object.hasOwn(MATCH_EVENTS, value) ? value as MatchEventKind : "off";
+/** One shared board policy for setup and online rooms; larger selections are retained. */
+export function eventBoardSizes(events: unknown, team = false, item = false): number[] {
+  const count = normalizeMatchEvents(events).length;
+  return team || count >= 2 ? [13, 15] : count === 1 || item ? [11, 13, 15] : [9, 11];
+}
+export function normalizeEventBoardSize(size: number, events: unknown, team = false, item = false): number {
+  const sizes = eventBoardSizes(events, team, item);
+  return sizes.find((candidate) => candidate >= size) ?? sizes[sizes.length - 1];
+}
 /** Shared player-facing explanations for setup and the manual. */
 export const MATCH_EVENT_LORE = {
   ja: "惑星の環境が引き起こすアクシデントを、AEQRISが盤面上に再現。複数のイベントを組み合わせて対戦できます。",
