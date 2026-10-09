@@ -19,6 +19,14 @@ const readGameSurface = async () => (await Promise.all([
   read("../app/components/loadout-preview.tsx"),
 ])).join("\n");
 
+test("manual sections grow with their content instead of sharing a fixed viewport height", async () => {
+  const css = await read("../app/styles/layout-overrides.css");
+  assert.match(css, /\.manual-drawer \.manual-onepage\{[^}]*grid-template-rows:none;grid-auto-rows:max-content/);
+  assert.match(css, /\.blast-diagram\{[^}]*grid-template-rows:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.entry-settings\{align-items:stretch\}/);
+  assert.match(css, /\.manual-drawer>header\{height:auto;/);
+});
+
 test("toolbar volume preserves integer settings without browser rounding", async () => {
   const source = await read("../app/components/sound-controls.tsx");
   assert.match(source, /step=\{1\}/);

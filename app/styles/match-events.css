@@ -1,7 +1,7 @@
 .event-controls{display:grid;gap:12px;min-width:0;margin:0;padding:14px;border:1px solid #397589;background:#081923;color:#d7edf5}
 .event-controls legend{padding:0 8px;font-weight:700;letter-spacing:.03em}
 .event-intro{margin:0;font-size:14px;line-height:1.65;color:#bdd0d9}
-.event-toggle-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.event-toggle-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:1fr;gap:10px}
 .event-toggle-grid button{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:60px;padding:10px;background:#071017;color:#a4bcc8;border:1px solid #31434e;border-radius:8px;box-shadow:inset 0 3px 7px #0006;text-align:left;font-size:14px}
 .event-toggle-grid button i{font-size:24px;font-style:normal}.event-toggle-grid button b{font-size:11px;letter-spacing:.04em}
 .event-toggle-grid button[aria-pressed=true]{color:#eefcff;background:linear-gradient(135deg,#194d61,#10303d);border-color:#6cdef2;box-shadow:inset 0 1px #aff5ff77,0 3px 9px #0006}

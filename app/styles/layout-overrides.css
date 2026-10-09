@@ -380,21 +380,33 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 }
 
 /* Readable content uses natural height; shrinking type is never a fit strategy. */
-.manual-drawer .manual-onepage{grid-template-columns:1fr;grid-template-rows:auto auto;align-content:start;height:auto;min-height:0}
+.manual-drawer .manual-onepage{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:max-content;align-content:start;min-height:0}
 .manual-drawer .manual-onepage>section{display:block;min-height:0;overflow:visible}
 .manual-drawer .manual-rule-content{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;overflow:visible;padding:14px;gap:14px}
-.manual-drawer .manual-turn-loop{display:grid;grid-template-rows:auto;gap:8px;align-content:start}
+.manual-drawer .manual-turn-loop{display:grid;grid-template-rows:1fr auto 1fr auto 1fr auto;gap:8px;align-content:start;align-items:stretch}
 .manual-drawer .manual-turn-loop article{height:auto;min-height:64px}
-.manual-drawer .manual-turn-loop p,.manual-drawer .manual-notes p,.manual-drawer .manual-item-grid p{font-size:max(14px,var(--game-ui-body));line-height:1.65}
+.manual-drawer .manual-turn-loop p,.manual-drawer .manual-notes p,.manual-drawer .manual-item-grid p,.manual-drawer .manual-event-content p{font-size:max(14px,var(--game-ui-body));line-height:1.65}
 .manual-drawer .manual-turn-loop b,.manual-drawer .manual-item-grid b,.manual-drawer .manual-onepage h3{font-size:max(16px,var(--game-ui-button))}
 .manual-drawer .manual-turn-loop>strong{font-size:14px}
 .manual-drawer .manual-notes{align-content:start;gap:12px;padding:12px}
 .manual-drawer .manual-item-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto;overflow:visible;padding:14px;gap:12px}
 .manual-drawer .manual-item-grid article{overflow:visible;align-items:start;min-height:0;padding:14px}
+.manual-drawer>header{height:auto;min-height:58px;padding-bottom:12px}
+.manual-drawer>header .manual-tabs button{width:auto;min-width:84px;max-width:none;height:auto;min-height:44px;padding:8px 12px;font-size:max(14px,var(--game-ui-button));line-height:1.3}
+.manual-drawer>header .icon-close{width:44px;height:44px;min-width:44px;min-height:44px;flex-shrink:0}
+.manual-drawer .manual-world-copy p,.manual-drawer .manual-world-copy strong{font-size:max(16px,var(--game-ui-body));line-height:1.7}
+@media(max-width:700px){
+ .manual-drawer>header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}
+ .manual-drawer>header>div:first-child{grid-area:1/1}
+ .manual-drawer>header>div:first-child small{display:none}
+ .manual-drawer>header>div:first-child h2{display:block;white-space:normal;font-size:18px;line-height:1.4;margin:0}
+ .manual-drawer>header .manual-tabs{grid-area:2/1;justify-self:start}
+ .manual-drawer>header .icon-close{grid-area:1/2/3/3;align-self:start}
+}
 .manual-blast-examples{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px;color:#c8dee8;font-size:max(14px,var(--game-ui-body));line-height:1.6}
 .manual-blast-examples figure{margin:0;display:grid;justify-items:center;gap:8px;text-align:center}
 .manual-blast-examples>p{grid-column:1/-1;margin:0}
-.blast-diagram{display:grid;grid-template-columns:repeat(5,1fr);width:min(100%,180px);aspect-ratio:1;gap:3px}
+.blast-diagram{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr));width:min(100%,180px);aspect-ratio:1;gap:3px}
 .blast-diagram span{display:grid;place-items:center;background:#091b26;border:1px solid #355364;font-size:16px}
 .blast-diagram .blast{background:#65351d;color:#ffe5cb}.blast-diagram .origin{background:#a33b20;color:white}
 .player-team{color:#b9d3df;font-size:13px;font-weight:800;letter-spacing:.06em}
@@ -504,7 +516,7 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .entry-panel .choice-row strong{letter-spacing:.02em;font-weight:750}
 .entry-panel h2{font-size:clamp(26px,2.4vw,36px);letter-spacing:.02em}
 .difficulty-description{display:block;color:#bdcfd8;font-size:14px;line-height:1.6;font-weight:500;letter-spacing:0;text-transform:none;margin-top:8px}
-.entry-settings{align-items:start}
+.entry-settings{align-items:stretch}
 @media(min-width:901px){
  .shell.hud-mode .regula-console{padding:3px 8px}
  .shell.hud-mode>.topbar{gap:5px 18px;padding-bottom:4px!important}
