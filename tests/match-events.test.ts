@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals } from "../config/match-events";
+import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals, orderMatchEvents } from "../config/match-events";
 import { applyMatchEvent, skipBlockedMove, finishTurn, initialGameState, distance, resolveCoreArrivals, type EventForecast, type GameState } from "../app/game-rules";
 const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: { r: 2, c: 4 }, ring: 2, clockwise: true, dr: 0, dc: 1 });
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
@@ -16,7 +16,7 @@ for (const team of [false, true]) for (const item of [false, true]) for (let cou
     if (count > 0 && requested >= minimum) assert.equal(actual, requested);
   }
 }
-assert.deepEqual(normalizeMatchEvents(["wind", "orbit", "wind", "invalid", "off"]), ["orbit", "wind"]);
+assert.deepEqual(normalizeMatchEvents(["wind", "orbit", "wind", "invalid", "off"]), ["wind", "orbit"]);
 assert.equal(normalizeEventInterval(1), 3); assert.equal(normalizeEventInterval(100), 99);
 for (let mask = 1; mask < 16; mask++) for (const count of [2, 3, 4]) for (const interval of [3, 5, 9]) {
   const kinds = MATCH_EVENT_ORDER.filter((_, i) => mask & (1 << i));
@@ -34,7 +34,7 @@ for (let mask = 1; mask < 16; mask++) for (const count of [2, 3, 4]) for (const 
 }
 {
   const state = initialGameState(9, "red", 2, false, 0, [], "classic", undefined, false, ["geyser", "wind"], 1, 3);
-  state.probes.red = { r: 3, c: 4 }; state.probes.blue = { r: 0, c: 0 };
+  state.probes.red = { r: 4, c: 3 }; state.probes.blue = { r: 0, c: 0 };
   state.matchEvent = { ...state.matchEvent!, remaining: 1, forecast: event("geyser"), forecasts: [event("geyser"), event("wind")] };
   const won = round(state);
   assert.equal(won.winner, "red"); assert.equal(won.matchEvent!.stages!.length, 1, "CORE arrival stops subsequent effects");
@@ -206,4 +206,60 @@ console.log("match-events: independent 3/5/7/9-round clocks, simultaneous order 
   assert.equal(skipBlockedMove(state).phase, "place", "Surrounded probes can still place meteors");
   state.meteors = [];
   assert.throws(() => skipBlockedMove(state), "Skipping an available movement is forbidden");
+}
+/** Tactical chains: wind-to-ring entry, steam propulsion, then an inward finish. */
+{
+  const state = initialGameState(13, "red", 2);
+  state.probes.red = { r: 4, c: 7 }; state.probes.blue = { r: 0, c: 0 };
+  state.meteors = [{ r: 3, c: 6, id: 11, owner: "red", size: "small" }];
+  const vent = { ...event("geyser"), target: { r: 3, c: 6 } };
+  const orbit = { ...event("orbit"), ring: 3 };
+  const protectedFirst = applyMatchEvent(state, vent);
+  assert.deepEqual(protectedFirst.probes.red, state.probes.red, "A deliberately covered vent stays quiet before rotation");
+  const rotatedFirst = applyMatchEvent(state, orbit);
+  assert.notDeepEqual(applyMatchEvent(rotatedFirst, vent).probes, applyMatchEvent(protectedFirst, orbit).probes, "Rotating first can remove the planned vent cover");
+}
+{
+  const state = initialGameState(13, "red", 2);
+  state.probes.red = { r: 3, c: 7 }; state.probes.blue = { r: 0, c: 0 };
+  const wind = { ...event("wind"), dr: 1, dc: 0 };
+  const orbit = { ...event("orbit"), ring: 2 };
+  const moved = applyMatchEvent(state, wind);
+  assert.deepEqual(moved.probes.red, { r: 4, c: 7 });
+  const rotated = applyMatchEvent(moved, orbit);
+  assert.deepEqual(rotated.probes.red, { r: 7, c: 8 }, "Wind can board a rotating ring");
+  assert.deepEqual(applyMatchEvent(rotated, event("gravity")).probes.red, { r: 6, c: 7 }, "Gravity converts the new lane into forward progress");
+  rotated.meteors = [{ r: 6, c: 7, id: 12, owner: "blue", size: "small" }];
+  assert.deepEqual(applyMatchEvent(rotated, event("gravity")).probes.red, rotated.probes.red, "A placed meteor still counters the final pull");
+}
+{
+  const oldOrder = ["orbit", "geyser", "wind", "gravity"].map(k => event(k as EventForecast["kind"]));
+  const snapshot = JSON.stringify(oldOrder);
+  assert.deepEqual(orderMatchEvents(oldOrder).map(f => f.kind), ["wind", "orbit", "geyser", "gravity"]);
+  assert.equal(JSON.stringify(oldOrder), snapshot, "Saved forecast arrays remain immutable");
+  const state = initialGameState(13, "red", 2, false, 0, [], "classic", undefined, false, MATCH_EVENT_ORDER, 21, 3);
+  state.matchEvent = { ...state.matchEvent!, remaining: 1, forecast: oldOrder[0], forecasts: oldOrder };
+  const after = round(state);
+  assert.deepEqual(after.matchEvent!.stages!.map(s => s.forecast.kind), MATCH_EVENT_ORDER, "Previously saved rooms resolve in the current order");
+}
+{
+  const state = initialGameState(13, "red", 2, false, 0, [], "classic", undefined, false, MATCH_EVENT_ORDER, 21, 3);
+  state.probes.red = { r: 3, c: 7 }; state.probes.blue = { r: 0, c: 0 };
+  const chain = [
+    { ...event("wind"), dr: 1, dc: 0 },
+    { ...event("orbit"), ring: 2 },
+    { ...event("geyser"), target: { r: 8, c: 9 } },
+    event("gravity"),
+  ];
+  let next = state;
+  const positions = [{ r: 4, c: 7 }, { r: 7, c: 8 }, { r: 6, c: 7 }, { r: 6, c: 6 }];
+  chain.forEach((forecast, i) => {
+    next = applyMatchEvent(next, forecast);
+    assert.deepEqual(next.probes.red, positions[i], "Wind / orbit / steam / gravity chain");
+  });
+  state.matchEvent = { ...state.matchEvent!, remaining: 1, forecast: chain[0], forecasts: chain };
+  const replay = round(state);
+  assert.equal(replay.winner, "red");
+  assert.deepEqual(replay.matchEvent!.stages!.map(stage => stage.forecast.kind), MATCH_EVENT_ORDER);
+  assert.deepEqual(replay.probes.red, { r: 6, c: 6 }, "Full round uses the same chain as the individual resolver");
 }

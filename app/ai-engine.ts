@@ -1,3 +1,4 @@
+import { orderMatchEvents } from "../config/match-events";
 import {
   activePlayers,
   activeObstacles,
@@ -569,7 +570,7 @@ export function eventForecastValue(state: GameState, player: Player, difficulty:
   const forecasts = (event.forecasts ?? (event.forecast ? [event.forecast] : []))
     .filter(f => (event.schedule?.[f.kind]?.remaining ?? event.remaining) <= 1);
   let projected = state;
-  for (const forecast of forecasts) {
+  for (const forecast of orderMatchEvents(forecasts)) {
     projected = applyMatchEvent(projected, forecast);
     if (activePlayers(projected).some(p => coreDistance(projected, p) === 0)) break;
   }

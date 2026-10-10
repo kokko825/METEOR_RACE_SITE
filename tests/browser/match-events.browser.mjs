@@ -61,7 +61,7 @@ try {
       await choices.nth(index).click(); await page.waitForTimeout(multiple?5100:1500);
     }
     assert.match((await page.locator('.event-status b').allTextContents()).join(' '),multiple?/3/:/5/,'Event completes and countdown resets');
-    if(multiple) assert.deepEqual(await page.evaluate(()=>window.fieldEventSequence.map(s=>s.split(' · ')[0])),['ランダムORBIT','間欠泉','追い風','中央重力'],'Animation follows fixed resolution order');
+    if(multiple) assert.deepEqual(await page.evaluate(()=>window.fieldEventSequence.map(s=>s.split(' · ')[0])),['追い風','ランダムORBIT','間欠泉','中央重力'],'Animation follows fixed resolution order');
     const dimensions=await page.locator('.board').boundingBox();
     assert.ok(Math.abs(dimensions.width-dimensions.height)<3,'Board remains square');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,'No horizontal overflow');

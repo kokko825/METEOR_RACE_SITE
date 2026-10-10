@@ -1,5 +1,5 @@
 import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance-config";
-import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals, type EventIntervals, type EventTiming, type MatchEventKind } from "../config/match-events";
+import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, orderMatchEvents, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals, type EventIntervals, type EventTiming, type MatchEventKind } from "../config/match-events";
 
 export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; secondRing?: number; clockwise: boolean; dr: number; dc: number };
 type EventBoard = Pick<GameState, "players" | "probes" | "meteors" | "obstacles" | "pulseDevices" | "inventory">;
@@ -947,7 +947,7 @@ function advanceEventGroup(state: GameState): GameState {
     let next = state;
     const stages: EventStage[] = [];
     const board = (s: GameState): EventBoard => ({ players: s.players, probes: s.probes, meteors: s.meteors, obstacles: s.obstacles, pulseDevices: s.pulseDevices, inventory: s.inventory });
-    for (const forecast of event.forecasts ?? [event.forecast]) {
+    for (const forecast of orderMatchEvents(event.forecasts ?? [event.forecast])) {
       const before = board(next);
       next = applyMatchEvent(next, forecast);
       stages.push({ forecast, before, after: board(next) });

@@ -151,7 +151,7 @@ export function RulesArchive({
         <header><small>02</small><h3>{language === "ja" ? "盤面イベント" : "Field events"}</h3></header>
         <div className="manual-event-content">
           <p>{MATCH_EVENT_LORE[language]}</p>
-          <p>{language === "ja" ? "対戦設定でイベントごとのON/OFFと発動周期を選べます。発動の2巡前に場所や方向を予告。同時発動はORBIT → 間欠泉 → 追い風 → 中央重力の順です。" : "Choose each event and its individual interval in match setup. Positions and directions are forecast two rounds ahead. Simultaneous events resolve in this order: orbit → geyser → wind → gravity."}</p>
+          <p>{language === "ja" ? "対戦設定でイベントごとのON/OFFと発動周期を選べます。発動の2巡前に場所や方向を予告。同時に発動する場合は、下の順番で一つずつ進みます。" : "Choose each event and its individual interval in match setup. Positions and directions are forecast two rounds ahead. Simultaneous events resolve one at a time in the order below."}</p>
           <EventOrder language={language} /><div>{MATCH_EVENT_ORDER.map((kind) => <EventExplanation key={kind} kind={kind} language={language} />)}</div>
         </div>
       </section>

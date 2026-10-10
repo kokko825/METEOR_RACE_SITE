@@ -86,3 +86,5 @@
 .event-vent-blocked .crack-rim{stroke:#eef7ff;stroke-opacity:.85}
 .event-vent-blocked .event-vent-crack{opacity:.45!important}
 .cell.event-geyser-blocked{box-shadow:inset 0 0 0 1px #e7f3fa22}
+.event-chain-note{font-size:13px;line-height:1.65;color:#b8ced8;margin:8px 0 0}
+.event-order li[aria-current=step]{background:#234351;outline:1px solid #9ed9e9;border-radius:3px;color:white}

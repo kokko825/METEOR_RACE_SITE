@@ -15,7 +15,7 @@ export const MATCH_EVENTS = {
 export type MatchEventKind = keyof typeof MATCH_EVENTS;
 export type EventIntervals = Partial<Record<MatchEventKind, number>>;
 export type EventTiming = number | EventIntervals;
-export const MATCH_EVENT_ORDER: MatchEventKind[] = ["orbit", "geyser", "wind", "gravity"];
+export const MATCH_EVENT_ORDER: MatchEventKind[] = ["wind", "orbit", "geyser", "gravity"];
 export const normalizeEventInterval = (value: unknown): number => typeof value === "number" && Number.isFinite(value) ? Math.min(99, Math.max(3, Math.trunc(value))) : MATCH_EVENT_RULES.interval;
 export const normalizeEventIntervals = (value: unknown): EventIntervals => Object.fromEntries(
   MATCH_EVENT_ORDER.map((kind) => [kind, normalizeEventInterval(value && typeof value === "object" && !Array.isArray(value) ? (value as EventIntervals)[kind] : value)]),
@@ -57,3 +57,12 @@ export const MATCH_EVENT_FORECAST = {
   secondaryScale: .78,
   staggerMs: 550,
 };
+/** Stored rooms and AI forecasts use the same order without mutating saved arrays. */
+export function orderMatchEvents<T extends { kind: MatchEventKind }>(events: readonly T[]): T[] {
+  return [...events].sort((a, b) => MATCH_EVENT_ORDER.indexOf(a.kind) - MATCH_EVENT_ORDER.indexOf(b.kind));
+}
+/** Shared explanation for combined events in setup, manual and match details. */
+export const MATCH_EVENT_CHAIN = {
+  ja: "前のイベントで動いた後の位置から、次の効果を判定します。噴出口の白い縁は現在の状態で、先の移動・回転により変わります。途中でCOREに到達した場合、後続のイベントは発動しません。",
+  en: "Each effect uses the positions left by the previous event. White vent rims show current cover, which earlier movement or rotation can change. Reaching CORE stops the remaining events.",
+} as const;

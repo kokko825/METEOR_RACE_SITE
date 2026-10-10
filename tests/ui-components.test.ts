@@ -141,7 +141,7 @@ const strength = (s: ReturnType<typeof forecastStyle>, key: string) => Number((s
 const early = forecastStyle({ ...timingState, schedule: undefined, remaining: 2 }, 4);
 const late = forecastStyle({ ...timingState, schedule: undefined, remaining: 1 }, 4);
 assert.ok(strength(late, "--orbit-strength") > strength(early, "--orbit-strength"));
-assert.ok(strength(early, "--orbit-strength") > strength(early, "--wind-strength"));
+assert.ok(strength(early, "--wind-strength") > strength(early, "--geyser-strength"));
 assert.ok(strength(early, "--gravity-strength") >= .35);
 assert.deepEqual(forecastStyle(undefined, 0), {});
 assert.deepEqual(forecastStyle({ ...timingState, kind: "off" }, 4), {});

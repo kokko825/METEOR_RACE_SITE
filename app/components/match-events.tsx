@@ -1,4 +1,4 @@
-import { MATCH_EVENT_RULES, MATCH_EVENT_FORECAST, MATCH_EVENT_INFO, MATCH_EVENT_LORE, MATCH_EVENTS, MATCH_EVENT_FX, MATCH_EVENT_ORDER, normalizeMatchEvents, type EventIntervals, type MatchEventKind } from "../../config/match-events";
+import { MATCH_EVENT_CHAIN, MATCH_EVENT_RULES, MATCH_EVENT_FORECAST, MATCH_EVENT_INFO, MATCH_EVENT_LORE, MATCH_EVENTS, MATCH_EVENT_FX, MATCH_EVENT_ORDER, normalizeMatchEvents, type EventIntervals, type MatchEventKind } from "../../config/match-events";
 import type { CSSProperties } from "react";
 import { boardToViewDelta, distance, samePos, type MatchEventState, type Pos } from "../game-rules";
 export const eventFxStyle = { "--event-lead": `${MATCH_EVENT_FX.leadMs}ms`, "--event-move": `${MATCH_EVENT_FX.moveMs}ms`, "--event-heartbeat": `${MATCH_EVENT_FX.heartbeatMs}ms` } as CSSProperties;
@@ -23,8 +23,8 @@ export function EventLabel({ kind, language }: { kind: MatchEventKind; language:
 export function EventExplanation({ kind, language }: { kind: MatchEventKind; language: "ja" | "en" }) {
   return <article className="event-explanation"><b><EventLabel kind={kind} language={language} /></b><p>{MATCH_EVENT_INFO[kind][language]}</p></article>;
 }
-export function EventOrder({ language, kinds = MATCH_EVENT_ORDER }: { language: "ja" | "en"; kinds?: MatchEventKind[] }) {
-  return <div className="event-order"><small>{language === "ja" ? "同時発動の順番" : "Simultaneous resolution order"}</small><ol>{normalizeMatchEvents(kinds).map((kind) => <li key={kind}><EventLabel kind={kind} language={language} /></li>)}</ol></div>;
+export function EventOrder({ language, kinds = MATCH_EVENT_ORDER, active }: { language: "ja" | "en"; kinds?: MatchEventKind[]; active?: MatchEventKind }) {
+  return <div className="event-order"><small>{language === "ja" ? "同時発動の順番" : "Simultaneous resolution order"}</small><ol>{normalizeMatchEvents(kinds).map((kind) => <li key={kind} aria-current={active === kind ? "step" : undefined}><EventLabel kind={kind} language={language} /></li>)}</ol>{normalizeMatchEvents(kinds).length > 1 && <p className="event-chain-note">{MATCH_EVENT_CHAIN[language]}</p>}</div>;
 }
 export function EventBoardEffect({ event, perspective, firing }: { event?: MatchEventState; perspective: number; firing: boolean }) {
   if (!firing && event?.forecasts) return <>{event.forecasts.map((forecast) => <EventBoardEffect key={forecast.kind} event={{ ...event, kind: forecast.kind, forecast, forecasts: undefined }} perspective={perspective} firing={false} />)}</>;
@@ -48,7 +48,7 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
       </button>)}
     </div>
     <div className="event-options">
-      {value.map((kind) => <label key={kind}>{MATCH_EVENTS[kind][language]} {language === "ja" ? "周期（巡）" : "(rounds)"}<select aria-label={`${MATCH_EVENTS[kind][language]} ${language === "ja" ? "発動周期" : "interval"}`} value={interval[kind] ?? 5} onChange={(e) => onIntervalChange({ ...interval, [kind]: Number(e.target.value) })}>{Array.from({ length: 97 }, (_, i) => <option key={i + 3} value={i + 3}>{i + 3}</option>)}</select></label>)}
+      {normalizeMatchEvents(value).map((kind) => <label key={kind}>{MATCH_EVENTS[kind][language]} {language === "ja" ? "周期（巡）" : "(rounds)"}<select aria-label={`${MATCH_EVENTS[kind][language]} ${language === "ja" ? "発動周期" : "interval"}`} value={interval[kind] ?? 5} onChange={(e) => onIntervalChange({ ...interval, [kind]: Number(e.target.value) })}>{Array.from({ length: 97 }, (_, i) => <option key={i + 3} value={i + 3}>{i + 3}</option>)}</select></label>)}
       <small>{language === "ja" ? "複数選択可 · 2巡前に予告" : "Combine events · 2-round warning"}</small>
     </div>
     <details className="event-help"><summary>{language === "ja" ? "イベントの効果と発動順" : "Effects and resolution order"}</summary><EventOrder language={language} /><div>{MATCH_EVENT_ORDER.map((kind) => <EventExplanation key={kind} kind={kind} language={language} />)}</div></details>
@@ -59,8 +59,8 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
 export function EventSummary({ event, language, perspective = 0, firing = false }: { event?: MatchEventState; language: "ja" | "en"; perspective?: number; firing?: boolean }) {
   if (!event || event.kind === "off") return null;
   return <details className="event-summary-menu">
-    <summary>{firing ? (language === "ja" ? "イベント発動中" : "EVENT ACTIVE") : language === "ja" ? `イベント あと${event.remaining}巡` : `Event in ${event.remaining} rounds`}</summary>
-    <div className="event-summary-popover"><EventStatus event={event} language={language} perspective={perspective} firing={firing} />{(event.kinds?.length ?? 1) > 1 && <EventOrder language={language} kinds={event.kinds} />}</div>
+    <summary>{firing ? (language === "ja" ? `${MATCH_EVENTS[event.last?.kind ?? event.kind].ja} 発動中` : `${MATCH_EVENTS[event.last?.kind ?? event.kind].en} ACTIVE`) : language === "ja" ? `イベント あと${event.remaining}巡` : `Event in ${event.remaining} rounds`}</summary>
+    <div className="event-summary-popover"><EventStatus event={event} language={language} perspective={perspective} firing={firing} />{(event.kinds?.length ?? 1) > 1 && <EventOrder language={language} kinds={firing && event.stages?.length ? event.stages.map(stage => stage.forecast.kind) : event.kinds} active={firing ? event.last?.kind : undefined} />}</div>
   </details>;
 }
 
