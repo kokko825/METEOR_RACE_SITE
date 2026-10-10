@@ -1,10 +1,10 @@
+import { ItemIcon } from "../components/game-pieces";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_URL } from "../site-url";
 import { getPublishedBalance } from "../published-balance";
 import {
   SELECTABLE_ITEMS,
-  ITEM_ICONS,
   ITEM_TACTICS,
   ITEM_TACTICS_EN,
   itemDetail,
@@ -74,7 +74,7 @@ export default async function ItemsPage() {
             return (
               <article key={kind} className="doc-item" id={kind}>
                 <h3>
-                  <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>
+                  <ItemIcon kind={kind} />
                   {kind.toUpperCase()}
                 </h3>
                 <p className="doc-item-effect">{itemDetail(kind, balance)}</p>
@@ -108,7 +108,7 @@ export default async function ItemsPage() {
     <header className="doc-header"><small>ITEM LIST</small><h1>METEOR RACE ITEMS</h1><p className="doc-lead">In ITEM rules, choose {balance.itemHandTotal} items before the match, with up to {balance.itemSameMax} of the same kind. After moving, you may use one item instead of placing a meteor. This page covers all {SELECTABLE_ITEMS.length} items and their tactical roles.</p></header>
     <section className="doc-section"><h2>LOADOUT ITEMS ({SELECTABLE_ITEMS.length})</h2><div className="doc-items">{SELECTABLE_ITEMS.map((kind) => {
       const [range, effect] = itemEffectFacts(kind, balance, "en");
-      return <article key={kind} className="doc-item" id={`en-${kind}`}><h3><i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>{kind.toUpperCase()}</h3><p className="doc-item-effect">{itemDetail(kind, balance, "en")}</p><ul className="doc-item-facts"><li>{range}</li><li>{effect}</li></ul><p className="doc-item-tactics"><b>WHEN TO USE IT</b>{ITEM_TACTICS_EN[kind]}</p></article>;
+      return <article key={kind} className="doc-item" id={`en-${kind}`}><h3><ItemIcon kind={kind} />{kind.toUpperCase()}</h3><p className="doc-item-effect">{itemDetail(kind, balance, "en")}</p><ul className="doc-item-facts"><li>{range}</li><li>{effect}</li></ul><p className="doc-item-tactics"><b>WHEN TO USE IT</b>{ITEM_TACTICS_EN[kind]}</p></article>;
     })}</div></section>
     <section className="doc-section"><h2>ORBITAL GRAVITY (RANKED DUELS)</h2><p>This is an automatic ranked-match event, not a loadout item. {itemDetail("gravity", balance, "en")}</p></section>
     <nav className="doc-next"><Link className="doc-cta" href="/">START GAME</Link><a href="/guide">VIEW RULES</a></nav>

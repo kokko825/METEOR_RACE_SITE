@@ -9,6 +9,8 @@ export type ReleaseNote = {
 
 // 新しいバージョンを先頭へ追加。設定画面には先頭3件だけが表示されます。
 export const RELEASE_NOTES = [
+  { version: "1.0.95", date: "2026-10-10", tags: ["UI", "BUG FIX"], title: { ja: "スマホの操作と所持欄を改善", en: "Improved mobile controls and inventory" }, summary: { ja: "盤面を1タップで操作でき、所持アイテムが枠内に収まるよう調整しました。", en: "Board actions now take one tap, and inventory stays within player cards." }, details: { ja: ["アイテムアイコンを統一した線画に変更", "PCはホバーで移動結果を予告", "対象を点線、移動先を白い実線で表示"], en: ["Consistent line-art item icons", "Mouse hover previews action outcomes", "Dashed targets and solid white destinations"] } },
+
   { version: "1.0.94", date: "2026-10-10", tags: ["UI"], title: { ja: "持ち込み装備のデザインを刷新", en: "Refined equipment loadout design" }, summary: { ja: "装備を横長パネル3段に並べ、アイコンと説明を見やすくしました。", en: "Equipment now appears in three horizontal rows with aligned icons and descriptions." }, details: { ja: ["左にアイコン、右に名前・説明・効果の数値を統一配置", "各装備を開いて詳しい効果を確認可能", "装備カラーと選択ボタンのデザインを統一"], en: ["Icons on the left, names and effect information on the right", "Expand each item for its full description", "Consistent equipment colors and selection controls"] } },
 
   { version: "1.0.93", date: "2026-10-10", tags: ["UI", "BUG FIX"], title: { ja: "持ち込み画面とイベント表示を整理", en: "Clearer loadout and event displays" }, summary: { ja: "アイテムの説明を確認しやすくし、イベント表示をコンパクトにしました。", en: "Item descriptions are easier to compare and event information takes less space." }, details: { ja: ["PCでは選んだアイテムの説明を横並びで表示", "スマホでアイテムの旗を押して説明を切り替え可能", "イベント詳細は必要なときに開いて確認", "説明と選択ボタンの重なりを防止"], en: ["Compare selected item descriptions side by side on desktop", "Tap item flags to switch descriptions on phones", "Open event details when needed", "Descriptions and selection controls no longer overlap"] } },

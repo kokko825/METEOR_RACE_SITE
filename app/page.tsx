@@ -163,7 +163,6 @@ function Game() {
   const [entryStage, setEntryStage] = useState<"title" | "rule" | "play" | "match" | "setup" | null>("title");
   const [tutorialConfirmOpen, setTutorialConfirmOpen] = useState(false);
   const [pendingBoardTarget, setPendingBoardTarget] = useState<{ source: GameState; target: Pos } | null>(null);
-  const boardPointerType = useRef("mouse");
   const [tutorialStep, setTutorialStep] = useState<TutorialStep | null>(null);
   const [tutorialOpening, setTutorialOpening] = useState<"forward" | "side" | "back">("forward");
   const [tutorialHitRival, setTutorialHitRival] = useState(false);
@@ -1225,12 +1224,7 @@ function Game() {
 
   const chooseBoardTarget = (r: number, c: number) => {
     if (!playerBoardInputEnabled) return;
-    const target = { r, c };
-    const needsPreview = boardPointerType.current === "touch" || window.matchMedia("(max-width: 700px)").matches;
-    if (needsPreview && boardTargetPreview(game, target)) {
-      setPendingBoardTarget({ source: game, target });
-      return;
-    }
+    setPendingBoardTarget(null);
     handleCell(r, c);
   };
 
@@ -2310,16 +2304,19 @@ function Game() {
                     orbitSelecting && activeOrbitRing === orbitRingAt(r, c) ? "orbit-preview" : "",
                     orbitShift ? `orbit-shift ${cellOrbit?.clockwise ? "clockwise" : "counterclockwise"}` : "",
                   ].join(" ")}
-                  onPointerDown={(event) => { boardPointerType.current = event.pointerType; }}
+                  onPointerDown={() => setPendingBoardTarget(null)}
                   onClick={() => chooseBoardTarget(r, c)}
                   style={orbitShift ? ({
                     "--orbit-from-x": `${orbitShift.c * 100}%`,
                     "--orbit-from-y": `${orbitShift.r * 100}%`,
                   } as React.CSSProperties) : undefined}
-                  onMouseEnter={() => {
+                  onPointerEnter={(event) => {
+                    if (event.pointerType !== "mouse" || !playerBoardInputEnabled) return;
+                    if (boardTargetPreview(game, pos)) setPendingBoardTarget({ source: game, target: pos });
                     if (orbitSelecting && !selectedOrbitRing) setHoveredOrbitRing(orbitRingAt(r, c) || null);
                   }}
-                  onMouseLeave={() => {
+                  onPointerLeave={() => {
+                    setPendingBoardTarget(null);
                     if (orbitSelecting && !selectedOrbitRing) setHoveredOrbitRing(null);
                   }}
                   disabled={game.phase === "over" || (!legal && !placeable)}
@@ -2438,11 +2435,7 @@ function Game() {
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
-            {previewTarget && previewState && <div className="target-confirm" role="group" aria-label={localize("操作の確認", "Confirm action")}>
-              <span>{localize("白枠が対象・点線が移動先", "White: target · Dashed: destination")}</span>
-              <button type="button" className="primary-action" onClick={() => { const target = previewTarget; setPendingBoardTarget(null); handleCell(target.r, target.c); }}>{t("confirm")}</button>
-              <button type="button" className="secondary-action" onClick={() => setPendingBoardTarget(null)}>{localize("選び直す", "Cancel")}</button>
-            </div>}
+            {previewTarget && previewState && <div className="target-legend">{localize("点線：対象 · 白枠：移動先", "Dashed: target · White: destination")}</div>}
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
                 <span className="action-label">{tf("selectItems", { total: balance.itemHandTotal, same: balance.itemSameMax })}</span>

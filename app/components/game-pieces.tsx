@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { SiteLanguage } from "../hooks/use-local-settings";
-import { ITEM_ICONS, SELECTABLE_ITEMS } from "../item-content";
+import { SELECTABLE_ITEMS } from "../item-content";
 import {
   activePlayers,
   isTeamVariant,
@@ -28,7 +28,17 @@ export const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
 };
 
 export function ItemIcon({ kind }: { kind: ItemKind }) {
-  return <i className={`item-icon ${kind}`} aria-hidden="true">{ITEM_ICONS[kind]}</i>;
+  const paths: Record<ItemKind, string> = {
+    shield: "M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6Z",
+    booster: "m5 14 7-9 7 9M5 20l7-9 7 9",
+    holo: "m12 3 8 5v9l-8 4-8-4V8Zm-8 5 8 5 8-5M12 13v8",
+    orbit: "M20 10a8 8 0 1 0-2 8M20 3v7h-7",
+    blast: "m12 2 2 7 7-3-4 6 5 3-8 1-2 6-2-7-8 2 5-5-4-5 7 2Z",
+    pulse: "m14 2-9 12h6l-1 8 9-13h-6Z",
+    recall: "M8 3 3 8l5 5M3 8h11a6 6 0 0 1 0 12",
+    gravity: "M12 3v5m0 13v-5M3 12h5m13 0h-5m-7-1 3-3 3 3-3 3Z",
+  };
+  return <i className={`item-icon clean-icon ${kind}`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={paths[kind]} /></svg></i>;
 }
 
 export function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {
