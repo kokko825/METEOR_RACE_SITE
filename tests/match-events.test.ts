@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENT_ORDER, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals, orderMatchEvents } from "../config/match-events";
 import { applyMatchEvent, applyMove, applyMeteor, applyBlastSwitch, warpEntrants, samePos, skipBlockedMove, finishTurn, initialGameState, distance, resolveCoreArrivals, type EventForecast, type GameState } from "../app/game-rules";
-const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: { r: 2, c: 4 }, ring: 2, clockwise: true, dr: 0, dc: 1 });
+const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: { r: kind === "gravity" ? 4 : 2, c: 4 }, ring: 2, clockwise: true, dr: 0, dc: 1 });
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
 
@@ -162,7 +162,7 @@ for (const size of [9, 11, 13, 15]) for (let seed = 0; seed < 100; seed++) {
 {
   const state = start("gravity");
   state.probes.red = { r: 6, c: 6 }; state.probes.blue = { r: 0, c: 0 };
-  assert.deepEqual(applyMatchEvent(state, event("gravity")).probes.red, { r: 5, c: 5 });
+  assert.deepEqual(applyMatchEvent(state, event("gravity")).probes.red, { r: 4, c: 4 });
   state.meteors = [{ r: 5, c: 5, owner: "blue", size: "small", id: 1 }];
   assert.deepEqual(applyMatchEvent(state, event("gravity")).probes.red, state.probes.red);
   state.meteors = []; state.probes.red = { r: 3, c: 3 }; state.probes.blue = { r: 5, c: 5 };
@@ -293,7 +293,7 @@ console.log("match-events: independent 3/5/7/9-round clocks, simultaneous order 
     { ...event("wind"), dr: 1, dc: 0 },
     { ...event("orbit"), ring: 2 },
     { ...event("geyser"), target: { r: 8, c: 9 } },
-    event("gravity"),
+    { ...event("gravity"), target: { r: 6, c: 6 } },
   ];
   let next = state;
   const positions = [{ r: 4, c: 7 }, { r: 7, c: 8 }, { r: 6, c: 7 }, { r: 6, c: 6 }];
@@ -306,4 +306,31 @@ console.log("match-events: independent 3/5/7/9-round clocks, simultaneous order 
   assert.equal(replay.winner, "red");
   assert.deepEqual(replay.matchEvent!.stages!.map(stage => stage.forecast.kind), ["wind", "orbit", "geyser", "gravity"]);
   assert.deepEqual(replay.probes.red, { r: 6, c: 6 }, "Full round uses the same chain as the individual resolver");
+}
+{
+  const state = start("gravity", 4, 15);
+  const f = { ...event("gravity"), target: { r: 6, c: 6 } };
+  state.probes = { red: { r: 8, c: 6 }, blue: { r: 2, c: 6 }, green: { r: 12, c: 6 }, yellow: { r: 6, c: 3 } };
+  const next = applyMatchEvent(state, f);
+  assert.deepEqual(next.probes.red, f.target, "Inner ring pulls two steps");
+  assert.deepEqual(next.probes.blue, { r: 3, c: 6 }, "Outer ring pulls one step");
+  assert.deepEqual(next.probes.green, state.probes.green, "Outside radius stays");
+  assert.deepEqual(next.probes.yellow, { r: 6, c: 4 }, "Entering inner range does not accelerate");
+  state.probes.red = { r: 8, c: 8 };
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, { r: 7, c: 7 }, "Stops on CORE en route");
+  state.probes.red = { r: 8, c: 6 };
+  state.meteors = [{ ...f.target, id: 90, owner: "blue", size: "small" }];
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, { r: 7, c: 6 }, "Second step respects obstacles");
+}
+for (const size of [11, 13, 15]) for (let seed = 1; seed <= 60; seed++) {
+  let state = start("gravity", 2, size, seed);
+  state = round(round(round(state)));
+  const forecast = state.matchEvent!.forecast!;
+  assert.ok(forecast.target.r >= 2 && forecast.target.r < size - 2);
+  assert.ok(forecast.target.c >= 2 && forecast.target.c < size - 2);
+  const remembered = JSON.stringify(forecast);
+  state = round(state);
+  assert.equal(JSON.stringify(state.matchEvent!.forecast), remembered);
+  const replay = JSON.parse(JSON.stringify(state)) as GameState;
+  assert.deepEqual(round(state), round(replay), "Random gravity is deterministic after serialization");
 }

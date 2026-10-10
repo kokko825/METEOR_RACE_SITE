@@ -94,3 +94,9 @@
 .event-color-warp{color:#70edff}
 .event-chain-note{font-size:13px;line-height:1.65;color:#b8ced8;margin:8px 0 0}
 .event-order li[aria-current=step]{background:#234351;outline:1px solid #9ed9e9;border-radius:3px;color:white}
+/* Gravity tiers share the resolver's Chebyshev ranges. */
+.cell.event-gravity-weak{background-color:color-mix(in srgb,#8849c7 13%,transparent)}
+.cell.event-gravity-strong{background-color:color-mix(in srgb,#994bde 32%,transparent);box-shadow:inset 0 0 0 1px #c58aff44}
+.cell.event-gravity-center{background-color:#38204d;box-shadow:inset 0 0 12px #d8afffaa}
+.gravity.forecast .gravity-halo{inset:0}
+.gravity.forecast .gravity-accretion{inset:25%}

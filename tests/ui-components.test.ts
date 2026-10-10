@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { EventControls, EventStatus, EventSummary, forecastStyle, upcomingEvents, eventCellClass } from "../app/components/match-events";
+import { EventBoardEffect, EventControls, EventStatus, EventSummary, forecastStyle, upcomingEvents, eventCellClass } from "../app/components/match-events";
 import { PlayerStack, ProbeToken } from "../app/components/game-pieces";
 import { VolumeControls } from "../app/components/sound-controls";
 import { RulesArchive, WorldArchive } from "../app/components/manual-content";
@@ -154,3 +154,16 @@ assert.match(eventCellClass(ventEvent, { r: 3, c: 4 }, 6), /event-geyser-warning
 assert.match(eventCellClass(ventEvent, { r: 3, c: 4 }, 6, [{ r: 3, c: 3 }]), /event-geyser-blocked/);
 assert.match(eventCellClass({ ...ventEvent, forecasts: [ventForecast] }, { r: 3, c: 3 }, 6, [{ r: 3, c: 3 }]), /event-vent-blocked/);
 assert.equal(eventCellClass(ventEvent, { r: 0, c: 0 }, 6), "");
+{
+  const forecast = { kind: "gravity" as const, target: { r: 3, c: 8 }, ring: 0, clockwise: true, dr: 0, dc: 0 };
+  const event = { kind: "gravity" as const, seed: 1, remaining: 2, acted: [], serial: 0, forecast };
+  assert.equal(eventCellClass(event, forecast.target, 6), "event-gravity-center");
+  assert.equal(eventCellClass(event, { r: 5, c: 10 }, 6), "event-gravity-strong");
+  assert.equal(eventCellClass(event, { r: 8, c: 8 }, 6), "event-gravity-weak");
+  assert.equal(eventCellClass(event, { r: 9, c: 8 }, 6), "");
+  for (const perspective of [0, 1, 2, 3]) {
+    const html = renderToStaticMarkup(createElement(EventBoardEffect, { event, perspective, firing: false, size: 13 }));
+    assert.ok(html.includes("gravity-core") && html.includes("translate(-50%, -50%)"));
+    assert.ok(!html.includes("NaN"));
+  }
+}

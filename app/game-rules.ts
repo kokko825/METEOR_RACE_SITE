@@ -901,11 +901,25 @@ function resolveMatchEvent(state: GameState, event: EventForecast): GameState {
     return { ...state, warpGates: createWarpGates(state, state.matchEvent?.seed ?? 1).gates };
   }
   if (event.kind === "gravity") {
+    const center = event.target;
     const mid = Math.floor(state.size / 2);
-    return eventPush(state, (player) => {
-      const pos = state.probes[player];
-      return { r: pos.r + Math.sign(mid - pos.r), c: pos.c + Math.sign(mid - pos.c) };
-    });
+    const budgets = new Map(activePlayers(state).map(player => {
+      const range = distance(state.probes[player], center);
+      return [player, range > MATCH_EVENT_RULES.gravityRadius ? 0 : range <= MATCH_EVENT_RULES.gravityStrongRadius ? MATCH_EVENT_RULES.gravityStrongSteps : 1];
+    }));
+    let next = state;
+    for (let step = 0; step < MATCH_EVENT_RULES.gravityStrongSteps; step++) {
+      const before = next;
+      next = eventPush(before, player => {
+        const pos = before.probes[player];
+        if ((budgets.get(player) ?? 0) <= step || samePos(pos, center) || (pos.r === mid && pos.c === mid)) return undefined;
+        return { r: pos.r + Math.sign(center.r - pos.r), c: pos.c + Math.sign(center.c - pos.c) };
+      });
+      for (const player of activePlayers(before)) {
+        if (samePos(before.probes[player], next.probes[player])) budgets.set(player, 0);
+      }
+    }
+    return next;
   }
   if (event.kind === "orbit") {
     const rotate = <T extends Pos>(p: T): T => ringOf(state, p) === event.ring || ringOf(state, p) === event.secondRing
@@ -996,7 +1010,14 @@ function advanceEventGroup(state: GameState): GameState {
     const secondRing = draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > Math.max(...outer.map(density)) ? mid : pick(outer);
     event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring, secondRing,
       clockwise: draw(2) === 1, dr: direction.r, dc: direction.c }, seed };
-    event.forecasts = normalizeMatchEvents(event.kinds ?? event.kind).map((kind) => ({ ...event.forecast!, kind }));
+    event.forecasts = normalizeMatchEvents(event.kinds ?? event.kind).map((kind) => {
+      const inset = MATCH_EVENT_RULES.gravityCenterInset;
+      return { ...event.forecast!, kind, ...(kind === "gravity" ? { target: {
+        r: inset + draw(state.size - inset * 2), c: inset + draw(state.size - inset * 2),
+      } } : {}) };
+    });
+    event.forecast = event.forecasts[0];
+    event.seed = seed;
   }
   if (event.remaining <= 0 && event.forecast) {
     let next = state;

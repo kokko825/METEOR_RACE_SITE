@@ -26,12 +26,15 @@ export function EventExplanation({ kind, language }: { kind: MatchEventKind; lan
 export function EventOrder({ language, kinds = MATCH_EVENT_ORDER, active }: { language: "ja" | "en"; kinds?: MatchEventKind[]; active?: MatchEventKind }) {
   return <div className="event-order"><small>{language === "ja" ? "同時発動の順番" : "Simultaneous resolution order"}</small><ol>{normalizeMatchEvents(kinds).map((kind) => <li key={kind} aria-current={active === kind ? "step" : undefined}><EventLabel kind={kind} language={language} /></li>)}</ol>{normalizeMatchEvents(kinds).length > 1 && <p className="event-chain-note">{MATCH_EVENT_CHAIN[language]}</p>}</div>;
 }
-export function EventBoardEffect({ event, perspective, firing }: { event?: MatchEventState; perspective: number; firing: boolean }) {
-  if (!firing && event?.forecasts) return <>{event.forecasts.map((forecast) => <EventBoardEffect key={forecast.kind} event={{ ...event, kind: forecast.kind, forecast, forecasts: undefined }} perspective={perspective} firing={false} />)}</>;
+export function EventBoardEffect({ event, perspective, firing, size }: { event?: MatchEventState; perspective: number; firing: boolean; size: number }) {
+  if (!firing && event?.forecasts) return <>{event.forecasts.map((forecast) => <EventBoardEffect key={forecast.kind} event={{ ...event, kind: forecast.kind, forecast, forecasts: undefined }} perspective={perspective} firing={false} size={size} />)}</>;
   const f = firing ? event?.last : event?.forecast;
   if (!f || (f.kind !== "gravity" && f.kind !== "wind")) return null;
   const d = boardToViewDelta({ r: f.dr, c: f.dc }, perspective);
-  return <div aria-hidden="true" className={`event-board-effect ${f.kind} ${firing ? "firing" : "forecast"}`} style={{ "--wind-angle": `${Math.atan2(d.r, d.c) * 180 / Math.PI}deg` } as CSSProperties}>
+  const mid = Math.floor(size / 2);
+  const center = boardToViewDelta({ r: f.target.r - mid, c: f.target.c - mid }, perspective);
+  const gravityStyle: CSSProperties = f.kind === "gravity" ? { left: `${(center.c + mid + .5) / size * 100}%`, top: `${(center.r + mid + .5) / size * 100}%`, width: `${(MATCH_EVENT_RULES.gravityRadius * 2 + 1) / size * 100}%`, height: `${(MATCH_EVENT_RULES.gravityRadius * 2 + 1) / size * 100}%`, right: "auto", bottom: "auto", transform: "translate(-50%, -50%)" } : {};
+  return <div aria-hidden="true" className={`event-board-effect ${f.kind} ${firing ? "firing" : "forecast"}`} style={{ ...gravityStyle, "--wind-angle": `${Math.atan2(d.r, d.c) * 180 / Math.PI}deg` } as CSSProperties}>
     {f.kind === "gravity" ? <><i className="gravity-halo" /><i className="gravity-accretion" /><i className="gravity-core" /></> : <div className="wind-bearing"><i className="wind-arrow" />{firing && <div className="wind-dust"><i className="dust-cloud" />{Array.from({ length: 18 }, (_, i) => <i className="dust-streak" key={i} style={{ "--dust-y": `${(i * 37 + 7) % 100}%`, "--dust-delay": `${-(i % 6) * 90}ms`, "--dust-length": `${12 + i % 5 * 5}%` } as CSSProperties} />)}</div>}</div>}
   </div>;
 }
@@ -76,7 +79,7 @@ export function EventStatus({ event, language, perspective = 0, firing = false, 
     {forecast ? <small>{kind === "wind" ? arrow : kind === "orbit" ? `${language === "ja" ? "中央から" : "Ring"} ${forecast.ring}${forecast.clockwise ? "↻" : "↺"}${forecast.secondRing ? ` / ${forecast.secondRing}${forecast.clockwise ? "↺" : "↻"}` : ""} 90°`
       : kind === "geyser" ? (language === "ja" ? "噴出口 ×4" : "4 vents")
       : kind === "warp" ? (language === "ja" ? "接続先を更新" : "Gates relocate")
-      : "→ CORE"}</small> : null}
+       : (language === "ja" ? "内側2マス / 外側1マス" : "Inner: 2 steps / Outer: 1")}</small> : null}
   </span>;
 }
 
@@ -116,6 +119,9 @@ export function eventCellClass(event: MatchEventState | undefined, pos: Pos, mid
     return "";
   }
   if (f.kind === "orbit" && [f.ring, f.secondRing].includes(Math.max(Math.abs(pos.r - mid), Math.abs(pos.c - mid)))) return "event-range event-orbit-tile";
-  if (f.kind === "gravity" && pos.r === mid && pos.c === mid) return "event-gravity-core";
+  if (f.kind === "gravity") {
+    const range = distance(pos, f.target);
+    return range === 0 ? "event-gravity-center" : range <= MATCH_EVENT_RULES.gravityStrongRadius ? "event-gravity-strong" : range <= MATCH_EVENT_RULES.gravityRadius ? "event-gravity-weak" : "";
+  }
   return "";
 }

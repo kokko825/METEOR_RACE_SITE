@@ -2248,7 +2248,7 @@ function Game() {
             }}
             aria-label={tf("boardAria", { size: game.size })}
           >
-            <EventBoardEffect event={game.matchEvent} perspective={perspectiveSlot} firing={eventFiring} />
+            <EventBoardEffect size={game.size} event={game.matchEvent} perspective={perspectiveSlot} firing={eventFiring} />
             {Array.from({ length: game.size * game.size }, (_, index) => {
               const viewR = Math.floor(index / game.size);
               const viewC = index % game.size;
