@@ -51,7 +51,7 @@
 /* Forecasts occupy separate visual regions; actual activations retain full effects. */
 .event-label{display:inline-flex;align-items:center;gap:.45em;min-width:0;line-height:1.4}
 .event-label i{font-style:normal!important;color:var(--event-color)!important;flex-shrink:0}
-.event-color-orbit{--event-color:#72eba5}.event-color-geyser{--event-color:#c6f4ff}.event-color-wind{--event-color:#e7c18a}.event-color-gravity{--event-color:#cf9cff}
+.event-color-orbit{--event-color:#72eba5}.event-color-geyser{--event-color:#ff8f81}.event-color-wind{--event-color:#e7c18a}.event-color-gravity{--event-color:#cf9cff}
 .event-explanation{padding:14px;background:#0a202c;border:1px solid #315768;min-width:0}
 .event-explanation p{margin:8px 0 0;line-height:1.65}
 .event-help summary{cursor:pointer;padding:8px 0;color:#bfe8f3}
@@ -61,7 +61,8 @@
 .event-order li{padding:2px;font-size:13px}
 .event-status>b{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .board:not(.field-event-firing) .event-orbit-tile{background:linear-gradient(135deg,rgb(35 92 58 / calc(var(--orbit-strength,.6)*.55)),rgb(16 59 41 / calc(var(--orbit-strength,.6)*.3)));outline-color:rgb(112 223 153 / var(--orbit-strength,.6))}
-.board:not(.field-event-firing) .event-geyser-range{outline-color:rgb(198 244 255 / var(--geyser-strength,.6))}
+.board:not(.field-event-firing) .event-geyser-warning{outline-color:rgb(255 135 117 / var(--geyser-strength,.6))}
+.board:not(.field-event-firing) .event-geyser-blocked{outline-color:#d3e5ee66}
 .board:not(.field-event-firing) .event-vent-crack{opacity:calc(.35 + var(--geyser-strength,.6)*.65);transition:opacity .6s}
 .board:not(.field-event-firing) .event-direction.orbit{opacity:var(--orbit-strength,.6);transition:opacity .6s}
 .event-board-effect.gravity.forecast{opacity:var(--gravity-strength,.6);transition:opacity .6s}
@@ -69,9 +70,19 @@
 .gravity.forecast .gravity-accretion{inset:36%}
 .gravity.forecast .gravity-halo,.gravity.forecast .gravity-core{animation-delay:var(--gravity-delay,0ms)}
 .event-board-effect.wind.forecast{opacity:var(--wind-strength,.6);transition:opacity .6s}
-.wind.forecast .wind-arrow{left:7%;top:43%;width:25%;height:14%;background:linear-gradient(90deg,#b8873b99,#ffe0a8,#d6a453);animation-delay:var(--wind-delay,0ms)}
+.wind.forecast .wind-arrow{left:5%;top:39%;width:30%;height:22%;background:linear-gradient(90deg,#b8873b99,#ffe0a8,#d6a453);animation-delay:var(--wind-delay,0ms)}
 @media(prefers-reduced-motion:reduce){.board .event-board-effect.forecast{opacity:.7}.board .event-vent-crack,.board .event-direction{transition:none}}
 .event-order ol{list-style:decimal}.event-order li::marker{color:#91b9c9}
 .event-options label{line-height:1.5}.event-options label select{margin-left:auto}
 .wind.forecast .wind-arrow{animation-name:event-forecast-breeze}
 @keyframes event-forecast-breeze{0%,100%{transform:translateX(-2%);opacity:.75}50%{transform:translateX(2%);opacity:1}}
+/* Warning hatching is not a movement restriction. Covered vents retain a quiet white rim. */
+.cell.event-geyser-warning{box-shadow:inset 0 0 0 2px #e4685740}
+.cell.event-vent-warning{background:repeating-linear-gradient(135deg,#e6675330 0 4px,#722f2518 4px 8px);box-shadow:inset 0 0 0 2px #ff8f81aa}
+.event-vent-warning .crack-slab{fill:#562721}
+.event-vent-warning .crack-rim{stroke:#ffb19f;stroke-opacity:1;stroke-width:2.5}
+.event-vent-warning .event-vent-crack{inset:9%;width:82%;height:82%}
+.cell.event-vent-blocked{box-shadow:inset 0 0 0 2px #dcebf3aa}
+.event-vent-blocked .crack-rim{stroke:#eef7ff;stroke-opacity:.85}
+.event-vent-blocked .event-vent-crack{opacity:.45!important}
+.cell.event-geyser-blocked{box-shadow:inset 0 0 0 1px #e7f3fa22}

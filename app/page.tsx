@@ -180,6 +180,7 @@ function Game() {
   const boardPlayers = useMemo(() => activePlayers(game), [game]);
   const boardObstacles = useMemo(() => activeObstacles(game), [game]);
   const boardPulseDevices = useMemo(() => activePulseDevices(game), [game]);
+  const eventOccupied = useMemo(() => [...game.meteors, ...boardObstacles, ...boardPulseDevices, ...boardPlayers.map((player) => game.probes[player])], [game, boardObstacles, boardPulseDevices, boardPlayers]);
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
   const [mode, setMode] = useState<Mode>("human");
   const [setupMode, setSetupMode] = useState<Mode>("human");
@@ -2295,7 +2296,7 @@ function Game() {
                   key={`${r}-${c}`}
                   className={[
                     "cell",
-                    eventCellClass(eventFiring && game.matchEvent ? { ...game.matchEvent, forecast: game.matchEvent.last, forecasts: undefined } : game.matchEvent, pos, mid),
+                    eventCellClass(eventFiring && game.matchEvent ? { ...game.matchEvent, forecast: game.matchEvent.last, forecasts: undefined } : game.matchEvent, pos, mid, eventOccupied),
                     r === mid && c === mid ? "core" : "",
                     legal ? "legal" : "",
                     placeable ? "placeable" : "",

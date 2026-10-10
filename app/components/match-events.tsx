@@ -101,11 +101,19 @@ export function EventCellEffect({ event, pos, mid, perspective, firing }: { even
   return null;
 }
 
-export function eventCellClass(event: MatchEventState | undefined, pos: Pos, mid: number): string {
-  if (event?.forecasts) return event.forecasts.map((forecast) => eventCellClass({ ...event, forecast, forecasts: undefined }, pos, mid)).filter(Boolean).join(" ");
+export function eventCellClass(event: MatchEventState | undefined, pos: Pos, mid: number, occupied: readonly Pos[] = []): string {
+  if (event?.forecasts) return event.forecasts.map((forecast) => eventCellClass({ ...event, forecast, forecasts: undefined }, pos, mid, occupied)).filter(Boolean).join(" ");
   const f = event?.forecast;
   if (!f) return "";
-  if (f.kind === "geyser") return (f.vents ?? [f.target]).some((v) => samePos(pos, v)) ? "event-vent" : (f.vents ?? [f.target]).some((v) => distance(pos, v) === 1) ? "event-range event-geyser-range" : "";
+  if (f.kind === "geyser") {
+    const vents = f.vents ?? [f.target];
+    const covered = (vent: Pos) => occupied.some((p) => samePos(p, vent));
+    const vent = vents.find((v) => samePos(pos, v));
+    if (vent) return `event-vent ${covered(vent) ? "event-vent-blocked" : "event-vent-warning"}`;
+    const nearby = vents.filter((v) => distance(pos, v) === 1);
+    if (nearby.length) return `event-range event-geyser-range ${nearby.some((v) => !covered(v)) ? "event-geyser-warning" : "event-geyser-blocked"}`;
+    return "";
+  }
   if (f.kind === "orbit" && [f.ring, f.secondRing].includes(Math.max(Math.abs(pos.r - mid), Math.abs(pos.c - mid)))) return "event-range event-orbit-tile";
   if (f.kind === "gravity" && pos.r === mid && pos.c === mid) return "event-gravity-core";
   return "";
