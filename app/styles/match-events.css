@@ -4,6 +4,7 @@
 .event-toggle-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));grid-auto-rows:1fr;gap:10px}
 .event-toggle-grid button{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-height:60px;padding:10px;background:#071017;color:#a4bcc8;border:1px solid #31434e;border-radius:8px;box-shadow:inset 0 3px 7px #0006;text-align:left;font-size:14px}
 .event-toggle-grid button i{font-size:24px;font-style:normal}.event-toggle-grid button b{font-size:11px;letter-spacing:.04em}
+.event-toggle-grid button .event-brief{grid-column:1/-1;align-self:start;font-size:12px;line-height:1.5;letter-spacing:0;white-space:normal;overflow-wrap:anywhere;color:#b8ced8}
 .event-toggle-grid button[aria-pressed=true]{color:#eefcff;background:linear-gradient(135deg,#194d61,#10303d);border-color:#6cdef2;box-shadow:inset 0 1px #aff5ff77,0 3px 9px #0006}
 .event-toggle-grid button[aria-pressed=true] b{color:#8cefff}.event-toggle-grid button:focus-visible{outline:3px solid white;outline-offset:3px}
 .event-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));align-items:stretch;gap:12px}.event-options label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;padding:8px 10px;border:1px solid #315768;background:#071923}.event-options select{width:74px;flex-shrink:0;min-height:40px;padding:6px;background:#071019;color:white;border:1px solid #65bbd1;font:inherit}.event-options small{grid-column:1/-1;font-size:13px;color:#b8ced8;line-height:1.5}
@@ -90,7 +91,6 @@
 @keyframes warp-arrive{from{opacity:0;transform:scale(.3);filter:brightness(2.5)}50%{opacity:1;transform:scale(1.1)}to{transform:scale(1)}}
 @keyframes warp-breathe{0%,100%{box-shadow:0 0 5px #b7f8ffaa,inset 0 0 7px #d5ffff99}50%{box-shadow:0 0 12px #8aefffcc,inset 0 0 12px #efffffcc}}
 @media(prefers-reduced-motion:reduce){.warp-gate{animation:none}}
-@media(min-width:1100px){.event-options{grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr))}}
 .event-color-warp{color:#70edff}
 .event-chain-note{font-size:13px;line-height:1.65;color:#b8ced8;margin:8px 0 0}
 .event-order li[aria-current=step]{background:#234351;outline:1px solid #9ed9e9;border-radius:3px;color:white}
@@ -102,7 +102,8 @@
 .gravity.forecast .gravity-accretion{inset:25%}
 .online-panel>.event-controls{width:100%;box-sizing:border-box}
 .event-toggle-grid button .event-label>span{overflow-wrap:anywhere}
-.event-options label{min-width:0;flex-wrap:wrap}
+.event-options label{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 62px;align-items:center;gap:8px}
+.event-options select{width:62px}
 /* Room settings share space with members: compact, aligned labels and inputs. */
 .online-panel .event-toggle-grid button{font-size:14px;padding:8px;gap:5px}
 .online-panel .event-toggle-grid button i{font-size:20px}

@@ -1,4 +1,4 @@
-import { MATCH_EVENT_CHAIN, MATCH_EVENT_RULES, MATCH_EVENT_FORECAST, MATCH_EVENT_INFO, MATCH_EVENT_LORE, MATCH_EVENTS, MATCH_EVENT_FX, MATCH_EVENT_ORDER, normalizeMatchEvents, type EventIntervals, type MatchEventKind } from "../../config/match-events";
+import { MATCH_EVENT_BRIEF, MATCH_EVENT_CHAIN, MATCH_EVENT_RULES, MATCH_EVENT_FORECAST, MATCH_EVENT_INFO, MATCH_EVENT_LORE, MATCH_EVENTS, MATCH_EVENT_FX, MATCH_EVENT_ORDER, normalizeMatchEvents, type EventIntervals, type MatchEventKind } from "../../config/match-events";
 import type { CSSProperties } from "react";
 import { boardToViewDelta, distance, samePos, type MatchEventState, type Pos } from "../game-rules";
 export const eventFxStyle = { "--event-lead": `${MATCH_EVENT_FX.leadMs}ms`, "--event-move": `${MATCH_EVENT_FX.moveMs}ms`, "--event-heartbeat": `${MATCH_EVENT_FX.heartbeatMs}ms` } as CSSProperties;
@@ -48,6 +48,7 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
         title={MATCH_EVENT_INFO[kind][language]}
         onClick={() => onChange(normalizeMatchEvents(value.includes(kind) ? value.filter((v) => v !== kind) : [...value, kind]))}>
         <EventLabel kind={kind} language={language} /><b>{value.includes(kind) ? "ON" : "OFF"}</b>
+        <small className="event-brief">{MATCH_EVENT_BRIEF[kind][language]}</small>
       </button>)}
     </div>
     <div className="event-options">

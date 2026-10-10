@@ -753,3 +753,13 @@ test("online lobby event controls span the room and adapt to container width", a
   assert.ok(css.includes("repeat(auto-fit,minmax(min(100%,150px),1fr))"));
   assert.ok(css.includes(".online-panel>.event-controls{width:100%;box-sizing:border-box}"));
 });
+test("self label and event descriptions stay within their layout tracks", async () => {
+  const pieces = await read("../app/styles/game-interface.css");
+  const controls = await read("../app/components/match-events.tsx");
+  const events = await read("../app/styles/match-events.css");
+  assert.ok(pieces.includes("container-type:inline-size"));
+  assert.ok(pieces.includes("font-size:clamp(4px,32cqi,9px)"));
+  assert.ok(!pieces.includes("bottom:-42%"));
+  assert.ok(controls.includes('className="event-brief"'));
+  assert.ok(events.includes("grid-template-columns:minmax(0,1fr) 62px"));
+});

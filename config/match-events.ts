@@ -13,6 +13,15 @@ export const MATCH_EVENTS = {
   wind: { ja: "暴風", en: "Gale" },
   warp: { ja: "ワープ", en: "Warp gates" },
 } as const;
+/** Short selection-card copy; full rules remain in MATCH_EVENT_INFO. */
+export const MATCH_EVENT_BRIEF = {
+  off: { ja: "", en: "" },
+  wind: { ja: "全機体を同じ方向へ最大2マス押す", en: "Push all probes up to 2 cells in one direction" },
+  orbit: { ja: "2本のリングを逆方向へ90度回す", en: "Rotate two rings 90° in opposite directions" },
+  geyser: { ja: "4つの噴出口から周囲の機体を押す", en: "Four steam vents push nearby probes" },
+  gravity: { ja: "重力の中心へ近いほど強く引く", en: "Pull toward a center, stronger nearby" },
+  warp: { ja: "内側と外側を転送でつなぐ", en: "Teleport between inner and outer gates" },
+} as const;
 export type MatchEventKind = keyof typeof MATCH_EVENTS;
 export type EventIntervals = Partial<Record<MatchEventKind, number>>;
 export type EventTiming = number | EventIntervals;

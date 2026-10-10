@@ -216,7 +216,7 @@ button { color: inherit; }
 .core-ring { width:72%; aspect-ratio:1; border:1px solid #e6b951; transform:rotate(45deg); display:grid; place-items:center; box-shadow:0 0 16px rgba(255,211,99,.42), inset 0 0 12px rgba(255,211,99,.2); }
 .core-ring b { transform:rotate(-45deg); font-size:clamp(5px, .7vw, 9px); color:var(--gold); letter-spacing:.08em; }
 
-.probe-motion { position:absolute; width:68%; aspect-ratio:1; display:grid; place-items:center; z-index:4; pointer-events:none; }
+.probe-motion { position:absolute; width:68%; aspect-ratio:1; display:grid; place-items:center; z-index:4; pointer-events:none; container-type:inline-size; }
 .probe-token { --probe-rotation:0deg; position:absolute; inset:0; width:100%; aspect-ratio:1; display:grid; place-items:center; color:white; clip-path:polygon(50% 0, 92% 82%, 65% 69%, 50% 100%, 35% 69%, 8% 82%); transform:rotate(var(--probe-rotation)); }
 .probe-token.red { background:linear-gradient(145deg,#ff8b71,#c21419 60%,#52030b); filter:drop-shadow(0 0 8px var(--red)); }
 .probe-token.blue { --probe-rotation:180deg; background:linear-gradient(145deg,#8cddff,#0873d3 60%,#032954); filter:drop-shadow(0 0 8px var(--blue)); }
@@ -225,8 +225,8 @@ button { color: inherit; }
 .probe-motion.team-sun::before,.probe-motion.team-moon::before { content:""; position:absolute; inset:-18%; border-radius:50%; pointer-events:none; opacity:.9; animation:team-aura 1.5s ease-in-out infinite alternate; }
 .probe-motion.team-sun::before { border:2px solid #ff6b55; box-shadow:0 0 8px #ff473b,inset 0 0 8px rgba(255,71,59,.35); }
 .probe-motion.team-moon::before { border:2px solid #62d6ff; box-shadow:0 0 8px #29a9ff,inset 0 0 8px rgba(41,169,255,.35); }
-.probe-motion.is-self::after { content:"YOU"; position:absolute; left:50%; bottom:-42%; transform:translateX(-50%); padding:1px 4px; border:1px solid #fff; border-radius:3px; color:#fff; background:#06111a; box-shadow:0 0 8px currentColor; font-size:clamp(5px,.75vw,9px); font-weight:900; letter-spacing:.08em; z-index:10; }
-.probe-motion.is-self .probe-token { outline:2px solid #fff; outline-offset:2px; filter:drop-shadow(0 0 10px #fff); }
+.probe-motion.is-self::after { content:"YOU"; position:absolute; left:50%; bottom:-15%; transform:translateX(-50%); padding:0 2px; border:1px solid #fff; border-radius:2px; color:#fff; background:#06111a; font-size:clamp(4px,32cqi,9px); line-height:1; font-weight:900; letter-spacing:0; white-space:nowrap; z-index:10; }
+.probe-motion.is-self .probe-token { scale:.82; translate:0 -8%; outline:2px solid #fff; outline-offset:2px; filter:drop-shadow(0 0 10px #fff); }
 .probe-portrait.team-sun::after,.probe-portrait.team-moon::after { content:""; position:absolute; inset:5px 10px 18px; border-radius:50%; pointer-events:none; }
 .probe-portrait.team-sun::after { border:2px solid #ff6b55; box-shadow:0 0 10px #ff473b; }
 .probe-portrait.team-moon::after { border:2px solid #62d6ff; box-shadow:0 0 10px #29a9ff; }
