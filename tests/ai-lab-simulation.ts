@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { normalizeMatchEvent, normalizeMatchEvents } from "../config/match-events.js";
-import { canDelegateDefense, chooseAiDecision, estimateAiFinishTurns, eventForecastValue, type AiDifficulty } from "../app/ai-engine.js";
+import { pulseGravityShelter, canDelegateDefense, chooseAiDecision, estimateAiFinishTurns, eventForecastValue, type AiDifficulty } from "../app/ai-engine.js";
 import {
   applyBlastSwitch,
   applyHoloSwitch,
@@ -681,4 +681,16 @@ if (process.env.AI_LAB_REPORT) writeFileSync(process.env.AI_LAB_REPORT, JSON.str
   assert.equal(eventForecastValue(state, "red", "easy"), 0, "EASY does not acquire extra forecast depth");
   state.matchEvent.remaining = 2;
   assert.equal(eventForecastValue(state, "red", "hard"), 0, "Distant forecasts are not treated as guaranteed moves");
+}
+{
+  const state = initialGameState(15, "red", 2);
+  state.probes.red = { r: 4, c: 4 }; state.probes.blue = { r: 14, c: 14 };
+  state.matchEvent = { kind: "gravity", remaining: 1, seed: 1, acted: [], serial: 0,
+    forecast: { kind: "gravity", target: { r: 1, c: 4 }, ring: 0, clockwise: true, dr: 0, dc: 0 } };
+  assert.equal(pulseGravityShelter(state, "red", { r: 4, c: 3 }), true);
+  state.matchEvent.remaining = 2;
+  assert.equal(pulseGravityShelter(state, "red", { r: 4, c: 3 }), false);
+  state.matchEvent.remaining = 1;
+  state.matchEvent.forecast!.target = { r: 7, c: 4 };
+  assert.equal(pulseGravityShelter(state, "red", { r: 4, c: 3 }), false, "Do not suppress useful gravity");
 }

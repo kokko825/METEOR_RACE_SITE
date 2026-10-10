@@ -5,6 +5,37 @@ const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: {
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
 
+// Item defenses affect pressure and gravity, not rotation or other escape routes.
+for (const count of [2, 3, 4]) {
+  const state = start("gravity", count, 15);
+  state.probes = { red: { r: 3, c: 4 }, blue: { r: 3, c: 6 }, green: { r: 11, c: 1 }, yellow: { r: 11, c: 13 } };
+  state.shieldTurns = { red: 4, blue: 0, green: 0, yellow: 0 };
+  const wind = { ...event("wind"), dr: 1, dc: 0 };
+  assert.deepEqual(applyMatchEvent(state, wind).probes.red, { r: 4, c: 4 });
+  assert.deepEqual(applyMatchEvent(state, wind).probes.blue, { r: 5, c: 6 });
+  const steam = { ...event("geyser"), target: { r: 2, c: 4 } };
+  assert.deepEqual(applyMatchEvent(state, steam).probes.red, state.probes.red);
+  state.pulseDevices = [{ r: 3, c: 5, owner: "blue", id: 80, turns: 4 }];
+  const gravity = { ...event("gravity"), target: { r: 1, c: 4 } };
+  assert.deepEqual(applyMatchEvent(state, gravity).probes, state.probes, "Enemy PULSE protects both sides");
+  assert.deepEqual(applyMatchEvent(state, wind).probes.blue, { r: 5, c: 6 }, "PULSE cannot block wind");
+  const blown = applyMatchEvent(state, wind);
+  assert.notDeepEqual(applyMatchEvent(blown, gravity).probes.blue, blown.probes.blue, "Wind can remove gravity protection before gravity fires");
+  state.pulseDevices[0].turns = 0;
+  assert.notDeepEqual(applyMatchEvent(state, gravity).probes.red, state.probes.red, "Expired PULSE and SHIELD do not stop gravity");
+  state.shieldTurns.red = 0;
+  assert.deepEqual(applyMatchEvent(state, wind).probes.red, { r: 5, c: 4 }, "Expired shield does not stop wind");
+}
+{
+  const state = start("orbit", 2, 15);
+  state.probes.red = { r: 5, c: 7 };
+  state.pulseDevices = [{ r: 5, c: 6, owner: "red", id: 81, turns: 4 }];
+  state.shieldTurns = { red: 4, blue: 0, green: 0, yellow: 0 };
+  const rotated = applyMatchEvent(state, event("orbit"));
+  assert.notDeepEqual(rotated.probes.red, state.probes.red);
+  assert.notDeepEqual(rotated.pulseDevices, state.pulseDevices, "PULSE device rotates with its area");
+}
+
 // Independently scheduled origins reserve terrain in both placement directions.
 for (const size of [11, 13, 15]) for (let seed = 1; seed <= 100; seed++) {
   let state = start("warp", 2, size, seed);

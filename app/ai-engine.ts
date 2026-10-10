@@ -594,7 +594,8 @@ function scoreResult(
     for (const friend of activePlayers(state).filter(p => allied(state, p, player))) {
       const newlyLockedByOwnPulse = activePulseDevices(state).some(device =>
         device.owner === player && !activePulseDevices(previous).some(old => old.id === device.id) &&
-        distance(device, state.probes[friend]) <= normalizeBalance(state.balance).pulseRadius);
+        distance(device, state.probes[friend]) <= normalizeBalance(state.balance).pulseRadius &&
+        !pulseGravityShelter(previous, player, device));
       if (newlyLockedByOwnPulse) score -= AI_STRATEGY.items.friendlyPulseLock;
     }
     for (const candidate of activePlayers(state)) {
@@ -710,6 +711,26 @@ function mobilitySwing(before: GameState, after: GameState, player: Player) {
   }, 0);
 }
 
+/** Deliberate self-lock is allowed only when the imminent gravity would cause retreat. */
+export function pulseGravityShelter(state: GameState, player: Player, target: Pos): boolean {
+  const event = state.matchEvent;
+  const gravity = (event?.forecasts ?? (event?.forecast ? [event.forecast] : []))
+    .find(f => f.kind === "gravity" && (event?.schedule?.gravity?.remaining ?? event?.remaining ?? 99) <= 1);
+  if (!gravity) return false;
+  const friends = activePlayers(state).filter(p => allied(state, p, player) && distance(target, state.probes[p]) <= normalizeBalance(state.balance).pulseRadius);
+  if (!friends.length) return false;
+  let projected = state;
+  let protectedState: GameState = { ...state, pulseDevices: [...activePulseDevices(state), { ...target, owner: player, id: -1, turns: activePlayers(state).length * 2 }] };
+  for (const forecast of orderMatchEvents(event?.forecasts ?? [gravity])) {
+    if ((event?.schedule?.[forecast.kind]?.remaining ?? event?.remaining ?? 99) > 1) continue;
+    projected = applyMatchEvent(projected, forecast);
+    protectedState = applyMatchEvent(protectedState, forecast);
+    if (forecast.kind === "gravity" || activePlayers(projected).some(p => coreDistance(projected, p) === 0)) break;
+  }
+  // Avoid friendly immobilization merely to save an enemy or prevent useful movement.
+  return friends.every(p => coreDistance(projected, p) > coreDistance(state, p) && coreDistance(protectedState, p) < coreDistance(projected, p));
+}
+
 function targetedItemOptions(
   state: GameState,
   kind: "holo" | "blast" | "pulse",
@@ -721,7 +742,7 @@ function targetedItemOptions(
   );
   const pending = applyUseItem(state, kind);
   return switchCandidateCells(pending, kind).flatMap((target) => {
-    if (kind === "pulse" && activePlayers(state).some(p => allied(state, p, player) && distance(target, state.probes[p]) <= normalizeBalance(state.balance).pulseRadius)) return [];
+    if (kind === "pulse" && activePlayers(state).some(p => allied(state, p, player) && distance(target, state.probes[p]) <= normalizeBalance(state.balance).pulseRadius) && !pulseGravityShelter(state, player, target)) return [];
     try {
       const next = kind === "holo"
         ? applyHoloSwitch(pending, target)

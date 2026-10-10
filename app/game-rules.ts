@@ -913,7 +913,7 @@ function resolveMatchEvent(state: GameState, event: EventForecast): GameState {
     const mid = Math.floor(state.size / 2);
     const budgets = new Map(activePlayers(state).map(player => {
       const range = distance(state.probes[player], center);
-      return [player, range > MATCH_EVENT_RULES.gravityRadius ? 0 : range <= MATCH_EVENT_RULES.gravityStrongRadius ? MATCH_EVENT_RULES.gravityStrongSteps : 1];
+      return [player, isPulseLocked(state, player) || range > MATCH_EVENT_RULES.gravityRadius ? 0 : range <= MATCH_EVENT_RULES.gravityStrongRadius ? MATCH_EVENT_RULES.gravityStrongSteps : 1];
     }));
     let next = state;
     for (let step = 0; step < MATCH_EVENT_RULES.gravityStrongSteps; step++) {
@@ -946,7 +946,8 @@ function resolveMatchEvent(state: GameState, event: EventForecast): GameState {
       const before = next;
       next = eventPush(before, p => {
         const pos = before.probes[p];
-        if (stopped.has(p) || samePos(pos, { r: mid, c: mid })) return undefined;
+        const steps = Math.max(0, MATCH_EVENT_RULES.windSteps - ((state.shieldTurns?.[p] ?? 0) > 0 ? 1 : 0));
+        if (step >= steps || stopped.has(p) || samePos(pos, { r: mid, c: mid })) return undefined;
         return { r: pos.r + event.dr, c: pos.c + event.dc };
       });
       for (const p of activePlayers(before)) if (samePos(before.probes[p], next.probes[p])) stopped.add(p);
