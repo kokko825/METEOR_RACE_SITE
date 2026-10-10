@@ -6,7 +6,7 @@ import { UI_LAYOUT } from "../../config/ui-layout";
 /**
  * Keeps the square board inside the space that is actually available.
  * Unlike viewport subtraction formulas, this also follows text zoom,
- * translated labels and action controls whose height changes by phase.
+ * translated labels. Action space is reserved, independent of phase/hover.
  */
 export function useResponsiveBoard(
   arenaRef: RefObject<HTMLElement | null>,
@@ -22,6 +22,7 @@ export function useResponsiveBoard(
     const update = () => {
       if (window.innerWidth < UI_LAYOUT.desktopBreakpointPx) {
         arena.style.removeProperty("--board-available-size");
+        arena.style.removeProperty("--battle-action-reserve");
         return;
       }
 
@@ -29,6 +30,7 @@ export function useResponsiveBoard(
       // would shrink the board when movement changes to meteor placement.
       const fontSize = parseFloat(getComputedStyle(arena).getPropertyValue("--game-ui-button")) || 16;
       const actionHeight = Math.max(hasItems ? UI_LAYOUT.battleActionReservePx : UI_LAYOUT.classicActionReservePx, fontSize * (hasItems ? 8 : 5));
+      arena.style.setProperty("--battle-action-reserve", `${actionHeight}px`);
       const availableHeight = arena.clientHeight - actionHeight - (actionHeight > 0 ? UI_LAYOUT.actionPanelGapPx : 0);
       const size = Math.floor(Math.min(
         UI_LAYOUT.boardMaximumPx,
@@ -50,7 +52,6 @@ export function useResponsiveBoard(
     };
     const observer = new ResizeObserver(scheduleUpdate);
     observer.observe(arena);
-    observer.observe(action);
     window.addEventListener("resize", scheduleUpdate);
     scheduleUpdate();
 

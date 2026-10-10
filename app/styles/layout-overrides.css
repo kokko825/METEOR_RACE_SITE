@@ -603,3 +603,22 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .item-icon.clean-icon::before,.item-icon.clean-icon::after{content:none!important;display:none!important}
 .item-icon.clean-icon svg{display:block;width:100%;height:100%;min-width:0;overflow:visible}
 @media(max-width:700px){.event-summary-popover{position:fixed;left:16px;right:16px;top:min(160px,20dvh);width:auto;max-height:calc(75dvh - 80px)}}
+/* Stable desktop battle tracks: hover/phase controls never resize the board slot. */
+@media(min-width:901px){
+  .shell.hud-mode .arena:not(:has(.readable-loadout)){
+    grid-template-rows:minmax(0,1fr) var(--battle-action-reserve,124px);
+    row-gap:6px;
+  }
+  .shell.hud-mode .arena:not(:has(.readable-loadout))>.board{
+    grid-row:1;align-self:center;flex-shrink:0;
+  }
+  .shell.hud-mode .arena:not(:has(.readable-loadout))>.action-panel{
+    display:flex;grid-row:2;box-sizing:border-box;align-self:stretch;
+    height:var(--battle-action-reserve,124px);min-height:0;
+    max-height:var(--battle-action-reserve,124px);margin-top:0;
+    overflow-y:auto;scrollbar-gutter:stable;
+  }
+  .shell.hud-mode .arena:not(:has(.readable-loadout))>.action-panel:empty{
+    display:flex;border-color:transparent;background:transparent;
+  }
+}

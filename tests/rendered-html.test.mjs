@@ -739,3 +739,11 @@ test("keeps the online room start controls reachable when the lobby grows", asyn
   assert.match(css, /\.online-panel>\.apply-room-settings,[\s\S]*\.online-panel>\.leave-room-button\{[^}]*position:static/);
   assert.match(css, /grid-auto-rows:max-content/);
 });
+test("desktop board reserves action space independent of hover and phase", async () => {
+  const hook = await read("../app/hooks/use-responsive-board.ts");
+  const css = await read("../app/styles/layout-overrides.css");
+  assert.ok(hook.includes('setProperty("--battle-action-reserve"'));
+  assert.ok(!hook.includes("observer.observe(action)"));
+  assert.ok(css.includes("grid-template-rows:minmax(0,1fr) var(--battle-action-reserve,124px)"));
+  assert.match(css, /action-panel:empty\{\s*display:flex/);
+});
