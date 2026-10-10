@@ -930,7 +930,21 @@ function resolveMatchEvent(state: GameState, event: EventForecast): GameState {
       pulseDevices: activePulseDevices(state).map(rotate),
     };
   }
-  if (event.kind === "wind") return eventPush(state, (p) => ({ r: state.probes[p].r + event.dr, c: state.probes[p].c + event.dc }));
+  if (event.kind === "wind") {
+    let next = state;
+    const stopped = new Set<Player>();
+    const mid = Math.floor(state.size / 2);
+    for (let step = 0; step < MATCH_EVENT_RULES.windSteps; step++) {
+      const before = next;
+      next = eventPush(before, p => {
+        const pos = before.probes[p];
+        if (stopped.has(p) || samePos(pos, { r: mid, c: mid })) return undefined;
+        return { r: pos.r + event.dr, c: pos.c + event.dc };
+      });
+      for (const p of activePlayers(before)) if (samePos(before.probes[p], next.probes[p])) stopped.add(p);
+    }
+    return next;
+  }
   if (event.kind !== "geyser") return state;
   // A covered vent cannot erupt. HOLO and PULSE devices also physically cover it.
   const occupied = [...state.meteors, ...activeObstacles(state), ...activePulseDevices(state), ...activePlayers(state).map((p) => state.probes[p])];
@@ -988,33 +1002,47 @@ function advanceEventGroup(state: GameState): GameState {
     let seed = event.seed;
     const draw = (limit: number) => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return Math.floor(seed / 4294967296 * limit); };
     const mid = Math.floor(state.size / 2);
-    const vents: Pos[] = [];
-    for (const direction of [{ r: -1, c: 0 }, { r: 1, c: 0 }, { r: 0, c: -1 }, { r: 0, c: 1 }]) {
-      const candidates: Pos[] = [];
-      for (let offset = 3; offset < mid; offset++) for (let side = -1; side <= 1; side++) {
-        const pos = { r: mid + direction.r * offset + direction.c * side, c: mid + direction.c * offset + direction.r * side };
-        if (vents.every((vent) => distance(vent, pos) > 2)) candidates.push(pos);
-      }
-      vents.push(candidates.length ? candidates[draw(candidates.length)] : { r: mid + direction.r * (mid - 1), c: mid + direction.c * (mid - 1) });
+    let vents: Pos[] = [];
+    const ventCells: Pos[] = [];
+    for (let r = 1; r < state.size - 1; r++) for (let c = 1; c < state.size - 1; c++) {
+      if (distance({ r, c }, { r: mid, c: mid }) >= 2) ventCells.push({ r, c });
     }
+    // Seeded retries preserve spacing without tying vents to four cardinal lanes.
+    for (let attempt = 0; attempt < 64; attempt++) {
+      vents = [];
+      let pool = [...ventCells];
+      while (pool.length && vents.length < MATCH_EVENT_RULES.geyserCount) {
+        const vent = pool[draw(pool.length)];
+        vents.push(vent);
+        pool = pool.filter(p => distance(p, vent) > MATCH_EVENT_RULES.geyserSeparation);
+      }
+      if (vents.length === MATCH_EVENT_RULES.geyserCount) break;
+    }
+    if (vents.length < MATCH_EVENT_RULES.geyserCount) vents = [
+      { r: 1, c: 1 }, { r: 1, c: state.size - 2 },
+      { r: state.size - 2, c: 1 }, { r: state.size - 2, c: state.size - 2 },
+    ];
     const direction = MATCH_WIND_DIRECTIONS[draw(MATCH_WIND_DIRECTIONS.length)];
     // Prefer populated inner rings; reserve the outer edge for rare variation.
     const objects = [...players.map((p) => state.probes[p]), ...state.meteors, ...(state.obstacles ?? []), ...(state.pulseDevices ?? [])];
-    const rings = Array.from({ length: mid - 1 }, (_, i) => i + 1);
+    const rings = Array.from({ length: mid - MATCH_EVENT_RULES.orbitMinRing }, (_, i) => i + MATCH_EVENT_RULES.orbitMinRing);
     const density = (ring: number) => objects.filter((p) => Math.max(Math.abs(p.r - mid), Math.abs(p.c - mid)) === ring).length;
     const pick = (pool: number[]) => { const max = Math.max(...pool.map(density)); const best = pool.filter((r) => density(r) === max); return best[draw(best.length)]; };
     const split = Math.floor(mid / 2);
     const gap = MATCH_EVENT_RULES.orbitRingSeparation;
-    const ring = pick(rings.filter((r) => r <= split && r + gap < mid));
+    const ring = pick(rings.filter((r) => r <= split && r + gap <= mid));
     const outer = rings.filter((r) => r > split && r - ring >= gap);
-    const secondRing = draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > Math.max(...outer.map(density)) ? mid : pick(outer);
+    const secondRing = !outer.length ? mid : draw(100) < MATCH_EVENT_RULES.outerOrbitChancePercent && density(mid) > Math.max(...outer.map(density)) ? mid : pick(outer);
     event = { ...event, forecast: { kind: event.kind, target: vents[0], vents, ring, secondRing,
       clockwise: draw(2) === 1, dr: direction.r, dc: direction.c }, seed };
     event.forecasts = normalizeMatchEvents(event.kinds ?? event.kind).map((kind) => {
-      const inset = MATCH_EVENT_RULES.gravityCenterInset;
-      return { ...event.forecast!, kind, ...(kind === "gravity" ? { target: {
-        r: inset + draw(state.size - inset * 2), c: inset + draw(state.size - inset * 2),
-      } } : {}) };
+      if (kind !== "gravity") return { ...event.forecast!, kind };
+      const inset = Math.min(MATCH_EVENT_RULES.gravityCenterInset, mid - MATCH_EVENT_RULES.gravityMinCoreDistance);
+      const centers: Pos[] = [];
+      for (let r = inset; r < state.size - inset; r++) for (let c = inset; c < state.size - inset; c++) {
+        if (distance({ r, c }, { r: mid, c: mid }) >= MATCH_EVENT_RULES.gravityMinCoreDistance) centers.push({ r, c });
+      }
+      return { ...event.forecast!, kind, target: centers[draw(centers.length)] };
     });
     event.forecast = event.forecasts[0];
     event.seed = seed;

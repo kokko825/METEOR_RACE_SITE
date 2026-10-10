@@ -33,7 +33,7 @@
 .gravity.firing .gravity-halo{animation:event-contract calc(var(--event-lead) + var(--event-move)) ease-in-out both;background:radial-gradient(circle,transparent 3%,#d5a4ff77 25%,#963ff533 60%,transparent 75%)}
 
 .wind-bearing{position:absolute;inset:0;transform:rotate(var(--wind-angle));display:grid;place-items:center}
-.wind-arrow{width:72%;height:42%;clip-path:polygon(0 34%,62% 34%,62% 0,100% 50%,62% 100%,62% 66%,0 66%);background:linear-gradient(90deg,#b8873b35,#f0cd8fc0,#d6a45380);opacity:.4;animation:event-breeze var(--event-heartbeat) ease-in-out infinite}
+.wind-arrow{width:52%;height:50%;clip-path:polygon(0 34%,62% 34%,62% 0,100% 50%,62% 100%,62% 66%,0 66%);background:linear-gradient(90deg,#b8873b35,#f0cd8fc0,#d6a45380);opacity:.4;animation:event-breeze var(--event-heartbeat) ease-in-out infinite}
 .wind.firing .wind-arrow{opacity:.25;animation:none}
 .wind-dust{position:absolute;inset:-25%;overflow:hidden}
 .dust-cloud{inset:0;background:radial-gradient(ellipse at 15% 30%,#e5c48d55,transparent 45%),radial-gradient(ellipse at 35% 75%,#a6784455,transparent 40%);animation:event-gust 900ms ease-in-out infinite}
@@ -70,7 +70,7 @@
 .gravity.forecast .gravity-accretion{inset:36%}
 .gravity.forecast .gravity-halo,.gravity.forecast .gravity-core{animation-delay:var(--gravity-delay,0ms)}
 .event-board-effect.wind.forecast{opacity:var(--wind-strength,.6);transition:opacity .6s}
-.wind.forecast .wind-arrow{left:5%;top:39%;width:30%;height:22%;background:linear-gradient(90deg,#b8873b99,#ffe0a8,#d6a453);animation-delay:var(--wind-delay,0ms)}
+.wind.forecast .wind-arrow{left:5%;top:34%;width:22%;height:32%;background:linear-gradient(90deg,#b8873b99,#ffe0a8,#d6a453);animation-delay:var(--wind-delay,0ms)}
 @media(prefers-reduced-motion:reduce){.board .event-board-effect.forecast{opacity:.7}.board .event-vent-crack,.board .event-direction{transition:none}}
 .event-order ol{list-style:decimal}.event-order li::marker{color:#91b9c9}
 .event-options label{line-height:1.5}.event-options label select{margin-left:auto}

@@ -1,5 +1,5 @@
 /** Casual event battles; simultaneous events resolve in the order below. */
-export const MATCH_EVENT_RULES = { interval: 5, warningRounds: 2, outerOrbitChancePercent: 2, orbitRingSeparation: 2, gravityRadius: 5, gravityStrongRadius: 2, gravityStrongSteps: 2, gravityCenterInset: 2, warpInnerRing: 2, warpOuterInset: 1 } as const;
+export const MATCH_EVENT_RULES = { windSteps: 2, interval: 5, warningRounds: 2, outerOrbitChancePercent: 2, orbitMinRing: 2, geyserCount: 4, geyserSeparation: 2, gravityMinCoreDistance: 3, orbitRingSeparation: 2, gravityRadius: 5, gravityStrongRadius: 2, gravityStrongSteps: 2, gravityCenterInset: 2, warpInnerRing: 2, warpOuterInset: 1 } as const;
 export const MATCH_EVENT_FX = { leadMs: 650, moveMs: 900, settleMs: 120, heartbeatMs: 2200 } as const;
 export const MATCH_WIND_DIRECTIONS = [
   { r: -1, c: 0 }, { r: -1, c: 1 }, { r: 0, c: 1 }, { r: 1, c: 1 },
@@ -10,7 +10,7 @@ export const MATCH_EVENTS = {
   geyser: { ja: "間欠泉", en: "Geyser" },
   orbit: { ja: "ランダムORBIT", en: "Random orbit" },
   gravity: { ja: "重力異常", en: "Gravity anomaly" },
-  wind: { ja: "追い風", en: "Wind" },
+  wind: { ja: "暴風", en: "Gale" },
   warp: { ja: "ワープ", en: "Warp gates" },
 } as const;
 export type MatchEventKind = keyof typeof MATCH_EVENTS;
@@ -46,10 +46,10 @@ export const MATCH_EVENT_LORE = {
 export const MATCH_EVENT_INFO = {
   off: { icon: "−", ja: "", en: "" },
   warp: { icon: "⟷", ja: "COREから2周目と外周付近を結ぶワープマスが常時1組出現。着地すると反対側へ転送されます。出口が塞がっている場合は不発。周期ごとに予告なしで位置が変わります。配置物や機体の下には出現しません。", en: "One gate pair links the second ring from CORE to the outer region. Landing on a gate teleports the probe unless the exit is occupied. Locations change periodically without advance location warnings. Gates never appear beneath probes or placed objects." },
-  geyser: { icon: "♨", ja: "4か所の噴出口から蒸気が噴き出し、周囲の探査機を1マス押します。配置物は壊れず、移動先が塞がっていれば動きません。噴出口が塞がっている場所は噴出しません。赤い斜線は噴出予告（進入可）、白い縁は現在塞がれた噴出口を示します。", en: "Four steam vents push nearby probes one cell. Placed objects remain intact and block movement. Covered vents do not erupt. Red hatching warns of an eruption but does not restrict movement; a white rim marks a currently covered vent." },
-  orbit: { icon: "↻", ja: "隣り合わない2つのリングが、互いに逆方向へ90度回転。探査機も配置物も一緒に移動します。", en: "Two nonadjacent rings rotate 90 degrees in opposite directions, carrying probes and placed objects." },
-  gravity: { icon: "◎", ja: "2巡前に予告された重力中心へ引き寄せます。中心から2マス以内は最大2マス、3〜5マスは1マス。斜めも対象で、中心やCOREに到達すると停止。機体や障害物は飛び越えません。配置物は動きません。", en: "Pulls probes toward a random center announced two rounds ahead. Within 2 cells: up to 2 steps; within 3–5 cells: 1 step, including diagonally. Stops at the center or CORE, or before obstacles and other probes. Placed objects stay put." },
-  wind: { icon: "➜", ja: "8方向から選ばれた方向へ、すべての探査機を1マス押します。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pushes all probes one cell in one of eight directions. Meteors stay put; probes and obstacles block movement." },
+  geyser: { icon: "♨", ja: "盤面にランダムに分布する4か所の噴出口から蒸気が噴き出し、周囲の探査機を1マス押します。配置物は壊れず、移動先が塞がっていれば動きません。噴出口が塞がっている場所は噴出しません。赤い斜線は噴出予告（進入可）、白い縁は現在塞がれた噴出口を示します。", en: "Four randomly distributed steam vents push nearby probes one cell. Placed objects remain intact and block movement. Covered vents do not erupt. Red hatching warns of an eruption but does not restrict movement; a white rim marks a currently covered vent." },
+  orbit: { icon: "↻", ja: "CORE直近を除く、隣り合わない2つのリングが、互いに逆方向へ90度回転。探査機も配置物も一緒に移動します。", en: "Two nonadjacent rings, excluding the innermost ring, rotate 90 degrees in opposite directions, carrying probes and placed objects." },
+  gravity: { icon: "◎", ja: "COREから3マス以上離れた、2巡前に予告された重力中心へ引き寄せます。中心から2マス以内は最大2マス、3〜5マスは1マス。斜めも対象で、中心やCOREに到達すると停止。機体や障害物は飛び越えません。配置物は動きません。", en: "Pulls probes toward a random center at least 3 cells from CORE, announced two rounds ahead. Within 2 cells: up to 2 steps; within 3–5 cells: 1 step, including diagonally. Stops at the center or CORE, or before obstacles and other probes. Placed objects stay put." },
+  wind: { icon: "➜", ja: "8方向から選ばれた方向へ、すべての探査機を最大2マス押します。COREに到達すると停止します。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pushes all probes up to two cells in one of eight directions, stopping at CORE. Meteors stay put; probes and obstacles block movement." },
 } as const;
 
 /** Visual urgency only; never changes event timing or game rules. */

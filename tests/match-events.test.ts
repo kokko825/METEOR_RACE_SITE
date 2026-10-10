@@ -33,7 +33,7 @@ for (const size of [11, 13, 15]) for (let seed = 1; seed <= 100; seed++) {
   assert.deepEqual(applyMove(moved.phase === "move" ? moved : { ...moved, phase: "move" }, { r: 6, c: 7 }).probes.red, { r: 6, c: 7 });
   const blocked = { ...state, meteors: [{ r: 6, c: 8, owner: "blue" as const, size: "small" as const, id: 90 }] };
   assert.deepEqual(applyMove(blocked, { r: 11, c: 6 }).probes.red, { r: 11, c: 6 }, "Occupied exit prevents transfer");
-  const pushed = applyMatchEvent(state, { ...event("wind"), dr: 1, dc: 0 });
+  const pushed = applyMatchEvent({ ...state, probes: { ...state.probes, red: { r: 9, c: 6 } } }, { ...event("wind"), dr: 1, dc: 0 });
   assert.deepEqual(pushed.probes.red, { r: 6, c: 8 }, "Event movement uses gates too");
   const meteor = applyMeteor({ ...state, phase: "place" }, { r: 9, c: 6 }, "small").state;
   assert.deepEqual(meteor.probes.red, { r: 6, c: 8 }, "Meteor landing transfers");
@@ -92,10 +92,10 @@ for (let seed = 0; seed < 200; seed++) {
 assert.equal(windDirections.size, 8, "Forecast can choose all eight wind directions");
 for (const dr of [-1, 0, 1]) for (const dc of [-1, 0, 1]) {
   if (!dr && !dc) continue;
-  const state = start("wind"); state.probes.red = { r: 4, c: 4 }; state.probes.blue = { r: 0, c: 0 };
+  const state = start("wind"); state.probes.red = { r: 5, c: 5 }; state.probes.blue = { r: 0, c: 0 };
   const f = { ...event("wind"), dr, dc };
-  assert.deepEqual(applyMatchEvent(state, f).probes.red, { r: 4 + dr, c: 4 + dc });
-  state.meteors = [{ r: 4 + dr, c: 4 + dc, id: 1, size: "small", owner: "blue" }];
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, dr === -1 && dc === -1 ? { r: 4, c: 4 } : { r: 5 + dr * 2, c: 5 + dc * 2 });
+  state.meteors = [{ r: 5 + dr, c: 5 + dc, id: 1, size: "small", owner: "blue" }];
   assert.deepEqual(applyMatchEvent(state, f).probes.red, state.probes.red, "Wind cannot enter an occupied destination");
 }
 
@@ -139,7 +139,8 @@ for (const size of [9, 11, 13, 15]) for (let seed = 0; seed < 100; seed++) {
   const vents = state.matchEvent!.forecast!.vents!;
   assert.equal(vents.length, 4);
   const mid = Math.floor(size / 2);
-  assert.ok(vents[0].r < mid && vents[1].r > mid && vents[2].c < mid && vents[3].c > mid);
+  assert.ok(vents.every(v => distance(v, { r: mid, c: mid }) >= 2));
+  assert.ok(orbit.ring >= 2);
   for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) assert.ok(distance(vents[i], vents[j]) > 2, `Overlapping vents: ${size}/${seed}`);
 }
 {
@@ -176,7 +177,7 @@ for (const size of [9, 11, 13, 15]) for (let seed = 0; seed < 100; seed++) {
   const next = applyMatchEvent(state, event("gravity"));
   assert.deepEqual(next.probes.red, state.probes.red); assert.deepEqual(next.meteors, state.meteors);
   state.probes.blue = { r: 7, c: 4 };
-  assert.deepEqual(applyMatchEvent(state, event("wind")).probes.red, { r: 6, c: 5 });
+  assert.deepEqual(applyMatchEvent(state, event("wind")).probes.red, { r: 6, c: 6 });
   state.probes.blue = { r: 6, c: 5 };
   assert.deepEqual(applyMatchEvent(state, event("wind")).probes.red, state.probes.red);
 }
@@ -265,7 +266,7 @@ console.log("match-events: independent 3/5/7/9-round clocks, simultaneous order 
 }
 {
   const state = initialGameState(13, "red", 2);
-  state.probes.red = { r: 3, c: 7 }; state.probes.blue = { r: 0, c: 0 };
+  state.probes.red = { r: 2, c: 7 }; state.probes.blue = { r: 0, c: 0 };
   const wind = { ...event("wind"), dr: 1, dc: 0 };
   const orbit = { ...event("orbit"), ring: 2 };
   const moved = applyMatchEvent(state, wind);
@@ -288,7 +289,7 @@ console.log("match-events: independent 3/5/7/9-round clocks, simultaneous order 
 }
 {
   const state = initialGameState(13, "red", 2, false, 0, [], "classic", undefined, false, MATCH_EVENT_ORDER.filter(k => k !== "warp"), 21, 3);
-  state.probes.red = { r: 3, c: 7 }; state.probes.blue = { r: 0, c: 0 };
+  state.probes.red = { r: 2, c: 7 }; state.probes.blue = { r: 0, c: 0 };
   const chain = [
     { ...event("wind"), dr: 1, dc: 0 },
     { ...event("orbit"), ring: 2 },
@@ -328,9 +329,21 @@ for (const size of [11, 13, 15]) for (let seed = 1; seed <= 60; seed++) {
   const forecast = state.matchEvent!.forecast!;
   assert.ok(forecast.target.r >= 2 && forecast.target.r < size - 2);
   assert.ok(forecast.target.c >= 2 && forecast.target.c < size - 2);
+  assert.ok(distance(forecast.target, { r: Math.floor(size / 2), c: Math.floor(size / 2) }) >= 3);
   const remembered = JSON.stringify(forecast);
   state = round(state);
   assert.equal(JSON.stringify(state.matchEvent!.forecast), remembered);
   const replay = JSON.parse(JSON.stringify(state)) as GameState;
   assert.deepEqual(round(state), round(replay), "Random gravity is deterministic after serialization");
+}
+{
+  const state = start("wind", 2, 11);
+  state.probes.red = { r: 3, c: 5 }; state.probes.blue = { r: 0, c: 0 };
+  const f = { ...event("wind"), dr: 1, dc: 0 };
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, { r: 5, c: 5 }, "Gale reaches CORE on second step");
+  state.probes.red = { r: 4, c: 5 };
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, { r: 5, c: 5 }, "Gale stops at CORE on first step");
+  state.probes.red = { r: 2, c: 5 };
+  state.meteors = [{ r: 4, c: 5, id: 92, owner: "blue", size: "small" }];
+  assert.deepEqual(applyMatchEvent(state, f).probes.red, { r: 3, c: 5 }, "Gale stops before second-step obstacle");
 }
