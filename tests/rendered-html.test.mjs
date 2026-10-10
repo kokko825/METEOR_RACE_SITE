@@ -747,3 +747,9 @@ test("desktop board reserves action space independent of hover and phase", async
   assert.ok(css.includes("grid-template-rows:minmax(0,1fr) var(--battle-action-reserve,124px)"));
   assert.match(css, /action-panel:empty\{\s*display:flex/);
 });
+test("online lobby event controls span the room and adapt to container width", async () => {
+  const css = await read("../app/styles/match-events.css");
+  assert.match(css, /\.online-panel>\.event-controls,[^{]+\{grid-column:1\/-1\}/);
+  assert.ok(css.includes("repeat(auto-fit,minmax(min(100%,150px),1fr))"));
+  assert.ok(css.includes(".online-panel>.event-controls{width:100%;box-sizing:border-box}"));
+});
