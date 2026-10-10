@@ -49,7 +49,7 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
     </div>
     <div className="event-options">
       {normalizeMatchEvents(value).map((kind) => <label key={kind}>{MATCH_EVENTS[kind][language]} {language === "ja" ? "周期（巡）" : "(rounds)"}<select aria-label={`${MATCH_EVENTS[kind][language]} ${language === "ja" ? "発動周期" : "interval"}`} value={interval[kind] ?? 5} onChange={(e) => onIntervalChange({ ...interval, [kind]: Number(e.target.value) })}>{Array.from({ length: 97 }, (_, i) => <option key={i + 3} value={i + 3}>{i + 3}</option>)}</select></label>)}
-      <small>{language === "ja" ? "複数選択可 · 2巡前に予告" : "Combine events · 2-round warning"}</small>
+      <small>{language === "ja" ? "複数選択可 · ワープ以外は2巡前に予告" : "Combine events · 2-round warning except warp"}</small>
     </div>
     <details className="event-help"><summary>{language === "ja" ? "イベントの効果と発動順" : "Effects and resolution order"}</summary><EventOrder language={language} /><div>{MATCH_EVENT_ORDER.map((kind) => <EventExplanation key={kind} kind={kind} language={language} />)}</div></details>
   </fieldset>;
@@ -67,7 +67,7 @@ export function EventSummary({ event, language, perspective = 0, firing = false 
 export function EventStatus({ event, language, perspective = 0, firing = false, compact = false }: { event?: MatchEventState; language: "ja" | "en"; perspective?: number; firing?: boolean; compact?: boolean }) {
   if (!event || event.kind === "off") return null;
   if (!firing && (event.kinds?.length ?? 0) > 1) return <div className="event-sequence" role="status"><b>{language === "ja" ? `イベントまで${event.remaining}巡` : `Events in ${event.remaining} rounds`}</b><div>{upcomingEvents(event).map((kind) => <span key={kind}><EventStatus event={{ ...event, kinds: undefined, kind, remaining: event.schedule?.[kind]?.remaining ?? event.remaining, forecast: event.forecasts?.find((f) => f.kind === kind) }} language={language} perspective={perspective} /></span>)}</div></div>;
-  const forecast = firing ? event.last : event.forecast;
+  const forecast = firing ? event.last : event.kind === "warp" ? undefined : event.forecast;
   const kind = firing ? event.last?.kind ?? event.kind : event.kind;
   const delta = forecast ? boardToViewDelta({ r: forecast.dr, c: forecast.dc }, perspective) : null;
   const arrow = delta ? [["↖", "↑", "↗"], ["←", "", "→"], ["↙", "↓", "↘"]][Math.sign(delta.r) + 1][Math.sign(delta.c) + 1] : "";
@@ -75,6 +75,7 @@ export function EventStatus({ event, language, perspective = 0, firing = false, 
     <b><EventLabel kind={kind} language={language} />{compact ? "" : " · "}{compact ? "" : firing ? (language === "ja" ? "発動" : "ACTIVE") : language === "ja" ? `あと${event.remaining}巡` : `${event.remaining} rounds`}</b>
     {forecast ? <small>{kind === "wind" ? arrow : kind === "orbit" ? `${language === "ja" ? "中央から" : "Ring"} ${forecast.ring}${forecast.clockwise ? "↻" : "↺"}${forecast.secondRing ? ` / ${forecast.secondRing}${forecast.clockwise ? "↺" : "↻"}` : ""} 90°`
       : kind === "geyser" ? (language === "ja" ? "噴出口 ×4" : "4 vents")
+      : kind === "warp" ? (language === "ja" ? "接続先を更新" : "Gates relocate")
       : "→ CORE"}</small> : null}
   </span>;
 }

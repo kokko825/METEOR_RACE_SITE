@@ -7,6 +7,7 @@ import {
   applyMatchEvent,
   applyMeteor,
   applyMove,
+  warpEntrants,
   applyHoloSwitch,
   applyOrbitSwitch,
   applyPulseSwitch,
@@ -329,7 +330,7 @@ function isImmediateWinAvailable(state: GameState, player: Player): boolean {
     samePos(target, center) || blockers.some((entry) => samePos(entry, target)) ||
     activePlayers(state).some((candidate) => candidate !== player && samePos(state.probes[candidate], target));
   const clearToCore = (from: Pos) => {
-    if (from.r !== center.r && from.c !== center.c) return false;
+    if (from.r !== center.r && from.c !== center.c && Math.abs(from.r - center.r) !== Math.abs(from.c - center.c)) return false;
     const dr = Math.sign(center.r - from.r);
     const dc = Math.sign(center.c - from.c);
     let current = { ...from };
@@ -342,9 +343,14 @@ function isImmediateWinAvailable(state: GameState, player: Player): boolean {
     }
     return true;
   };
-  for (const move of legalMoves(probe, player)) {
+  const availableMoves = legalMoves(probe, player);
+  // A PULSE lock prevents walking, not meteor propulsion or BLAST.
+  for (const target of availableMoves.length ? availableMoves : [state.probes[player]]) {
+    const move = warpEntrants(probe, { ...probe, probes: { ...probe.probes, [player]: target } }).probes[player];
     if (samePos(move, center)) return true;
-    const distanceAfterMove = Math.abs(move.r - center.r) + Math.abs(move.c - center.c);
+    const distanceAfterMove = distance(move, center);
+    const meteorless = state.inventory[player].small + state.inventory[player].large === 0;
+    if (availableMoves.length && meteorless && normalizeBalance(state.balance).emptyMeteorBonusMoves > 0 && Math.abs(move.r - center.r) + Math.abs(move.c - center.c) === 1) return true;
     if (!clearToCore(move)) continue;
     const outward = {
       r: move.r + Math.sign(move.r - center.r),
@@ -359,7 +365,8 @@ function isImmediateWinAvailable(state: GameState, player: Player): boolean {
     )) return true;
     const hasBlast = isItemVariant(state.variant) && (state.itemHands?.[player] ?? []).includes("blast");
     const blastPush = Math.max(0, normalizeBalance(state.balance).blastRadius - shieldReduction);
-    if (hasBlast && distanceAfterMove <= blastPush) return true;
+    if (hasBlast && outward.r >= 0 && outward.c >= 0 && outward.r < state.size && outward.c < state.size &&
+      !activePlayers(state).some(p => p !== player && samePos(state.probes[p], outward)) && distanceAfterMove <= blastPush) return true;
   }
   return false;
 }
@@ -457,107 +464,71 @@ export function estimateAiFinishTurns(state: GameState, player: Player) {
   return 5;
 }
 
+/** Delegation requires a legal response that stops every immediate rival, not just inventory. */
+export function canDelegateDefense(state: GameState, player: Player, threats: Player[]): boolean {
+  const players = activePlayers(state);
+  const start = players.indexOf(state.turn);
+  const intervening: Player[] = [];
+  for (let offset = 0; offset < players.length; offset++) {
+    const candidate = players[(start + offset) % players.length];
+    if (threats.includes(candidate)) break;
+    if (candidate !== player) intervening.push(candidate);
+  }
+  for (const defender of intervening) {
+    if (threats.some(threat => allied(state, defender, threat))) continue;
+    const projected = projectTimedEffectsToNextTurn(state, defender);
+    const base: GameState = { ...projected, turn: defender, phase: "move", bonusMove: false };
+    const moves = legalMoves(base, defender);
+    // Conservative: only rely on a small set of legal, forward moves.
+    const positions = moves.sort((a, b) => distance(a, centerOf(base)) - distance(b, centerOf(base))).slice(0, 2);
+    if (!positions.length) positions.push(base.probes[defender]);
+    for (const position of positions) {
+      const defending: GameState = { ...base, phase: "place", probes: warpEntrants(base,
+        { ...base, probes: { ...base.probes, [defender]: position } }).probes };
+      const targets = threats.flatMap(threat => {
+        const at = defending.probes[threat];
+        return [-1, 0, 1].flatMap(dr => [-1, 0, 1].map(dc => ({ r: at.r + dr, c: at.c + dc })));
+      }).filter((target, index, all) => all.findIndex(p => samePos(p, target)) === index);
+      const stopsAll = (next: GameState) => {
+        if (next.phase === "over" || threats.some(p => (next.finishOrder ?? []).includes(p))) return false;
+        return threats.every(threat => estimateAiFinishTurns(next, threat) > 1);
+      };
+      for (const target of targets) {
+        for (const size of ["large", "small"] as const) {
+          if (!defending.inventory[defender][size]) continue;
+          try { if (stopsAll(applyMeteor(defending, target, size).state)) return true; } catch { /* illegal placement */ }
+        }
+        for (const kind of ["blast", "pulse", "holo"] as const) {
+          if (!canUseItem(defending, kind)) continue;
+          if (kind === "pulse" && distance(target, defending.probes[defender]) <= normalizeBalance(defending.balance).pulseRadius) continue;
+          try {
+            const pending = applyUseItem(defending, kind);
+            const next = kind === "blast" ? applyBlastSwitch(pending, target) : kind === "pulse" ? applyPulseSwitch(pending, target) : applyHoloSwitch(pending, target);
+            if (stopsAll(next)) return true;
+          } catch { /* illegal target */ }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function threatPenalty(state: GameState, player: Player, difficulty: AiDifficulty) {
   if (state.phase === "over") return 0;
-  const rivals = activePlayers(state).filter((p) => !allied(state, p, player));
-  let penalty = 0;
-  const coordinatedFourPlayerDefense =
-    difficulty === "hard" &&
-    !isTeamVariant(state.variant) &&
-    activePlayers(state).length >= 4;
-  const threatEtas = new Map(rivals.map((rival) => [rival, estimateAiFinishTurns(state, rival)]));
-  const immediateThreats = rivals.filter((rival) => threatEtas.get(rival) === 1);
-  const immediateThreatPenalty = difficulty === "easy"
-    ? AI_STRATEGY.difficulty.easyImmediateThreatPenalty
-    : difficulty === "normal"
-      ? AI_STRATEGY.difficulty.normalImmediateThreatPenalty
-      : AI_STRATEGY.difficulty.hardImmediateThreatPenalty;
-  const delegatedRisk = difficulty === "easy"
-    ? AI_STRATEGY.difficulty.easyDelegatedThreatRisk
-    : difficulty === "normal"
-      ? AI_STRATEGY.difficulty.normalDelegatedThreatRisk
-      : AI_STRATEGY.pacing.delegatedThreatRisk;
-
-  const hasCompetingFinishThreats = coordinatedFourPlayerDefense && immediateThreats.length > 1;
-  if (hasCompetingFinishThreats) {
-    const players = activePlayers(state);
-    const firstIndex = players.indexOf(state.turn);
-    const turnOffset = (candidate: Player) => {
-      const index = players.indexOf(candidate);
-      return (index - firstIndex + players.length) % players.length;
-    };
-    const earliestThreat = Math.min(...immediateThreats.map(turnOffset));
-    const defenders = players.filter((candidate) => {
-      const offset = turnOffset(candidate);
-      // A probe that can finish on its own next turn is not counted as a
-      // dependable defender of another leader. This prevents one remaining
-      // meteor from being promised to two different emergencies.
-      return offset < earliestThreat &&
-        !immediateThreats.includes(candidate) &&
-        !allied(state, candidate, player);
-    });
-    const defenseUnits = defenders.reduce((sum, defender) => {
-      const inventory = state.inventory[defender];
-      const meteorUnits = inventory.large > 0
-        ? 2
-        : inventory.small > 0 || (state.capsuleMeteors?.[defender] ?? 0) > 0
-          ? 1
-          : 0;
-      // A defender still receives only one placement phase. Defensive items
-      // are alternatives to a meteor, not extra actions, so use the stronger
-      // option instead of adding both and overstating the available response.
-      const hand = state.itemHands?.[defender] ?? [];
-      const itemUnits = hand.some((kind) =>
-        kind === "blast" || kind === "pulse" || kind === "holo" || kind === "orbit"
-      ) ? 2 : 0;
-      return sum + Math.max(meteorUnits, itemUnits);
-    }, 0);
-    const requiredUnits = immediateThreats.length * AI_STRATEGY.pacing.coordinatedThreatUnits;
-    const shortage = Math.max(0, requiredUnits - defenseUnits);
-    penalty += shortage > 0
-      ? shortage * AI_STRATEGY.pacing.coordinatedDefenseShortage
-      : immediateThreats.length * delegatedRisk;
-  }
-  for (const rival of rivals) {
-    const threatEta = threatEtas.get(rival) ?? 5;
-    if (threatEta === 1) {
-      if (hasCompetingFinishThreats) continue;
-      const players = activePlayers(state);
-      const firstIndex = players.indexOf(state.turn);
-      const intervening: Player[] = [];
-      for (let offset = 0; offset < players.length; offset += 1) {
-        const candidate = players[(firstIndex + offset) % players.length];
-        if (candidate === rival) break;
-        if (!allied(state, candidate, rival)) intervening.push(candidate);
-      }
-      const sharedStopPower = intervening.reduce((sum, defender) => {
-        const inventory = state.inventory[defender];
-        const meteorPower = inventory.large > 0
-          ? 2
-          : inventory.small > 0 || (state.capsuleMeteors?.[defender] ?? 0) > 0 ? 1 : 0;
-        const hand = state.itemHands?.[defender] ?? [];
-        const itemPower = hand.some((kind) =>
-          kind === "blast" || kind === "pulse" || kind === "holo" || kind === "orbit"
-        ) ? 2 : 0;
-        return sum + Math.max(meteorPower, itemPower);
-      }, 0);
-      // One large meteor can take responsibility alone. Two small-only defenders
-      // must temporarily cooperate; otherwise the current AI cannot delegate.
-      penalty += sharedStopPower >= 2 ? delegatedRisk : immediateThreatPenalty;
-      continue;
-    }
-    if (difficulty === "hard" && threatEta === 2) {
-      const resources =
-        state.inventory[rival].small +
-        state.inventory[rival].large +
-        (state.capsuleMeteors?.[rival] ?? 0);
-      // A two-turn warning now includes BOOSTER, BLAST, meteor propulsion and
-      // current mobility rather than assuming that distance three is universal.
-      const multiplayer = activePlayers(state).length >= 4;
-      penalty += resources > 0
-        ? (multiplayer ? AI_STRATEGY.pacing.multiplayerWarningWithMeteor : AI_STRATEGY.pacing.duelWarningWithMeteor)
-        : (multiplayer ? AI_STRATEGY.pacing.multiplayerWarningEmpty : AI_STRATEGY.pacing.duelWarningEmpty);
-    }
+  const rivals = activePlayers(state).filter(p => !allied(state, p, player));
+  const etas = new Map(rivals.map(p => [p, estimateAiFinishTurns(state, p)]));
+  const immediate = rivals.filter(p => etas.get(p) === 1);
+  const urgency = difficulty === "easy" ? AI_STRATEGY.difficulty.easyImmediateThreatPenalty
+    : difficulty === "normal" ? AI_STRATEGY.difficulty.normalImmediateThreatPenalty
+    : AI_STRATEGY.difficulty.hardImmediateThreatPenalty;
+  // In a duel there is nobody to delegate to. In multiplayer, if nobody can
+  // stop all threats alone, this AI must contribute before asking a later player.
+  const delegate = difficulty !== "easy" && immediate.length > 0 &&
+    activePlayers(state).length > 2 && canDelegateDefense(state, player, immediate);
+  let penalty = immediate.length * (delegate ? AI_STRATEGY.pacing.delegatedThreatRisk : urgency);
+  if (difficulty === "hard") for (const rival of rivals) {
+    if (etas.get(rival) !== 2) continue;
+    penalty += activePlayers(state).length > 2 ? AI_STRATEGY.pacing.multiplayerWarningWithMeteor : AI_STRATEGY.pacing.duelWarningWithMeteor;
   }
   return penalty;
 }
@@ -620,6 +591,12 @@ function scoreResult(
     score += overtime * ownProgress * AI_STRATEGY.pacing.overtimeProgress;
   }
   if (previous) {
+    for (const friend of activePlayers(state).filter(p => allied(state, p, player))) {
+      const newlyLockedByOwnPulse = activePulseDevices(state).some(device =>
+        device.owner === player && !activePulseDevices(previous).some(old => old.id === device.id) &&
+        distance(device, state.probes[friend]) <= normalizeBalance(state.balance).pulseRadius);
+      if (newlyLockedByOwnPulse) score -= AI_STRATEGY.items.friendlyPulseLock;
+    }
     for (const candidate of activePlayers(state)) {
       if (
         allied(state, candidate, player) &&
@@ -744,6 +721,7 @@ function targetedItemOptions(
   );
   const pending = applyUseItem(state, kind);
   return switchCandidateCells(pending, kind).flatMap((target) => {
+    if (kind === "pulse" && activePlayers(state).some(p => allied(state, p, player) && distance(target, state.probes[p]) <= normalizeBalance(state.balance).pulseRadius)) return [];
     try {
       const next = kind === "holo"
         ? applyHoloSwitch(pending, target)
@@ -968,6 +946,7 @@ export function chooseAiDecision(
     if (!pending) return { type: "skip" };
     if (pending.kind === "holo" || pending.kind === "blast" || pending.kind === "pulse") {
       const ranked = switchCandidateCells(state, pending.kind).flatMap((target) => {
+        if (pending.kind === "pulse" && activePlayers(state).some(p => allied(state, p, pending.player) && distance(target, state.probes[p]) <= normalizeBalance(state.balance).pulseRadius)) return [];
         try {
           const next = pending.kind === "holo"
             ? applyHoloSwitch(state, target)

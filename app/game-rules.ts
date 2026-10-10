@@ -2,7 +2,7 @@ import { DEFAULT_BALANCE, normalizeBalance, type BalanceConfig } from "./balance
 import { MATCH_EVENT_RULES, MATCH_WIND_DIRECTIONS, orderMatchEvents, normalizeMatchEvents, normalizeEventInterval, normalizeEventIntervals, type EventIntervals, type EventTiming, type MatchEventKind } from "../config/match-events";
 
 export type EventForecast = { kind: MatchEventKind; target: Pos; vents?: Pos[]; ring: number; secondRing?: number; clockwise: boolean; dr: number; dc: number };
-type EventBoard = Pick<GameState, "players" | "probes" | "meteors" | "obstacles" | "pulseDevices" | "inventory">;
+type EventBoard = Pick<GameState, "players" | "probes" | "meteors" | "obstacles" | "pulseDevices" | "inventory" | "warpGates" | "warpFlash">;
 export type EventStage = { forecast: EventForecast; before: EventBoard; after: EventBoard };
 export type MatchEventState = { kind: MatchEventKind; kinds?: MatchEventKind[]; interval?: number; intervals?: EventIntervals; schedule?: Partial<Record<MatchEventKind, { remaining: number; forecast?: EventForecast }>>; seed: number; remaining: number; acted: Player[]; forecast?: EventForecast; forecasts?: EventForecast[]; stages?: EventStage[]; serial: number; last?: EventForecast; from?: Record<Player, Pos> };
 
@@ -10,8 +10,8 @@ export type Player = "red" | "blue" | "green" | "yellow";
 export type MeteorSize = "small" | "large";
 export type GameVariant = "classic" | "team" | "item" | "team-item";
 export type ItemKind = "shield" | "booster" | "holo" | "orbit" | "blast" | "pulse" | "recall" | "gravity";
-/** Carryable items shared by setup, inventory, UI and AI. GRAVITY is a match event. */
-export const SELECTABLE_ITEMS = ["shield", "booster", "holo", "orbit", "blast", "pulse", "recall"] as const satisfies readonly ItemKind[];
+/** Carryable items shared by setup, inventory, UI and AI. ORBIT and GRAVITY are match events. */
+export const SELECTABLE_ITEMS = ["shield", "booster", "holo", "blast", "pulse", "recall"] as const satisfies readonly ItemKind[];
 export type Pos = { r: number; c: number };
 export type Meteor = Pos & { owner: Player; size: MeteorSize; id: number; consumable?: boolean };
 export type ObstacleMeteor = Pos & { owner: Player; id: number; turns?: number };
@@ -63,6 +63,8 @@ export type GameState = {
   rankedRoundActed?: Player[];
   rankedGravityPulse?: number;
   matchEvent?: MatchEventState;
+  warpGates?: [Pos, Pos];
+  warpFlash?: number;
 };
 
 export type MeteorResolution = {
@@ -348,7 +350,7 @@ export function applySetupItem(state: GameState, kind: ItemKind, player = state.
   }
   const hand = state.itemHands?.[player] ?? [];
   const balance = gameBalance(state);
-  if (kind === "gravity") throw new Error("GRAVITY is reserved for ranked orbital convergence");
+  if (!SELECTABLE_ITEMS.some(item => item === kind)) throw new Error("この効果はイベント専用です");
   if (hand.length >= balance.itemHandTotal) throw new Error(`持ち込めるアイテムは${balance.itemHandTotal}個までです`);
   if (hand.filter((entry) => entry === kind).length >= balance.itemSameMax) {
     throw new Error(`同じアイテムは${balance.itemSameMax}個までです`);
@@ -496,6 +498,7 @@ function stateKey(state: GameState, nextTurn: Player) {
     JSON.stringify(state.capsuleMeteors ?? {}),
     state.bonusMove ? "bonus" : "normal",
     eventPositionKey(state.matchEvent),
+    JSON.stringify(state.warpGates),
   ].join("/");
 }
 
@@ -638,7 +641,9 @@ export function applyMove(state: GameState, target: Pos): GameState {
   const mid = Math.floor(state.size / 2);
   const origin = state.probes[state.turn];
   const moveSteps = Math.abs(target.r - origin.r) + Math.abs(target.c - origin.c);
-  const probes = { ...state.probes, [state.turn]: target };
+  const moved = warpEntrants(state, { ...state, probes: { ...state.probes, [state.turn]: target } });
+  const probes = moved.probes;
+  state = { ...state, ...(moved.warpFlash !== undefined ? { warpFlash: moved.warpFlash } : {}) };
   // BOOSTER is only consumed when its 2-square jump is actually used.
   if (moveSteps > 1 && (state.boosterMoves?.[state.turn] ?? 0) > 0) {
     state = {
@@ -716,7 +721,7 @@ function finishSwitch(state: GameState): GameState {
 
 export function canUseItem(state: GameState, kind: ItemKind, player = state.turn) {
   if (!isItemVariant(state.variant) || (state.phase !== "place" && !(state.phase === "move" && state.bonusMove))) return false;
-  if (kind === "gravity") return false;
+  if (kind === "gravity" || kind === "orbit") return false;
   if (!(state.itemHands?.[player] ?? []).includes(kind)) return false;
   if (kind === "shield" && (state.shieldTurns?.[player] ?? 0) > 0) return false;
   if (kind === "booster" && (state.boosterMoves?.[player] ?? 0) > 0) return false;
@@ -805,7 +810,10 @@ export function withMatchEvent(state: GameState, kind: unknown, seed = 1, period
   const kinds = state.ranked ? [] : normalizeMatchEvents(kind);
   const interval = normalizeEventInterval(period);
   const intervals = typeof period === "object" ? normalizeEventIntervals(period) : undefined;
-  return { ...state, matchEvent: !kinds.length ? undefined : {
+  const gates = kinds.includes("warp") ? createWarpGates(state, seed).gates : undefined;
+  const base = { ...state };
+  delete base.warpGates;
+  return { ...base, ...(gates ? { warpGates: gates } : {}), matchEvent: !kinds.length ? undefined : {
     kind: kinds[0], kinds, interval,
     ...(intervals ? { intervals, schedule: Object.fromEntries(kinds.map((k) => [k, { remaining: intervals[k]! }])) } : {}),
     seed: seed >>> 0, remaining: intervals ? Math.min(...kinds.map((k) => intervals[k]!)) : interval, acted: [], serial: 0,
@@ -844,7 +852,54 @@ export function skipBlockedMove(state: GameState): GameState {
   return { ...state, phase: "place", message: `${playerName(state.turn)}：移動不能。メテオまたはアイテムを使用` };
 }
 
+/** One transfer per displacement, never on standing still or relocating gates. */
+export function warpEntrants(before: GameState, after: GameState): GameState {
+  if (!after.warpGates) return after;
+  const probes = { ...after.probes };
+  let transferred = false;
+  const occupied = [...after.meteors, ...activeObstacles(after), ...activePulseDevices(after),
+    ...activePlayers(after).map(p => after.probes[p])];
+  for (const player of activePlayers(after)) {
+    if (samePos(before.probes[player], after.probes[player])) continue;
+    const index = after.warpGates.findIndex(gate => samePos(gate, after.probes[player]));
+    if (index < 0) continue;
+    const exit = after.warpGates[1 - index];
+    if (!occupied.some(p => samePos(p, exit))) { probes[player] = exit; transferred = true; }
+  }
+  return transferred ? { ...after, probes, warpFlash: (before.warpFlash ?? 0) + 1 } : after;
+}
+
+function createWarpGates(state: GameState, initialSeed: number) {
+  let seed = initialSeed >>> 0;
+  const mid = Math.floor(state.size / 2);
+  const occupied = [...state.meteors, ...activeObstacles(state), ...activePulseDevices(state),
+    ...activePlayers(state).map(p => state.probes[p])];
+  const pick = (ring: number, old?: Pos): Pos | undefined => {
+    const cells: Pos[] = [];
+    for (let r = 0; r < state.size; r++) for (let c = 0; c < state.size; c++) {
+      if (Math.max(Math.abs(r - mid), Math.abs(c - mid)) === ring) cells.push({ r, c });
+    }
+    const changed = cells.filter(p => !old || !samePos(p, old));
+    const free = changed.filter(p => !occupied.some(o => samePos(o, p)));
+    const pool = free.length ? free : cells.filter(p => !occupied.some(o => samePos(o, p)));
+    if (!pool.length) return undefined;
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return pool[Math.floor(seed / 4294967296 * pool.length)];
+  };
+  const inner = pick(MATCH_EVENT_RULES.warpInnerRing, state.warpGates?.[0]);
+  const outer = pick(mid - MATCH_EVENT_RULES.warpOuterInset, state.warpGates?.[1]);
+  const gates: [Pos, Pos] | undefined = inner && outer ? [inner, outer] : undefined;
+  return { gates, seed };
+}
+
 export function applyMatchEvent(state: GameState, event: EventForecast): GameState {
+  return warpEntrants(state, resolveMatchEvent(state, event));
+}
+
+function resolveMatchEvent(state: GameState, event: EventForecast): GameState {
+  if (event.kind === "warp") {
+    return { ...state, warpGates: createWarpGates(state, state.matchEvent?.seed ?? 1).gates };
+  }
   if (event.kind === "gravity") {
     const mid = Math.floor(state.size / 2);
     return eventPush(state, (player) => {
@@ -946,7 +1001,7 @@ function advanceEventGroup(state: GameState): GameState {
   if (event.remaining <= 0 && event.forecast) {
     let next = state;
     const stages: EventStage[] = [];
-    const board = (s: GameState): EventBoard => ({ players: s.players, probes: s.probes, meteors: s.meteors, obstacles: s.obstacles, pulseDevices: s.pulseDevices, inventory: s.inventory });
+    const board = (s: GameState): EventBoard => ({ players: s.players, probes: s.probes, meteors: s.meteors, obstacles: s.obstacles, pulseDevices: s.pulseDevices, inventory: s.inventory, warpGates: s.warpGates, warpFlash: s.warpFlash });
     for (const forecast of orderMatchEvents(event.forecasts ?? [event.forecast])) {
       const before = board(next);
       next = applyMatchEvent(next, forecast);
@@ -1142,12 +1197,12 @@ export function applyBlastSwitch(state: GameState, target: Pos): GameState {
     const durability = Math.max(0, (obstacle.turns ?? 1) - (radius - range + 1) * activePlayers(state).length);
     if (durability > 0) obstacles.push({ ...obstacle, turns: durability });
   }
-  const next = finishSwitch({
+  const next = finishSwitch(warpEntrants(state, {
     ...state,
     probes,
     obstacles,
     log: [...state.log, `${playerName(current.player)} fired BLAST radius ${radius} at (${target.r},${target.c})`],
-  });
+  }));
   const reached = activePlayers(next).filter((p) => samePos(next.probes[p], { r: mid, c: mid }));
   return resolveCoreArrivals(state, next, reached);
 }
@@ -1286,7 +1341,7 @@ export function applyMeteor(
   const placementLog = `${playerName(state.turn)}が${meteorName(chosenSize)}を (${target.r},${target.c}) に配置`;
   const recoveryLog = destroyed.length ? ` — メテオ${destroyed.length}個を破壊・返還` : "";
   const log = [...state.log, placementLog + recoveryLog];
-  const draft: GameState = {
+  const draft: GameState = warpEntrants(state, {
     ...state,
     probes,
     meteors: [...survivors, placed],
@@ -1295,8 +1350,9 @@ export function applyMeteor(
     capsuleMeteors,
     nextMeteorId: state.nextMeteorId + 1,
     log,
-  };
+  });
 
+  Object.assign(probes, draft.probes);
   let next: GameState;
   if (reached.length) {
     const winner = coreWinner(state, reached) as Player | "draw";

@@ -86,5 +86,11 @@
 .event-vent-blocked .crack-rim{stroke:#eef7ff;stroke-opacity:.85}
 .event-vent-blocked .event-vent-crack{opacity:.45!important}
 .cell.event-geyser-blocked{box-shadow:inset 0 0 0 1px #e7f3fa22}
+.warp-gate{animation:warp-arrive .65s ease-out,warp-breathe 3s ease-in-out infinite;position:absolute;inset:10%;display:grid;place-items:center;border:2px solid #66edff;border-radius:50%;background:radial-gradient(ellipse,#071d37 20%,#26b8d855 60%,#86f4ff88);box-shadow:0 0 9px #3be9ff99,inset 0 0 6px #c0faffaa;color:#e4ffff;font-size:clamp(10px,1.5vw,22px);pointer-events:none;z-index:1}
+@keyframes warp-arrive{from{opacity:0;transform:scale(.3);filter:brightness(2.5)}50%{opacity:1;transform:scale(1.1)}to{transform:scale(1)}}
+@keyframes warp-breathe{0%,100%{box-shadow:0 0 5px #b7f8ffaa,inset 0 0 7px #d5ffff99}50%{box-shadow:0 0 12px #8aefffcc,inset 0 0 12px #efffffcc}}
+@media(prefers-reduced-motion:reduce){.warp-gate{animation:none}}
+@media(min-width:1100px){.event-toggle-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.event-options{grid-template-columns:repeat(auto-fit,minmax(185px,1fr))}}
+.event-color-warp{color:#70edff}
 .event-chain-note{font-size:13px;line-height:1.65;color:#b8ced8;margin:8px 0 0}
 .event-order li[aria-current=step]{background:#234351;outline:1px solid #9ed9e9;border-radius:3px;color:white}

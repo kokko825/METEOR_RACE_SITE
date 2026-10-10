@@ -62,7 +62,7 @@ for (let slot = 0; slot < 4; slot += 1) {
   assert.equal(rematch.turn, "red", "human chooses the rematch loadout before the AI");
   rematch = applySetupItem(rematch, "shield", "red");
   rematch = applySetupItem(rematch, "booster", "red");
-  rematch = applySetupItem(rematch, "orbit", "red");
+  rematch = applySetupItem(rematch, "blast", "red");
   rematch = confirmSetupItems(rematch, "red");
   assert.equal(rematch.turn, "blue", "AI loadout starts after the human confirms");
   rematch = applySetupItem(rematch, "blast", "blue");

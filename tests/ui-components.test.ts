@@ -105,7 +105,7 @@ console.log("ui-components: rendered controls, loadout privacy, players and manu
 for (const language of ["ja", "en"] as const) {
   const controls = renderToStaticMarkup(createElement(EventControls, { value: ["geyser"], onChange: noop, language, interval: { geyser: 5 }, onIntervalChange: noop }));
   assert.equal((controls.match(/aria-pressed="true"/g) ?? []).length, 1);
-  assert.equal((controls.match(/aria-pressed="false"/g) ?? []).length, 3);
+  assert.equal((controls.match(/aria-pressed="false"/g) ?? []).length, 4);
   assert.ok(!controls.includes('type="checkbox"'));
   assert.ok(controls.includes("AEQRIS"));
   const manual = renderToStaticMarkup(createElement(RulesArchive, { language, balance: DEFAULT_BALANCE }));

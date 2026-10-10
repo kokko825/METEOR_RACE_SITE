@@ -1,5 +1,5 @@
 /** Casual event battles; simultaneous events resolve in the order below. */
-export const MATCH_EVENT_RULES = { interval: 5, warningRounds: 2, outerOrbitChancePercent: 2, orbitRingSeparation: 2 } as const;
+export const MATCH_EVENT_RULES = { interval: 5, warningRounds: 2, outerOrbitChancePercent: 2, orbitRingSeparation: 2, warpInnerRing: 2, warpOuterInset: 1 } as const;
 export const MATCH_EVENT_FX = { leadMs: 650, moveMs: 900, settleMs: 120, heartbeatMs: 2200 } as const;
 export const MATCH_WIND_DIRECTIONS = [
   { r: -1, c: 0 }, { r: -1, c: 1 }, { r: 0, c: 1 }, { r: 1, c: 1 },
@@ -11,11 +11,12 @@ export const MATCH_EVENTS = {
   orbit: { ja: "ランダムORBIT", en: "Random orbit" },
   gravity: { ja: "中央重力", en: "Central gravity" },
   wind: { ja: "追い風", en: "Wind" },
+  warp: { ja: "ワープ", en: "Warp gates" },
 } as const;
 export type MatchEventKind = keyof typeof MATCH_EVENTS;
 export type EventIntervals = Partial<Record<MatchEventKind, number>>;
 export type EventTiming = number | EventIntervals;
-export const MATCH_EVENT_ORDER: MatchEventKind[] = ["wind", "orbit", "geyser", "gravity"];
+export const MATCH_EVENT_ORDER: MatchEventKind[] = ["wind", "orbit", "geyser", "gravity", "warp"];
 export const normalizeEventInterval = (value: unknown): number => typeof value === "number" && Number.isFinite(value) ? Math.min(99, Math.max(3, Math.trunc(value))) : MATCH_EVENT_RULES.interval;
 export const normalizeEventIntervals = (value: unknown): EventIntervals => Object.fromEntries(
   MATCH_EVENT_ORDER.map((kind) => [kind, normalizeEventInterval(value && typeof value === "object" && !Array.isArray(value) ? (value as EventIntervals)[kind] : value)]),
@@ -44,6 +45,7 @@ export const MATCH_EVENT_LORE = {
 } as const;
 export const MATCH_EVENT_INFO = {
   off: { icon: "−", ja: "", en: "" },
+  warp: { icon: "⟷", ja: "COREから2周目と外周付近を結ぶワープマスが常時1組出現。着地すると反対側へ転送されます。出口が塞がっている場合は不発。周期ごとに予告なしで位置が変わります。配置物や機体の下には出現しません。", en: "One gate pair links the second ring from CORE to the outer region. Landing on a gate teleports the probe unless the exit is occupied. Locations change periodically without advance location warnings. Gates never appear beneath probes or placed objects." },
   geyser: { icon: "♨", ja: "4か所の噴出口から蒸気が噴き出し、周囲の探査機を1マス押します。配置物は壊れず、移動先が塞がっていれば動きません。噴出口が塞がっている場所は噴出しません。赤い斜線は噴出予告（進入可）、白い縁は現在塞がれた噴出口を示します。", en: "Four steam vents push nearby probes one cell. Placed objects remain intact and block movement. Covered vents do not erupt. Red hatching warns of an eruption but does not restrict movement; a white rim marks a currently covered vent." },
   orbit: { icon: "↻", ja: "隣り合わない2つのリングが、互いに逆方向へ90度回転。探査機も配置物も一緒に移動します。", en: "Two nonadjacent rings rotate 90 degrees in opposite directions, carrying probes and placed objects." },
   gravity: { icon: "◎", ja: "すべての探査機を、斜めも含めCOREへ1マス引き寄せます。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pulls every probe one cell toward CORE, including diagonally. Meteors stay put; probes and obstacles block movement." },

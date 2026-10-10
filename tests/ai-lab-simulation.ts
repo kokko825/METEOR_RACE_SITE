@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { normalizeMatchEvent, normalizeMatchEvents } from "../config/match-events.js";
-import { chooseAiDecision, estimateAiFinishTurns, eventForecastValue, type AiDifficulty } from "../app/ai-engine.js";
+import { canDelegateDefense, chooseAiDecision, estimateAiFinishTurns, eventForecastValue, type AiDifficulty } from "../app/ai-engine.js";
 import {
   applyBlastSwitch,
   applyHoloSwitch,
@@ -27,7 +27,39 @@ import {
   type Player,
   SELECTABLE_ITEMS,
   skipBlockedMove,
+  distance,
+  teamOf,
 } from "../app/game-rules.js";
+
+for (const variant of ["item", "team-item"] as const) for (const difficulty of ["easy", "normal", "hard"] as const) {
+  const state = initialGameState(13, "red", 4, false, 0, [], variant);
+  state.turnCount = 8; state.phase = "switch";
+  state.pendingSwitches = [{ kind: "pulse", player: "red" }];
+  state.probes = { red: { r: 7, c: 6 }, blue: { r: 5, c: 6 }, green: { r: 2, c: 2 }, yellow: { r: 7, c: 7 } };
+  for (const random of [0, .3, .9]) {
+    const decision = chooseAiDecision(state, difficulty, () => random);
+    assert.equal(decision.type, "pulse");
+    if (decision.type === "pulse") for (const player of state.players) {
+      if (player === "red" || variant === "team-item" && teamOf(player) === teamOf("red")) {
+        assert.ok(distance(decision.target, state.probes[player]) > 1, "AI must not put its own or allied probe in its new PULSE field");
+      }
+    }
+  }
+}
+{
+  const state = initialGameState(13, "red", 4);
+  state.turnCount = 8; state.turn = "blue";
+  state.probes.yellow = { r: 6, c: 7 };
+  for (const p of state.players) state.inventory[p] = { small: 0, large: 0 };
+  assert.equal(canDelegateDefense(state, "red", ["yellow"]), false, "No defense resources means no delegation");
+  state.inventory.blue.large = 1;
+  assert.equal(canDelegateDefense(state, "red", ["yellow"]), true, "A simulated legal stop permits delegation");
+  state.inventory.blue.large = 0; state.inventory.red.large = 1; state.turn = "red";
+  assert.equal(canDelegateDefense(state, "red", ["yellow"]), false, "The evaluating AI cannot delegate to itself");
+  state.probes.red = { r: 8, c: 8 };
+  state.pulseDevices = [{ r: 8, c: 7, owner: "blue", id: 5, turns: 8 }];
+  assert.equal(estimateAiFinishTurns(state, "red"), 1, "Diagonal meteor propulsion can win even under PULSE");
+}
 
 {
   const state = initialGameState(9, "red", 2, false, 0, [], "classic");

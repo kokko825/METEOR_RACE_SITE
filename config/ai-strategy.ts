@@ -16,7 +16,7 @@ export const AI_STRATEGY = {
     activeShield: 26,
     boosterMove: 8,
     mobility: 3,
-    freeForAllRivalAdvance: 800,
+    freeForAllRivalAdvance: 1_200,
     freeForAllRivalFinish: 900_000,
   },
   events: {
@@ -61,6 +61,7 @@ export const AI_STRATEGY = {
   items: {
     orbitMinimumGain: 4,
     pulseMobility: 14,
+    friendlyPulseLock: 120_000,
     blastMobility: 5,
     shieldLossPenalty: 150,
     pulseEscapeBonus: 760,

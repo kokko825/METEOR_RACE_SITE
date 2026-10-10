@@ -44,7 +44,8 @@ assert.throws(() => applySetupItem({ ...setup, turn: "blue", itemHands: { ...set
   assert.deepEqual(simultaneous.itemHands?.blue, ["booster"]);
   assert.equal(simultaneous.turn, "red", "simultaneous loadout editing does not steal the shared turn");
 }
-setup = select(setup, ["booster", "recall", "orbit"]);
+assert.throws(() => applySetupItem(setup, "orbit"), "ORBIT is event-only");
+setup = select(setup, ["booster", "recall", "blast"]);
 setup = confirmSetupItems(setup);
 assert.equal(setup.phase, "move");
 
@@ -244,7 +245,7 @@ assert.deepEqual(gravityGame.probes.red, { r: 10, c: 7 }, "GRAVITY cannot pull t
 
 assert.throws(
   () => applySetupItem(initialGameState(15, "red", 2, false, 0, [], "item"), "gravity"),
-  /reserved for ranked/,
+  /イベント専用/,
   "GRAVITY is no longer a selectable item",
 );
 let rankedGravity = initialGameState(15, "red", 2, false, 0, [], "classic", undefined, true);

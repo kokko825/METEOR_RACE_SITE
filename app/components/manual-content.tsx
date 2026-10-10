@@ -56,7 +56,7 @@ export function WorldArchive({
           </p>
         </header>
         <div>
-          {ITEM_LORE.map((item) => (
+          {ITEM_LORE.filter(item => SELECTABLE_ITEMS.some(kind => kind === item.kind)).map((item) => (
             <article key={item.kind} className={item.kind}>
               <i aria-hidden="true">{ITEM_ICONS[item.kind]}</i>
               <span>

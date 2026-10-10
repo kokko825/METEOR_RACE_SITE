@@ -2326,6 +2326,7 @@ function Game() {
                   {r === mid && c === mid && <span className="core-ring"><b>CORE</b></span>}
                   {tutorialSuggestedTarget && samePos(pos, tutorialSuggestedTarget) && <span className="suggestion-mark" aria-hidden="true">◎</span>}
                   {previewState && activePlayers(game).filter((p) => samePos(previewState.probes[p], pos) && !samePos(game.probes[p], pos)).map((p) => <span key={p} className={`preview-probe ${p}`} aria-hidden="true">▲</span>)}
+                  {game.warpGates?.some(gate => samePos(gate, pos)) && <span key={`${pos.r},${pos.c}:${game.warpFlash ?? 0}`} className="warp-gate" aria-label={language === "ja" ? "ワープマス" : "Warp gate"}>⟷</span>}
                   <EventCellEffect event={game.matchEvent} pos={pos} mid={mid} perspective={perspectiveSlot} firing={eventFiring} />
                   {eventFiring && game.matchEvent?.last?.kind === "geyser" && game.matchEvent.last.vents?.some((vent) => samePos(vent, pos)) && !probe && !meteor && !obstacle && !pulseDevice && <span className="shockwave small event-geyser-wave" />}
                   {blastFx && blastFx.stage !== "settle" && samePos(pos, blastFx.target) && (
