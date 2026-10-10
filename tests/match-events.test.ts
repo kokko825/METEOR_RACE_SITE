@@ -5,6 +5,37 @@ const event = (kind: EventForecast["kind"]): EventForecast => ({ kind, target: {
 const start = (kind: EventForecast["kind"], count = 2, size = 9, seed = 21) => initialGameState(size, "red", count, false, 0, [], "classic", undefined, false, kind, seed);
 const round = (state: GameState) => { const count = state.players.length; for (let i = 0; i < count; i++) state = finishTurn(state); return state; };
 
+// Independently scheduled origins reserve terrain in both placement directions.
+for (const size of [11, 13, 15]) for (let seed = 1; seed <= 100; seed++) {
+  let state = start("warp", 2, size, seed);
+  state.matchEvent = { ...state.matchEvent!, kind: "geyser", kinds: ["geyser", "gravity", "warp"],
+    intervals: { geyser: 5, gravity: 7, warp: 3 },
+    schedule: { geyser: { remaining: 5 }, gravity: { remaining: 7 }, warp: { remaining: 3 } } };
+  for (let n = 0; n < 25; n++) {
+    // Keep probes away from CORE so every test exercises repeated relocation.
+    state.probes.red = { r: 0, c: 0 }; state.probes.blue = { r: size - 1, c: size - 1 };
+    state = round(state);
+    const forecasts = state.matchEvent!.forecasts ?? [];
+    const vents = forecasts.filter(f => f.kind === "geyser").flatMap(f => f.vents ?? [f.target]);
+    const gravity = forecasts.filter(f => f.kind === "gravity").map(f => f.target);
+    assert.ok(vents.length === 0 || vents.length === 4);
+    assert.ok(state.warpGates?.every(g => ![...vents, ...gravity].some(p => samePos(g, p))), "Pending origins and gates must never overlap");
+    assert.ok(gravity.every(g => !vents.some(v => samePos(g, v))), "Gravity and geyser origins stay separate");
+  }
+}
+
+for (const size of [11, 13, 15]) for (let seed = 1; seed <= 50; seed++) {
+  let state = initialGameState(size, "red", 2, false, 0, [], "classic", undefined, false, ["geyser", "gravity", "warp"], seed, 5);
+  state = round(round(round(state)));
+  const forecasts = state.matchEvent!.forecasts!;
+  const vents = forecasts.find(f => f.kind === "geyser")!.vents!;
+  const center = forecasts.find(f => f.kind === "gravity")!.target;
+  assert.equal(vents.length, 4);
+  assert.ok(!vents.some(v => samePos(v, center)));
+  assert.ok(state.warpGates!.every(g => ![...vents, center].some(p => samePos(g, p))));
+  assert.deepEqual(round(state), round(JSON.parse(JSON.stringify(state))), "Protected origins replay deterministically");
+}
+
 // Gates are persistent terrain; relocation never places them under an object.
 for (const size of [11, 13, 15]) for (let seed = 1; seed <= 100; seed++) {
   let state = start("warp", 4, size, seed);

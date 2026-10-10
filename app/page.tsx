@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENTS, normalizeMatchEvents, normalizeEventIntervals, type MatchEventKind } from "../config/match-events";
+import { normalizeRoomCode, ROOM_CODE_MAX_LENGTH } from "./room-code";
 import { EventControls, EventSummary, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle, forecastStyle } from "./components/match-events";
 import { useFieldEvent } from "./hooks/use-field-event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -519,6 +520,7 @@ function Game() {
     try {
       const data = await roomRequest({
         action: "create",
+        code: normalizeRoomCode(roomCodeInput),
         size,
         humanCount: onlinePlayerCount,
         aiCount: onlineAiCount,
@@ -567,7 +569,7 @@ function Game() {
   };
 
   const joinOnlineRoom = async () => {
-    const code = roomCodeInput.trim().toUpperCase();
+    const code = normalizeRoomCode(roomCodeInput);
     if (!code) return;
     setOnline((current) => ({ ...current, pending: true, error: "" }));
     try {
@@ -2820,7 +2822,7 @@ function Game() {
                   ? online.status === "waiting"
                     ? localize(`参加待ち ${online.joinedPlayers}/${online.maxPlayers}`, `WAITING ${online.joinedPlayers}/${online.maxPlayers}`)
                     : localize(`${online.role ? playerName(online.role) : "観戦"}として参加中`, `JOINED AS ${online.role ? playerName(online.role) : "SPECTATOR"}`)
-                  : localize("ルームを作るか、6文字のコードで参加", "CREATE A ROOM OR JOIN WITH A 6-CHARACTER CODE")}
+                  : localize("好きなコードで作成、またはコードを入力して参加", "CREATE WITH YOUR OWN CODE OR ENTER A CODE TO JOIN")}
               </strong>
             </div>
             {online.code && (
@@ -2838,7 +2840,7 @@ function Game() {
             {online.code && online.isHost && !rankedMode && <div className="room-rule-console"><div><span>ITEM</span><button type="button" className={isItemVariant(variant)?"on":""} onClick={toggleRoomItemMode}>{isItemVariant(variant)?"ON":"OFF"}</button></div><div><span>TEAM</span><button type="button" className={isTeamVariant(variant)?"on":""} onClick={()=>void setRoomTeamMode(!isTeamVariant(variant))}>{isTeamVariant(variant)?"ON":"OFF"}</button></div><label>BOARD<select value={size} onChange={(event)=>{setSize(Number(event.target.value));setNeedsNewGame(true);}}>{boardSizes.map((boardSize)=><option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label></div>}
             {online.code && online.isHost && !rankedMode && online.status === "waiting" && <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />}
             {online.code && <div className="room-settings-summary" aria-label={localize("現在のルーム設定", "Current room settings")}><span>{isTeamVariant(variant) ? "TEAM BATTLE" : "FREE FOR ALL"}</span><b>{isItemVariant(variant) ? "ITEM" : "CLASSIC"}</b><b>{size} × {size}</b><b>CPU {onlineAiCount} · {aiDifficulty.toUpperCase()}</b><span className="event-summary">{localize("イベント", "Event")} · {eventKind.length ? eventKind.map((kind) => `${MATCH_EVENTS[kind][language]} / ${eventInterval[kind]}${localize("巡ごと", " rounds")}`).join(" · ") : "OFF"}</span></div>}
-            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder={t("nickname")} aria-label={t("nickname")} maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 6))} placeholder={localize("ルームコード", "ROOM CODE")} aria-label={localize("ルームコード", "Room code")} maxLength={6}/><button onClick={createOnlineRoom} disabled={online.pending}>{localize("ルームを作る", "CREATE ROOM")}</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>{localize("ルームに入る", "JOIN ROOM")}</button><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>{localize("← ゲームモードへ戻る", "← BACK TO GAME MODE")}</button></>}
+            {!online.code && <><input value={nickname} onChange={(event) => setNickname(event.target.value.slice(0, COMMUNITY_SAFETY.nicknameMaxLength))} placeholder={t("nickname")} aria-label={t("nickname")} maxLength={COMMUNITY_SAFETY.nicknameMaxLength}/><input value={roomCodeInput} onChange={(event) => setRoomCodeInput(event.target.value)} placeholder={localize("ルームコード（空欄なら自動）", "ROOM CODE (blank: automatic)")} aria-label={localize("ルームコード", "Room code")} aria-describedby="room-code-help" maxLength={ROOM_CODE_MAX_LENGTH * 2} autoCapitalize="none" spellCheck={false} title={localize("日本語・英数字2〜12文字。空白・記号は使用不可。", "2–12 Japanese letters, English letters or digits. No spaces or symbols.")}/><button onClick={createOnlineRoom} disabled={online.pending}>{localize("ルームを作る", "CREATE ROOM")}</button><button onClick={joinOnlineRoom} disabled={online.pending || !roomCodeInput}>{localize("ルームに入る", "JOIN ROOM")}</button><small id="room-code-help" className="room-code-help">{localize("コードは日本語・英数字2〜12文字。空欄で作成すると自動発行します。コードはパスワードではありません。", "Use 2–12 Japanese letters, English letters or digits. Leave blank to generate a code. Codes are not passwords.")}</small><button type="button" className="online-main-return" onClick={() => setEntryStage("rule")}>{localize("← ゲームモードへ戻る", "← BACK TO GAME MODE")}</button></>}
             {online.code && !online.role && (
               <span className="spectator-badge">SPECTATING</span>
             )}

@@ -6,6 +6,7 @@ await runTsSuite("config", [
   "config/ai-strategy.ts",
   "config/ui-behavior.ts",
   "config/ui-copy.ts",
+  "app/room-code.ts",
   "app/balance-config.ts",
   "app/site-config.ts",
   "app/site-config-client.ts",

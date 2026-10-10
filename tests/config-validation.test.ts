@@ -1,3 +1,4 @@
+import { normalizeRoomCode, validRoomCode } from "../app/room-code";
 import assert from "node:assert/strict";
 import { GAME_BALANCE } from "../config/game-balance";
 import { SITE_PRESENTATION } from "../config/site-presentation";
@@ -54,3 +55,7 @@ try {
 } finally {
   globalThis.fetch = originalFetch;
 }
+assert.equal(normalizeRoomCode("　月ﾃｽﾄａｂ０１　"), "月テストAB01");
+assert.equal(normalizeRoomCode("か\u3099部屋"), "が部屋");
+for (const input of ["月テストAB01", "ひらがな漢字カナ12", "ーA", "𠮷野家1"]) assert.ok(validRoomCode(input));
+for (const input of ["A", "A B", "部屋😀", "<script>", "あ".repeat(13), "A\u200bB"]) assert.ok(!validRoomCode(input));

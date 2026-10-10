@@ -622,3 +622,5 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
     display:flex;border-color:transparent;background:transparent;
   }
 }
+.online-panel>code{overflow-wrap:anywhere;word-break:break-word;letter-spacing:.1em;text-align:center;padding:8px;max-width:100%}
+.online-panel>.room-code-help{grid-column:1/-1;line-height:1.6;color:#a8c6d2}

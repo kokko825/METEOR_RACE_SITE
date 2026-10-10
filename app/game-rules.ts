@@ -869,10 +869,18 @@ export function warpEntrants(before: GameState, after: GameState): GameState {
   return transferred ? { ...after, probes, warpFlash: (before.warpFlash ?? 0) + 1 } : after;
 }
 
+/** Only event origins reserve terrain; rings and effect areas may overlap gates. */
+function reservedEventCenters(state: GameState): Pos[] {
+  const event = state.matchEvent;
+  const forecasts = [...(event?.forecasts ?? []), ...(event?.forecast ? [event.forecast] : []),
+    ...Object.values(event?.schedule ?? {}).flatMap(clock => clock?.forecast ? [clock.forecast] : [])];
+  return forecasts.flatMap(f => f.kind === "geyser" ? f.vents ?? [f.target] : f.kind === "gravity" ? [f.target] : []);
+}
+
 function createWarpGates(state: GameState, initialSeed: number) {
   let seed = initialSeed >>> 0;
   const mid = Math.floor(state.size / 2);
-  const occupied = [...state.meteors, ...activeObstacles(state), ...activePulseDevices(state),
+  const occupied = [...reservedEventCenters(state), ...state.meteors, ...activeObstacles(state), ...activePulseDevices(state),
     ...activePlayers(state).map(p => state.probes[p])];
   const pick = (ring: number, old?: Pos): Pos | undefined => {
     const cells: Pos[] = [];
@@ -947,7 +955,7 @@ function resolveMatchEvent(state: GameState, event: EventForecast): GameState {
   }
   if (event.kind !== "geyser") return state;
   // A covered vent cannot erupt. HOLO and PULSE devices also physically cover it.
-  const occupied = [...state.meteors, ...activeObstacles(state), ...activePulseDevices(state), ...activePlayers(state).map((p) => state.probes[p])];
+  const occupied = [...(state.warpGates ?? []), ...state.meteors, ...activeObstacles(state), ...activePulseDevices(state), ...activePlayers(state).map((p) => state.probes[p])];
   const vents = (event.vents ?? [event.target]).filter((vent) => !occupied.some((p) => samePos(p, vent)));
   if (!vents.length) return state;
   return eventPush(state, (p) => {
@@ -972,7 +980,7 @@ function advanceMatchEvent(state: GameState): GameState {
     const clock = schedule[kind] ?? { remaining: current.remaining };
     const result = advanceEventGroup({ ...next, matchEvent: {
       kind, interval: current.intervals[kind], seed, remaining: clock.remaining,
-      acted: current.acted, serial: current.serial, forecast: clock.forecast,
+      acted: current.acted, serial: current.serial, forecast: clock.forecast, schedule,
     } });
     const tick = result.matchEvent!;
     schedule[kind] = { remaining: tick.remaining, forecast: tick.forecast };
@@ -1003,9 +1011,11 @@ function advanceEventGroup(state: GameState): GameState {
     const draw = (limit: number) => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return Math.floor(seed / 4294967296 * limit); };
     const mid = Math.floor(state.size / 2);
     let vents: Pos[] = [];
+    const reserved = [...(state.warpGates ?? []), ...reservedEventCenters(state)];
+    const available = (pos: Pos) => !reserved.some(p => samePos(p, pos));
     const ventCells: Pos[] = [];
     for (let r = 1; r < state.size - 1; r++) for (let c = 1; c < state.size - 1; c++) {
-      if (distance({ r, c }, { r: mid, c: mid }) >= 2) ventCells.push({ r, c });
+      if (distance({ r, c }, { r: mid, c: mid }) >= 2 && available({ r, c })) ventCells.push({ r, c });
     }
     // Seeded retries preserve spacing without tying vents to four cardinal lanes.
     for (let attempt = 0; attempt < 64; attempt++) {
@@ -1018,10 +1028,17 @@ function advanceEventGroup(state: GameState): GameState {
       }
       if (vents.length === MATCH_EVENT_RULES.geyserCount) break;
     }
-    if (vents.length < MATCH_EVENT_RULES.geyserCount) vents = [
-      { r: 1, c: 1 }, { r: 1, c: state.size - 2 },
-      { r: state.size - 2, c: 1 }, { r: state.size - 2, c: state.size - 2 },
-    ];
+    if (vents.length < MATCH_EVENT_RULES.geyserCount) {
+      const complete = (chosen: Pos[], cells: Pos[]): Pos[] | undefined => {
+        if (chosen.length === MATCH_EVENT_RULES.geyserCount) return chosen;
+        if (chosen.length + cells.length < MATCH_EVENT_RULES.geyserCount) return undefined;
+        for (let i = 0; i < cells.length; i++) {
+          const result = complete([...chosen, cells[i]], cells.slice(i + 1).filter(p => distance(p, cells[i]) > MATCH_EVENT_RULES.geyserSeparation));
+          if (result) return result;
+        }
+      };
+      vents = complete([], ventCells) ?? vents;
+    }
     const direction = MATCH_WIND_DIRECTIONS[draw(MATCH_WIND_DIRECTIONS.length)];
     // Prefer populated inner rings; reserve the outer edge for rare variation.
     const objects = [...players.map((p) => state.probes[p]), ...state.meteors, ...(state.obstacles ?? []), ...(state.pulseDevices ?? [])];
@@ -1040,7 +1057,8 @@ function advanceEventGroup(state: GameState): GameState {
       const inset = Math.min(MATCH_EVENT_RULES.gravityCenterInset, mid - MATCH_EVENT_RULES.gravityMinCoreDistance);
       const centers: Pos[] = [];
       for (let r = inset; r < state.size - inset; r++) for (let c = inset; c < state.size - inset; c++) {
-        if (distance({ r, c }, { r: mid, c: mid }) >= MATCH_EVENT_RULES.gravityMinCoreDistance) centers.push({ r, c });
+        if (distance({ r, c }, { r: mid, c: mid }) >= MATCH_EVENT_RULES.gravityMinCoreDistance && available({ r, c }) &&
+          (!normalizeMatchEvents(event.kinds ?? event.kind).includes("geyser") || !vents.some(p => samePos(p, { r, c })))) centers.push({ r, c });
       }
       return { ...event.forecast!, kind, target: centers[draw(centers.length)] };
     });

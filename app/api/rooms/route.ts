@@ -1,3 +1,4 @@
+import { normalizeRoomCode, validRoomCode } from "../../room-code";
 import { beforeFieldEvents } from "../../board-preview";
 import { env } from "cloudflare:workers";
 import { PLAYER_ORDER, TEAM_TURN_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, skipBlockedMove, initialGameState, isItemVariant, isTeamVariant, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
@@ -186,8 +187,8 @@ export async function GET(request: Request) {
   const email = emailFrom(request);
   if (!email) return json({ error: "プレイヤー識別情報を作成できませんでした" }, 401);
   await ensureSchema();
-  const code = new URL(request.url).searchParams.get("code")?.trim().toUpperCase();
-  if (!code) return json({ error: "ルームコードが必要です" }, 400);
+  const code = normalizeRoomCode(new URL(request.url).searchParams.get("code"));
+  if (!validRoomCode(code)) return json({ error: "ルームコードは日本語・英数字の2〜12文字で入力してください" }, 400);
   const room = await roomByCode(code);
   if (!room) return json({ error: "ルームが見つかりません" }, 404);
   const now = Date.now();
@@ -246,6 +247,10 @@ export async function POST(request: Request) {
   };
   if (body.action === "create") {
     if (!(await withinRateLimit(request, "rooms-create", 10, 300))) return rateLimitedResponse();
+    const requestedCode = normalizeRoomCode(body.code);
+    if (body.code !== undefined && typeof body.code !== "string") return json({ error: "ルームコードの形式が不正です" }, 400);
+    if (requestedCode && !validRoomCode(requestedCode)) return json({ error: "ルームコードは日本語・英数字の2〜12文字で入力してください" }, 400);
+    if (requestedCode && containsBlockedChatLanguage(requestedCode)) return json({ error: "ルームコードに使用できない表現が含まれています" }, 400);
     await cleanupAbandonedRooms();
     const liveBalance = await publishedBalance();
     const createRanked = Boolean(body.ranked) && isRankedOpen();
@@ -271,7 +276,7 @@ export async function POST(request: Request) {
     const layoutOffset =
       playerCount === 3 ? crypto.getRandomValues(new Uint8Array(1))[0] % 4 : 0;
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const code = codeValue();
+      const code = requestedCode || codeValue();
       const now = Date.now();
       const result = await env.DB.prepare(
         "INSERT OR IGNORE INTO game_rooms (code, host_email, max_players, seat_order_json, state_json, version, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
@@ -311,12 +316,13 @@ export async function POST(request: Request) {
         const room = await roomByCode(code);
         return json(roomPayload(room!, email), 201);
       }
+      if (requestedCode) return json({ error: "このルームコードは使用中です" }, 409);
     }
     return json({ error: "ルームを作成できませんでした" }, 503);
   }
 
-  const code = body.code?.trim().toUpperCase();
-  if (!code) return json({ error: "ルームコードが必要です" }, 400);
+  const code = normalizeRoomCode(body.code);
+  if (!validRoomCode(code)) return json({ error: "ルームコードは日本語・英数字の2〜12文字で入力してください" }, 400);
   let room = await roomByCode(code);
   if (!room) return json({ error: "ルームが見つかりません" }, 404);
 

@@ -1,3 +1,4 @@
+import { normalizeRoomCode, validRoomCode } from "../../room-code";
 import { env } from "cloudflare:workers";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 import { containsBlockedChatLanguage } from "../../chat-moderation";
@@ -33,11 +34,11 @@ async function ensureSchema() {
 
 async function roomMember(code: string, playerId: string) {
   const room = await env.DB.prepare(
-    "SELECT host_email, guest_email, player3_email, player4_email, state_json FROM game_rooms WHERE code = ?",
+    "SELECT host_email, guest_email, player3_email, player4_email, state_json, created_at FROM game_rooms WHERE code = ?",
   ).bind(code).first<Record<string, string | null>>();
   if (!room) return false;
   const spectators = JSON.parse(room.state_json ?? "{}").roomSpectators ?? [];
-  return [room.host_email, room.guest_email, room.player3_email, room.player4_email, ...spectators.map((member: { email: string }) => member.email)].includes(playerId);
+  return [room.host_email, room.guest_email, room.player3_email, room.player4_email, ...spectators.map((member: { email: string }) => member.email)].includes(playerId) ? Number(room.created_at) : null;
 }
 
 function response(data: unknown, status = 200) {
@@ -47,22 +48,23 @@ function response(data: unknown, status = 200) {
 export async function GET(request: Request) {
   if (!(await withinRateLimit(request, "chat-get", 60, 60))) return rateLimitedResponse();
   const playerId = playerIdFrom(request);
-  const code = new URL(request.url).searchParams.get("code")?.trim().toUpperCase() ?? "";
-  if (!playerId || !/^[A-Z2-9]{6}$/.test(code)) return response({ error: "チャットを取得できません" }, 400);
+  const code = normalizeRoomCode(new URL(request.url).searchParams.get("code"));
+  if (!playerId || !validRoomCode(code)) return response({ error: "チャットを取得できません" }, 400);
   await ensureSchema();
-  if (!(await roomMember(code, playerId))) return response({ error: "ルームに参加していません" }, 403);
+  const roomCreatedAt = await roomMember(code, playerId);
+  if (!roomCreatedAt) return response({ error: "ルームに参加していません" }, 403);
   const result = await env.DB.prepare(
-    "SELECT id, nickname, message, created_at AS createdAt FROM room_chat_messages WHERE room_code = ? ORDER BY created_at DESC LIMIT 40",
-  ).bind(code).all();
+    "SELECT id, nickname, message, created_at AS createdAt FROM room_chat_messages WHERE room_code = ? AND created_at >= ? ORDER BY created_at DESC LIMIT 40",
+  ).bind(code, roomCreatedAt).all();
   return response({ messages: [...(result.results ?? [])].reverse() });
 }
 
 export async function POST(request: Request) {
   const playerId = playerIdFrom(request);
   const body = await request.json() as { code?: string; nickname?: string; message?: string };
-  const code = body.code?.trim().toUpperCase() ?? "";
+  const code = normalizeRoomCode(body.code);
   const message = cleanMessage(body.message ?? "");
-  if (!playerId || !/^[A-Z2-9]{6}$/.test(code)) return response({ error: "チャットを送信できません" }, 400);
+  if (!playerId || !validRoomCode(code)) return response({ error: "チャットを送信できません" }, 400);
   if (!(await withinRateLimit(request, `chat-post:${playerId}:${code}`, COMMUNITY_SAFETY.chatPostLimit, COMMUNITY_SAFETY.chatPostWindowSeconds))) {
     return rateLimitedResponse(COMMUNITY_SAFETY.chatCooldownSeconds);
   }
@@ -70,14 +72,16 @@ export async function POST(request: Request) {
   if (message.length > COMMUNITY_SAFETY.chatMaxLength) return response({ error: `${COMMUNITY_SAFETY.chatMaxLength}文字以内で入力してください` }, 400);
   if (containsBlockedChatLanguage(message)) return response({ error: "送信できない表現が含まれています" }, 400);
   await ensureSchema();
-  if (!(await roomMember(code, playerId))) return response({ error: "ルームに参加していません" }, 403);
+  const roomCreatedAt = await roomMember(code, playerId);
+  if (!roomCreatedAt) return response({ error: "ルームに参加していません" }, 403);
   const nickname = (body.nickname?.trim() || "PLAYER").slice(0, COMMUNITY_SAFETY.nicknameMaxLength);
   if (containsBlockedChatLanguage(nickname)) return response({ error: "ニックネームに使用できない表現が含まれています" }, 400);
   const createdAt = Date.now();
   const id = crypto.randomUUID();
-  await env.DB.prepare(
-    "INSERT INTO room_chat_messages (id, room_code, player_id, nickname, message, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-  ).bind(id, code, playerId, nickname, message, createdAt).run();
+  const inserted = await env.DB.prepare(
+    "INSERT INTO room_chat_messages (id, room_code, player_id, nickname, message, created_at) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM game_rooms WHERE code = ? AND created_at = ?)",
+  ).bind(id, code, playerId, nickname, message, createdAt, code, roomCreatedAt).run();
+  if (!inserted.meta.changes) return response({ error: "ルームに参加していません" }, 403);
   await env.DB.prepare(
     "DELETE FROM room_chat_messages WHERE room_code = ? AND id NOT IN (SELECT id FROM room_chat_messages WHERE room_code = ? ORDER BY created_at DESC LIMIT 80)",
   ).bind(code, code).run();
