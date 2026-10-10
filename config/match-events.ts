@@ -49,3 +49,11 @@ export const MATCH_EVENT_INFO = {
   gravity: { icon: "◎", ja: "すべての探査機を、斜めも含めCOREへ1マス引き寄せます。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pulls every probe one cell toward CORE, including diagonally. Meteors stay put; probes and obstacles block movement." },
   wind: { icon: "➜", ja: "8方向から選ばれた方向へ、すべての探査機を1マス押します。メテオは動かず、他の探査機や障害物があれば止まります。", en: "Pushes all probes one cell in one of eight directions. Meteors stay put; probes and obstacles block movement." },
 } as const;
+
+/** Visual urgency only; never changes event timing or game rules. */
+export const MATCH_EVENT_FORECAST = {
+  baseOpacity: .48,
+  urgencyGain: .42,
+  secondaryScale: .78,
+  staggerMs: 550,
+};

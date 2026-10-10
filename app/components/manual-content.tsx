@@ -3,7 +3,8 @@ import type { SiteLanguage } from "../hooks/use-local-settings";
 import type { BalanceConfig } from "../balance-config";
 import { uiText } from "../i18n";
 import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, ITEM_ROLES } from "../item-content";
-import { MATCH_EVENTS, MATCH_EVENT_ORDER, MATCH_EVENT_INFO, MATCH_EVENT_LORE } from "../../config/match-events";
+import { MATCH_EVENT_ORDER, MATCH_EVENT_LORE } from "../../config/match-events";
+import { EventExplanation, EventOrder } from "./match-events";
 import { ITEM_LORE } from "../../config/item-lore";
 
 /** Display-only manual content. Forms, modal state and submission stay in page.tsx. */
@@ -151,7 +152,7 @@ export function RulesArchive({
         <div className="manual-event-content">
           <p>{MATCH_EVENT_LORE[language]}</p>
           <p>{language === "ja" ? "対戦設定でイベントごとのON/OFFと発動周期を選べます。発動の2巡前に場所や方向を予告。同時発動はORBIT → 間欠泉 → 追い風 → 中央重力の順です。" : "Choose each event and its individual interval in match setup. Positions and directions are forecast two rounds ahead. Simultaneous events resolve in this order: orbit → geyser → wind → gravity."}</p>
-          <div>{MATCH_EVENT_ORDER.map((kind) => <article key={kind}><b><i aria-hidden="true">{MATCH_EVENT_INFO[kind].icon}</i> {MATCH_EVENTS[kind][language]}</b><p>{MATCH_EVENT_INFO[kind][language]}</p></article>)}</div>
+          <EventOrder language={language} /><div>{MATCH_EVENT_ORDER.map((kind) => <EventExplanation key={kind} kind={kind} language={language} />)}</div>
         </div>
       </section>
       <section className="manual-items">

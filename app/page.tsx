@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENTS, normalizeMatchEvents, normalizeEventIntervals, type MatchEventKind } from "../config/match-events";
-import { EventControls, EventSummary, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle } from "./components/match-events";
+import { EventControls, EventSummary, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle, forecastStyle } from "./components/match-events";
 import { useFieldEvent } from "./hooks/use-field-event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
@@ -2241,6 +2241,7 @@ function Game() {
             data-perspective={perspectiveSlot}
             style={{
               ...eventFxStyle,
+              ...forecastStyle(game.matchEvent, boardPlayers.length),
               gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${game.size}, minmax(0, 1fr))`,
             }}
@@ -2304,7 +2305,6 @@ function Game() {
                     orbitSelecting && activeOrbitRing === orbitRingAt(r, c) ? "orbit-preview" : "",
                     orbitShift ? `orbit-shift ${cellOrbit?.clockwise ? "clockwise" : "counterclockwise"}` : "",
                   ].join(" ")}
-                  onPointerDown={() => setPendingBoardTarget(null)}
                   onClick={() => chooseBoardTarget(r, c)}
                   style={orbitShift ? ({
                     "--orbit-from-x": `${orbitShift.c * 100}%`,
