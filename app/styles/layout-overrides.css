@@ -631,6 +631,12 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .shell.hud-mode .player-card.active{transform:none}
 .shell.hud-mode .player-card{opacity:.9;transition:border-color .2s,box-shadow .2s,opacity .2s}
 .shell.hud-mode .player-card.active{opacity:1}
+.placement-controls{min-width:0;width:100%;margin:0;padding:4px 8px 8px;border:1px solid #365362;background:#06121dcc;box-sizing:border-box}
+.placement-controls>legend{padding:0 6px;color:#a2bac7;font-size:max(11px,calc(var(--game-ui-body,14px)*.7));line-height:1.2;letter-spacing:.04em;text-align:left}
+.placement-options{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px}
+.placement-options>.meteor-choice{flex:0 0 auto;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 7px;white-space:nowrap}
+.placement-options>.meteor-choice>b{margin:0;font-variant-numeric:tabular-nums}
+.placement-options>.meteor-choice.selected{background:#3d321b;border:2px solid var(--gold);padding:5px 6px;box-shadow:inset 0 -2px #ffd36366}
 .battle-atmosphere{display:none;pointer-events:none}
 .shell.hud-mode .player-card.active::after{content:"";position:absolute;inset:0;pointer-events:none;border:1px solid currentColor;animation:flag-acquire .7s ease-out both}
 @keyframes flag-acquire{from{opacity:1;box-shadow:inset 0 0 32px currentColor}to{opacity:.3;box-shadow:inset 0 0 0 transparent}}

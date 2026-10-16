@@ -10,14 +10,15 @@ try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.addInitScript(() => {
+    await page.addInitScript(language => {
+      window.localStorage.setItem('meteor-race-language', language);
       window.inventoryFeedbackCount = 0;
       const original = Element.prototype.animate;
       Element.prototype.animate = function (...args) {
         if (this.matches('.inventory')) window.inventoryFeedbackCount++;
         return original.apply(this, args);
       };
-    });
+    }, reducedMotion === 'reduce' ? 'en' : 'ja');
     await page.goto(origin);
     await page.waitForTimeout(1000);
     await page.locator('.title-start').click();
@@ -31,6 +32,17 @@ try {
     if (process.env.LAYOUT_SCREENSHOT_DIR && reducedMotion === 'no-preference') await page.screenshot({ path: `${process.env.LAYOUT_SCREENSHOT_DIR}/battle-desktop-duel.png` });
     await page.locator('.cell.legal').first().click();
     await page.locator('.cell.legal').first().click();
+    await page.locator('.placement-controls').waitFor();
+    for (const width of [320, 390, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(150);
+      const row = await page.locator('.placement-options').evaluate(el => {
+        const boxes = [...el.children].map(button => button.getBoundingClientRect());
+        return { count: boxes.length, rows: new Set(boxes.map(box => Math.round(box.top))).size, overflow: boxes.some(box => box.left < 0 || box.right > innerWidth) };
+      });
+      assert.deepEqual(row, { count: 3, rows: 1, overflow: false }, `Classic meteor choices fit one row at ${width}px`);
+      if (process.env.LAYOUT_SCREENSHOT_DIR && reducedMotion === 'no-preference' && [390, 1440].includes(width)) await page.screenshot({ path: `${process.env.LAYOUT_SCREENSHOT_DIR}/meteor-controls-${width}.png`, fullPage: true });
+    }
     await page.locator('.cell.placeable').first().click();
     await page.waitForTimeout(3000); // Meteor landing and shockwave finish before inventory is displayed.
     assert.equal(await page.evaluate(() => window.inventoryFeedbackCount > 0), reducedMotion !== 'reduce', 'Inventory feedback follows real consumption and reduced-motion preference');

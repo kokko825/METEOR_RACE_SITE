@@ -2484,23 +2484,30 @@ function Game() {
               </div>
             )}
             {game.phase === "place" && showTurnActionControls && (
-              <>
-                <span className="action-label">{t("meteorToPlace")}</span>
+              <fieldset className="placement-controls">
+                <legend>{t("meteorToPlace")}</legend>
+                <div className="placement-options">
                 <button
                   className={`meteor-choice ${game.selected === "small" ? "selected" : ""}`}
+                  aria-pressed={game.selected === "small"}
+                  aria-label={`${t("smallMeteor")} ×${game.inventory[game.turn].small}`}
+                  title={t("smallMeteor")}
                   disabled={game.inventory[game.turn].small === 0}
                   onClick={() => setGame((g) => ({ ...g, selected: "small" }))}
                 >
                   <i className="placement-meteor-icon small" aria-hidden="true">●</i>
-                  <span>{t("smallMeteor")}</span> <b>{game.inventory[game.turn].small}</b>
+                  <span>{localize("小", "S")}</span> <b>{game.inventory[game.turn].small}</b>
                 </button>
                 <button
                   className={`meteor-choice large ${game.selected === "large" ? "selected" : ""}`}
+                  aria-pressed={game.selected === "large"}
+                  aria-label={`${t("largeMeteor")} ×${game.inventory[game.turn].large}`}
+                  title={t("largeMeteor")}
                   disabled={game.inventory[game.turn].large === 0}
                   onClick={() => setGame((g) => ({ ...g, selected: "large" }))}
                 >
                   <i className="placement-meteor-icon large" aria-hidden="true">✦</i>
-                  <span>{t("largeMeteor")}</span> <b>{game.inventory[game.turn].large}</b>
+                  <span>{localize("大", "L")}</span> <b>{game.inventory[game.turn].large}</b>
                 </button>
                 {isItemVariant(game.variant) && (game.itemHands?.[game.turn] ?? []).map((kind, index) => (
                   <button
@@ -2521,7 +2528,8 @@ function Game() {
                 >
                   {t("passPlacement")} <b>{game.passAvailable?.[game.turn] ?? true ? 1 : 0}</b>
                 </button>
-              </>
+                </div>
+              </fieldset>
             )}
             {game.phase === "switch" && showTurnActionControls && game.pendingSwitches?.[0]?.kind === "orbit" && (
               <div className="orbit-controls">
