@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { SiteLanguage } from "../hooks/use-local-settings";
 import { SELECTABLE_ITEMS } from "../item-content";
 import {
@@ -165,8 +165,22 @@ export function InventoryPanel({ inventory, color, items, loadoutHidden = false,
   const itemCounts = SELECTABLE_ITEMS
     .map((kind) => ({ kind, count: items.filter((item) => item === kind).length }))
     .filter(({ count }) => count > 0);
+  const inventoryRef = useRef<HTMLDivElement>(null);
+  const signature = `${inventory.small}/${inventory.large}/${loadoutHidden}/${itemCounts.map(({ kind, count }) => `${kind}:${count}`).join(",")}`;
+  const previousSignature = useRef(signature);
+  useEffect(() => {
+    if (previousSignature.current === signature) return;
+    previousSignature.current = signature;
+    const element = inventoryRef.current;
+    if (!element || element.closest(".reduced-motion") || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const animation = element.animate([
+      { outlineColor: "currentColor", outlineOffset: "2px", outlineWidth: "1px", outlineStyle: "solid" },
+      { outlineColor: "transparent", outlineOffset: "5px", outlineWidth: "1px", outlineStyle: "solid" },
+    ], { duration: 420, easing: "ease-out" });
+    return () => animation.cancel();
+  }, [signature]);
   return (
-    <div className="inventory">
+    <div className="inventory" ref={inventoryRef}>
       <span>{language === "ja" ? "装備" : "ARSENAL"}</span>
       <div className="inventory-slot meteor-slot" aria-label={language === "ja" ? `小メテオ 残り${inventory.small}個` : `Small meteors: ${inventory.small} remaining`} title={`SMALL METEOR ×${inventory.small}`}><i className={`mini-meteor ${color}`}>●</i><b>×{inventory.small}</b></div>
       <div className="inventory-slot meteor-slot" aria-label={language === "ja" ? `大メテオ 残り${inventory.large}個` : `Large meteors: ${inventory.large} remaining`} title={`LARGE METEOR ×${inventory.large}`}><i className={`mini-meteor large ${color}`}>✦</i><b>×{inventory.large}</b></div>

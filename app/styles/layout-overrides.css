@@ -13,7 +13,7 @@
 @media (min-width:901px) {
   .hud-mode .turn-callout,
   .hud-mode .status { display:none; }
-  .hud-mode > .game-layout { grid-template-columns:minmax(125px,160px) minmax(360px,720px) minmax(125px,160px); }
+  .hud-mode > .game-layout { grid-template-columns:minmax(125px,200px) minmax(360px,720px) minmax(125px,200px); }
   /* game-layout already ends above the 76px utility bar. Reserve another
      61px for meteor/item controls so the square can never cover them. */
   .hud-mode .arena { row-gap:6px; }
@@ -631,14 +631,26 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .shell.hud-mode .player-card.active{transform:none}
 .shell.hud-mode .player-card{opacity:.9;transition:border-color .2s,box-shadow .2s,opacity .2s}
 .shell.hud-mode .player-card.active{opacity:1}
+.battle-atmosphere{display:none;pointer-events:none}
+.shell.hud-mode .player-card.active::after{content:"";position:absolute;inset:0;pointer-events:none;border:1px solid currentColor;animation:flag-acquire .7s ease-out both}
+@keyframes flag-acquire{from{opacity:1;box-shadow:inset 0 0 32px currentColor}to{opacity:.3;box-shadow:inset 0 0 0 transparent}}
 @media(min-width:901px){
+  .shell.hud-mode{isolation:isolate}
+  .battle-atmosphere{display:block;position:fixed;inset:0;overflow:hidden;z-index:-1;background:radial-gradient(ellipse at 5% 65%,#11384c66,transparent 42%),radial-gradient(ellipse at 95% 20%,#29315a55,transparent 38%)}
+  .battle-planet{position:absolute;width:clamp(460px,55vw,900px);aspect-ratio:1;left:-22%;bottom:-48%;border-radius:50%;border:1px solid #719fb33b;background:radial-gradient(circle at 65% 25%,#28424d88,#09141f 58%,#03070d 75%);box-shadow:inset -14px 16px 60px #6ec9f51a,0 0 75px #4b9dc514}
+  .battle-orbit{position:absolute;right:-22%;top:-42%;width:75vw;aspect-ratio:1;border:1px solid #7bacc826;border-radius:50%;box-shadow:0 0 0 65px #6aa1be08,0 0 0 130px #6aa1be05;animation:battle-orbit-drift 100s linear infinite}
+  .battle-orbit::before{content:"";position:absolute;left:14%;top:14%;width:5px;height:5px;border-radius:50%;background:#8ed8eb77;box-shadow:0 0 12px #8ed8eb55}
+  @keyframes battle-orbit-drift{to{transform:rotate(360deg)}}
   .shell.hud-mode .player-stack{height:auto;align-self:center;grid-auto-rows:auto;grid-template-rows:auto;gap:14px;max-height:100%;overflow-y:auto}
   .shell.hud-mode .player-stack:has(>.player-card:nth-child(2)){grid-template-rows:repeat(2,auto)}
-  .shell.hud-mode .player-stack>.player-card{height:auto;min-height:180px!important}
+  .shell.hud-mode .player-stack>.player-card{height:auto;min-height:clamp(290px,48dvh,460px)!important;background:linear-gradient(155deg,color-mix(in srgb,currentColor 13%,#07121f),#06121eed 60%);border-color:color-mix(in srgb,currentColor 35%,#18303c)}
+  .shell.hud-mode .player-stack:has(>.player-card:nth-child(2))>.player-card{min-height:clamp(190px,24dvh,260px)!important}
+  .shell.hud-mode .player-stack:not(:has(>.player-card:nth-child(2))) .probe-portrait-slot{height:clamp(100px,16dvh,160px);background:radial-gradient(ellipse,color-mix(in srgb,currentColor 12%,transparent),transparent 68%)}
+  .shell.hud-mode .player-stack:not(:has(>.player-card:nth-child(2))) .probe-portrait{scale:.9}
   .shell.hud-mode .player-stack:has(>.player-card:nth-child(2)) .inventory{align-self:start}
   .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) h2{grid-area:2/1/3/3}
   .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .player-team{grid-area:3/1/4/3}
-  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .probe-portrait-slot{grid-area:1/2;height:40px}
+  .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .probe-portrait-slot{grid-area:1/2;height:48px}
   .shell.hud-mode .player-stack:has(.player-card:nth-child(2)) .inventory{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .shell.hud-mode .player-card .inventory-slot b{position:static!important;transform:none!important;font-size:max(13px,calc(var(--game-ui-body,14px)*.9));line-height:1.2}
   .shell.hud-mode .player-card .inventory-item[data-count="1"] b{display:none}
@@ -673,3 +685,5 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 @media(min-width:701px) and (max-width:900px){
   .shell.hud-mode .arena:not(:has(.readable-loadout))>.board{width:min(100%,480px)!important}
 }
+@media(prefers-reduced-motion:reduce){.battle-orbit,.shell.hud-mode .player-card.active::after{animation:none}}
+.reduced-motion .battle-orbit,.shell.hud-mode.reduced-motion .player-card.active::after{animation:none}

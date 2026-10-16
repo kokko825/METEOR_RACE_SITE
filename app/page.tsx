@@ -1992,6 +1992,7 @@ function Game() {
 
   return (
     <main className={`shell text-size-${textSize} variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${tutorialStep ? ` tutorial-active tutorial-${tutorialStep}` : ""}${reducedMotion ? " reduced-motion" : ""}`}>
+      {!entryStage && !onlineLobbyOnly && <div className="battle-atmosphere" aria-hidden="true"><i className="battle-planet" /><i className="battle-orbit" /></div>}
       <div className="phone-portrait-lock" role="status" aria-live="polite">
         <i aria-hidden="true">↻</i>
         <strong>{localize("端末を縦向きにしてください", "ROTATE YOUR DEVICE TO PORTRAIT")}</strong>
