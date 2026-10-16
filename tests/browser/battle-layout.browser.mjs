@@ -17,6 +17,7 @@ try {
     if (scenario.team) await page.getByRole('button', { name: /2 VS 2/ }).click();
     else for (let i = 2; i < scenario.count; i++) await page.locator('.cpu-stepper button').last().click();
     if (scenario.items) await page.locator('.entry-settings select').first().selectOption('13');
+    if (scenario.items && scenario.count === 2) await page.locator('.event-toggle-grid button').first().click();
     await page.locator('.entry-confirm').click();
     if (scenario.items) {
       for (let i = 0; i < 2; i++) {
@@ -39,6 +40,10 @@ try {
           const board = layout.querySelector('.board').getBoundingClientRect();
           if (Math.abs(board.width - board.height) > 2) return 'Non-square board';
           if (board.left < -1 || board.right > innerWidth + 1) return 'Board outside viewport';
+          if (innerWidth <= 700) {
+            if (board.width < innerWidth - 36) return 'Phone board does not use available width';
+            if ([...layout.querySelectorAll('.player-card')].some(el => el.getBoundingClientRect().top < board.bottom)) return 'Phone inventory must follow the board';
+          }
           const boxes = [...layout.querySelectorAll('.player-card, .board, .action-panel')].map(el => ({ name: el.className, box: el.getBoundingClientRect() })).filter(({ box }) => box.width && box.height);
           for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
             const a = boxes[i].box, b = boxes[j].box;
