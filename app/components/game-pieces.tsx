@@ -171,7 +171,7 @@ export function InventoryPanel({ inventory, color, items, loadoutHidden = false,
       <div className="inventory-slot meteor-slot" aria-label={language === "ja" ? `小メテオ 残り${inventory.small}個` : `Small meteors: ${inventory.small} remaining`} title={`SMALL METEOR ×${inventory.small}`}><i className={`mini-meteor ${color}`}>●</i><b>×{inventory.small}</b></div>
       <div className="inventory-slot meteor-slot" aria-label={language === "ja" ? `大メテオ 残り${inventory.large}個` : `Large meteors: ${inventory.large} remaining`} title={`LARGE METEOR ×${inventory.large}`}><i className={`mini-meteor large ${color}`}>✦</i><b>×{inventory.large}</b></div>
       {loadoutHidden && <div className="inventory-slot loadout-hidden" aria-label={language === "ja" ? "アイテム構成は戦闘開始まで非公開" : "Item loadout remains hidden until the match begins"} title="SECRET LOADOUT"><i>◆</i><b>?</b></div>}
-      {itemCounts.map(({ kind, count }) => <div key={kind} className={`inventory-slot inventory-item ${kind}`} aria-label={language === "ja" ? `${kind.toUpperCase()} 残り${count}個` : `${kind.toUpperCase()}: ${count} remaining`} title={`${kind.toUpperCase()} ×${count}`}><ItemIcon kind={kind} /><b>×{count}</b></div>)}
+      {itemCounts.map(({ kind, count }) => <div key={kind} data-count={count} className={`inventory-slot inventory-item ${kind}`} aria-label={language === "ja" ? `${kind.toUpperCase()} 残り${count}個` : `${kind.toUpperCase()}: ${count} remaining`} title={`${kind.toUpperCase()} ×${count}`}><ItemIcon kind={kind} /><b>×{count}</b></div>)}
     </div>
   );
 }
