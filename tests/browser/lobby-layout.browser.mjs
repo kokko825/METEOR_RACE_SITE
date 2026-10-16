@@ -21,11 +21,11 @@ assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname), 'Use a 
       await page.goto(origin);
       await page.waitForTimeout(1000); // Allow initial client hydration before interacting with SSR buttons.
       await page.locator('.title-start').click();
-      await page.getByRole('button', { name: /ONLINE/ }).click();
+      await page.locator('.choice-row.three button').nth(2).click();
       await page.locator('.entry-confirm').click();
       await page.locator('.entry-confirm').click();
-      await page.locator('input[placeholder="NICKNAME"]').fill('Layout verification');
-      await page.getByRole('button', { name: 'CREATE ROOM', exact: true }).click();
+      await page.locator('.online-panel>input').first().fill('Layout verification');
+      await page.getByRole('button', { name: /^(CREATE ROOM|ルームを作る)$/ }).click();
       await page.locator('.ai-stepper').waitFor();
       await page.locator('.ai-stepper button').last().click();
       await page.locator('.cpu-member').nth(1).waitFor();

@@ -2048,7 +2048,7 @@ function Game() {
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>{t("back")}</button><div><small>{entryStage === "play" ? t("ruleGuide") : t("gameStart")}</small><b>{entryStage === "play" ? t("howToPlay") : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>{localize("COREへ先に到達せよ", "REACH THE CORE FIRST")}</h2><p>{localize("毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。", "Each turn, move your probe one cell vertically or horizontally, then place a meteor. Blasts are not merely hazards—they are propulsion.")}</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>{localize("探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。", "Move one cell vertically or horizontally and build a route toward the CORE.")}</p></article><article><b>02</b><strong>PLACE</strong><p>{localize("小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。", "Place from two small and one large meteor. The first player cannot place one on the opening turn.")}</p></article><article><b>03</b><strong>METEOR</strong><p>{localize("小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。", "Small meteors blast one surrounding ring. Large blasts are stronger near the center and move any probe.")}</p></article><article><b>04</b><strong>BONUS MOVE</strong><p>{localize("手持ちのメテオをすべて使い切ると、その手番中にもう1回移動できます。", "Use your last meteor to gain one bonus move during that turn.")}</p></article><article><b>GOAL</b><strong>CORE</strong><p>{localize("移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。", "Movement, BOOSTER, blasts, and GRAVITY can all carry you into the CORE.")}</p></article></div>
 <nav className="play-guide-links"><a href="/guide">{localize("遊び方をもっと詳しく", "DETAILED GUIDE")}</a><a href="/items">{localize("アイテム一覧", "ITEM LIST")}</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")}</button></div>}
-          {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>{t("choosePlayStyle")}</h2><p>{t("chooseOpponent")}</p><h3>{localize("プレイ方法", "PLAY STYLE")}</h3><div className="choice-row three"><button aria-pressed={setupMode === "cpu"} className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>{localize("シングル", "SINGLE")}</strong><span>{t("cpuBattle")}</span></button><button aria-pressed={setupMode === "human"} className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>{localize("ローカル", "LOCAL")}</strong><span>{t("localBattle")}</span></button><button aria-pressed={setupMode === "online"} className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>{localize("オンライン", "ONLINE")}</strong><span>{t("onlineBattle")}</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>{t("next")}</button></div>}
+          {entryStage === "rule" && <div className="entry-panel compact-flow"><h2>{t("choosePlayStyle")}</h2><div className="choice-row three"><button aria-pressed={setupMode === "cpu"} className={setupMode === "cpu" ? "selected" : ""} onClick={() => setSetupMode("cpu")}><strong>{localize("シングル", "SINGLE")}</strong><span>{t("cpuBattle")}</span></button><button aria-pressed={setupMode === "human"} className={setupMode === "human" ? "selected" : ""} onClick={() => setSetupMode("human")}><strong>{localize("ローカル", "LOCAL")}</strong><span>{t("localBattle")}</span></button><button aria-pressed={setupMode === "online"} className={setupMode === "online" ? "selected" : ""} onClick={() => setSetupMode("online")}><strong>{localize("オンライン", "ONLINE")}</strong><span>{t("onlineBattle")}</span></button></div><button className="entry-confirm" onClick={() => setEntryStage("match")}>{t("next")}</button></div>}
           {entryStage === "match" && (
             <div className="entry-panel compact-flow">
               <h2>{setupMode === "online" ? t("onlineMatch") : t("matchSetup")}</h2>
@@ -2443,7 +2443,7 @@ function Game() {
             {previewTarget && previewState && <div className="target-legend">{localize("点線：対象 · 白枠：移動先", "Dashed: target · White: destination")}</div>}
             {game.phase === "setup" && showTurnActionControls && (
               <div className="switch-setup-controls">
-                <span className="action-label">{tf("selectItems", { total: balance.itemHandTotal, same: balance.itemSameMax })}</span>
+                <div className="loadout-selection-meta"><span>{tf("selectItems", { total: balance.itemHandTotal, same: balance.itemSameMax })}</span><b aria-live="polite">{tf("selectedCount", { count: game.itemHands?.[setupPlayer]?.length ?? 0, total: balance.itemHandTotal })}</b></div>
                 {SELECTABLE_ITEMS.map((kind) => (
                   <button
                     key={kind}
@@ -2462,9 +2462,6 @@ function Game() {
                     <b>{(game.itemHands?.[setupPlayer] ?? []).filter((entry) => entry === kind).length}</b>
                   </button>
                 ))}
-                <b>
-                  {tf("selectedCount", { count: game.itemHands?.[setupPlayer]?.length ?? 0, total: balance.itemHandTotal })}
-                </b>
                 <span className="setup-confirm-actions">
                   <button
                     className="primary-action compact-action"
@@ -2551,9 +2548,8 @@ function Game() {
             )}
             {game.phase === "switch" && showTurnActionControls && game.pendingSwitches?.[0]?.kind !== "orbit" && (
               <div className="switch-target-controls">
-                <span className="action-label">
-                  {tf("chooseBoardTarget", { kind: game.pendingSwitches?.[0]?.kind.toUpperCase() ?? "ITEM" })}
-                </span>
+                <span className={`target-item ${game.pendingSwitches?.[0]?.kind ?? ""}`}>{game.pendingSwitches?.[0] && <ItemIcon kind={game.pendingSwitches[0].kind} />}<b>{game.pendingSwitches?.[0]?.kind.toUpperCase()}</b></span>
+                <span className="target-hint">{localize("盤上で対象を選択", "Choose a target on the board")}</span>
                 <button className="secondary" onClick={cancelItemTarget}>{t("back")}</button>
               </div>
             )}

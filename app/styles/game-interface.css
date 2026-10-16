@@ -118,14 +118,14 @@ button { color: inherit; }
 .inventory > span { grid-column:1/-1; display:block; margin-bottom:2px; color:#6d8493; letter-spacing:.16em; font-size:7px; }
 .inventory > .inventory-slot { position:relative; min-width:0; min-height:42px; display:grid; place-items:center; padding:5px; border:1px solid color-mix(in srgb,currentColor 34%,rgba(255,255,255,.08)); border-radius:5px; background:color-mix(in srgb,currentColor 7%,rgba(2,11,17,.9)); box-shadow:inset 0 0 12px color-mix(in srgb,currentColor 6%,transparent); }
 .inventory > .inventory-slot > b { position:absolute; right:3px; bottom:2px; min-width:16px; padding:1px 3px; border-radius:8px; background:rgba(1,8,12,.88); color:#fff; font-size:8px; line-height:1.25; text-align:center; }
-.inventory-item.shield { --item-color:#65dcff; color:var(--item-color); }
-.inventory-item.booster { --item-color:var(--item-booster); color:var(--item-color); }
-.inventory-item.holo { --item-color:#d47cff; color:var(--item-color); }
-.inventory-item.orbit { --item-color:#55efa0; color:var(--item-color); }
-.inventory-item.blast { --item-color:var(--item-blast); color:var(--item-color); }
-.inventory-item.pulse { --item-color:#ff3bd4; color:var(--item-color); }
-.inventory-item.recall { --item-color:#70a7ff; color:var(--item-color); }
-.inventory-item.gravity { --item-color:#c58cff; color:var(--item-color); }
+.inventory-item.shield,.target-item.shield { --item-color:#65dcff; color:var(--item-color); }
+.inventory-item.booster,.target-item.booster { --item-color:var(--item-booster); color:var(--item-color); }
+.inventory-item.holo,.target-item.holo { --item-color:#d47cff; color:var(--item-color); }
+.inventory-item.orbit,.target-item.orbit { --item-color:#55efa0; color:var(--item-color); }
+.inventory-item.blast,.target-item.blast { --item-color:var(--item-blast); color:var(--item-color); }
+.inventory-item.pulse,.target-item.pulse { --item-color:#ff3bd4; color:var(--item-color); }
+.inventory-item.recall,.target-item.recall { --item-color:#70a7ff; color:var(--item-color); }
+.inventory-item.gravity,.target-item.gravity { --item-color:#c58cff; color:var(--item-color); }
 .inventory-item .item-icon { width:25px; height:25px; font-size:14px; }
 .loadout-hidden { color:#718794; }
 .loadout-hidden i { text-align:center; font-style:normal; opacity:.55; }

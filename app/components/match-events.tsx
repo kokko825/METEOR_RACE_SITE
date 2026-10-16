@@ -42,7 +42,6 @@ export function EventBoardEffect({ event, perspective, firing, size }: { event?:
 export function EventControls({ value, onChange, language, interval, onIntervalChange }: { value: MatchEventKind[]; onChange: (value: MatchEventKind[]) => void; language: "ja" | "en"; interval: EventIntervals; onIntervalChange: (value: EventIntervals) => void }) {
   return <fieldset className="event-controls">
     <legend>{language === "ja" ? "盤面イベント" : "Field events"}</legend>
-    <p className="event-intro">{MATCH_EVENT_LORE[language]}</p>
     <div className="event-toggle-grid">
       {MATCH_EVENT_ORDER.map((kind) => <button type="button" key={kind} aria-pressed={value.includes(kind)}
         title={MATCH_EVENT_INFO[kind][language]}
@@ -55,7 +54,7 @@ export function EventControls({ value, onChange, language, interval, onIntervalC
       {normalizeMatchEvents(value).map((kind) => <label key={kind}>{MATCH_EVENTS[kind][language]} {language === "ja" ? "周期（巡）" : "(rounds)"}<select aria-label={`${MATCH_EVENTS[kind][language]} ${language === "ja" ? "発動周期" : "interval"}`} value={interval[kind] ?? 5} onChange={(e) => onIntervalChange({ ...interval, [kind]: Number(e.target.value) })}>{Array.from({ length: 97 }, (_, i) => <option key={i + 3} value={i + 3}>{i + 3}</option>)}</select></label>)}
       <small>{language === "ja" ? "複数選択可 · ワープ以外は2巡前に予告" : "Combine events · 2-round warning except warp"}</small>
     </div>
-    <details className="event-help"><summary>{language === "ja" ? "イベントの効果と発動順" : "Effects and resolution order"}</summary><EventOrder language={language} /><div>{MATCH_EVENT_ORDER.map((kind) => <EventExplanation key={kind} kind={kind} language={language} />)}</div></details>
+    <details className="event-help"><summary>{language === "ja" ? "イベントの効果と発動順" : "Effects and resolution order"}</summary><p className="event-intro">{MATCH_EVENT_LORE[language]}</p><EventOrder language={language} /><div>{MATCH_EVENT_ORDER.map((kind) => <EventExplanation key={kind} kind={kind} language={language} />)}</div></details>
   </fieldset>;
 }
 
