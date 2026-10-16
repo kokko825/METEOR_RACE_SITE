@@ -10,7 +10,6 @@ export function LoadoutPreview({ items, balance, language }: {
   return <div className="item-selection-overlay readable-loadout">
     <header><strong>{language === "ja" ? "持ち込むアイテム" : "YOUR LOADOUT"}</strong></header>
     <div className="loadout-rows">
-      {!items.length && <p className="loadout-empty">{language === "ja" ? "下の一覧から装備を選んでください。" : "Choose your equipment below."}</p>}
       {items.map((item, i) => <details key={`${item}-${i}`} className={`loadout-row ${item}`}>
         <summary>
           <span className="loadout-emblem"><ItemIcon kind={item} /><small>{String(i + 1).padStart(2, "0")}</small></span>
@@ -22,6 +21,7 @@ export function LoadoutPreview({ items, balance, language }: {
         </summary>
         <p className="loadout-card-description">{itemDetail(item, balance, language)}</p>
       </details>)}
+      {Array.from({ length: Math.max(0, balance.itemHandTotal - items.length) }, (_, i) => <div key={`empty-${i}`} className="loadout-placeholder" aria-hidden="true"><span>{String(items.length + i + 1).padStart(2, "0")}</span><span>＋</span></div>)}
     </div>
   </div>;
 }

@@ -2237,7 +2237,7 @@ function Game() {
             {visibleGameMessage}
           </div>
           {game.phase === "setup" && isItemVariant(game.variant) && (
-            <LoadoutPreview key={`${setupPlayer}-${(game.itemHands?.[setupPlayer] ?? []).join("-")}`} items={game.itemHands?.[setupPlayer] ?? []} balance={game.balance ?? activeBalance} language={language} />
+            <LoadoutPreview key={setupPlayer} items={game.itemHands?.[setupPlayer] ?? []} balance={game.balance ?? activeBalance} language={language} />
           )}
           <div
             key={eventFiring ? `event-${eventEffectKey}` : "board"}
