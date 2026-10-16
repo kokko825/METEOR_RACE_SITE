@@ -43,6 +43,12 @@ try {
           if (innerWidth <= 700) {
             if (board.width < innerWidth - 36) return 'Phone board does not use available width';
             if ([...layout.querySelectorAll('.player-card')].some(el => el.getBoundingClientRect().top < board.bottom)) return 'Phone inventory must follow the board';
+            const header = document.querySelector('.topbar');
+            const back = header.querySelector('.game-back').getBoundingClientRect();
+            const guides = header.querySelector('.topbar-guide-actions').getBoundingClientRect();
+            const meta = header.querySelector('.match-meta').getBoundingClientRect();
+            if (meta.left < back.right || meta.right > guides.left) return 'Header telemetry overlaps buttons';
+            if (meta.bottom > Math.max(back.bottom, guides.bottom) + 10) return 'Header telemetry creates another row';
           }
           const boxes = [...layout.querySelectorAll('.player-card, .board, .action-panel')].map(el => ({ name: el.className, box: el.getBoundingClientRect() })).filter(({ box }) => box.width && box.height);
           for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {

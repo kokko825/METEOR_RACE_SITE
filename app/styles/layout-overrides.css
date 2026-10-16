@@ -586,11 +586,16 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 }
 /* Short windows and expanded details must remain reachable without clipping. */
 @media(max-width:700px){
- .shell.hud-mode>.topbar{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:center;gap:4px 8px!important;height:auto!important;min-height:44px!important;flex:0 0 auto!important;padding:0!important;margin:0!important}
+ .shell.hud-mode>.topbar{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center;gap:4px 8px!important;height:auto!important;min-height:44px!important;flex:0 0 auto!important;padding:0!important;margin:0!important}
  .shell.hud-mode>.topbar>.game-back{grid-area:1/1;margin:0;min-height:44px}
  .shell.hud-mode>.topbar>.brand{display:none!important}
- .shell.hud-mode>.topbar>.topbar-guide-actions{grid-area:1/2;position:static!important;transform:none!important;justify-self:end}
- .shell.hud-mode>.topbar>.match-meta{grid-area:2/1/3/3;margin:0!important;justify-content:center}
+ .shell.hud-mode>.topbar>.topbar-guide-actions{grid-area:1/3;position:static!important;transform:none!important;justify-self:end}
+ .shell.hud-mode>.topbar>.match-meta{grid-area:1/2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px!important;margin:0!important;padding:0!important;min-height:0!important;min-width:0}
+ .shell.hud-mode .match-meta>.round{padding:0!important;font-size:11px!important;line-height:1.3!important;letter-spacing:.03em;white-space:normal}
+ .shell.hud-mode .match-meta>.round::before{content:none}
+ .shell.hud-mode .match-meta>.event-summary-menu{margin:0!important;padding:0!important;border:0!important;align-self:stretch;max-width:100%}
+ .shell.hud-mode .event-summary-menu>summary{padding:3px 2px;min-height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1.3;white-space:normal;text-align:center;letter-spacing:0}
+ .shell.hud-mode .event-summary-popover{position:fixed;top:76px;left:10px;right:10px;width:auto;max-height:60dvh}
  .shell.hud-mode>.topbar .manual-trigger,.shell.hud-mode>.topbar .tutorial-trigger{min-height:44px}
 }
 .shell.hud-mode:has(.readable-loadout){overflow-y:auto}
@@ -602,11 +607,10 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 @media(max-width:700px){
  .shell.hud-mode .player-stack{min-width:0}
  .shell.hud-mode .player-stack .player-card{min-width:0!important;max-width:100%;box-sizing:border-box}
- .shell.hud-mode .player-card>.inventory{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px!important;width:100%;min-width:0!important}
- .shell.hud-mode .player-card .inventory>span{grid-column:1/-1}
- .shell.hud-mode .player-card .inventory-slot{width:100%!important;min-width:0!important;max-width:100%;padding:3px 1px!important;gap:2px!important;box-sizing:border-box}
+ .shell.hud-mode .player-card>.inventory{min-width:0!important}
+ .shell.hud-mode .player-card .inventory-slot{min-width:0!important;max-width:100%;box-sizing:border-box}
  .shell.hud-mode .player-card .inventory-slot .item-icon{width:16px!important;height:16px!important;flex:0 0 16px;font-size:16px!important}
- .shell.hud-mode .player-card .inventory-slot b{font-size:10px!important;white-space:nowrap}
+ .shell.hud-mode .player-card .inventory-slot b{white-space:nowrap}
 }
 .target-legend{position:absolute;bottom:100%;left:0;right:0;color:#bcd2df;background:#061521;font-size:12px;text-align:center;pointer-events:none}
 .item-icon.clean-icon{min-width:0!important;min-height:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;text-shadow:none!important;filter:none!important;font-style:normal;display:inline-grid;place-items:center;color:inherit}
@@ -719,10 +723,6 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .shell.hud-mode:not(:has(.readable-loadout)) .player-stack>.player-card:first-child{grid-row:2!important}
   .shell.hud-mode:not(:has(.readable-loadout)) .player-stack>.player-card:nth-child(2){grid-row:3!important}
   .shell.hud-mode .arena:not(:has(.readable-loadout))>.board{width:100%!important}
-  .shell.hud-mode>.topbar>.match-meta{gap:4px!important;padding:0!important;min-height:0!important}
-  .shell.hud-mode .match-meta>.round{padding:4px 6px!important;font-size:11px!important;line-height:1.3!important}
-  .shell.hud-mode .match-meta>.event-summary-menu{margin:0!important;padding:0!important;border:0!important;align-self:center}
-  .shell.hud-mode .event-summary-menu>summary{padding:4px 6px;min-height:32px;display:flex;align-items:center;font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){.battle-orbit,.shell.hud-mode .player-card.active::after{animation:none}}
 .reduced-motion .battle-orbit,.shell.hud-mode.reduced-motion .player-card.active::after{animation:none}
