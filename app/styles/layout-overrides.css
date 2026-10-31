@@ -640,7 +640,7 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .online-panel>.room-code-help{grid-column:1/-1;line-height:1.6;color:#a8c6d2}
 
 /* Device-specific battle composition. Keep existing tokens, colours and HUD.
-   Compact screens list every participant above the board; desktop keeps flags.
+   Phones list participants below controls; tablets above; desktop keeps flags.
    These rules do not affect entry screens or the online waiting room. */
 .shell.hud-mode .player-card.active{transform:none}
 .shell.hud-mode .player-card{opacity:.9;transition:border-color .2s,box-shadow .2s,opacity .2s}
@@ -723,6 +723,28 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .shell.hud-mode:not(:has(.readable-loadout)) .player-stack>.player-card:first-child{grid-row:2!important}
   .shell.hud-mode:not(:has(.readable-loadout)) .player-stack>.player-card:nth-child(2){grid-row:3!important}
   .shell.hud-mode .arena:not(:has(.readable-loadout))>.board{width:100%!important}
+  /* Reserve the same compact action track before and after moving. The board
+     never changes size when controls appear, and inventories stay close by. */
+  .shell.hud-mode .arena:not(:has(.readable-loadout))>.action-panel{min-height:70px!important;padding:4px 0!important;gap:4px}
+  .shell.hud-mode .placement-controls{padding:3px;border-color:#365362;border-radius:4px}
+  .shell.hud-mode .placement-controls>legend,
+  .shell.hud-mode .placement-options>.meteor-choice>span{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .shell.hud-mode .placement-options{display:flex;flex-wrap:nowrap;align-items:stretch;gap:3px}
+  .shell.hud-mode .placement-options>.meteor-choice{flex:1 1 0;min-width:0;min-height:48px;padding:4px 2px;gap:2px;font-size:14px;line-height:1.2}
+  .shell.hud-mode .placement-options>.meteor-choice.selected{padding:3px 1px}
+  .shell.hud-mode .placement-options>.meteor-choice.item-choice .item-icon{width:24px;height:24px;font-size:24px;flex:none}
+  .shell.hud-mode .placement-options .placement-meteor-icon{width:18px;height:18px;font-size:18px;flex:none}
+  .shell.hud-mode .placement-options>.pass-choice{flex-direction:column;gap:0;white-space:normal;font-size:0}
+  .shell.hud-mode .placement-options>.pass-choice::before{content:attr(data-compact-label);font-size:12px;line-height:1.2}
+  .shell.hud-mode .placement-options>.pass-choice>b{font-size:12px;line-height:1.2}
+  .shell.hud-mode .player-card .inventory-slot{min-height:28px!important;padding:2px!important;gap:2px!important}
+  .shell.hud-mode .player-card .inventory-slot b{font-size:max(12px,calc(var(--game-ui-body,14px)*.8))!important}
+  .shell.hud-mode .player-card .inventory-slot .item-icon{width:20px!important;height:20px!important;flex:0 0 20px;font-size:20px!important}
+  .shell.hud-mode .player-card .inventory-item[data-count="1"]{width:24px!important;padding:1px!important}
+  .shell.hud-mode .player-card .meteor-slot{padding:1px!important;gap:1px!important}
+  .shell.hud-mode .player-card .meteor-slot .mini-meteor{width:14px!important;font-size:14px!important}
+  .shell.hud-mode .player-card .meteor-slot b{font-size:12px!important}
+  .shell.hud-mode .player-card.active{border-color:currentColor;box-shadow:inset 3px 0 currentColor,0 0 12px color-mix(in srgb,currentColor 15%,transparent)}
 }
 @media(prefers-reduced-motion:reduce){.battle-orbit,.shell.hud-mode .player-card.active::after{animation:none}}
 .reduced-motion .battle-orbit,.shell.hud-mode.reduced-motion .player-card.active::after{animation:none}

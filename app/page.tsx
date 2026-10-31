@@ -2520,6 +2520,7 @@ function Game() {
                 ))}
                 <button
                   className="meteor-choice pass-choice"
+                  data-compact-label={localize("パス", "PASS")}
                   disabled={!(game.passAvailable?.[game.turn] ?? true)}
                   onClick={passPlacement}
                 >
