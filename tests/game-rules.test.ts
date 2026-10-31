@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import "./match-events.test.js";
+import "./booster.test.js";
 import { gameStatusText } from "../app/game-status";
 
 // Result localization must preserve both the finishing player and their team.

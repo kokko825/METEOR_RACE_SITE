@@ -9,4 +9,5 @@ await runTsSuite("rules", [
   "app/game-status.ts",
   "tests/game-rules.test.ts",
   "tests/match-events.test.ts",
+  "tests/booster.test.ts",
 ], "tests/game-rules.test.ts");

@@ -8,6 +8,7 @@ const browser = await chromium.launch({ headless: true, ...(process.env.TEST_BRO
 try {
   for (const [width, height] of [[320,700],[390,740],[768,1024],[1024,768],[1440,900]]) {
     const page = await browser.newPage({ viewport: { width, height } });
+    await page.addInitScript(language => localStorage.setItem('meteor-race-language', language), process.env.TEST_LANGUAGE ?? 'ja');
     await page.goto(origin);
     await page.waitForTimeout(1000);
     await page.locator('.title-start').click();
@@ -24,10 +25,10 @@ try {
         const nextTop = await page.locator('.switch-setup-controls').evaluate(el => el.getBoundingClientRect().top + scrollY);
         assert.ok(Math.abs(controlTop - nextTop) < 2, `Selection shifts controls: ${width}/${size}: ${controlTop} -> ${nextTop}`);
       }
-      await page.locator('.loadout-row summary').first().click();
+      await page.locator('.loadout-row.booster summary').click();
       const expandedTop = await page.locator('.switch-setup-controls').evaluate(el => el.getBoundingClientRect().top + scrollY);
       assert.ok(Math.abs(controlTop - expandedTop) < 2, 'Expanded detail shifts controls');
-      await page.locator('.loadout-row summary').first().click();
+      await page.locator('.loadout-row.booster summary').click();
       const confirm = page.locator('.setup-confirm-actions button').first();
       await confirm.scrollIntoViewIfNeeded();
       assert.ok(await confirm.evaluate(el => { const r = el.getBoundingClientRect(); const hit = document.elementFromPoint(r.x+r.width/2,r.y+r.height/2); return el === hit || el.contains(hit); }), 'Confirm blocked');

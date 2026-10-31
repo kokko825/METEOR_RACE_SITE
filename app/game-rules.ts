@@ -431,12 +431,14 @@ export function legalMoves(state: GameState, player = state.turn): Pos[] {
         !players.some(
           (candidate) => candidate !== player && samePos(target, state.probes[candidate]),
         ) &&
-        !state.meteors.some((meteor) => samePos(meteor, target)) &&
+        (maxSteps > 1 || !state.meteors.some((meteor) => samePos(meteor, target))) &&
         !activeObstacles(state).some((obstacle) => samePos(obstacle, target)) &&
         !activePulseDevices(state).some((device) => samePos(device, target));
       if (!legal) {
         const canJumpObstacle = maxSteps > 1 && step === 1 &&
-          (state.meteors.some((meteor) => samePos(meteor, target)) || activeObstacles(state).some((obstacle) => samePos(obstacle, target)));
+          activeObstacles(state).some((obstacle) => samePos(obstacle, target)) &&
+          !players.some((candidate) => candidate !== player && samePos(target, state.probes[candidate])) &&
+          !activePulseDevices(state).some((device) => samePos(device, target));
         if (canJumpObstacle) continue;
         break;
       }
@@ -641,11 +643,24 @@ export function applyMove(state: GameState, target: Pos): GameState {
   const mid = Math.floor(state.size / 2);
   const origin = state.probes[state.turn];
   const moveSteps = Math.abs(target.r - origin.r) + Math.abs(target.c - origin.c);
+  // Resolve the straight path before warp transport. Breaking a meteor returns
+  // it to its owner without a blast; HOLO is only jumped, never destroyed.
+  const boosted = isItemVariant(state.variant) && (state.boosterMoves?.[state.turn] ?? 0) > 0;
+  const path = boosted ? Array.from({ length: moveSteps }, (_, index) => ({
+    r: origin.r + Math.sign(target.r - origin.r) * (index + 1),
+    c: origin.c + Math.sign(target.c - origin.c) * (index + 1),
+  })) : [];
+  const crushed = boosted ? state.meteors.filter((meteor) => path.some((cell) => samePos(cell, meteor))) : [];
+  if (crushed.length > 0) {
+    const inventory = cloneInventory(state.inventory);
+    for (const meteor of crushed) if (!meteor.consumable) inventory[meteor.owner][meteor.size] += 1;
+    state = { ...state, inventory, meteors: state.meteors.filter((meteor) => !crushed.includes(meteor)) };
+  }
   const moved = warpEntrants(state, { ...state, probes: { ...state.probes, [state.turn]: target } });
   const probes = moved.probes;
   state = { ...state, ...(moved.warpFlash !== undefined ? { warpFlash: moved.warpFlash } : {}) };
-  // BOOSTER is only consumed when its 2-square jump is actually used.
-  if (moveSteps > 1 && (state.boosterMoves?.[state.turn] ?? 0) > 0) {
+  // An ordinary one-cell move preserves the charge; even a one-cell ram uses it.
+  if (boosted && (moveSteps > 1 || crushed.length > 0)) {
     state = {
       ...state,
       boosterMoves: {

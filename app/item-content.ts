@@ -14,7 +14,7 @@ export { SELECTABLE_ITEMS };
 
 export const ITEM_ROLES: Record<ItemKind, { ja: string; en: string }> = {
   shield: { ja: "爆風を弱めて身を守る", en: "Soften blasts to hold your ground" },
-  booster: { ja: "障害物を飛び越えて前進", en: "Leap over obstacles and advance" },
+  booster: { ja: "メテオを砕いて前進", en: "Break through meteors" },
   holo: { ja: "進路に障害物を作る", en: "Build a roadblock" },
   orbit: { ja: "機体も配置物もまとめて回す", en: "Rotate probes and objects together" },
   blast: { ja: "爆風で前進・妨害する", en: "Blast yourself forward or rivals away" },
@@ -37,7 +37,7 @@ export const ITEM_ICONS: Record<ItemKind, string> = {
 /** Balance-independent fallback copy, used for items whose text has no tunable numbers in it. */
 export const ITEM_DETAILS: Record<ItemKind, string> = {
   shield: "1巡のあいだ爆風・暴風による移動を1マス分軽減する防御フィールド。自分の爆風にも適用され、間欠泉の押し出しを防ぎます。",
-  booster: "縦横へ最大2マス前進。途中のメテオを飛び越えてCOREへ到達できます。",
+  booster: "縦横へ最大2マス前進し、経路上のメテオを破壊。ホロメテオは途中だけ飛び越えられます。",
   holo: "4巡残るホロメテオを配置し、相手の進路を封鎖します。",
   orbit: "選んだリングを90度または180度回転させ、盤上の配置をまとめて動かします。",
   blast: "指定地点に回収効果のないメテオ爆風を発生させます。",
@@ -48,7 +48,7 @@ export const ITEM_DETAILS: Record<ItemKind, string> = {
 
 export const ITEM_DETAILS_EN: Record<ItemKind, string> = {
   shield: "Reduces blast and gale movement by one cell for one round, including your own blasts. Blocks geyser pushes.",
-  booster: "Move up to two orthogonal cells, jump over meteors, and enter the CORE.",
+  booster: "Move up to two orthogonal cells, breaking meteors in your path. Jump over, but not onto, holo meteors.",
   holo: "Place a temporary holo meteor that blocks routes.",
   orbit: "Rotate one selected ring 90 or 180 degrees with every object on it.",
   blast: "Create a meteor-like blast at any target without leaving or recovering a meteor.",
@@ -61,7 +61,7 @@ export function itemDetail(kind: ItemKind, balance: BalanceConfig, language: "ja
   if (language === "en") {
     switch (kind) {
       case "shield": return `Reduces blast and gale movement by one cell for ${balance.shieldRounds} round(s), including your own blasts. Blocks geyser pushes.`;
-      case "booster": return `Grants ${balance.boosterUses} two-cell orthogonal move(s). Jump over meteors and holo meteors and enter the CORE; the effect remains until the full move is used.`;
+      case "booster": return `Grants ${balance.boosterUses} charge(s). Move up to two orthogonal cells, breaking small and large meteors along the path, including the destination. Meteors return to their owners without a blast. HOLO can only be jumped over, not destroyed or landed on. Moving two cells or breaking a meteor uses one charge; an ordinary one-cell move does not. PULSE still prevents movement.`;
       case "holo": return balance.holoUnlimited
         ? "Places a permanent holo meteor that blocks routes."
         : `Places a holo meteor for ${balance.holoRounds} rounds. Blasts reduce its remaining duration, with stronger blasts dealing more damage.`;
@@ -73,7 +73,7 @@ export function itemDetail(kind: ItemKind, balance: BalanceConfig, language: "ja
   }
   switch (kind) {
     case "shield": return `${balance.shieldRounds}巡の間、爆風・暴風による移動を1マス分軽減します。自分の爆風にも適用され、間欠泉の押し出しを防ぎます。`;
-    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。途中のメテオやお邪魔メテオを飛び越えてCOREへ到達できます。2マス移動で実際に使うまで効果は持続します。`;
+    case "booster": return `縦横へ最大2マス進める効果を${balance.boosterUses}回使えます。着地先を含む経路上の大小メテオを破壊し、爆風を出さず持ち主へ返します。ホロメテオは途中だけ飛び越えられ、破壊・着地はできません。2マス移動かメテオ破壊で1回消費し、通常の1マス移動では消費しません。PULSEによる移動禁止は解除できません。`;
     case "holo": return balance.holoUnlimited
       ? "消滅しないホロメテオを配置し、相手の進路を妨害します。"
       : `${balance.holoRounds}巡残るホロメテオを配置し、相手の進路を妨害します。爆風を受けると残り時間が縮み、威力が高いほど大きく削られます。`;
@@ -88,7 +88,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
   if (language === "en") {
     switch (kind) {
       case "shield": return [`Duration: ${balance.shieldRounds} round(s)`, "Reduce blasts/gales by one cell; block steam"];
-      case "booster": return [`Uses: ${balance.boosterUses}`, "Move two cells and jump over meteors"];
+      case "booster": return [`Uses: ${balance.boosterUses}`, "Up to 2 cells; break meteors, jump HOLO"];
       case "holo": return [balance.holoUnlimited ? "Duration: unlimited" : `Duration: ${balance.holoRounds} rounds`, "Place an impassable obstacle"];
       case "orbit": return ["Rotation: 90° / 180°", "Move every object on the chosen ring"];
       case "blast": return [`Area: target + ${balance.blastRadius} outer cell(s)`, "Create a blast without a meteor"];
@@ -99,7 +99,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
   }
   switch (kind) {
     case "shield": return [`有効：${balance.shieldRounds}巡`, "爆風・暴風を1マス軽減／蒸気を防御"];
-    case "booster": return [`使用：${balance.boosterUses}回`, "縦横2マス進みメテオを飛び越える"];
+    case "booster": return [`使用：${balance.boosterUses}回`, "縦横最大2マス／メテオ破壊・ホロ飛び越し"];
     case "holo": return [balance.holoUnlimited ? "残存：無制限" : `残存：${balance.holoRounds}巡`, balance.holoUnlimited ? "消滅しない障害物を設置" : "爆風を受けると残り時間が短縮"];
     case "orbit": return ["回転：90度／180度", "選択したリング上の配置を移動"];
     case "blast": return [`範囲：中心＋外周${balance.blastRadius}マス`, "爆風だけを指定地点に発生"];
@@ -112,7 +112,7 @@ export function itemEffectFacts(kind: ItemKind, balance: BalanceConfig, language
 /** One-line tactical note per item — written for the guide page, where a reader has no board in front of them. */
 export const ITEM_TACTICS: Record<ItemKind, string> = {
   shield: "小メテオ相当の1マス爆風は防げます。大メテオやBLASTの2マス分の爆風は1マスに軽減されるため、完全には止まりません。自分の爆風にも適用されます。暴風は1マス軽減し、間欠泉は防ぎます。重力・回転・ワープは防ぎません。",
-  booster: "メテオやお邪魔メテオを飛び越えられるので、進路が塞がれた局面の突破口になります。実際に2マス進むまで効果が残ります。",
+  booster: "メテオのあるマスにも進めますが、破壊すると持ち主の手札へ戻ります。ホロメテオは飛び越せても着地できません。自分のメテオを回収すると、手持ち0のボーナス移動は発生しなくなります。",
   holo: "相手がCOREへ入る一歩手前のマスに置くのが最も効きます。ただし完全な不動物ではなく、隣接するメテオの爆風を受けると残り時間が削られます。大メテオを至近距離で当てられると一気に消えるため、爆風の届かない位置を選ぶのが確実です。",
   orbit: "90度または180度で盤面をまとめて回し、相手の有利な配置ごとずらせます。自分のメテオやPULSE装置も一緒に動く点に注意が必要です。",
   blast: "自分をCOREへ進めたり、相手を遠ざけたりできます。メテオを残さず推進力を得られ、ホロメテオの残り時間も削れます。",
@@ -123,7 +123,7 @@ export const ITEM_TACTICS: Record<ItemKind, string> = {
 
 export const ITEM_TACTICS_EN: Record<ItemKind, string> = {
   shield: "Blocks a one-cell blast. A two-cell push from a large meteor or BLAST is reduced to one cell, not completely stopped. Your own blasts are reduced too. Reduces gale pushes by one cell and blocks geysers, but not gravity, rotation or warp.",
-  booster: "Jump over meteors and holo meteors to break through a blocked route. It remains ready until you actually move two cells.",
+  booster: "Land on and break meteors, but remember that their owners regain them. HOLO can be jumped over, never landed on. Recovering your own meteor removes eligibility for the empty-inventory bonus move.",
   holo: "Most effective one cell before an opponent's CORE route. Blasts reduce its remaining duration, so a large meteor at close range can clear it quickly.",
   orbit: "Rotates a whole board ring by 90 or 180 degrees, shifting favorable formations. Your own meteors and PULSE devices move with it.",
   blast: "Propel yourself toward the CORE or push rivals away without leaving a meteor. It can also reduce a holo meteor's duration.",
