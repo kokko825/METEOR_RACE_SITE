@@ -73,7 +73,11 @@ function terminalValue(state: GameState, player: Player) {
   // and play for the 120-turn draw.
   if (!isTeamVariant(state.variant)) {
     const rank = state.finishOrder?.indexOf(player) ?? -1;
-    if (rank >= 0) return AI_STRATEGY.score.win - rank * AI_STRATEGY.score.rankStep;
+    // The remaining ranks may be assigned automatically without reaching CORE.
+    // Do not reward handing an opponent the finish just to get a consolation rank.
+    if (rank >= 0 && coreDistance(state, player) === 0) {
+      return AI_STRATEGY.score.win - rank * AI_STRATEGY.score.rankStep;
+    }
   }
   if (state.phase !== "over") return null;
   if (state.winner === "draw") return -900;
@@ -578,10 +582,12 @@ function scoreResult(
     score -= rivalAdvance * AI_STRATEGY.score.freeForAllRivalAdvance;
     score -= newlyFinishedRivals.length * AI_STRATEGY.score.freeForAllRivalFinish;
   }
-  if (difficulty === "hard" && activePlayers(state).length >= 4) {
-    // HARD still needs to close the race. Once a match has had enough time to
-    // develop, steadily increase the value of the AI's own forward progress so
-    // perfect-looking defensive exchanges do not repeat indefinitely.
+  if ((difficulty === "hard" && activePlayers(state).length >= 4) ||
+    (difficulty !== "easy" && !isTeamVariant(state.variant) &&
+      activePlayers(state).length + (state.finishOrder?.length ?? 0) >= 4)) {
+    // Four-player races need an increasing incentive to finish, including
+    // NORMAL and the remaining places after the first arrival. Immediate
+    // winning threats still retain their separate, much stronger penalties.
     const overtime = Math.max(
       0,
       state.turnCount - activePlayers(state).length * AI_STRATEGY.pacing.overtimeStartsAfterRounds,

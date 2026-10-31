@@ -31,6 +31,36 @@ import {
   teamOf,
 } from "../app/game-rules.js";
 
+// Late-race pacing must still take a finish and stop an unanswerable next-turn win.
+for (const difficulty of ["normal", "hard"] as const) {
+  for (const finished of [[], ["yellow"], ["yellow", "green"]] as Player[][]) {
+    const state = initialGameState(13, "red", 4, false, 0, [], "classic");
+    state.turnCount = 100;
+    state.players = state.players.filter(p => !finished.includes(p));
+    state.finishOrder = finished;
+    for (const p of finished) state.probes[p] = { r: 6, c: 6 };
+    state.probes.red = { r: 7, c: 6 };
+    state.probes.blue = { r: 0, c: 6 };
+    const decision = chooseAiDecision(state, difficulty, () => .99);
+    assert.equal(decision.type, "move");
+    if (decision.type === "move") {
+      const next = applyMove(state, decision.target);
+      assert.ok(next.winner === "red" || next.finishOrder?.includes("red"), "Always secure the available rank");
+    }
+    state.phase = "place";
+    state.probes.red = { r: 12, c: 6 };
+    state.probes.blue = { r: 5, c: 6 };
+    for (const p of state.players) state.inventory[p] = { small: 0, large: 0 };
+    state.inventory.red.large = 1;
+    const defense = chooseAiDecision(state, difficulty, () => .99);
+    assert.equal(defense.type, "meteor", "Late pacing must not abandon necessary defense");
+    if (defense.type === "meteor") {
+      const next = applyMeteor(state, defense.target, defense.size, defense.useCapsule).state;
+      assert.ok(distance(next.probes.blue, { r: 6, c: 6 }) > 1, `Push the imminent finisher away from CORE: ${JSON.stringify({ difficulty, finished, defense, blue: next.probes.blue, inventory: next.inventory.blue })}`);
+    }
+  }
+}
+
 for (const variant of ["item", "team-item"] as const) for (const difficulty of ["easy", "normal", "hard"] as const) {
   const state = initialGameState(13, "red", 4, false, 0, [], variant);
   state.turnCount = 8; state.phase = "switch";
