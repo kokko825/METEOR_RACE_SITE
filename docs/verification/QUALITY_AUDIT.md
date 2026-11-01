@@ -188,19 +188,3 @@
 - 2026-10-10：操作・説明・チーム表示・序盤AIの検証結果と未検証範囲を記録。
 - 2026-10-10：間欠泉と予告評価、移動不能処理の修正後300試合の結果・限界を記録。
 
-## 2026-10-25 文書整合確認（動作試験ではない）
-現行app/page.tsxのセル入力はchooseBoardTarget→handleCellで処理し、予告はマウスのpointerEnterで設定する。上記の「タッチ操作は確定まで状態を変更しない」という設計記述は過去の記録であり現行操作仕様に流用しない。GAME_SPECの先頭と現物を参照する。
-app/styles/layout-overrides.cssの700px以下・通常対戦では盤面が先、参加者欄が下。持込選択と701〜900pxは別条件。styles/READMEの記載を補正。
-この確認はソース読取のみ。過去の1.0.91検査やNotion上の1.0.113検査を最新の再試験として計上しない。実機・2端末・公開状態は今回未確認。
-
-
-## 2026-11-01 Folltoneローカル組込み検証
-
-対象：app/folltone-manager.ts・folltone-state.ts・use-music-sync.ts、config/folltone.ts、FollnestMusicから同期したpublic/folltone/runtime。既存の別作業の変更は保持。
-
-- 合格：npm run check（lint・型・設定・素材・ゲームルール・AI smoke・UI・ビルド）。その後の音楽エラー表示・曲選択制御はlint/typecheckで確認。
-- 合格：node tests/run-folltone.mjs。通常、公開移動／メテオによるゴール可能性、待機＋緊張、イベント優先、勝敗優先、非公開手札への非依存。
-- 合格：node tests/browser/folltone.browser.mjs。実ゲーム画面でタイトル→対戦→盤面操作→イベント専用区間→復帰、および別のイベントなし対戦で勝者→結果音楽→停止→再戦を通した。共通WASM／AudioWorkletで再生。Chrome消音、合成診断音、API模擬応答であり本番データは使わない。
-- 試験側の修正：旧checkbox前提を現行イベントボタンへ合わせ、勝敗試験はランダムな盤面イベントと分けて再現可能な無イベント対戦にした。メテオ在庫が尽きた時は利用可能な種類を選ぶ。製品の検査基準を下げていない。
-- 未検証：本人実曲の聴感、音声バッファ欠落測定、Safari・スマホ・長時間背景再生・オンライン2端末。テンポ伸縮と全アイテムの勝利探索は未実装。公開用音源・音楽有効化・公開ログ・デプロイは変更していない。
-- 操作・配置の正本：config/README.mdのFolltone節。制作・音楽仕様の正本は既存Notion Folltoneページ。
