@@ -14,6 +14,7 @@ import {
   applyUseItem,
   canUseItem,
   applyPass,
+  finishTurn,
   distance,
   legalMoves,
   isItemVariant,
@@ -147,8 +148,12 @@ function positionValue(state: GameState, player: Player) {
     // point is to matter on a *later* turn), a fully locked rival scored
     // identically to a fully free one.
     score += sign * Math.min(legalMoves(state, p).length, 5) * AI_STRATEGY.score.mobility;
-    const heldItemValue = (state.itemHands?.[p] ?? []).reduce(
-      (sum, kind) => sum + itemReserveValue[kind],
+    const hand = state.itemHands?.[p] ?? [];
+    const urgency = coreDistance(state, p) <= AI_STRATEGY.items.lateReserveDistance
+      ? AI_STRATEGY.items.lateReserveScale : 1;
+    const heldItemValue = hand.reduce(
+      (sum, kind, index) => sum + itemReserveValue[kind] * AI_STRATEGY.items.reserveScale * urgency *
+        (hand.indexOf(kind) < index ? AI_STRATEGY.items.duplicateReserveScale : 1),
       0,
     );
     score += sign * heldItemValue * (sign > 0 ? style.resources : style.denial);
@@ -636,8 +641,9 @@ function meteorPressure(state: GameState, player: Player) {
 
 function routeBlockPressure(state: GameState, player: Player) {
   const center = centerOf(state);
-  const blockers = [...state.meteors, ...activeObstacles(state)];
   return activePlayers(state).reduce((sum, candidate) => {
+    const projected = projectTimedEffectsToNextTurn(state, candidate);
+    const blockers = [...projected.meteors, ...activeObstacles(projected)];
     const probe = state.probes[candidate];
     const blocked = blockers.reduce((count, blocker) => {
       const onRowRoute =
@@ -788,11 +794,65 @@ function targetedItemResults(
   return options;
 }
 
-function boosterFollowupValue(state: GameState, player: Player, difficulty: AiDifficulty) {
+function nextMoveDistance(state: GameState, player: Player) {
+  state = projectTimedEffectsToNextTurn(state, player);
   const probe: GameState = { ...state, turn: player, phase: "move", bonusMove: false };
   const moves = legalMoves(probe, player);
-  if (!moves.length) return -80;
-  return Math.max(...moves.map((move) => scoreResult(applyMove(probe, move), player, difficulty, state)));
+  return Math.min(coreDistance(state, player), ...moves.map(move =>
+    coreDistance(applyMove(probe, move), player)));
+}
+
+function nextTurnValue(state: GameState, player: Player, difficulty: AiDifficulty) {
+  const projected = projectTimedEffectsToNextTurn(state, player);
+  const probe: GameState = { ...projected, turn: player, phase: "move", bonusMove: false };
+  const moved = legalMoves(probe, player).map(move => applyMove(probe, move));
+  if (!moved.length) moved.push({ ...probe, phase: "place" });
+  // Bound the secondary search; compare actual move + meteor continuations on
+  // both sides of the item decision, rather than crediting a free extra move.
+  return Math.max(...moved.sort((a, b) => positionValue(b, player) - positionValue(a, player)).slice(0, 2).map(next =>
+    next.phase === "place" && next.turn === player
+      ? bestPlacement(next, player, difficulty, AI_STRATEGY.items.followupPlacements).value
+      : scoreResult(next, player, difficulty)));
+}
+
+// Meteor range is global: distance from the enemy probe is not a threat test.
+// Use legal local impact placements and actual collision/shield rules, without
+// recursive AI search. Each rival contributes only its worst retreat, not every target.
+function shieldProtectionValue(before: GameState, after: GameState, player: Player) {
+  let prevented = 0;
+  for (const rival of activePlayers(before).filter(p => !allied(before, p, player))) {
+    const unprotected = projectTimedEffectsToNextTurn({ ...after,
+      shield: { ...after.shield, [player]: false },
+      shieldTurns: { ...after.shieldTurns, [player]: 0 } as Record<Player, number>,
+    }, rival);
+    const protectedState = projectTimedEffectsToNextTurn(after, rival);
+    if (!protectedState.shield?.[player]) continue;
+    let worstBefore = 0, worstAfter = 0;
+    const own = before.probes[player];
+    const turn: GameState = { ...unprotected, turn: rival, phase: "place" };
+    for (const placement of placements(turn).filter(p => distance(p.target, own) <= 2)) {
+      const a = applyPlacement(turn, placement);
+      const b = applyPlacement({ ...protectedState, turn: rival, phase: "place" }, placement);
+      worstBefore = Math.max(worstBefore, coreDistance(a, player) - coreDistance(before, player));
+      worstAfter = Math.max(worstAfter, coreDistance(b, player) - coreDistance(before, player));
+    }
+    if (canUseItem(turn, "blast")) {
+      const a = applyUseItem(turn, "blast");
+      const b = applyUseItem({ ...protectedState, turn: rival, phase: "place" }, "blast");
+      for (const target of switchCandidateCells(a, "blast")) {
+        if (distance(target, own) > normalizeBalance(before.balance).blastRadius) continue;
+        // Target generation may include occupied cells, just as the real chooser does.
+        try {
+          worstBefore = Math.max(worstBefore, coreDistance(applyBlastSwitch(a, target), player) - coreDistance(before, player));
+          worstAfter = Math.max(worstAfter, coreDistance(applyBlastSwitch(b, target), player) - coreDistance(before, player));
+        } catch { /* Invalid blast target. */ }
+      }
+    }
+    prevented += Math.max(0, worstBefore - worstAfter);
+  }
+  const urgency = coreDistance(before, player) <= AI_STRATEGY.items.lateReserveDistance
+    ? 1 : AI_STRATEGY.items.distantShieldRiskScale;
+  return prevented * AI_STRATEGY.items.shieldPreventedStep * urgency;
 }
 
 function itemUseValue(state: GameState, kind: ItemKind, player: Player, difficulty: AiDifficulty) {
@@ -800,6 +860,8 @@ function itemUseValue(state: GameState, kind: ItemKind, player: Player, difficul
     return targetedItemOptions(state, kind, player, difficulty)[0]?.value;
   }
   const pending = applyUseItem(state, kind);
+  const terminal = terminalValue(pending, player);
+  if (terminal !== null) return terminal;
   if (kind === "orbit") {
     const best = orbitOptions(pending, player, difficulty)[0];
     return best && best.choice.gain >= AI_STRATEGY.items.orbitMinimumGain
@@ -810,20 +872,27 @@ function itemUseValue(state: GameState, kind: ItemKind, player: Player, difficul
     const pulseLocked = activePulseDevices(state).some(
       (device) => distance(device, state.probes[player]) <= normalizeBalance(state.balance).pulseRadius,
     );
-    return pulseLocked ? undefined : boosterFollowupValue(pending, player, difficulty);
+    if (pulseLocked && nextMoveDistance(pending, player) >= coreDistance(pending, player)) return undefined;
+    const gain = nextMoveDistance({ ...pending, boosterMoves: state.boosterMoves }, player) - nextMoveDistance(pending, player);
+    if (gain <= 0) return undefined;
+    const without = { ...pending, boosterMoves: state.boosterMoves };
+    const continuation = nextTurnValue(pending, player, difficulty) - nextTurnValue(without, player, difficulty);
+    return scoreResult(pending, player, difficulty, state) + Math.min(AI_STRATEGY.items.followupCap, Math.max(0, continuation) * AI_STRATEGY.items.followupWeight);
   }
   if (kind === "shield") {
-    const rivals = activePlayers(state).filter((candidate) => !allied(state, candidate, player));
-    const danger = Math.min(...rivals.map((candidate) => distance(state.probes[player], state.probes[candidate])));
-    const urgency = coreDistance(state, player) <= 4 || danger <= 3 ? 18 : 0;
-    return scoreResult(pending, player, difficulty, state) + urgency;
+    const protection = shieldProtectionValue(state, pending, player);
+    const eventGain = eventForecastValue(pending, player, difficulty) - eventForecastValue(finishTurn(state), player, difficulty);
+    return protection > 0 || eventGain > 0
+      ? scoreResult(pending, player, difficulty, state) + protection : undefined;
   }
   if (kind === "recall") {
-    const recovered = state.meteors
-      .filter((meteor) => meteor.owner === player && !meteor.consumable)
-      .reduce((sum, meteor) => sum + (meteor.size === "large" ? 30 : 16), 0);
-    const exhausted = state.inventory[player].small + state.inventory[player].large === 0 ? 24 : 0;
-    return scoreResult(pending, player, difficulty, state) + recovered + exhausted;
+    // Inventory recovery is already valued in scoreResult; do not pay twice.
+    const losesBonus = state.inventory[player].small + state.inventory[player].large === 0 &&
+      pending.inventory[player].small + pending.inventory[player].large > 0;
+    const clearsRoute = Math.max(0, nextMoveDistance(state, player) - nextMoveDistance(pending, player));
+    const continuation = nextTurnValue(pending, player, difficulty) - nextTurnValue(finishTurn(state), player, difficulty);
+    return scoreResult(pending, player, difficulty, state) + Math.min(AI_STRATEGY.items.followupCap, Math.max(0, continuation) * AI_STRATEGY.items.followupWeight) + clearsRoute * AI_STRATEGY.items.futureProgressStep -
+      (losesBonus ? normalizeBalance(state.balance).emptyMeteorBonusMoves * AI_STRATEGY.items.recallBonusMoveCost : 0);
   }
   return scoreResult(pending, player, difficulty, state);
 }
@@ -832,10 +901,14 @@ function bestPlacement(
   state: GameState,
   player: Player,
   difficulty: AiDifficulty,
+  candidateLimit = 0,
 ): Scored<Placement | "pass"> {
   const options: Array<Scored<Placement | "pass">> = [];
-  for (const placement of placements(state)) {
-    const next = applyPlacement(state, placement);
+  let candidates = placements(state).map(placement => ({ placement, next: applyPlacement(state, placement) }));
+  if (candidateLimit) candidates = candidates
+    .map(candidate => ({ ...candidate, priority: positionValue(candidate.next, player) }))
+    .sort((a, b) => b.priority - a.priority).slice(0, candidateLimit);
+  for (const { placement, next } of candidates) {
     options.push({
       choice: placement,
       value:

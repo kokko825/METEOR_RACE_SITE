@@ -59,6 +59,17 @@ export const AI_STRATEGY = {
     quietGate: 120,
   },
   items: {
+    reserveScale: 0.35,
+    duplicateReserveScale: 0.5,
+    lateReserveScale: 0.5,
+    lateReserveDistance: 4,
+    shieldPreventedStep: 20,
+    distantShieldRiskScale: 0.25,
+    followupWeight: 0.6,
+    followupCap: 120,
+    followupPlacements: 6,
+    futureProgressStep: 28,
+    recallBonusMoveCost: 28,
     // HARD, non-ranked 1v1 without field events. Other loadouts keep their variety.
     hardDuelBlastPreference: 25,
     hardDuelShieldReserve: 10,

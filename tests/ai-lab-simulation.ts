@@ -31,6 +31,38 @@ import {
   teamOf,
 } from "../app/game-rules.js";
 
+// Item use must buy a real opportunity, not merely increase the use counter.
+for (const kind of ["shield", "booster", "recall"] as const) {
+  const state = initialGameState(13, "red", 2, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.itemHands!.red = [kind];
+  state.inventory.red = { small: 0, large: 0 };
+  state.inventory.blue = { small: 0, large: 0 };
+  state.probes.red = { r: 9, c: 6 };
+  state.probes.blue = { r: 1, c: 6 };
+  if (kind === "recall") state.meteors = [{ r: 10, c: 2, owner: "red", size: "large", id: 99 }];
+  const snapshot = JSON.stringify(state);
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.equal(JSON.stringify(state), snapshot, "Item lookahead must not mutate the live match");
+  if (kind === "shield") assert.notDeepEqual(decision, { type: "item", kind }, "No enemy meteor or event means no speculative shield");
+  else assert.deepEqual(decision, { type: "item", kind }, "Use a concrete next-turn movement or recovery opportunity");
+}
+
+for (const attack of ["small", "blast"] as const) {
+  const state = initialGameState(13, "red", 2, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "place";
+  state.itemHands!.red = ["shield"];
+  state.itemHands!.blue = attack === "blast" ? ["blast"] : [];
+  state.inventory.red = { small: 0, large: 0 };
+  state.inventory.blue = { small: attack === "small" ? 1 : 0, large: 0 };
+  state.probes.red = { r: 7, c: 6 };
+  state.probes.blue = { r: 1, c: 6 };
+  assert.deepEqual(chooseAiDecision(state, "hard", () => 0), { type: "item", kind: "shield" },
+    "Near-CORE shield must recognize remote meteor/BLAST attacks, not enemy probe distance");
+}
+
 // Late-race pacing must still take a finish and stop an unanswerable next-turn win.
 for (const difficulty of ["normal", "hard"] as const) {
   for (const finished of [[], ["yellow"], ["yellow", "green"]] as Player[][]) {
