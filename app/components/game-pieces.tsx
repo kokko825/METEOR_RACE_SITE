@@ -148,10 +148,10 @@ export function MeteorIcon({ meteor, falling = false, destroyed = false }: { met
   );
 }
 
-export function ObstacleIcon({ obstacle, roundsLeft, language = "ja" }: { obstacle: ObstacleMeteor; roundsLeft: number; language?: SiteLanguage }) {
+export function ObstacleIcon({ obstacle, roundsLeft, language = "ja", forming = false }: { obstacle: ObstacleMeteor; roundsLeft: number; language?: SiteLanguage; forming?: boolean }) {
   const roundsLabel = roundsLeft === -1 ? "∞" : String(roundsLeft);
   return (
-    <span className={`obstacle-token ${obstacle.owner}`} title={language === "ja" ? (roundsLeft === -1 ? "破壊不能のホロメテオ・無制限" : `ホロメテオ・残り${roundsLeft}巡（爆風で短縮）`) : (roundsLeft === -1 ? "Indestructible holo meteor · unlimited" : `Holo meteor · ${roundsLeft} rounds left (reduced by blasts)`)}>
+    <span className={`obstacle-token ${obstacle.owner}${forming ? " holo-forming" : ""}`} title={language === "ja" ? (roundsLeft === -1 ? "破壊不能のホロメテオ・無制限" : `ホロメテオ・残り${roundsLeft}巡（爆風で短縮）`) : (roundsLeft === -1 ? "Indestructible holo meteor · unlimited" : `Holo meteor · ${roundsLeft} rounds left (reduced by blasts)`)}>
       <i /><b>{roundsLabel}</b><small>{language === "ja" ? "巡" : "R"}</small>
     </span>
   );

@@ -2401,6 +2401,7 @@ function Game() {
                   {obstacle && (
                     <ObstacleIcon
                       obstacle={obstacle}
+                      forming={effectsEnabled && switchFx?.kind === "holo" && obstacle.id === Math.max(...game.obstacles.map(entry => entry.id))}
                       roundsLeft={obstacle.turns === -1 ? -1 : Math.max(1, Math.ceil((obstacle.turns ?? 1) / activePlayers(game).length))}
                       language={language}
                     />

@@ -57,8 +57,16 @@ export function BoardFeedback({ game, perspective, enabled }: { game: GameState;
       left: `${(pos.c + mid) / game.size * 100}%`, top: `${(pos.r + mid) / game.size * 100}%`,
       width: `${100 / game.size}%`, height: `${100 / game.size}%`,
       "--cue-x": `${delta.c * 100}%`, "--cue-y": `${delta.r * 100}%`,
-    } as CSSProperties}>{Array.from({ length: 6 }, (_, n) => <i key={n} style={{ "--piece": n } as CSSProperties} />)}</span>;
-  })}</div>;
+      "--cue-angle": `${Math.atan2(delta.r, delta.c) * 180 / Math.PI + 90}deg`,
+    } as CSSProperties}>{cue.kind === "print" && <svg className="holo-blueprint" viewBox="0 0 100 100"><polygon points="50,0 88,17 100,55 76,91 35,100 4,72 8,28" /><path d="M8 28 50 48 88 17 M50 48 35 100 M50 48 100 55" /></svg>}{Array.from({ length: 6 }, (_, n) => <i key={n} style={{ "--piece": n, "--trail-step": n / 6 } as CSSProperties} />)}</span>;
+  })}{enabled && <svg className="recall-paths" viewBox={`0 0 ${game.size} ${game.size}`}>
+    {batch.cues.filter(cue => cue.kind === "return").map((cue, i) => {
+      const from = boardToViewDelta({ r: cue.pos.r - mid, c: cue.pos.c - mid }, perspective);
+      const delta = boardToViewDelta(cue.delta ?? { r: 0, c: 0 }, perspective);
+      const x = from.c + mid + .5, y = from.r + mid + .5;
+      return <g key={`${batch.serial}-${i}`}><path pathLength="1" d={`M${x} ${y} L${x + delta.c} ${y + delta.r}`} /><circle cx={x + delta.c} cy={y + delta.r} r=".38" /></g>;
+    })}
+  </svg>}</div>;
 }
 
 export function EquipmentActivation({ kind }: { kind: string }) {
