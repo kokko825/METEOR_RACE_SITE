@@ -72,7 +72,7 @@ import { SoundMixer, VolumeControls } from "./components/sound-controls";
 import { MatchMeta } from "./components/match-meta";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
-import { BATTLE_EFFECTS, battleEffectsEnabled } from "../config/battle-effects";
+import { BATTLE_EFFECTS, battleEffectsEnabled, EQUIPMENT_RECEIPTS } from "../config/battle-effects";
 import { UI_LAYOUT } from "../config/ui-layout";
 import { gameStatusText } from "./game-status";
 import { getOrCreatePlayerId, playerRequestHeaders } from "./client-identity";
@@ -2247,7 +2247,7 @@ function Game() {
               <span className="switch-burst" />
               {switchFx.kind === "gravity" && <span className="gravity-well"><i /><i /><i /></span>}
               <b>{switchFx.kind.toUpperCase()}</b>
-              <small>{switchFx.kind === "gravity" ? "GRAVITATIONAL PULL" : "ITEM ACTIVATED"}</small>
+              <small>{EQUIPMENT_RECEIPTS[switchFx.kind][language]}</small>
             </div>
           )}
           <div className={`turn-callout ${displayAccent}`} aria-live="polite">

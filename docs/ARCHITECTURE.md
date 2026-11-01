@@ -77,6 +77,29 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 - 90日で削除し、全体も5,000件を上限にします。ここから本番AIが自動学習することはありません。
 - 改善要望が来たら `npm run analyze:strong-plays -- --days=30 --category=escape` のように集計し、関連局面をAI LABで検証します。
 
+## 戦闘演出の調整
+
+時間と日英の発動名は `config/battle-effects.ts`、機体と装備は `app/styles/game-interface.css`、環境イベントは `app/styles/match-events.css` が編集先。ルール計算と演出は分離し、オンラインは演出ON、オフラインOFFは待機時間も省略する。
+
+予備動作 → 急加速 → 着地・反動 → 残光の順を基本とし、明るい時間を長く引き伸ばさない。盤全体の揺れではなく、発動地点と動いた機体を強調する。以下は参考作品からの適用判断であり、各作品の内部実装を再現するものではない。
+
+| 参考 | 採用する観点 |
+| --- | --- |
+| [PRAGMATA](https://captown.capcom.com/en/theaters/pragmata/50) | 装備の起動を機能別の光で識別 |
+| [スターフォックス ゼロ](https://www.nintendo.com/eu/media/downloads/games_8/emanuals/wii_u_6/star_fox_zero/ElectronicManual_WiiU_StarFoxZero_EN.pdf) | 操作と応答の分かりやすさ |
+| [METAL GEAR](https://www.konami.com/games/eu/en/products/mgs3r/) | 短い作動通知、情報の優先順位 |
+| [DEATH STRANDING](https://www.playstation.com/en-us/games/death-stranding-2-on-the-beach/) | 静かな盤面と発動時の対比 |
+| [カービィのエアライダー](https://www.nintendo.com/en-gb/Games/Nintendo-Switch-2-games/Kirby-Air-Riders-2785805.html) | 溜めと解放の区別 |
+| [Pokémon LEGENDS Z-A](https://legends.pokemon.com/en-us/news/battle-with-trainers) | 短い切り替えで行動を知らせる |
+| [ゴッドフィールド](https://godfield.net/) | 装飾で対戦情報を隠さない |
+| [ARMORED CORE VI](https://www.youtube.com/watch?v=64ChiBxhk4U) | 推進と機体重量の対比 |
+| [Hades](https://www.youtube.com/watch?v=YZZFlcE0fWE) | 衝撃の短いピークと残光 |
+| [Into the Breach](https://www.subsetgames.com/itb.html) | 原因と盤面の変化を追える順序 |
+
+確認範囲は公式資料・紹介映像の一部。全編視聴や各作品の実機検証ではない。
+
 ## 変更履歴
+
+- 2026-11-01：戦闘演出の編集先、緩急と参考作品の適用方針を追加。
 
 - 2026-10-10：操作予告・アイテム説明・バージョン表示の編集先を追加。

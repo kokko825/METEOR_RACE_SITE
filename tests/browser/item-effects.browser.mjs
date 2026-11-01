@@ -11,7 +11,8 @@ try {
     page.setDefaultTimeout(8000);
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    await page.addInitScript(off => { localStorage.setItem('meteor-race-effects', off ? 'off' : 'on'); localStorage.setItem('meteor-race-master-volume','0'); }, off);
+    const language = process.env.TEST_LANGUAGE || 'ja';
+    await page.addInitScript(({off, language}) => { localStorage.setItem('meteor-race-effects', off ? 'off' : 'on'); localStorage.setItem('meteor-race-master-volume','0'); localStorage.setItem('meteor-race-language', language); }, {off, language});
     await page.goto(origin);
     await page.locator('.title-start').waitFor();
     await page.waitForTimeout(700);
@@ -50,6 +51,8 @@ try {
     } else {
       const selector = {booster:'.engine-meter',shield:'.shield-deploy',holo:'.cue-print',pulse:'.pulse-perimeter',blast:'.blast-origin-wave',recall:'.cue-return'}[kind];
       await page.locator(selector).first().waitFor({state:'attached',timeout:1500});
+      const receipt = await page.locator('.switch-activation small').innerText();
+      assert.equal(/[ぁ-んァ-ヶ一-龠]/.test(receipt), language === 'ja', 'Activation message follows language');
       assert.equal(await page.locator('.cell.legal, .cell.placeable').count(), 0, 'Activation blocks the next action until effects finish');
       if (process.env.LAYOUT_SCREENSHOT_DIR) {
         await page.waitForTimeout(300);
