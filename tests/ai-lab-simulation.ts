@@ -412,11 +412,21 @@ for (const variant of ["item", "team-item"] as const) for (const difficulty of [
   const state = initialGameState(11, "red", 2, false, 0, [], "item");
   state.turnCount = 8;
   state.phase = "place";
-  state.probes = { ...state.probes, red: { r: 8, c: 5 }, blue: { r: 2, c: 5 } };
+  // Isolate escape from urgent rival defense; verify both item choice and target.
+  state.probes = { ...state.probes, red: { r: 8, c: 5 }, blue: { r: 1, c: 1 } };
+  state.inventory.red = { small: 0, large: 0 };
   state.pulseDevices = [{ id: 92, r: 8, c: 6, owner: "blue", turns: 4, createdTurnCount: 7 }];
   state.itemHands!.red = ["booster", "blast"];
   const decision = chooseAiDecision(state, "hard", () => 0);
   assert.deepEqual(decision, { type: "item", kind: "blast" }, "PULSE-locked duel AI should start a BLAST escape");
+  const pending = applyUseItem(state, "blast");
+  const target = chooseAiDecision(pending, "hard", () => 0);
+  assert.equal(target.type, "blast");
+  if (target.type === "blast") {
+    const escaped = applyBlastSwitch(pending, target.target);
+    assert.ok(legalMoves({ ...escaped, phase: "move", turn: "red" }, "red").length > 0,
+      "The chosen BLAST target must carry out the planned PULSE escape");
+  }
 }
 
 {

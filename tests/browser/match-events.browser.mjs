@@ -15,23 +15,24 @@ try {
     await page.addInitScript(lang=>{localStorage.setItem('meteor-race-language',lang);localStorage.setItem('meteor-race-master-volume','0');},language);
     await page.goto(origin); await page.waitForTimeout(1000);
     await page.locator('.title-start').click();
-    await page.getByRole('button',{name:/LOCAL/}).click();
+    await page.locator('.choice-row.three button').nth(1).click();
     await page.locator('.entry-confirm').click();
     const controls=page.locator('.entry-panel .event-controls');
-    assert.equal(await controls.locator('input[type=checkbox]').count(),4);
-    if(multiple){for(const value of ['orbit','geyser','wind','gravity']) await controls.locator(`input[value="${value}"]`).check();}
-    else await controls.locator(`input[value="${kind}"]`).check();
-    if(multiple) await controls.locator('select').selectOption('3');
+    assert.equal(await controls.locator('.event-toggle-grid button').count(),5);
+    for(const value of multiple?['wind','orbit','geyser','gravity']:[kind]) {
+      await controls.locator('.event-toggle-grid button').filter({has:page.locator(`.event-color-${value}`)}).click();
+    }
+    if(multiple) for(const select of await controls.locator('select').all()) await select.selectOption('3');
     if(multiple) await page.evaluate(()=>{
       window.fieldEventSequence=[];
       new MutationObserver(()=>{
         if(!document.querySelector('.field-event-firing')) return;
-        const text=document.querySelector('.event-status b')?.textContent;
+        const text=document.querySelector('.event-order [aria-current="step"] .event-label')?.className.match(/event-color-(\w+)/)?.[1];
         if(text && window.fieldEventSequence.at(-1)!==text) window.fieldEventSequence.push(text);
-      }).observe(document.body,{subtree:true,childList:true,characterData:true});
+      }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','aria-current']});
     });
     await page.locator('.entry-confirm').click();
-    await page.locator('.event-status').first().waitFor();
+    await page.locator('.event-summary-menu summary').first().waitFor();
     assert.match((await page.locator('.event-status').allTextContents()).join(' '),multiple?/3/:/5/);
     // Stay away from CORE and spend meteors on the edge until a forecast appears.
     for(let action=0;action<40;action++) {
@@ -61,7 +62,7 @@ try {
       await choices.nth(index).click(); await page.waitForTimeout(multiple?5100:1500);
     }
     assert.match((await page.locator('.event-status b').allTextContents()).join(' '),multiple?/3/:/5/,'Event completes and countdown resets');
-    if(multiple) assert.deepEqual(await page.evaluate(()=>window.fieldEventSequence.map(s=>s.split(' · ')[0])),['追い風','ランダムORBIT','間欠泉','中央重力'],'Animation follows fixed resolution order');
+    if(multiple) assert.deepEqual(await page.evaluate(()=>window.fieldEventSequence),['wind','orbit','geyser','gravity'],'Animation follows fixed resolution order');
     const dimensions=await page.locator('.board').boundingBox();
     assert.ok(Math.abs(dimensions.width-dimensions.height)<3,'Board remains square');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,'No horizontal overflow');

@@ -1,4 +1,5 @@
 import { normalizeRoomCode, validRoomCode } from "../../room-code";
+import { readJsonObject } from "../../request-body";
 import { beforeFieldEvents } from "../../board-preview";
 import { env } from "cloudflare:workers";
 import { PLAYER_ORDER, TEAM_TURN_ORDER, activePlayers, applyBlastSwitch, applyHoloSwitch, applyMeteor, applyMove, applyObstacle, applyOrbitSwitch, applyPass, applyPulseSwitch, applyRecallItem, applySetupItem, applyUseItem, cancelPendingItem, confirmSetupItems, skipBlockedMove, initialGameState, isItemVariant, isTeamVariant, rematchPlayerCount, resetSetupItems, samePos, type GameState, type GameVariant, type ItemKind, type MeteorSize, type Player, type Pos } from "../../game-rules";
@@ -214,7 +215,19 @@ export async function POST(request: Request) {
   const email = emailFrom(request);
   if (!email) return json({ error: "プレイヤー識別情報を作成できませんでした" }, 401);
   await ensureSchema();
-  const body = (await request.json()) as {
+  const input = await readJsonObject(request);
+  if (!input) return json({ error: "形式が正しくありません" }, 400);
+  for (const key of ["action", "code", "nickname", "first", "variant", "difficulty", "meteorSize", "itemKind", "memberAction"]) {
+    if (input[key] !== undefined && typeof input[key] !== "string") return json({ error: "形式が正しくありません" }, 400);
+  }
+  for (const key of ["size", "playerCount", "humanCount", "aiCount", "version", "ring", "quarterTurns", "meteorId", "targetIndex"]) {
+    if (input[key] !== undefined && (typeof input[key] !== "number" || !Number.isFinite(input[key]))) return json({ error: "形式が正しくありません" }, 400);
+  }
+  if (input.target !== undefined) {
+    const target = input.target as Record<string, unknown> | null;
+    if (!target || typeof target !== "object" || !Number.isInteger(target.r) || !Number.isInteger(target.c)) return json({ error: "形式が正しくありません" }, 400);
+  }
+  const body = input as {
     action?: string;
     code?: string;
     size?: number;

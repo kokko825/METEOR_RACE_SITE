@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { readJsonObject } from "../../request-body";
 import { readDuelRating } from "../../duel-rating-store";
 import { containsBlockedChatLanguage } from "../../chat-moderation";
 import { COMMUNITY_SAFETY } from "../../../config/community-safety";
@@ -48,7 +49,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const current = identity(request);
   if (!current.key) return Response.json({ error: "プロフィールを識別できません" }, { status: 401 });
-  const body = await request.json() as { nickname?: unknown };
+  const body = await readJsonObject(request);
+  if (!body || typeof body.nickname !== "string") return Response.json({ error: "形式が正しくありません" }, { status: 400 });
   const nickname = typeof body.nickname === "string" ? body.nickname.trim().slice(0, COMMUNITY_SAFETY.nicknameMaxLength) : "";
   if (containsBlockedChatLanguage(nickname)) return Response.json({ error: "ニックネームに使用できない表現が含まれています" }, { status: 400 });
   await ensureProfileSchema();

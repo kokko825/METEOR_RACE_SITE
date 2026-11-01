@@ -743,11 +743,21 @@ function targetedItemOptions(
   player: Player,
   difficulty: AiDifficulty,
 ) {
+  return targetedItemResults(state, applyUseItem(state, kind), kind, player, difficulty);
+}
+
+// Selection and execution must rank the same targets, including escape and shelter.
+function targetedItemResults(
+  state: GameState,
+  pending: GameState,
+  kind: "holo" | "blast" | "pulse",
+  player: Player,
+  difficulty: AiDifficulty,
+) {
   const wasPulseLocked = activePulseDevices(state).some(
     (device) => distance(device, state.probes[player]) <= normalizeBalance(state.balance).pulseRadius,
   );
-  const pending = applyUseItem(state, kind);
-  return switchCandidateCells(pending, kind).flatMap((target) => {
+  const options = switchCandidateCells(pending, kind).flatMap((target) => {
     if (kind === "pulse" && activePlayers(state).some(p => allied(state, p, player) && distance(target, state.probes[p]) <= normalizeBalance(state.balance).pulseRadius) && !pulseGravityShelter(state, player, target)) return [];
     try {
       const next = kind === "holo"
@@ -769,6 +779,13 @@ function targetedItemOptions(
       return [];
     }
   }).sort((a, b) => b.value - a.value);
+  if (kind === "blast" && wasPulseLocked) {
+    const escapes = options.filter(({ choice: { next } }) =>
+      coreDistance(next, player) === 0 || !activePulseDevices(next).some(device =>
+        distance(device, next.probes[player]) <= normalizeBalance(next.balance).pulseRadius));
+    if (escapes.length) return escapes;
+  }
+  return options;
 }
 
 function boosterFollowupValue(state: GameState, player: Player, difficulty: AiDifficulty) {
@@ -972,22 +989,8 @@ export function chooseAiDecision(
     const pending = state.pendingSwitches?.[0];
     if (!pending) return { type: "skip" };
     if (pending.kind === "holo" || pending.kind === "blast" || pending.kind === "pulse") {
-      const ranked = switchCandidateCells(state, pending.kind).flatMap((target) => {
-        if (pending.kind === "pulse" && activePlayers(state).some(p => allied(state, p, pending.player) && distance(target, state.probes[p]) <= normalizeBalance(state.balance).pulseRadius)) return [];
-        try {
-          const next = pending.kind === "holo"
-            ? applyHoloSwitch(state, target)
-            : pending.kind === "blast"
-              ? applyBlastSwitch(state, target)
-              : applyPulseSwitch(state, target);
-          const tactical = pending.kind === "holo"
-            ? routeBlockPressure(next, pending.player) - routeBlockPressure(state, pending.player)
-            : pending.kind === "pulse"
-              ? mobilitySwing(state, next, pending.player) * AI_STRATEGY.items.pulseMobility
-              : mobilitySwing(state, next, pending.player) * AI_STRATEGY.items.blastMobility;
-          return [{ choice: target, value: scoreResult(next, pending.player, difficulty, state) + tactical }];
-        } catch { return []; }
-      });
+      const ranked = targetedItemResults(state, state, pending.kind, pending.player, difficulty)
+        .map(({ choice, value }) => ({ choice: choice.target, value }));
       const selected = selectWithDifficulty(ranked, difficulty, random, true, creativity);
       return selected ? { type: pending.kind, target: selected.choice } : { type: "skip" };
     }

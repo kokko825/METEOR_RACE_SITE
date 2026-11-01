@@ -20,7 +20,8 @@ try {
     const cells=page.locator('.cell.legal');
     await cells.nth(index).click();
     await page.locator('.tutorial-first-praise .tutorial-coach button').click();
-    await page.locator('.tutorial-rival .tutorial-coach button').click();
+    // The praise confirmation starts the scripted rival directly.
+    // Waiting for the result also verifies that its animation completes.
     await page.locator('.tutorial-rival-result .tutorial-coach button').click();
     await page.locator('.cell.legal').first().click();
     await page.locator('.tutorial-meteor .cell.placeable').first().click();

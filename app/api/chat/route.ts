@@ -1,4 +1,5 @@
 import { normalizeRoomCode, validRoomCode } from "../../room-code";
+import { readJsonObject } from "../../request-body";
 import { env } from "cloudflare:workers";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 import { containsBlockedChatLanguage } from "../../chat-moderation";
@@ -61,7 +62,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const playerId = playerIdFrom(request);
-  const body = await request.json() as { code?: string; nickname?: string; message?: string };
+  const body = await readJsonObject(request);
+  if (!body || typeof body.message !== "string" || (body.nickname !== undefined && typeof body.nickname !== "string")) return response({ error: "形式が正しくありません" }, 400);
   const code = normalizeRoomCode(body.code);
   const message = cleanMessage(body.message ?? "");
   if (!playerId || !validRoomCode(code)) return response({ error: "チャットを送信できません" }, 400);
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
   await ensureSchema();
   const roomCreatedAt = await roomMember(code, playerId);
   if (!roomCreatedAt) return response({ error: "ルームに参加していません" }, 403);
-  const nickname = (body.nickname?.trim() || "PLAYER").slice(0, COMMUNITY_SAFETY.nicknameMaxLength);
+  const nickname = (typeof body.nickname === "string" && body.nickname.trim() || "PLAYER").slice(0, COMMUNITY_SAFETY.nicknameMaxLength);
   if (containsBlockedChatLanguage(nickname)) return response({ error: "ニックネームに使用できない表現が含まれています" }, 400);
   const createdAt = Date.now();
   const id = crypto.randomUUID();

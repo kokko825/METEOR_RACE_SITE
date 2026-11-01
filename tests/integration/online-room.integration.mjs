@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 const origin=process.env.TEST_ORIGIN || 'http://localhost:5173';
+const testClient = `local-room-${randomUUID()}`;
 assert.ok(['localhost','127.0.0.1'].includes(new URL(origin).hostname), 'Local database only');
 async function request(id,body){
-  const r=await fetch(origin+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json','x-meteor-player-id':id},body:JSON.stringify(body)});
+  const r=await fetch(origin+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json','cf-connecting-ip':testClient,'x-meteor-player-id':id},body:JSON.stringify(body)});
   return {status:r.status,data:await r.json()};
 }
 for(let repeat=0;repeat<3;repeat++){
@@ -25,8 +26,8 @@ for(let repeat=0;repeat<3;repeat++){
       assert.equal(guestView.lobbySize,expected);
     }
     const lobby=await call(host,{action:'update_lobby_settings',variant:'classic',size:9,aiCount:3,difficulty:'hard',eventKind:['wind','geyser'],eventInterval: repeat === 0 ? 7 : { geyser: 3, wind: 7, orbit: 5, gravity: 5 }});
-    assert.deepEqual(lobby.data.lobbyEvent,['geyser','wind']);
-    const timing = repeat === 0 ? 7 : { orbit: 5, geyser: 3, wind: 7, gravity: 5 };
+    assert.deepEqual(lobby.data.lobbyEvent,['wind','geyser']);
+    const timing = repeat === 0 ? 7 : { orbit: 5, geyser: 3, wind: 7, gravity: 5, warp: 5 };
     assert.deepEqual(lobby.data.lobbyEventInterval,timing);
     assert.equal((await call(guest,{action:'update_lobby_settings',eventKind:'wind'})).status,403);
     assert.equal(lobby.data.lobbyAiCount,2);
@@ -35,8 +36,8 @@ for(let repeat=0;repeat<3;repeat++){
     assert.equal(swapped.data.role,'blue');
     const started=await call(host,{action:'new_game',version:swapped.data.version,variant:'classic',size:9,humanCount:2,aiCount:2,difficulty:'hard'});
     assert.equal(started.status,200);
-    assert.equal(started.data.state.matchEvent.kind,'geyser');
-    assert.deepEqual(started.data.state.matchEvent.kinds,['geyser','wind']);
+    assert.equal(started.data.state.matchEvent.kind,'wind');
+    assert.deepEqual(started.data.state.matchEvent.kinds,['wind','geyser']);
     assert.deepEqual(started.data.state.matchEvent.intervals ?? started.data.state.matchEvent.interval,timing);
     const peer=await fetch(origin+`/api/rooms?code=${code}`,{headers:{'x-meteor-player-id':guest}}).then(r=>r.json());
     assert.deepEqual(peer.state.matchEvent,started.data.state.matchEvent);
@@ -44,7 +45,7 @@ for(let repeat=0;repeat<3;repeat++){
     assert.deepEqual(started.data.memberRoles,swapped.data.memberRoles);
     assert.equal(started.data.state.size,13);
     const returned=await call(host,{action:'return_lobby'});
-    assert.deepEqual(returned.data.lobbyEvent,['geyser','wind']);
+    assert.deepEqual(returned.data.lobbyEvent,['wind','geyser']);
     assert.deepEqual(returned.data.lobbyEventInterval,timing);
     const joinedThird=await call(third,{action:'join',nickname:'QA third'});
     const thirdRole=joinedThird.data.role;
@@ -54,7 +55,7 @@ for(let repeat=0;repeat<3;repeat++){
     assert.deepEqual(snapshot.memberRoles,[null,thirdRole],'Leaving must not shift spectator/player seats');
     const team=await call(host,{action:'update_lobby_settings',variant:'team-item',size:11,aiCount:0,difficulty:'easy'});
     assert.equal(team.data.lobbySize,13);
-    assert.deepEqual(team.data.lobbyEvent,['geyser','wind'],'Unrelated settings must preserve event selection');
+    assert.deepEqual(team.data.lobbyEvent,['wind','geyser'],'Unrelated settings must preserve event selection');
     assert.deepEqual(team.data.lobbyEventInterval,timing);
     assert.equal(team.data.lobbyAiCount,3,'Team preview fills four seats');
     const items=await call(host,{action:'new_game',version:team.data.version,variant:'item',size:9,humanCount:1,aiCount:1,difficulty:'easy'});

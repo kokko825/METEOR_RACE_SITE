@@ -14,6 +14,8 @@ assert.ok(['localhost', '127.0.0.1'].includes(new URL(origin).hostname), 'Use a 
   try {
     for (const language of ['ja', 'en']) {
       const page = await browser.newPage({ viewport: { width: 390, height: 670 } });
+      // Local-only fixture: isolate this suite from other tests' IP budgets.
+      await page.setExtraHTTPHeaders({ 'cf-connecting-ip': `local-lobby-${language}-${Date.now()}` });
       await page.addInitScript(lang => {
         localStorage.setItem('meteor-race-language', lang);
         localStorage.setItem('meteor-race-master-volume', '0');

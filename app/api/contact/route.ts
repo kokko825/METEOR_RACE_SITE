@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { readJsonObject } from "../../request-body";
 import { EmailMessage } from "cloudflare:email";
 import { withinRateLimit, rateLimitedResponse } from "../../rate-limit";
 import { COMMUNITY_SAFETY } from "../../../config/community-safety";
@@ -81,7 +82,8 @@ export async function POST(request: Request) {
   if (!(await withinRateLimit(request, "contact-post", 5, 600))) return rateLimitedResponse();
   const playerId = clean(request.headers.get("x-meteor-player-id"), 90);
   if (!/^player:[a-z0-9-]{20,80}$/.test(playerId)) return Response.json({ error: "プレイヤー情報を確認できません" }, { status: 401 });
-  const body = await request.json() as Record<string, unknown>;
+  const body = await readJsonObject(request);
+  if (!body) return Response.json({ error: "形式が正しくありません" }, { status: 400 });
   const message = clean(body.message, COMMUNITY_SAFETY.contactMaxLength);
   if (message.length < 10) return Response.json({ error: "内容を10文字以上で入力してください" }, { status: 400 });
   const category = clean(body.type, 30) || "その他";
