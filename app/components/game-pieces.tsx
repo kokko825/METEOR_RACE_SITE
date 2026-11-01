@@ -90,6 +90,8 @@ export function ProbeToken({
   shieldTurns = 0,
   boost = 0,
   settling = false,
+  pulseLocked = false,
+  shieldHit = false,
   language = "ja",
 }: {
   player: Player;
@@ -100,6 +102,8 @@ export function ProbeToken({
   shieldTurns?: number;
   boost?: number;
   settling?: boolean;
+  pulseLocked?: boolean;
+  shieldHit?: boolean;
   language?: SiteLanguage;
 }) {
   const pushStyle = push
@@ -112,9 +116,11 @@ export function ProbeToken({
     : undefined;
   return (
     <span
-      className={`probe-motion ${player}${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${push ? settling ? " blast-settle" : " blast-lift" : ""}`}
+      className={`probe-motion ${player}${teamMode ? ` team-${teamOf(player)}` : ""}${isSelf ? " is-self" : ""}${pulseLocked ? " pulse-locked" : ""}${shieldHit ? " shield-hit" : ""}${push ? settling ? " blast-settle" : " blast-lift" : ""}`}
       style={pushStyle}
     >
+      {pulseLocked && <span className="probe-static" aria-hidden="true">ϟ</span>}
+      {shieldHit && <span className="shield-deflect" aria-hidden="true"><i /><i /><i /></span>}
       {(shieldTurns > 0 || boost > 0) && (
         <span className="probe-effects" aria-label={`${shieldTurns > 0 ? `${language === "ja" ? "シールド" : "Shield"} ${shieldTurns} ` : ""}${boost > 0 ? `${language === "ja" ? "ブースト" : "Boost"} ${boost}` : ""}`}>
           {shieldTurns > 0 && <span className="shield-effect"><b>{shieldTurns}</b></span>}

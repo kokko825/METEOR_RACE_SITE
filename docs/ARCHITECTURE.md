@@ -5,6 +5,8 @@ GitHubは公開用の履歴、Codex内の `work/meteor-race-complete` はバッ�
 
 ## フォルダの役割
 
+対戦演出の待ち時間・オンライン適用方針は `config/battle-effects.ts`。落下や起動の見た目は `app/styles/game-interface.css`、イベントは `match-events.css`、破壊・回収・形成の盤面差分演出は `app/components/board-feedback.tsx`。これらはゲームルールを変更しない。
+
 | 場所 | 役割 | 普段編集するか |
 |---|---|---|
 | `config/` | バランス、AI重み、文章、色、音楽、安全設定 | はい |

@@ -27,6 +27,7 @@ export function useLocalSettings() {
   const [bgmVolume, setBgmVolume] = useState<number>(UI_BEHAVIOR.defaultVolumes.bgm);
   const [sfxVolume, setSfxVolume] = useState<number>(UI_BEHAVIOR.defaultVolumes.sfx);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [effectsDisabled, setEffectsDisabled] = useState(false);
   const [battleTrack, setBattleTrack] = useState<BattleTrackChoice>("random");
   const [language, setLanguage] = useState<SiteLanguage>("ja");
   const [textSize, setTextSize] = useState<TextSize>("standard");
@@ -40,6 +41,7 @@ export function useLocalSettings() {
     setSfxVolume(storedNumber("meteor-race-sfx-volume", UI_BEHAVIOR.defaultVolumes.sfx));
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(motionPreference.matches);
+    setEffectsDisabled(window.localStorage.getItem("meteor-race-effects") === "off");
     const storedTrack = window.localStorage.getItem("meteor-race-battle-track");
     if (storedTrack !== null && (storedTrack === "random" || Object.hasOwn(BATTLE_TRACK_LABELS, storedTrack))) {
       setBattleTrack(storedTrack as BattleTrackChoice);
@@ -62,6 +64,7 @@ export function useLocalSettings() {
   }, [hydrated, language]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-strong-play-sharing", strongPlaySharing ? "1" : "0"); }, [hydrated, strongPlaySharing]);
   useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-text-size", textSize); }, [hydrated, textSize]);
+  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-effects", effectsDisabled ? "off" : "on"); }, [hydrated, effectsDisabled]);
 
   return {
     nickname, setNickname,
@@ -69,6 +72,7 @@ export function useLocalSettings() {
     bgmVolume, setBgmVolume,
     sfxVolume, setSfxVolume,
     reducedMotion,
+    effectsDisabled, setEffectsDisabled,
     battleTrack, setBattleTrack,
     language, setLanguage,
     textSize, setTextSize,

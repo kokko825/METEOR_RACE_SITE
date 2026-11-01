@@ -42,7 +42,7 @@
 @keyframes event-dust{from{transform:translateX(0);opacity:0}15%,70%{opacity:.8}to{transform:translateX(1100%);opacity:0}}
 .field-event-firing .probe-motion.blast-settle,.field-event-firing .cell.orbit-shift{animation-duration:var(--event-move);animation-delay:0ms;animation-fill-mode:both}
 .field-event-firing .probe-motion.blast-settle{animation-name:event-probe-slide;animation-timing-function:ease-in-out}
-@keyframes event-probe-slide{from{transform:translate(var(--push-from-x),var(--push-from-y))}to{transform:translate(0,0)}}
+@keyframes event-probe-slide{0%{transform:translate(var(--push-from-x),var(--push-from-y))}16%{transform:translate(var(--push-from-x),calc(var(--push-from-y) - 6%)) scale(.96)}72%{transform:translate(0,-12%) scale(1.04)}100%{transform:translate(0,0)}}
 @keyframes event-heartbeat{0%,45%,100%{opacity:.35;transform:scale(.9)}15%,30%{opacity:.8;transform:scale(1)}}
 @keyframes event-contract{0%{opacity:.5;transform:scale(1)}40%{opacity:.9}100%{opacity:0;transform:scale(.08)}}
 @keyframes event-breeze{0%,100%{transform:translateX(-2%);opacity:.42}50%{transform:translateX(2%);opacity:.62}}

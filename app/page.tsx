@@ -5,6 +5,7 @@ import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENTS, normalizeMatchE
 import { normalizeRoomCode, ROOM_CODE_MAX_LENGTH } from "./room-code";
 import { EventControls, EventSummary, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle, forecastStyle } from "./components/match-events";
 import { useFieldEvent } from "./hooks/use-field-event";
+import { BoardFeedback, EquipmentActivation } from "./components/board-feedback";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AdSlot } from "./components/ad-slot";
 import { getMusicManager, type BattleTrackChoice, BATTLE_TRACK_LABELS } from "./music-engine";
@@ -39,6 +40,7 @@ import {
   initialGameState as initialState,
   legalMoves,
   isItemVariant,
+  isPulseLocked,
   isTeamVariant,
   meteorName,
   orthogonallyAdjacent,
@@ -70,6 +72,7 @@ import { SoundMixer, VolumeControls } from "./components/sound-controls";
 import { MatchMeta } from "./components/match-meta";
 import { uiFormat, uiText } from "./i18n";
 import { UI_BEHAVIOR } from "../config/ui-behavior";
+import { BATTLE_EFFECTS, battleEffectsEnabled } from "../config/battle-effects";
 import { UI_LAYOUT } from "../config/ui-layout";
 import { gameStatusText } from "./game-status";
 import { getOrCreatePlayerId, playerRequestHeaders } from "./client-identity";
@@ -176,14 +179,30 @@ function Game() {
   const [eventInterval, setEventInterval] = useState(() => normalizeEventIntervals(5));
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [liveGame, setGame] = useState<GameState>(() => initialState(9, "red"));
-  const [isAnimating, setIsAnimating] = useState(false);
-  const { game, firing: eventFiring, moving: eventMoving, effectKey: eventEffectKey } = useFieldEvent(liveGame, isAnimating);
+  const [motionAnimating, setIsAnimating] = useState(false);
+  const [switchFx, setSwitchFx] = useState<SwitchFx | null>(null);
+  const isAnimating = motionAnimating || Boolean(switchFx);
+  const [mode, setMode] = useState<Mode>("human");
+  const {
+    nickname, setNickname,
+    masterVolume, setMasterVolume,
+    bgmVolume, setBgmVolume,
+    sfxVolume, setSfxVolume,
+    reducedMotion: localReducedMotion,
+    effectsDisabled, setEffectsDisabled,
+    battleTrack, setBattleTrack,
+    language, setLanguage,
+    textSize, setTextSize,
+    strongPlaySharing, setStrongPlaySharing,
+  } = useLocalSettings();
+  const reducedMotion = mode !== "online" && (localReducedMotion || effectsDisabled);
+  const effectsEnabled = battleEffectsEnabled(mode === "online", localReducedMotion || effectsDisabled);
+  const { game, firing: eventFiring, moving: eventMoving, effectKey: eventEffectKey } = useFieldEvent(liveGame, isAnimating, effectsEnabled);
   const boardPlayers = useMemo(() => activePlayers(game), [game]);
   const boardObstacles = useMemo(() => activeObstacles(game), [game]);
   const boardPulseDevices = useMemo(() => activePulseDevices(game), [game]);
   const eventOccupied = useMemo(() => [...game.meteors, ...boardObstacles, ...boardPulseDevices, ...boardPlayers.map((player) => game.probes[player])], [game, boardObstacles, boardPulseDevices, boardPlayers]);
   const [activeBalance, setActiveBalance] = useState<BalanceConfig>(DEFAULT_BALANCE);
-  const [mode, setMode] = useState<Mode>("human");
   const [setupMode, setSetupMode] = useState<Mode>("human");
   const [needsNewGame, setNeedsNewGame] = useState(false);
   const [activeFirst, setActiveFirst] = useState<Player>("red");
@@ -216,17 +235,6 @@ function Game() {
     isItemVariant(game.variant) ? UI_LAYOUT.itemBoardVerticalFill : UI_LAYOUT.classicBoardVerticalFill,
     isItemVariant(game.variant),
   );
-  const {
-    nickname, setNickname,
-    masterVolume, setMasterVolume,
-    bgmVolume, setBgmVolume,
-    sfxVolume, setSfxVolume,
-    reducedMotion,
-    battleTrack, setBattleTrack,
-    language, setLanguage,
-    textSize, setTextSize,
-    strongPlaySharing, setStrongPlaySharing,
-  } = useLocalSettings();
   const t = (key: Parameters<typeof uiText>[1]) => uiText(language, key);
   const localize = (ja: string, en: string) => language === "ja" ? ja : en;
   const tf = (key: Parameters<typeof uiText>[1], values: Record<string, string | number>) =>
@@ -246,9 +254,18 @@ function Game() {
   const [aiSpeed, setAiSpeed] = useState<number>(UI_BEHAVIOR.aiDefaultDelayMs);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("normal");
   const [blastFx, setBlastFx] = useState<BlastFx | null>(null);
-  const [switchFx, setSwitchFx] = useState<SwitchFx | null>(null);
   const [orbitFx, setOrbitFx] = useState<OrbitFx | null>(null);
   const [pulseFx, setPulseFx] = useState<PulseFx | null>(null);
+  useEffect(() => {
+    if (!pulseFx) return;
+    const timer = window.setTimeout(() => setPulseFx(null), BATTLE_EFFECTS.blastMs);
+    return () => window.clearTimeout(timer);
+  }, [pulseFx]);
+  useEffect(() => {
+    if (!switchFx) return;
+    const timer = window.setTimeout(() => setSwitchFx(null), switchFx.kind === "gravity" ? 1550 : BATTLE_EFFECTS.itemMs);
+    return () => window.clearTimeout(timer);
+  }, [switchFx]);
   const [hoveredOrbitRing, setHoveredOrbitRing] = useState<number | null>(null);
   const [selectedOrbitRing, setSelectedOrbitRing] = useState<number | null>(null);
   const resultIdentity = `${game.turnCount}:${game.winner ?? "none"}:${game.finishOrder?.join("-") ?? ""}`;
@@ -371,6 +388,7 @@ function Game() {
       ? online.role
       : game.turn;
   const canControl =
+    !isAnimating &&
     !eventFiring &&
     (mode === "online" || !needsNewGame) &&
     (mode !== "online" ||
@@ -663,12 +681,12 @@ function Game() {
           setBlastFx((effect) =>
             effect ? { ...effect, stage: "recover" } : effect,
           );
-        }, 520);
+        }, BATTLE_EFFECTS.meteorMoveMs);
         window.setTimeout(() => {
           setGame(data.state);
           setBlastFx(null);
           setIsAnimating(false);
-        }, 980);
+        }, BATTLE_EFFECTS.meteorEndMs);
       }
       setOnline((current) => ({
         ...current,
@@ -975,9 +993,9 @@ function Game() {
 
   const showSwitchFx = useCallback((kind: ItemKind, player: Player) => {
     playItemSound(kind);
+    if (!effectsEnabled) return;
     setSwitchFx({ kind, player, nonce: Date.now() });
-    window.setTimeout(() => setSwitchFx((current) => current?.kind === kind && current.player === player ? null : current), kind === "gravity" ? 1550 : 1050);
-  }, [playItemSound]);
+  }, [playItemSound, effectsEnabled]);
 
   useEffect(() => {
     const pulse = game.rankedGravityPulse ?? 0;
@@ -1050,6 +1068,16 @@ function Game() {
       }
       const beforeEvents = beforeFieldEvents(game, resolution.state);
       const probes = beforeEvents.probes;
+      if (!effectsEnabled) {
+        playBoom();
+        commit(resolution.state);
+        if (tutorialStep === "meteor" && game.turn === "red") {
+          setTutorialHitRival(Boolean(resolution.pushed.blue));
+          setTutorialMovedSelf(Boolean(resolution.pushed.red));
+          setTutorialStep(resolution.state.phase === "over" && resolution.state.winner === "red" ? "complete" : "meteor-result");
+        }
+        return true;
+      }
       setIsAnimating(true);
       setBlastFx({
         stage: "probe",
@@ -1060,14 +1088,6 @@ function Game() {
         pushed: resolution.pushed,
       });
       playBoom();
-      const effectScale =
-        mode !== "lab"
-          ? 1
-          : aiSpeed <= UI_BEHAVIOR.labFastThresholdMs
-            ? UI_BEHAVIOR.labEffectScaleFast
-            : aiSpeed <= UI_BEHAVIOR.labMediumThresholdMs
-              ? UI_BEHAVIOR.labEffectScaleMedium
-              : UI_BEHAVIOR.labEffectScaleNormal;
       window.setTimeout(() => {
         setGame((current) => ({
           ...current,
@@ -1075,7 +1095,7 @@ function Game() {
           obstacles: beforeEvents.obstacles,
         }));
         setBlastFx((effect) => (effect ? { ...effect, stage: "recover" } : effect));
-      }, Math.max(70, Math.round(1100 * effectScale)));
+      }, BATTLE_EFFECTS.meteorMoveMs);
       window.setTimeout(() => {
         commit(resolution.state);
         if (tutorialStep === "meteor" && game.turn === "red") {
@@ -1086,7 +1106,7 @@ function Game() {
         }
         setBlastFx(null);
         setIsAnimating(false);
-      }, Math.max(140, Math.round(2020 * effectScale)));
+      }, BATTLE_EFFECTS.meteorEndMs);
       return true;
     } catch {
       return false;
@@ -1126,8 +1146,7 @@ function Game() {
     const player = game.pendingSwitches?.[0]?.player ?? game.turn;
     const next = applyPulseSwitch(game, target);
     showSwitchFx("pulse", player);
-    setPulseFx({ kind: "pulse", target, radius: game.balance?.pulseRadius ?? activeBalance.pulseRadius, nonce: Date.now() });
-    window.setTimeout(() => setPulseFx(null), 950);
+    if (effectsEnabled) setPulseFx({ kind: "pulse", target, radius: game.balance?.pulseRadius ?? activeBalance.pulseRadius, nonce: Date.now() });
     if (mode === "online") void submitOnlineAction("switch_pulse", target);
     commit(next);
   };
@@ -1136,14 +1155,14 @@ function Game() {
     const next = applyBlastSwitch(game, target);
     const pushed = pushedProbesBetween(game, beforeFieldEvents(game, next));
     showSwitchFx("blast", player);
+    if (!effectsEnabled) { commit(next); return; }
     setPulseFx({ kind: "blast", target, radius: game.balance?.blastRadius ?? activeBalance.blastRadius, nonce: Date.now() });
-    window.setTimeout(() => setPulseFx(null), 950);
     setBlastFx({ stage: "settle", target, owner: player, size: "large", destroyedIds: [], pushed });
     setIsAnimating(true);
     window.setTimeout(() => {
       setBlastFx(null);
       setIsAnimating(false);
-    }, 950);
+    }, BATTLE_EFFECTS.blastMs);
     if (mode === "online") void submitOnlineAction("switch_blast", target);
     commit(next);
   };
@@ -1154,6 +1173,7 @@ function Game() {
     if (mode === "online") void submitOnlineAction("switch_orbit", undefined, undefined, false, ring, clockwise, quarterTurns);
     setSelectedOrbitRing(null);
     setHoveredOrbitRing(null);
+    if (!effectsEnabled) { commit(next); return; }
     setOrbitFx({ ring, clockwise, quarterTurns, nonce: Date.now() });
     setIsAnimating(true);
     commit(next);
@@ -1469,12 +1489,12 @@ function Game() {
               setBlastFx((effect) =>
                 effect ? { ...effect, stage: "recover" } : effect,
               );
-            }, 520);
+            }, BATTLE_EFFECTS.meteorMoveMs);
             window.setTimeout(() => {
               setGame(data.state);
               setBlastFx(null);
               setIsAnimating(false);
-            }, 980);
+            }, BATTLE_EFFECTS.meteorEndMs);
           } else {
             setGame(data.state);
           }
@@ -1486,7 +1506,6 @@ function Game() {
               player: remoteItemEffect.player,
               nonce: Date.now(),
             });
-            window.setTimeout(() => setSwitchFx(null), remoteItemEffect.kind === "gravity" ? 1550 : 900);
             if (
               remoteItemEffect.kind === "orbit" &&
               remoteItemEffect.ring !== undefined &&
@@ -1511,7 +1530,6 @@ function Game() {
                 radius: remoteItemEffect.radius ?? (remoteItemEffect.kind === "blast" ? data.state.balance?.blastRadius : data.state.balance?.pulseRadius) ?? 1,
                 nonce: Date.now(),
               });
-              window.setTimeout(() => setPulseFx(null), 950);
             }
             if (remoteItemEffect.kind === "blast" && remoteItemEffect.target && remoteItemEffect.pushed) {
               setBlastFx({
@@ -1526,7 +1544,7 @@ function Game() {
               window.setTimeout(() => {
                 setBlastFx(null);
                 setIsAnimating(false);
-              }, 950);
+              }, BATTLE_EFFECTS.blastMs);
             }
           }
           setSize(data.status === "waiting" ? (data.lobbySize ?? data.state.size) : data.state.size);
@@ -2134,6 +2152,9 @@ function Game() {
                 <button type="button" className={textSize === "xlarge" ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={textSize === "xlarge"} onClick={() => setTextSize("xlarge")}>{t("textSizeExtraLarge")}</button>
               </div>
               <p>{t("textSizeSaved")}</p>
+              <button type="button" className={`drawer-toggle${effectsEnabled ? " active" : ""}`} aria-pressed={effectsEnabled} disabled={mode === "online" || localReducedMotion || isAnimating || eventFiring} onClick={() => setEffectsDisabled(!effectsDisabled)}>{localize("対戦エフェクト", "Battle effects")} {effectsEnabled ? "ON" : "OFF"}</button>
+              {mode !== "online" && localReducedMotion && <p>{localize("端末の視差効果を減らす設定に従っています。", "Following your device’s reduced-motion setting.")}</p>}
+              {mode === "online" && <p>{localize("オンライン対戦ではエフェクトONで進行します。", "Effects remain on during online matches.")}</p>}
             </section>
             <section>
               <h3>{t("accountHeading")}</h3>
@@ -2222,6 +2243,7 @@ function Game() {
           )}
           {switchFx && (
             <div key={switchFx.nonce} className={`switch-activation ${switchFx.kind} ${switchFx.player}`} role="status">
+              <EquipmentActivation kind={switchFx.kind} />
               <span className="switch-burst" />
               {switchFx.kind === "gravity" && <span className="gravity-well"><i /><i /><i /></span>}
               <b>{switchFx.kind.toUpperCase()}</b>
@@ -2252,6 +2274,7 @@ function Game() {
             aria-label={tf("boardAria", { size: game.size })}
           >
             <EventBoardEffect size={game.size} event={game.matchEvent} perspective={perspectiveSlot} firing={eventFiring} />
+            <BoardFeedback game={game} perspective={perspectiveSlot} enabled={effectsEnabled} />
             {Array.from({ length: game.size * game.size }, (_, index) => {
               const viewR = Math.floor(index / game.size);
               const viewC = index % game.size;
@@ -2334,6 +2357,7 @@ function Game() {
                   {eventFiring && game.matchEvent?.last?.kind === "geyser" && game.matchEvent.last.vents?.some((vent) => samePos(vent, pos)) && !probe && !meteor && !obstacle && !pulseDevice && <span className="shockwave small event-geyser-wave" />}
                   {blastFx && blastFx.stage !== "settle" && samePos(pos, blastFx.target) && (
                     <>
+                      <span className="impact-heat" aria-hidden="true" />
                       {blastFx.stage === "probe" && (
                         <>
                           <span className={`impact-flash ${blastFx.owner}`} />
@@ -2347,7 +2371,7 @@ function Game() {
                     </>
                   )}
                   {pulseFx?.kind === "blast" && samePos(pos, pulseFx.target) && (
-                    <span key={`${pulseFx.nonce}-blast-origin`} className="blast-origin-effect">
+                    <span key={`${pulseFx.nonce}-blast-origin`} className="blast-origin-effect" style={{ "--blast-span": pulseFx.radius * 2 + 1 } as React.CSSProperties}>
                       <i className="blast-origin-flash" />
                       <i className="blast-origin-wave wave-a" />
                       <i className="blast-origin-wave wave-b" />
@@ -2389,6 +2413,12 @@ function Game() {
                       isSelf={probe === selfPlayer}
                       shieldTurns={game.shieldTurns?.[probe] ?? 0}
                       boost={game.boosterMoves?.[probe] ?? 0}
+                      pulseLocked={isPulseLocked(game, probe)}
+                      shieldHit={effectsEnabled && (game.shieldTurns?.[probe] ?? 0) > 0 && Boolean(
+                        (blastFx && distance(blastFx.pushed[probe]?.from ?? pos, blastFx.target) <= (blastFx.size === "large" ? 2 : 1)) ||
+                        (pulseFx?.kind === "blast" && distance(blastFx?.pushed[probe]?.from ?? pos, pulseFx.target) <= pulseFx.radius) ||
+                        (eventFiring && (game.matchEvent?.last?.kind === "wind" || (game.matchEvent?.last?.kind === "geyser" && game.matchEvent.last.vents?.some(vent => distance(vent, pos) === 1 && !eventOccupied.some(object => samePos(object, vent)) && !(game.warpGates ?? []).some(gate => samePos(gate, vent))))))
+                      )}
                       rotation={
                         viewR === mid && viewC === mid
                           ? 0

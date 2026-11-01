@@ -11,6 +11,22 @@ import { LoadoutPreview } from "../app/components/loadout-preview";
 import { boardTargetPreview, beforeFieldEvents } from "../app/board-preview";
 import { gameStatusText } from "../app/game-status";
 import { minutesUntilRanked } from "../app/ranked-schedule";
+import { boardFeedbackBetween, EquipmentActivation } from "../app/components/board-feedback";
+import { battleEffectsEnabled, BATTLE_EFFECTS } from "../config/battle-effects";
+
+assert.equal(battleEffectsEnabled(false, true), false);
+assert.equal(battleEffectsEnabled(true, true), true);
+assert.ok(BATTLE_EFFECTS.meteorImpactMs < BATTLE_EFFECTS.meteorMoveMs);
+assert.ok(BATTLE_EFFECTS.meteorMoveMs < BATTLE_EFFECTS.meteorEndMs);
+const feedbackBefore = initialGameState(9, "red");
+feedbackBefore.meteors = [{ id: 1, owner: "blue", size: "small", r: 4, c: 2 }];
+feedbackBefore.obstacles = [{ id: 2, owner: "red", r: 3, c: 3, turns: 1 }];
+const feedbackAfter = { ...feedbackBefore, meteors: [], obstacles: [{ id: 3, owner: "red" as const, r: 2, c: 2, turns: 4 }] };
+assert.deepEqual(boardFeedbackBetween(feedbackBefore, feedbackAfter).map(c => c.kind), ["break", "return", "dissolve", "print"]);
+assert.deepEqual(boardFeedbackBetween(feedbackBefore, feedbackBefore), []);
+assert.deepEqual(boardFeedbackBetween({ ...feedbackBefore, turnCount: 9 }, feedbackAfter), []);
+assert.match(renderToStaticMarkup(createElement(EquipmentActivation, { kind: "booster" })), /meter-needle/);
+assert.equal((renderToStaticMarkup(createElement(EquipmentActivation, { kind: "shield" })).match(/--hex-delay/g) ?? []).length, 25);
 
 const noop = () => {};
 for (const language of ["ja", "en"] as const) {

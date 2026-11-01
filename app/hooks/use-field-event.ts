@@ -3,13 +3,14 @@ import { MATCH_EVENT_FX } from "../../config/match-events";
 import type { GameState } from "../game-rules";
 
 /** Hold the before-board until the effect has played; then animate only this stage. */
-export function useFieldEvent(liveGame: GameState, blocked = false) {
+export function useFieldEvent(liveGame: GameState, blocked = false, enabled = true) {
   const serial = liveGame.matchEvent?.serial ?? 0;
   const [completed, setCompleted] = useState(0);
   const [cursor, setCursor] = useState({ serial: 0, index: 0, moving: false });
+  if (!enabled && completed !== serial) setCompleted(serial);
   if (serial < completed) setCompleted(serial);
   if (serial < cursor.serial) setCursor({ serial, index: 0, moving: false });
-  const pending = serial > completed;
+  const pending = enabled && serial > completed;
   const firing = pending && !blocked;
   const index = cursor.serial === serial ? cursor.index : 0;
   const moving = firing && cursor.serial === serial && cursor.moving;
