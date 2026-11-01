@@ -60,6 +60,7 @@ export function useResponsiveBoard(
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", scheduleUpdate);
       arena.style.removeProperty("--board-available-size");
+      arena.style.removeProperty("--battle-action-reserve");
     };
   }, [actionRef, arenaRef, verticalFill, hasItems]);
 }

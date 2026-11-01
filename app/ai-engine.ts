@@ -943,6 +943,7 @@ export function chooseAiDecision(
   if (state.phase === "setup") {
     const own = state.itemHands?.[player] ?? [];
     const balance = normalizeBalance(state.balance);
+    const competitiveItemDuel = itemDuel && !state.ranked && (!state.matchEvent || state.matchEvent.kind === "off");
     if (own.length === balance.itemHandTotal) return { type: "confirm_setup" };
     const base: Record<ItemKind, number> = {
       booster: 94,
@@ -964,10 +965,16 @@ export function chooseAiDecision(
         const synergy =
           ((kind === "shield" && own.includes("booster")) ||
           (kind === "booster" && own.includes("shield"))) ? 5 : 0;
+        // Competitive duels need usable tempo tools, not a defensive slot
+        // that the same AI's in-match evaluator usually leaves unused.
+        const duelPreference = difficulty === "hard" && competitiveItemDuel
+          ? kind === "blast" ? AI_STRATEGY.items.hardDuelBlastPreference
+            : kind === "shield" ? -AI_STRATEGY.items.hardDuelShieldReserve : 0
+          : 0;
         return {
           choice: kind,
           value:
-            base[kind] - duplicatePenalty + roleBalance + synergy +
+            base[kind] - duplicatePenalty + roleBalance + synergy + duelPreference +
             AI_STRATEGY.items.loadoutPersonality[player][kind],
         };
       })

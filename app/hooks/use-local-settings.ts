@@ -4,15 +4,25 @@
 import { useEffect, useState } from "react";
 import { BATTLE_TRACK_LABELS, type BattleTrackChoice } from "../music-engine";
 import { UI_BEHAVIOR } from "../../config/ui-behavior";
+import { readLocal, writeLocal, parseStoredNumber } from "../client-storage";
 
 export type SiteLanguage = "ja" | "en";
 export type TextSize = "standard" | "large" | "xlarge";
 
 function storedNumber(key: string, fallback: number) {
-  const stored = window.localStorage.getItem(key);
-  if (stored === null || stored.trim() === "") return fallback;
-  const value = Number(stored);
-  return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : fallback;
+  return parseStoredNumber(readLocal(key), fallback);
+}
+
+/** Read-only documents must not rewrite unrelated game preferences. */
+export function useSiteLanguage() {
+  const [language, setLanguage] = useState<SiteLanguage>("ja");
+  useEffect(() => {
+    const update = () => { const next = readLocal("meteor-race-language") === "en" ? "en" : "ja"; setLanguage(next); document.documentElement.lang = next; };
+    update();
+    window.addEventListener("storage", update);
+    return () => window.removeEventListener("storage", update);
+  }, []);
+  return language;
 }
 
 /**
@@ -35,36 +45,32 @@ export function useLocalSettings() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setNickname((window.localStorage.getItem("meteor-race-nickname") ?? "").slice(0, 16));
+    setNickname((readLocal("meteor-race-nickname") ?? "").slice(0, 16));
     setMasterVolume(storedNumber("meteor-race-master-volume", UI_BEHAVIOR.defaultVolumes.master));
     setBgmVolume(storedNumber("meteor-race-bgm-volume", UI_BEHAVIOR.defaultVolumes.bgm));
     setSfxVolume(storedNumber("meteor-race-sfx-volume", UI_BEHAVIOR.defaultVolumes.sfx));
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(motionPreference.matches);
-    setEffectsDisabled(window.localStorage.getItem("meteor-race-effects") === "off");
-    const storedTrack = window.localStorage.getItem("meteor-race-battle-track");
+    const updateMotion = () => setReducedMotion(motionPreference.matches);
+    motionPreference.addEventListener("change", updateMotion);
+    setEffectsDisabled(readLocal("meteor-race-effects") === "off");
+    const storedTrack = readLocal("meteor-race-battle-track");
     if (storedTrack !== null && (storedTrack === "random" || Object.hasOwn(BATTLE_TRACK_LABELS, storedTrack))) {
       setBattleTrack(storedTrack as BattleTrackChoice);
     }
-    if (window.localStorage.getItem("meteor-race-language") === "en") setLanguage("en");
-    const storedTextSize = window.localStorage.getItem("meteor-race-text-size");
+    if (readLocal("meteor-race-language") === "en") setLanguage("en");
+    const storedTextSize = readLocal("meteor-race-text-size");
     if (storedTextSize === "large" || storedTextSize === "xlarge") setTextSize(storedTextSize);
-    setStrongPlaySharing(window.localStorage.getItem("meteor-race-strong-play-sharing") !== "0");
+    setStrongPlaySharing(readLocal("meteor-race-strong-play-sharing") !== "0");
     setHydrated(true);
+    return () => motionPreference.removeEventListener("change", updateMotion);
   }, []);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-nickname", nickname); }, [hydrated, nickname]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-master-volume", String(masterVolume)); }, [hydrated, masterVolume]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-bgm-volume", String(bgmVolume)); }, [hydrated, bgmVolume]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-sfx-volume", String(sfxVolume)); }, [hydrated, sfxVolume]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-battle-track", battleTrack); }, [hydrated, battleTrack]);
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem("meteor-race-language", language);
+    const values = { nickname, "master-volume": masterVolume, "bgm-volume": bgmVolume, "sfx-volume": sfxVolume, "battle-track": battleTrack, language, "strong-play-sharing": strongPlaySharing ? "1" : "0", "text-size": textSize, effects: effectsDisabled ? "off" : "on" };
+    for (const [key, value] of Object.entries(values)) writeLocal(`meteor-race-${key}`, String(value));
     document.documentElement.lang = language;
-  }, [hydrated, language]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-strong-play-sharing", strongPlaySharing ? "1" : "0"); }, [hydrated, strongPlaySharing]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-text-size", textSize); }, [hydrated, textSize]);
-  useEffect(() => { if (hydrated) window.localStorage.setItem("meteor-race-effects", effectsDisabled ? "off" : "on"); }, [hydrated, effectsDisabled]);
+  }, [hydrated, nickname, masterVolume, bgmVolume, sfxVolume, battleTrack, language, strongPlaySharing, textSize, effectsDisabled]);
 
   return {
     nickname, setNickname,

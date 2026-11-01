@@ -11,10 +11,6 @@ export const UI_BEHAVIOR = {
   aiMinimumDelayMs: 120,
   aiBonusMoveMinimumDelayMs: 420,
   aiSetupDelayMs: 30,
-  labFastThresholdMs: 60,
-  labMediumThresholdMs: 240,
-  labEffectScaleFast: 0.08,
-  labEffectScaleMedium: 0.18,
-  labEffectScaleNormal: 0.48,
+  copyFeedbackMs: 2400,
   resultRevealDelayMs: 420,
 } as const;

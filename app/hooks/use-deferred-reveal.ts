@@ -17,7 +17,12 @@ export function useDeferredReveal({ active, blocked, identity, delayMs }: Deferr
   const [revealedIdentity, setRevealedIdentity] = useState("");
 
   useEffect(() => {
-    if (!active || blocked) return;
+    if (!active || blocked) {
+      // Reset between matches, including an identical winner/turn count in a rematch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRevealedIdentity("");
+      return;
+    }
     const timer = window.setTimeout(() => setRevealedIdentity(identity), delayMs);
     return () => window.clearTimeout(timer);
   }, [active, blocked, identity, delayMs]);

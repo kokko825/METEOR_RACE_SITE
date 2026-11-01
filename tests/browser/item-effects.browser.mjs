@@ -48,6 +48,7 @@ try {
     if (off) {
       assert.equal(await page.locator('.switch-activation').count(), 0);
       assert.equal(await page.locator('.board-cue').count(), 0);
+      if (kind === 'pulse') assert.ok(await page.locator('.pulse-perimeter').first().isVisible(), 'Disabling effects preserves the gameplay range');
     } else {
       const selector = {booster:'.engine-meter',shield:'.shield-deploy',holo:'.cue-print',pulse:'.pulse-perimeter',blast:'.blast-origin-wave',recall:'.cue-return'}[kind];
       await page.locator(selector).first().waitFor({state:'attached',timeout:1500});

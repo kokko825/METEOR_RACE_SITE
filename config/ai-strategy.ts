@@ -59,6 +59,9 @@ export const AI_STRATEGY = {
     quietGate: 120,
   },
   items: {
+    // HARD, non-ranked 1v1 without field events. Other loadouts keep their variety.
+    hardDuelBlastPreference: 25,
+    hardDuelShieldReserve: 10,
     orbitMinimumGain: 4,
     pulseMobility: 14,
     friendlyPulseLock: 120_000,

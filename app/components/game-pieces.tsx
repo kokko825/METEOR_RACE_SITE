@@ -27,8 +27,7 @@ export const ITEM_DEMO_LABELS: Record<ItemKind, string> = {
   gravity: "PULL TO CORE",
 };
 
-export function ItemIcon({ kind }: { kind: ItemKind }) {
-  const paths: Record<ItemKind, string> = {
+const ITEM_PATHS: Record<ItemKind, string> = {
     shield: "M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6Z",
     booster: "m5 14 7-9 7 9M5 20l7-9 7 9",
     holo: "m12 3 8 5v9l-8 4-8-4V8Zm-8 5 8 5 8-5M12 13v8",
@@ -37,8 +36,9 @@ export function ItemIcon({ kind }: { kind: ItemKind }) {
     pulse: "m14 2-9 12h6l-1 8 9-13h-6Z",
     recall: "M8 3 3 8l5 5M3 8h11a6 6 0 0 1 0 12",
     gravity: "M12 3v5m0 13v-5M3 12h5m13 0h-5m-7-1 3-3 3 3-3 3Z",
-  };
-  return <i className={`item-icon clean-icon ${kind}`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={paths[kind]} /></svg></i>;
+};
+export function ItemIcon({ kind }: { kind: ItemKind }) {
+  return <i className={`item-icon clean-icon ${kind}`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ITEM_PATHS[kind]} /></svg></i>;
 }
 
 export function ProbeIcon({ color, teamMode = false }: { color: Player; teamMode?: boolean }) {

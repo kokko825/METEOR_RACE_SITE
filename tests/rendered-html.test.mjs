@@ -468,7 +468,7 @@ test("gives BOOSTER and BLAST distinct item colors", async () => {
   assert.match(css, /item-choice\.blast \{ --item-color:var\(--item-blast\)/);
   assert.match(page, /blast-origin-effect/);
   assert.doesNotMatch(page, /blast-effect-cell/);
-  assert.match(css, /@keyframes blast-origin-wave/);
+  assert.match(css, /@keyframes blast-radius-wave/);
   assert.match(css, /transform:scale\(5\.05\)/);
 });
 
@@ -684,7 +684,8 @@ test("keeps strong-play research anonymous, verified and optional", async () => 
   assert.match(route, /verifyStrongPlayCandidate/);
   assert.match(route, /JSON\.stringify\(play\)/);
   assert.doesNotMatch(route, /x-meteor-player-id|nickname|email|roomCode|chat/i);
-  assert.match(hook, /if \(hydrated\) window\.localStorage\.setItem/);
+  assert.match(hook, /if \(!hydrated\) return;[\s\S]*writeLocal\(/);
+  assert.match(await read("../app/client-storage.ts"), /localStorage\.setItem/);
   assert.match(policy, /AIの自動学習には使用せず/);
 });
 

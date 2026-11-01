@@ -13,6 +13,7 @@ import { gameStatusText } from "../app/game-status";
 import { minutesUntilRanked } from "../app/ranked-schedule";
 import { boardFeedbackBetween, EquipmentActivation } from "../app/components/board-feedback";
 import { battleEffectsEnabled, BATTLE_EFFECTS } from "../config/battle-effects";
+import { parseStoredNumber } from "../app/client-storage";
 
 assert.equal(battleEffectsEnabled(false, true), false);
 assert.equal(battleEffectsEnabled(true, true), true);
@@ -183,3 +184,11 @@ assert.equal(eventCellClass(ventEvent, { r: 0, c: 0 }, 6), "");
     assert.ok(!html.includes("NaN"));
   }
 }
+assert.equal(parseStoredNumber(null, 1200, 0, 9999), 1200);
+assert.equal(parseStoredNumber("", 80), 80);
+assert.equal(parseStoredNumber("NaN", 80), 80);
+assert.equal(parseStoredNumber("Infinity", 80), 80);
+assert.equal(parseStoredNumber("250", 80), 100);
+assert.equal(parseStoredNumber("-1", 80), 0);
+assert.equal(parseStoredNumber("0", 80), 0);
+assert.equal(parseStoredNumber("42.8", 80), 43);

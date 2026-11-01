@@ -2,7 +2,8 @@ import type { CSSProperties } from "react";
 import type { SiteLanguage } from "../hooks/use-local-settings";
 import type { BalanceConfig } from "../balance-config";
 import { uiText } from "../i18n";
-import { ITEM_ICONS, SELECTABLE_ITEMS, itemDetail, ITEM_ROLES } from "../item-content";
+import { SELECTABLE_ITEMS, itemDetail, ITEM_ROLES } from "../item-content";
+import { ItemIcon } from "./game-pieces";
 import { MATCH_EVENT_ORDER, MATCH_EVENT_LORE } from "../../config/match-events";
 import { EventExplanation, EventOrder } from "./match-events";
 import { ITEM_LORE } from "../../config/item-lore";
@@ -58,7 +59,7 @@ export function WorldArchive({
         <div>
           {ITEM_LORE.filter(item => SELECTABLE_ITEMS.some(kind => kind === item.kind)).map((item) => (
             <article key={item.kind} className={item.kind}>
-              <i aria-hidden="true">{ITEM_ICONS[item.kind]}</i>
+              <ItemIcon kind={item.kind} />
               <span>
                 <small>
                   {language === "ja"
@@ -116,7 +117,7 @@ export function RulesArchive({
             <em>{language === "ja" ? "または" : "OR"}</em>
             <article>
               <span>02</span>
-              <i>{ITEM_ICONS.shield}</i>
+              <ItemIcon kind="shield" />
               <div>
                 <b>ITEM</b>
                 <p>{t("manualItem")}</p>
@@ -163,7 +164,7 @@ export function RulesArchive({
         <div className="manual-item-grid">
           {SELECTABLE_ITEMS.map((kind) => (
             <article key={kind} className={kind}>
-              <i aria-hidden="true">{ITEM_ICONS[kind]}</i>
+              <ItemIcon kind={kind} />
               <div>
                 <b>{kind.toUpperCase()}</b>
                 <p className="item-role">{ITEM_ROLES[kind][language]}</p>

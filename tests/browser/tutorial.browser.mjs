@@ -30,11 +30,17 @@ try {
     await page.locator('.tutorial-free .tutorial-coach button').click();
     await page.locator('.tutorial-free-play').waitFor();
     assert.equal(await page.locator('.tutorial-coach:visible').count(),0);
+    if (process.env.LAYOUT_SCREENSHOT_DIR) await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOT_DIR}/tutorial-free-${stage}.png`,fullPage:true});
     // Free play stays interactive and does not bring the lesson back.
     for(let turn=0;turn<3;turn++){
       // Animation/CPU completion may expose either the next move or placement.
       // A synchronous count during an animation must not skip a required action.
-      await page.locator('.cell.legal, .cell.placeable').first().click();
+      try { await page.locator('.cell.legal, .cell.placeable').first().click(); }
+      catch (error) {
+        if (process.env.LAYOUT_SCREENSHOT_DIR) await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOT_DIR}/tutorial-failure-${stage}.png`,fullPage:true});
+        console.log(await page.locator('.shell').getAttribute('class'));
+        throw error;
+      }
       await page.waitForTimeout(1800);
       assert.equal(await page.locator('.tutorial-coach:visible').count(),0);
     }

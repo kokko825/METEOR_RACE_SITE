@@ -15,6 +15,8 @@ import { useLocalSettings } from "./hooks/use-local-settings";
 import { useProfile } from "./hooks/use-profile";
 import { useMusicSync } from "./hooks/use-music-sync";
 import { useSiteTheme } from "./hooks/use-site-theme";
+import { useModalFocus } from "./hooks/use-modal-focus";
+import { CopyButton } from "./components/copy-button";
 import {
   PLAYER_ORDER,
   activeObstacles,
@@ -225,8 +227,6 @@ function Game() {
   const chatBurst = useRef({ count: 0, lastSentAt: 0 });
   const [chatCooldownUntil, setChatCooldownUntil] = useState(0);
   const [chatCooldownRemaining, setChatCooldownRemaining] = useState(0);
-  const settingsCloseRef = useRef<HTMLButtonElement>(null);
-  const settingsTriggerRef = useRef<HTMLElement | null>(null);
   const arenaRef = useRef<HTMLElement>(null);
   const actionPanelRef = useRef<HTMLDivElement>(null);
   useResponsiveBoard(
@@ -243,6 +243,8 @@ function Game() {
   const [contactType, setContactType] = useState<"bug" | "feedback" | "other">("bug");
   const [contactMessage, setContactMessage] = useState("");
   const [contactStatus, setContactStatus] = useState("");
+  const contactSending = useRef(false);
+  const [contactPending, setContactPending] = useState(false);
   const [proposalName, setProposalName] = useState("");
   const [proposalEffect, setProposalEffect] = useState("");
   const [proposalReason, setProposalReason] = useState("");
@@ -309,32 +311,9 @@ function Game() {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    settingsTriggerRef.current = previousFocus;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSettingsOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    const overlay = document.querySelector<HTMLElement>(".settings-overlay");
-    const background = overlay
-      ? Array.from(overlay.parentElement?.children ?? []).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== overlay)
-      : [];
-    background.forEach((node) => {
-      node.setAttribute("inert", "");
-      node.setAttribute("aria-hidden", "true");
-    });
-    window.setTimeout(() => settingsCloseRef.current?.focus(), 0);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      background.forEach((node) => {
-        node.removeAttribute("inert");
-        node.removeAttribute("aria-hidden");
-      });
-      (settingsTriggerRef.current ?? previousFocus)?.focus();
-    };
-  }, [settingsOpen]);
+  useModalFocus(settingsOpen, ".settings-overlay", setSettingsOpen);
+  useModalFocus(manualOpen, ".manual-overlay", setManualOpen);
+  useModalFocus(tutorialConfirmOpen, ".tutorial-confirm-backdrop", setTutorialConfirmOpen);
   const rankedOpen = isRankedOpen(new Date(currentTime));
   useEffect(() => { if (!rankedOpen) setRankedMode(false); }, [rankedOpen]);
   const {
@@ -1944,10 +1923,14 @@ function Game() {
   }, [nickname]);
 
   const sendContact = async () => {
+    if (contactSending.current) return;
     if (contactMessage.trim().length < 10) {
       setContactStatus(localize("内容を10文字以上で入力してください", "Please enter at least 10 characters."));
       return;
     }
+    contactSending.current = true;
+    setContactPending(true);
+    const submittedMessage = contactMessage;
     setContactStatus(localize("送信中…", "Sending…"));
     const playerId = getOrCreatePlayerId();
     try {
@@ -1956,7 +1939,7 @@ function Game() {
         headers: { "Content-Type": "application/json", "x-meteor-player-id": playerId },
         body: JSON.stringify({
           type: contactType === "bug" ? "不具合報告" : contactType === "feedback" ? "ご意見・要望" : "その他",
-          message: contactMessage,
+          message: submittedMessage,
           nickname,
           version: APP_VERSION,
           roomCode: online.code || null,
@@ -1964,10 +1947,13 @@ function Game() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(language === "ja" ? data.error ?? "送信できませんでした" : "Could not send your message");
-      setContactMessage("");
+      setContactMessage(current => current === submittedMessage ? "" : current);
       setContactStatus(localize(`送信しました（受付番号 ${data.reference}）`, `Message sent (reference ${data.reference})`));
     } catch (error) {
       setContactStatus(error instanceof Error ? error.message : localize("送信できませんでした", "Could not send your message"));
+    } finally {
+      contactSending.current = false;
+      setContactPending(false);
     }
   };
 
@@ -2135,7 +2121,7 @@ function Game() {
       {settingsOpen && (
         <div className="settings-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setSettingsOpen(false)}>
           <aside className="settings-drawer" role="dialog" aria-modal="true" aria-label={t("settings")}>
-            <header><div><small>METEOR RACE</small><h2>{t("settingsLabel")}</h2></div><button ref={settingsCloseRef} className="icon-close" type="button" aria-label={t("closeSettings")} onClick={() => setSettingsOpen(false)}>×</button></header>
+            <header><div><small>METEOR RACE</small><h2>{t("settingsLabel")}</h2></div><button className="icon-close" type="button" aria-label={t("closeSettings")} onClick={() => setSettingsOpen(false)}>×</button></header>
             <section>
               <h3>{t("languageHeading")}</h3>
               <div className="language-switch" role="group" aria-label={t("displayLanguage")}>
@@ -2160,13 +2146,13 @@ function Game() {
               <h3>{t("accountHeading")}</h3>
               <label>{t("nickname")}<input maxLength={16} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="PLAYER" /></label>
               <p role="status">{profileStatus ? t(({ synced: "profileSynced", local: "profileLocal", "load-error": "profileLoadError", saving: "profileSaving", saved: "profileSaved", "save-error": "profileSaveError" } as const)[profileStatus]) : t("autoSave")}</p>
-              <dl><div><dt>{t("registryNumber")}</dt><dd>{publicPlayerId}<button type="button" onClick={() => void navigator.clipboard?.writeText(publicPlayerId)}>COPY</button></dd></div></dl>
+              <dl><div><dt>{t("registryNumber")}</dt><dd>{publicPlayerId}<CopyButton value={publicPlayerId} language={language} /></dd></div></dl>
               <p>{t("accountNote")}</p>
             </section>
             <section>
               <h3>{t("soundHeading")}</h3>
               <VolumeControls {...volumeControls} />
-              <button type="button" className={soundEnabled ? "drawer-toggle active" : "drawer-toggle"} onClick={() => setSoundEnabled((value) => !value)}>{t("muteAll")} {soundEnabled ? "OFF" : "ON"}</button>
+              <button type="button" className={soundEnabled ? "drawer-toggle active" : "drawer-toggle"} aria-pressed={!soundEnabled} onClick={() => setSoundEnabled((value) => !value)}>{t("muteAll")} {soundEnabled ? "OFF" : "ON"}</button>
               {musicEnabled && <label>BATTLE MUSIC
                 <select value={battleTrack} onChange={(event) => setBattleTrack(event.target.value as BattleTrackChoice)}>
                   {Object.entries(BATTLE_TRACK_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
@@ -2193,8 +2179,8 @@ function Game() {
             <section>
               <h3>{t("contactHeading")}</h3>
               <select value={contactType} onChange={(event) => setContactType(event.target.value as "bug" | "feedback" | "other")} aria-label={localize("お問い合わせ種別", "Contact category")}><option value="bug">{localize("不具合報告", "BUG REPORT")}</option><option value="feedback">{localize("ご意見・要望", "FEEDBACK")}</option><option value="other">{localize("その他", "OTHER")}</option></select>
-              <textarea maxLength={COMMUNITY_SAFETY.contactMaxLength} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder={localize("内容を入力してください", "Describe your issue or feedback")} />
-              <button type="button" className="contact-send" onClick={() => void sendContact()}>{localize("送信する", "SEND")}</button>
+              <textarea aria-label={localize("お問い合わせ内容", "Message")} maxLength={COMMUNITY_SAFETY.contactMaxLength} value={contactMessage} onChange={(event) => setContactMessage(event.target.value)} placeholder={localize("内容を入力してください", "Describe your issue or feedback")} />
+              <button type="button" className="contact-send" disabled={contactPending} aria-busy={contactPending} onClick={() => void sendContact()}>{contactPending ? localize("送信中…", "Sending…") : localize("送信する", "SEND")}</button>
               {contactStatus && <p role="status">{contactStatus}</p>}
               <nav><a href="/policy">{language === "ja" ? "利用規約" : "TERMS & PRIVACY"}</a><span>{APP_VERSION_LABEL}</span></nav>
             </section>
@@ -2205,7 +2191,14 @@ function Game() {
       {manualOpen && (
         <div className="manual-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setManualOpen(false)}>
           <aside className="manual-drawer" role="dialog" aria-modal="true" aria-label={t("manualLabel")}>
-            <header><div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div><nav className="manual-tabs" aria-label="Manual pages"><button type="button" className={manualPage === "rules" ? "active" : ""} onClick={() => setManualPage("rules")}>{t("manualRulesTab")}</button><button type="button" className={manualPage === "world" ? "active" : ""} onClick={() => setManualPage("world")}>{t("manualWorldTab")}</button></nav><div className="manual-now"><small>NOW</small><strong>{visibleGameMessage}</strong></div><button className="icon-close" type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button></header>
+            <header>
+              <div><small>METEOR RACE / MANUAL</small><h2>{manualPage === "world" ? t("worldHeading") : t("rulesAndItems")}</h2></div>
+              <nav className="manual-tabs" aria-label={localize("遊び方のページ", "Manual pages")}>
+                {(["rules", "world"] as const).map(page => <button key={page} type="button" aria-pressed={manualPage === page} className={manualPage === page ? "active" : ""} onClick={() => setManualPage(page)}>{t(page === "rules" ? "manualRulesTab" : "manualWorldTab")}</button>)}
+              </nav>
+              <div className="manual-now"><small>NOW</small><strong>{visibleGameMessage}</strong></div>
+              <button className="icon-close" type="button" aria-label={t("close")} onClick={() => setManualOpen(false)}>×</button>
+            </header>
             {manualPage === "world" ? <div className="manual-world" aria-label={t("worldHeading")}>
               <WorldArchive language={language} progress={regulaProgress} />
               <section className="supplier-proposal"><header><small>NEW SUPPLIER PROGRAM</small><h3>{language === "ja" ? "新規装備提案" : "PROPOSE NEW EQUIPMENT"}</h3><p>{language === "ja" ? "新たなAEQRIS認可競技装備のアイデアを実際に募集しています。採用候補として検討しますので、ぜひあなたの案をお送りください。" : "Submit an idea for new AEQRIS-authorized competition equipment."}</p></header><form onSubmit={(event) => { event.preventDefault(); void sendItemProposal(); }}><label>{language === "ja" ? "アイテム名" : "ITEM NAME"}<input maxLength={40} value={proposalName} onChange={(event) => setProposalName(event.target.value)} required /></label><label>{language === "ja" ? "効果案" : "EFFECT"}<textarea maxLength={300} value={proposalEffect} onChange={(event) => setProposalEffect(event.target.value)} required /></label><label>{language === "ja" ? "面白いと思う理由" : "WHY IT IS FUN"}<textarea maxLength={300} value={proposalReason} onChange={(event) => setProposalReason(event.target.value)} required /></label><label>{language === "ja" ? "強すぎないための制約" : "BALANCE LIMIT"}<textarea maxLength={240} value={proposalLimit} onChange={(event) => setProposalLimit(event.target.value)} required /></label><label>{language === "ja" ? "掲載名（任意）" : "CREDIT NAME (OPTIONAL)"}<input maxLength={24} value={proposalCredit} onChange={(event) => setProposalCredit(event.target.value)} disabled={!proposalCreditAllowed} /></label><label className="proposal-check"><input type="checkbox" checked={proposalCreditAllowed} onChange={(event) => setProposalCreditAllowed(event.target.checked)} />{language === "ja" ? "採用時の名前掲載を許可する" : "Allow this name to be credited if adopted"}</label><p>{language === "ja" ? "提案は調整・改変して採用する場合あり。個人情報や第三者作品の送信は禁止。" : "Ideas may be adjusted before adoption. Do not submit personal information or third-party work."} <a href="/policy#submissions">{language === "ja" ? "投稿規約" : "Policy"}</a></p><button type="submit">{language === "ja" ? "AEQRISへ提案を送る" : "SEND TO AEQRIS"}</button>{proposalStatus && <strong role="status">{proposalStatus}</strong>}</form></section>
@@ -2224,7 +2217,7 @@ function Game() {
           language={language}
         />
 
-        <section className="arena" ref={arenaRef}>
+        <section className="arena" ref={arenaRef} data-gravity-warning={localize("次の巡で重力が発生", "GRAVITY NEXT ROUND")}>
           {tutorialStep && tutorialStep !== "rival-moving" && tutorialStep !== "free-play" && tutorialStep !== "complete" && (
             <section className={`tutorial-coach ${["welcome", "goal", "first-praise", "rival", "rival-result", "meteor-result"].includes(tutorialStep) ? "explain" : "guide"}`} role="dialog" aria-live="polite">
               <small>AEQRIS // FIELD TRAINING</small>
@@ -2655,7 +2648,7 @@ function Game() {
               <small>{entryStage === "title" ? "AEQRIS NETWORK READY" : entryStage ? "AEQRIS / MATCH CONFIGURATION" : onlineLobbyOnly ? "AEQRIS / ONLINE WAITING ROOM" : resultVisible ? "AEQRIS / MISSION COMPLETE" : game.phase === "over" ? "AEQRIS / CORE ARRIVAL CONFIRMATION" : `AEQRIS / ${turnDisplayName} / ${game.phase.toUpperCase()}`}</small>
               <strong>{entryStage === "title" ? "METEOR RACE" : entryStage ? (setupMode === "online" ? localize("ONLINEの対戦方式を設定", "CONFIGURE ONLINE MATCH") : setupMode === "cpu" ? localize("SINGLEの対戦方式を設定", "CONFIGURE SINGLE MATCH") : localize("LOCALの対戦方式を設定", "CONFIGURE LOCAL MATCH")) : onlineLobbyOnly ? (online.code ? localize(`参加待ち ${online.joinedPlayers}/${online.maxPlayers}`, `WAITING ${online.joinedPlayers}/${online.maxPlayers}`) : localize("ルームを作成または参加", "CREATE OR JOIN A ROOM")) : visibleGameMessage}</strong>
               {!entryStage && !onlineLobbyOnly && <i className="hud-regula-progress" aria-hidden="true"><b style={{ width: `${regulaProgress}%` }} /></i>}
-              {mode === "online" && online.code && <button type="button" onClick={() => void navigator.clipboard?.writeText(online.code)}>ROOM {online.code} / COPY</button>}
+              {mode === "online" && online.code && <CopyButton value={online.code} language={language} label={`ROOM ${online.code} / ${localize("コピー", "COPY")}`} />}
               {!entryStage && resultVisible && mode === "online" && online.role && <button type="button" data-ui-feedback="confirm" onClick={() => void returnOnlineLobby()}>MATCH ROOM</button>}
             </div>
             <div className="hud-tools">

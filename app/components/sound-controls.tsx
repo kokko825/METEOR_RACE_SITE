@@ -25,6 +25,7 @@ export function VolumeRange({
       <span>{shortLabel ?? label}</span>
       <input
         aria-label={label}
+        aria-valuetext={`${value}%`}
         type="range"
         min="0"
         max="100"
