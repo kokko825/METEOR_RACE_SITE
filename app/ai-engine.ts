@@ -1016,7 +1016,7 @@ export function chooseAiDecision(
   }
   if (state.phase === "move") {
     const moves = legalMoves(state, player);
-    if (!moves.length) return { type: "skip" };
+    if (!moves.length && !state.bonusMove) return { type: "skip" };
     let ranked = moves.map((move) => ({
       choice: move,
       value: scoreMove(state, move, player, difficulty),
@@ -1041,6 +1041,11 @@ export function chooseAiDecision(
     }
     ranked.sort((a, b) => b.value - a.value);
     const selected = selectWithDifficulty(ranked, difficulty, random, isItemVariant(state.variant) && !itemDuel, decisionCreativity);
+    if (state.bonusMove && canUseItem(state, "blast")) {
+      const winningBlast = targetedItemOptions(state, "blast", player, difficulty)
+        .find(({ choice }) => coreDistance(choice.next, player) === 0);
+      if (winningBlast && winningBlast.value > (selected?.value ?? -Infinity)) return { type: "item", kind: "blast" };
+    }
     return selected ? { type: "move", target: selected.choice } : { type: "skip" };
   }
   const ranked: Array<Scored<Placement | "pass">> = [];

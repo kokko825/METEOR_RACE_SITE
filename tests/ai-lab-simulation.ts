@@ -445,6 +445,23 @@ for (const variant of ["item", "team-item"] as const) for (const difficulty of [
   }
 }
 
+{
+  const state = initialGameState(11, "red", 2, false, 0, [], "item");
+  state.turnCount = 8;
+  state.phase = "move";
+  state.bonusMove = true;
+  state.inventory.red = { small: 0, large: 0 };
+  state.itemHands!.red = ["blast"];
+  state.probes.red = { r: 7, c: 5 };
+  state.probes.blue = { r: 0, c: 0 };
+  const decision = chooseAiDecision(state, "hard", () => 0);
+  assert.deepEqual(decision, { type: "item", kind: "blast" }, "Bonus actions must compare a winning item against one-cell movement");
+  const pending = applyUseItem(state, "blast");
+  const target = chooseAiDecision(pending, "hard", () => 0);
+  assert.equal(target.type, "blast");
+  if (target.type === "blast") assert.equal(applyBlastSwitch(pending, target.target).winner, "red");
+}
+
 function play(state: GameState, difficulty: AiDifficulty, seed: number) {
   let guard = 0;
   let moves = 0;
