@@ -350,6 +350,34 @@ assert.equal(durationAudit.shieldTurns?.red, 3, "one SHIELD round covers the oth
 durationAudit = finishTurn(finishTurn(finishTurn(durationAudit)));
 assert.equal(durationAudit.shield.red, false, "SHIELD expires when the owner receives the next turn, independent of seat order");
 
+// Play complete shield lifetimes through real movement and meteor/BLAST actions.
+// A hit must not consume the shield; only elapsed turns do. Repeat in each format.
+for (const count of [2, 3, 4] as const) for (const team of count === 4 ? [false, true] : [false]) {
+  for (let repeat = 0; repeat < 3; repeat++) for (const attacked of [true, false]) {
+    let s = initialGameState(15, "red", count, team, 0, [], "item");
+    s = { ...s, phase: "place", turnCount: 4, probes: { ...s.probes, red: { r: 5, c: 5 } }, itemHands: { red: ["shield"], blue: ["blast"], green: ["blast"], yellow: ["blast"] } };
+    s = applyUseItem(s, "shield");
+    for (let opponent = 0; opponent < count - 1; opponent++) {
+      assert.equal(s.shieldTurns?.red, count - 1 - opponent);
+      s = applyMove(s, legalMoves(s)[0]);
+      const before = { ...s.probes.red };
+      if (attacked) {
+        const target = [{ r: before.r, c: before.c - 1 }, { r: before.r - 1, c: before.c }, { r: before.r, c: before.c + 1 }]
+          .find(p => !s.meteors.some(m => samePos(m, p)))!;
+        const strong = opponent === count - 2 && repeat > 0;
+        s = repeat === 2 && strong
+          ? applyBlastSwitch(applyUseItem(s, "blast"), target)
+          : applyMeteor(s, target, strong ? "large" : "small").state;
+        assert.equal(distance(before, s.probes.red), strong ? 1 : 0, "every hit is reduced, including the last opponent's attack");
+      } else s = finishTurn(s);
+    }
+    assert.equal(s.turn, "red");
+    assert.equal(s.shieldTurns?.red, 0, "expires after one circuit, even without a hit");
+    assert.equal(s.shield.red, false);
+  }
+}
+console.log("SHIELD: 24 repeated turn sequences passed (2/3/4 players, team, small/large/BLAST, no-hit expiry)");
+
 let pulseDuration = initialGameState(15, "red", 4, false, 0, [], "item");
 pulseDuration = {
   ...pulseDuration,

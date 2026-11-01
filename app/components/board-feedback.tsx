@@ -74,7 +74,20 @@ export function BoardFeedback({ game, perspective, enabled }: { game: GameState;
 }
 
 export function EquipmentActivation({ kind }: { kind: string }) {
-  if (kind === "booster") return <svg className="engine-meter" viewBox="0 0 120 70" aria-hidden="true"><path d="M10 60A50 50 0 0 1 110 60" /><path className="meter-redline" d="M94 23A50 50 0 0 1 110 60" /><path className="meter-needle" d="M60 60 18 55" /><circle cx="60" cy="60" r="5" /></svg>;
+  if (kind === "booster") return <svg className="engine-meter" viewBox="0 0 180 100" aria-hidden="true" style={{ "--rev-duration": `${BATTLE_EFFECTS.itemMs * .45}ms` } as CSSProperties}>
+    <g className="meter-flames">{[-2, -1, 0, 1, 2].map((n) => <g key={n} transform={`translate(${90 + n * 23} 77) scale(${n % 2 ? -.8 : .9} ${1 - Math.abs(n) * .13})`}>
+      <path className="meter-flame" d="M-14 0C-26-24 2-35-7-64C16-52 12-36 18-30L23-43C38-14 17 4 0 5Z" />
+      <path className="meter-flame-core" d="M-5 0C-13-13 5-24 4-37C18-22 17-10 6 2Z" />
+    </g>)}</g>
+    <path className="meter-housing" d="M19 81A71 71 0 0 1 161 81L151 89H29Z" />
+    <path className="meter-track" d="M27 78A63 63 0 0 1 153 78" />
+    <path className="meter-charge" pathLength="1" d="M27 78A63 63 0 0 1 153 78" />
+    <path className="meter-redline" d="M135 34A63 63 0 0 1 153 78" />
+    <g className="meter-ticks">{Array.from({ length: 13 }, (_, n) => <path key={n} d={n % 3 === 0 ? "M35 78H43" : "M35 78H39"} transform={`rotate(${n * 15} 90 78)`} />)}</g>
+    <path className="meter-needle" d="M90 75 39 78 90 81 101 78Z" />
+    <circle className="meter-hub" cx="90" cy="78" r="6" />
+    <path className="meter-exhaust" d="M21 79 7 74M22 85 4 88M159 79 173 74M158 85 176 88" />
+  </svg>;
   if (kind === "shield") return <div className="shield-deploy" aria-hidden="true">{Array.from({ length: 25 }, (_, i) => <i key={i} style={{ "--hex-delay": `${(Math.abs(i % 5 - 2) + Math.abs(Math.floor(i / 5) - 2)) * 75}ms` } as CSSProperties} />)}</div>;
   return null;
 }

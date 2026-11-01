@@ -52,6 +52,11 @@ try {
     } else {
       const selector = {booster:'.engine-meter',shield:'.shield-deploy',holo:'.cue-print',pulse:'.pulse-perimeter',blast:'.blast-origin-wave',recall:'.cue-return'}[kind];
       await page.locator(selector).first().waitFor({state:'attached',timeout:1500});
+      if (kind === 'booster') {
+        assert.equal(await page.locator('.meter-flame').count(), 5);
+        assert.equal(await page.locator('.meter-needle').evaluate(el => getComputedStyle(el).animationIterationCount), '2');
+        assert.equal(await page.locator('.meter-charge').evaluate(el => getComputedStyle(el).animationDuration), await page.locator('.meter-flames').evaluate(el => getComputedStyle(el).animationDuration));
+      }
       const receipt = await page.locator('.switch-activation small').innerText();
       assert.equal(/[ぁ-んァ-ヶ一-龠]/.test(receipt), language === 'ja', 'Activation message follows language');
       if (kind === 'recall') assert.ok(await page.locator('.recall-paths path').count() > 0, 'Return trajectory connects to owner');
@@ -61,7 +66,7 @@ try {
       }
       assert.equal(await page.locator('.cell.legal, .cell.placeable').count(), 0, 'Activation blocks the next action until effects finish');
       if (process.env.LAYOUT_SCREENSHOT_DIR) {
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(kind === 'booster' ? 150 : 300);
         await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOT_DIR}/${width}-${kind}.png`});
       }
     }

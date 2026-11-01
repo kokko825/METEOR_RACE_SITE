@@ -395,10 +395,22 @@ button { color: inherit; }
 @keyframes printer-head { 0%{bottom:10%;opacity:1} 85%{bottom:88%;opacity:1} 100%{bottom:88%;opacity:0} }
 .cue-boost i { width:100%; height:100%; background:linear-gradient(#a5fff0,#ffe267); clip-path:polygon(50% 10%,82% 88%,50% 70%,18% 88%); transform:translate(calc(var(--cue-x) * var(--trail-step)),calc(var(--cue-y) * var(--trail-step))) rotate(var(--cue-angle)); animation:boost-echo .68s ease-out calc(var(--piece) * 22ms) both; }
 @keyframes boost-echo { 0%{opacity:0;filter:brightness(2)} 12%{opacity:.8} 45%{opacity:.45} 100%{opacity:0;filter:brightness(1)} }
-.engine-meter { position:absolute; width:140px; height:82px; top:14px; overflow:visible; fill:none; stroke:var(--item-booster); stroke-width:5; filter:drop-shadow(0 0 7px #ffb72b); }
-.engine-meter .meter-redline { stroke:#ff7947; stroke-width:8; }
-.engine-meter .meter-needle { transform-origin:60px 60px; animation:engine-rev .48s ease-in-out 2 both; stroke:#fff0b9; stroke-width:3; }
-@keyframes engine-rev { 0%,22%{transform:rotate(0deg)} 36%{transform:rotate(169deg)} 43%,56%{transform:rotate(155deg)} 68%{transform:rotate(160deg)} 90%,100%{transform:rotate(0deg)} }
+.engine-meter { position:absolute; width:min(200px,90%); height:108px; top:0; overflow:visible; fill:none; stroke:var(--item-booster); stroke-width:2; filter:drop-shadow(0 0 5px #ffb72b88); }
+.meter-housing { fill:#08141c33; stroke:#ffecaa88; stroke-width:1; }
+.meter-track { stroke:#ffdc572b; stroke-width:7; }
+.meter-charge { stroke-width:7; stroke-dasharray:1; animation:engine-charge var(--rev-duration) 2 both; }
+.engine-meter .meter-redline { stroke:#ff7947; stroke-width:7; stroke-dasharray:3 3; }
+.meter-ticks { stroke:#fff3c8; stroke-width:1.4; }
+.engine-meter .meter-needle { transform-origin:90px 78px; animation:engine-rev var(--rev-duration) 2 both; fill:#fff7d9; stroke:#fff; stroke-width:.6; }
+.meter-hub { fill:#ffbf38; stroke:#fff7d9; }
+.meter-flames { transform-origin:90px 81px; animation:engine-flare var(--rev-duration) 2 both; }
+.meter-flame { fill:#ff6d1bbb; stroke:#ffad36; stroke-width:1; }
+.meter-flame-core { fill:#ffe58ed9; stroke:none; }
+.meter-exhaust { stroke:#fff4c4; stroke-width:2; animation:engine-exhaust var(--rev-duration) 2 both; }
+@keyframes engine-rev { 0%,18%{transform:rotate(0deg);animation-timing-function:cubic-bezier(.7,0,.9,.35)} 37%{transform:rotate(178deg)} 45%{transform:rotate(161deg)} 56%{transform:rotate(171deg)} 65%{transform:rotate(165deg);animation-timing-function:cubic-bezier(.2,.75,.3,1)} 100%{transform:rotate(0deg)} }
+@keyframes engine-charge { 0%,18%,100%{stroke-dashoffset:1;opacity:.3} 37%,65%{stroke-dashoffset:0;opacity:1} }
+@keyframes engine-flare { 0%,18%{opacity:0;transform:scale(.85,.2)} 38%{opacity:.9;transform:scale(1,1.05)} 48%{opacity:.7;transform:scale(.96,.85)} 64%{opacity:.8;transform:scale(1.04,1)} 100%{opacity:0;transform:scale(.9,.35)} }
+@keyframes engine-exhaust { 0%,30%,100%{opacity:0;transform:translateY(0)} 42%{opacity:1} 75%{opacity:0;transform:translateY(-4px)} }
 .shield-deploy { position:absolute; inset:0; display:grid; grid-template-columns:repeat(5,1fr); overflow:hidden; opacity:.65; }
 .shield-deploy i { background:linear-gradient(135deg,#7de9ff55,#7de9ff08); clip-path:polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0 50%); animation:hex-deploy .6s ease-out var(--hex-delay) both; }
 @keyframes hex-deploy { 0%,15%{opacity:0;transform:scale(.2)} 26%{opacity:1;transform:scale(1.06)} 34%,48%{opacity:.85;transform:scale(.98)} 100%{opacity:.12;transform:scale(1)} }
@@ -418,7 +430,7 @@ button { color: inherit; }
   .pulse-perimeter,.pulse-field-cell,.probe-static { animation:none!important; }
   .pulse-perimeter { opacity:.55; }
   .probe-static { opacity:.5; }
-  .board-cue,.board-cue i,.cue-print::after,.obstacle-token.holo-forming,.recall-paths path,.recall-paths circle,.engine-meter .meter-needle,.shield-deploy i,.probe-static,.shield-deflect { animation-duration:.01ms!important; animation-iteration-count:1!important; }
+  .board-cue,.board-cue i,.cue-print::after,.obstacle-token.holo-forming,.recall-paths path,.recall-paths circle,.engine-meter .meter-needle,.engine-meter .meter-charge,.engine-meter .meter-flames,.engine-meter .meter-exhaust,.shield-deploy i,.probe-static,.shield-deflect { animation-duration:.01ms!important; animation-iteration-count:1!important; }
 }
 .extra-players { width:min(860px,100%); margin:16px auto 0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
 .extra-players .player-card.compact { min-height:0; display:grid; grid-template-columns:auto auto 1fr; align-items:center; gap:16px; padding:14px 18px; }

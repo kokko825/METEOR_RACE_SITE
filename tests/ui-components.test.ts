@@ -27,6 +27,7 @@ assert.deepEqual(boardFeedbackBetween(feedbackBefore, feedbackAfter).map(c => c.
 assert.deepEqual(boardFeedbackBetween(feedbackBefore, feedbackBefore), []);
 assert.deepEqual(boardFeedbackBetween({ ...feedbackBefore, turnCount: 9 }, feedbackAfter), []);
 assert.match(renderToStaticMarkup(createElement(EquipmentActivation, { kind: "booster" })), /meter-needle/);
+assert.equal((renderToStaticMarkup(createElement(EquipmentActivation, { kind: "booster" })).match(/class="meter-flame"/g) ?? []).length, 5);
 assert.equal((renderToStaticMarkup(createElement(EquipmentActivation, { kind: "shield" })).match(/--hex-delay/g) ?? []).length, 25);
 
 const noop = () => {};
