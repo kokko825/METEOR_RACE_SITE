@@ -17,6 +17,11 @@ try {
     if (width === 390) for (let i = 0; i < 2; i++) await page.locator('.cpu-stepper button').last().tap();
     await page.locator('.entry-confirm').tap();
     for (let i = 0; i < 2; i++) {
+      await page.locator('.switch-setup-controls').waitFor({timeout:5000}).catch(async error => {
+        console.log({language,width,player:i,shell:await page.locator('.shell').getAttribute('class')});
+        if(process.env.LAYOUT_SCREENSHOT_DIR) await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOT_DIR}/actions-failure-${language}-${width}.png`,fullPage:true});
+        throw error;
+      });
       for (const kind of ['shield', 'booster', 'blast']) await page.locator(`.switch-setup-controls button.${kind}`).tap();
       await page.locator('.setup-confirm-actions button').first().tap();
       await page.waitForTimeout(500);
@@ -29,10 +34,11 @@ try {
     await page.locator('.cell.legal').first().tap();
     await page.locator('.placement-controls').waitFor();
     await page.locator('.placement-controls').scrollIntoViewIfNeeded();
-    if (width === 390) assert.ok(await page.locator('.game-layout').evaluate(el => {
+    if (process.env.LAYOUT_SCREENSHOT_DIR) await page.screenshot({ path:`${process.env.LAYOUT_SCREENSHOT_DIR}/actions-${language}-${width}.png`, fullPage:true });
+    if (width === 390) { const inventoryLayout = await page.locator('.game-layout').evaluate(el => {
       const bottom = document.querySelector('.global-hud').getBoundingClientRect().top;
-      return [...el.querySelectorAll('.player-card')].every(card => card.getBoundingClientRect().bottom <= bottom);
-    }), 'Four player inventories remain above the utility bar at 390×740');
+      return {bottom,cards:[...el.querySelectorAll('.player-card')].map(card => card.getBoundingClientRect().bottom),action:document.querySelector('.action-panel').getBoundingClientRect().toJSON(),scroll:scrollY};
+    }); assert.ok(inventoryLayout.cards.every(bottom=>bottom<=inventoryLayout.bottom),`Four player inventories remain above the utility bar at 390×740: ${JSON.stringify(inventoryLayout)}`); }
     const board = await page.locator('.board').boundingBox();
     assert.equal(Math.round(board.width), Math.round(start.width), 'Actions must not shrink the board');
     const buttons = page.locator('.placement-options>button');

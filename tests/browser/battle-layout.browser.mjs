@@ -16,7 +16,7 @@ try {
     if (scenario.items) await page.locator('.entry-panel .choice-row').first().locator('button').nth(1).click();
     if (scenario.team) await page.getByRole('button', { name: /2 VS 2/ }).click();
     else for (let i = 2; i < scenario.count; i++) await page.locator('.cpu-stepper button').last().click();
-    if (scenario.items) await page.locator('.entry-settings select').first().selectOption('13');
+    if (scenario.items) await page.locator('[data-choice-group="board-size"] button[value="13"]').click();
     if (scenario.items && scenario.count === 2) await page.locator('.event-toggle-grid button').first().click();
     await page.locator('.entry-confirm').click();
     if (scenario.items) {

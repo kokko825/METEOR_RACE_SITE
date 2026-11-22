@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { UiIcon } from "./components/ui-icon";
+import { ChoiceGroup } from "./components/choice-group";
 import { eventBoardSizes, normalizeEventBoardSize, MATCH_EVENTS, normalizeMatchEvents, normalizeEventIntervals, type MatchEventKind } from "../config/match-events";
 import { normalizeRoomCode, ROOM_CODE_MAX_LENGTH } from "./room-code";
 import { EventControls, EventSummary, EventCellEffect, EventBoardEffect, eventCellClass, eventFxStyle, forecastStyle } from "./components/match-events";
@@ -228,12 +230,21 @@ function Game() {
   const [chatCooldownUntil, setChatCooldownUntil] = useState(0);
   const [chatCooldownRemaining, setChatCooldownRemaining] = useState(0);
   const arenaRef = useRef<HTMLElement>(null);
+  const [boardExpanded, setBoardExpanded] = useState(false);
+  const boardViewportRef = useRef<HTMLDivElement>(null);
+  const boardScroll = useRef({ left: 0, top: 0 });
+  const attachBoardViewport = useCallback((element: HTMLDivElement | null) => {
+    boardViewportRef.current = element;
+    // Event effects remount the board. Keep the player's inspected area stable.
+    if (element) element.scrollTo(boardScroll.current.left, boardScroll.current.top);
+  }, []);
   const actionPanelRef = useRef<HTMLDivElement>(null);
   useResponsiveBoard(
     arenaRef,
     actionPanelRef,
     isItemVariant(game.variant) ? UI_LAYOUT.itemBoardVerticalFill : UI_LAYOUT.classicBoardVerticalFill,
     isItemVariant(game.variant),
+    tutorialStep,
   );
   const t = (key: Parameters<typeof uiText>[1]) => uiText(language, key);
   const localize = (ja: string, en: string) => language === "ja" ? ja : en;
@@ -928,6 +939,7 @@ function Game() {
   }, [soundEnabled, masterVolume, sfxVolume]);
 
   const startTutorial = () => {
+    setBoardExpanded(false);
     if (online.code && online.status !== "playing") {
       void roomRequest({ action: "leave", code: online.code }).catch(() => undefined);
       setOnline({
@@ -1231,6 +1243,7 @@ function Game() {
   };
 
   const applyNewGameSettings = async () => {
+    setBoardExpanded(false);
     getMusicManager().dispatch({ type: "GAME_START" });
     if (setupMode === "online" && online.code) {
       if (!online.isHost) return;
@@ -1339,6 +1352,7 @@ function Game() {
   };
 
   const restartCurrentGame = () => {
+    setBoardExpanded(false);
     getMusicManager().dispatch({ type: "NEW_GAME" });
     setBlastFx(null);
     setSwitchFx(null);
@@ -1996,7 +2010,7 @@ function Game() {
 
   return (
     <main className={`shell text-size-${textSize} variant-${game.variant}${entryStage ? " entry-active" : ""}${onlineLobbyOnly ? " online-lobby-only" : ""}${!entryStage && !onlineLobbyOnly ? " hud-mode" : ""}${mode === "online" && !online.code ? " room-uncreated" : ""}${switchFx?.kind === "gravity" ? " gravity-active" : ""}${game.ranked ? " ranked-match" : ""}${game.ranked && game.rankedGravityRoundsRemaining === 1 ? " ranked-gravity-warning" : ""}${tutorialStep ? ` tutorial-active tutorial-${tutorialStep}` : ""}${reducedMotion ? " reduced-motion" : ""}`}>
-      {!entryStage && !onlineLobbyOnly && <div className="battle-atmosphere" aria-hidden="true"><i className="battle-planet" /><i className="battle-orbit" /></div>}
+      {!entryStage && !onlineLobbyOnly && <div className="battle-atmosphere" aria-hidden="true"><i className="battle-orbit" /></div>}
       <div className="phone-portrait-lock" role="status" aria-live="polite">
         <i aria-hidden="true">↻</i>
         <strong>{localize("端末を縦向きにしてください", "ROTATE YOUR DEVICE TO PORTRAIT")}</strong>
@@ -2005,7 +2019,7 @@ function Game() {
       </div>
       {entryStage === "title" && (
         <section className="title-screen" aria-label={t("titleAria")}>
-          <div className="title-guide-actions"><button className="title-settings title-beginner" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button></div>
+          <div className="title-guide-actions"><button className="title-settings title-beginner" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}><UiIcon kind="tutorial" /> <span>{localize("チュートリアル", "TUTORIAL")}</span></button><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}><UiIcon kind="book" /> <span>{t("manualLabel")}</span></button></div>
           <div className="title-brand-lockup">
             <div className="title-orbit" aria-hidden="true"><i /><i /></div>
             <div className="title-symbol" aria-hidden="true">
@@ -2048,7 +2062,7 @@ function Game() {
       )}
       {entryStage && entryStage !== "title" && (
         <section className={`entry-flow ${rankedOpen ? "rank-open" : "rank-closed"}`} aria-label={localize("対戦準備", "Match setup")}>
-          <div className="title-guide-actions"><button className="title-settings title-beginner" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}>📕 <span>{t("manualLabel")}</span></button></div>
+          <div className="title-guide-actions"><button className="title-settings title-beginner" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}><UiIcon kind="tutorial" /> <span>{localize("チュートリアル", "TUTORIAL")}</span></button><button className="title-settings title-manual" type="button" aria-label={t("openManual")} onClick={() => setManualOpen(true)}><UiIcon kind="book" /> <span>{t("manualLabel")}</span></button></div>
           <header><button type="button" onClick={() => setEntryStage(entryStage === "rule" || entryStage === "play" ? "title" : "rule")}>{t("back")}</button><div><small>{entryStage === "play" ? t("ruleGuide") : t("gameStart")}</small><b>{entryStage === "play" ? t("howToPlay") : entryStage === "rule" ? "01 / BASIC" : "02 / MATCH SETUP"}</b></div></header>
           {entryStage === "play" && <div className="entry-panel play-guide"><div><small>MISSION</small><h2>{localize("COREへ先に到達せよ", "REACH THE CORE FIRST")}</h2><p>{localize("毎手番、探査機を縦横へ1マス動かし、メテオを置きます。爆風は障害ではなく、探査機を一気に進める推進力です。", "Each turn, move your probe one cell vertically or horizontally, then place a meteor. Blasts are not merely hazards—they are propulsion.")}</p></div><div className="play-guide-grid"><article><b>01</b><strong>MOVE</strong><p>{localize("探査機を縦横へ1マス移動。後退よりCOREへ近づく進路を作ります。", "Move one cell vertically or horizontally and build a route toward the CORE.")}</p></article><article><b>02</b><strong>PLACE</strong><p>{localize("小2個・大1個のメテオを配置。先攻の最初の手番だけ配置できません。", "Place from two small and one large meteor. The first player cannot place one on the opening turn.")}</p></article><article><b>03</b><strong>METEOR</strong><p>{localize("小は周囲1マス、大は中心ほど強い爆風。自分も相手も押し動かします。", "Small meteors blast one surrounding ring. Large blasts are stronger near the center and move any probe.")}</p></article><article><b>04</b><strong>BONUS MOVE</strong><p>{localize("手持ちのメテオをすべて使い切ると、その手番中にもう1回移動できます。", "Use your last meteor to gain one bonus move during that turn.")}</p></article><article><b>GOAL</b><strong>CORE</strong><p>{localize("移動・BOOSTER・爆風・GRAVITYのどれで入っても到達です。", "Movement, BOOSTER, blasts, and GRAVITY can all carry you into the CORE.")}</p></article></div>
 <nav className="play-guide-links"><a href="/guide">{localize("遊び方をもっと詳しく", "DETAILED GUIDE")}</a><a href="/items">{localize("アイテム一覧", "ITEM LIST")}</a></nav><button className="entry-confirm" type="button" onClick={() => setEntryStage("rule")}>{t("gameStart")}</button></div>}
@@ -2071,7 +2085,7 @@ function Game() {
                 <div className="choice-row"><button aria-pressed={variant === "classic" || variant === "team"} className={variant === "classic" || variant === "team" ? "selected" : ""} onClick={() => { setVariant("classic"); setSize(9); }}><strong>{localize("クラシック", "CLASSIC")}</strong><span>{t("classicRuleNote")}</span></button><button aria-pressed={variant === "item" || variant === "team-item"} className={variant === "item" || variant === "team-item" ? "selected" : ""} onClick={() => { setVariant("item"); setSize(11); }}><strong>{localize("アイテム戦", "ITEM")}</strong><span>{t("itemRuleNote")}</span></button></div>
                 <h3>{localize("対戦形式", "MATCH TYPE")}</h3>
                 <div className="choice-row"><button aria-pressed={!isTeamVariant(variant)} className={!isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "item" : "classic"); setSize(isItemVariant(variant) ? 11 : 9); }}><strong>{localize("個人戦", "FREE FOR ALL")}</strong><span>{localize("それぞれがCOREを目指す", "Every probe for itself")}</span></button><button aria-pressed={isTeamVariant(variant)} className={isTeamVariant(variant) ? "selected" : ""} onClick={() => { setVariant(isItemVariant(variant) ? "team-item" : "team"); setSize(13); setAiPlayerCount(4); setLocalAiCount(2); }}><strong>2 VS 2</strong><span>{t("teamBattle")}</span></button></div>
-                <div className="entry-settings"><label>{localize("盤面サイズ", "BOARD SIZE")}<select value={size} onChange={(event) => setSize(Number(event.target.value))}>{boardSizes.map((boardSize) => <option key={boardSize} value={boardSize}>{boardSize} × {boardSize}</option>)}</select></label><div className="cpu-stepper"><span>{setupMode === "cpu" ? localize("対戦人数", "PLAYERS") : localize("追加CPU", "CPU ADD")}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <label>{localize("CPUの強さ", "AI LEVEL")}<select aria-label={localize("CPUの強さ", "AI LEVEL")} value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value as AiDifficulty)}><option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option></select><span className="difficulty-description">{t(aiDifficulty === "easy" ? "easyDescription" : aiDifficulty === "hard" ? "hardDescription" : "normalDescription")}</span></label>}</div>
+                <div className="entry-settings"><ChoiceGroup id="board-size" label={localize("盤面サイズ", "BOARD SIZE")} value={String(size)} options={boardSizes.map(value => ({value:String(value),label:`${value} × ${value}`}))} onChange={value => setSize(Number(value))} /><div className="cpu-stepper"><span>{setupMode === "cpu" ? localize("対戦人数", "PLAYERS") : localize("追加CPU", "CPU ADD")}</span><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.max(2, aiPlayerCount - 1) as 2|3|4)) : setLocalAiCount((Math.max(0, localAiCount - 1) as 0|1|2))}>−</button><b>{isTeamVariant(variant) && setupMode === "cpu" ? 4 : setupMode === "cpu" ? aiPlayerCount : localAiCount}</b><button disabled={isTeamVariant(variant)} onClick={() => setupMode === "cpu" ? setAiPlayerCount((Math.min(4, aiPlayerCount + 1) as 2|3|4)) : setLocalAiCount((Math.min(2, localAiCount + 1) as 0|1|2))}>＋</button></div>{(setupMode !== "human" || localAiCount > 0) && <div className="difficulty-field"><ChoiceGroup id="difficulty" label={localize("CPUの強さ", "AI LEVEL")} value={aiDifficulty} options={["easy","normal","hard"].map(value => ({value,label:value.toUpperCase()}))} onChange={value => setAiDifficulty(value as AiDifficulty)} /><span className="difficulty-description">{t(aiDifficulty === "easy" ? "easyDescription" : aiDifficulty === "hard" ? "hardDescription" : "normalDescription")}</span></div>}</div>
               </>}
               {setupMode !== "online" && <>
                 <EventControls value={eventKind} onChange={setEventKind} language={language} interval={eventInterval} onIntervalChange={setEventInterval} />
@@ -2082,39 +2096,13 @@ function Game() {
           <footer><span>MODE SELECT</span><i /><span>MATCH SETUP</span></footer>
         </section>
       )}
-      {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">{localize("チュートリアルを開始しますか？", "START THE TUTORIAL?")}</h2><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>YES</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>NO</button></div></section></div>}
+      {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">{localize("チュートリアルを開始しますか？", "START THE TUTORIAL?")}</h2><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>{localize("はじめる", "Start")}</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>{localize("やめる", "Cancel")}</button></div></section></div>}
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : returnOnlineLobby()) : setEntryStage("rule")}>{tutorialStep ? localize("← 終了", "← EXIT") : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : t("lobby") : t("back")}</button>
-        <div className="brand">
-          <Image
-            className="brand-symbol"
-            src={ASSET_PATHS.branding.symbol}
-            alt=""
-            width={1024}
-            height={500}
-            unoptimized
-            aria-hidden="true"
-            onError={(event) => { event.currentTarget.hidden = true; }}
-          />
-          <div>
-            <div className="header-wordmark">
-              <Image
-                src={ASSET_PATHS.branding.wordmark}
-                alt=""
-                width={1024}
-                height={200}
-                unoptimized
-                onError={(event) => { event.currentTarget.hidden = true; }}
-              />
-              <h1>METEOR RACE</h1>
-            </div>
-            <p>{t("titleTagline")}</p>
-          </div>
-        </div>
         <MatchMeta eventDetails={game.phase !== "setup" ? <EventSummary event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} /> : undefined} language={language} progress={regulaProgress} distance={regulaClosestDistance} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <div className="topbar-guide-actions">
-          {!tutorialStep && (mode !== "online" || !online.code) ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}>🔰 <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
-          <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}>{manualOpen ? "📖" : "📕"} <span>{t("manualLabel")}</span></button>
+          {!tutorialStep && (mode !== "online" || !online.code) ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}><UiIcon kind="tutorial" /> <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
+          <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}><UiIcon kind={manualOpen ? "book-open" : "book"} /> <span>{t("manualLabel")}</span></button>
         </div>
       </header>
 
@@ -2220,7 +2208,7 @@ function Game() {
         <section className="arena" ref={arenaRef} data-gravity-warning={localize("次の巡で重力が発生", "GRAVITY NEXT ROUND")}>
           {tutorialStep && tutorialStep !== "rival-moving" && tutorialStep !== "free-play" && tutorialStep !== "complete" && (
             <section className={`tutorial-coach ${["welcome", "goal", "first-praise", "rival", "rival-result", "meteor-result"].includes(tutorialStep) ? "explain" : "guide"}`} role="dialog" aria-live="polite">
-              <small>AEQRIS // FIELD TRAINING</small>
+              <small>AEQRIS // {localize("チュートリアル", "TUTORIAL")} · {tutorialStep === "welcome" ? 1 : tutorialStep === "goal" ? 2 : ["first-move", "first-praise"].includes(tutorialStep) ? 3 : ["rival", "rival-result"].includes(tutorialStep) ? 4 : tutorialStep === "second-move" ? 5 : ["meteor", "meteor-result"].includes(tutorialStep) ? 6 : tutorialStep === "large" ? 7 : 8} / 8</small>
               <h2>{tutorialPanelCopy?.title}</h2>
               <p>{tutorialPanelCopy?.body}</p>
               {tutorialStep === "meteor" && tutorialSuggestedTarget && <p>{localize("◎のマスなら、自分をCOREへ進められます。他のマスを選んでも構いません。", "The ◎ cell propels you toward the CORE. Other placements are also welcome.")}</p>}
@@ -2250,12 +2238,36 @@ function Game() {
           <div className="status" aria-live="polite">
             <span className={`status-dot ${displayAccent}`} />
             {visibleGameMessage}
+            {game.phase !== "setup" && !resultVisible && <button
+              type="button"
+              className="board-zoom-toggle"
+              aria-pressed={boardExpanded}
+              aria-controls="match-board"
+              onClick={() => {
+                setBoardExpanded(!boardExpanded);
+                requestAnimationFrame(() => {
+                  const viewport = boardViewportRef.current;
+                  if (!viewport) return;
+                  const probe = viewport.querySelector(".cell:has(.is-self)") ?? viewport.querySelector(".cell.legal");
+                  if (!boardExpanded && probe instanceof HTMLElement) {
+                    viewport.scrollLeft = probe.offsetLeft - (viewport.clientWidth - probe.clientWidth) / 2;
+                    viewport.scrollTop = probe.offsetTop - (viewport.clientHeight - probe.clientHeight) / 2;
+                  } else viewport.scrollTo(0, 0);
+                });
+              }}
+            >{boardExpanded ? localize("全体表示", "Fit board") : localize("拡大", "Zoom")}</button>}
           </div>
           {game.phase === "setup" && isItemVariant(game.variant) && (
             <LoadoutPreview key={setupPlayer} items={game.itemHands?.[setupPlayer] ?? []} balance={game.balance ?? activeBalance} language={language} />
           )}
           <div
             key={eventFiring ? `event-${eventEffectKey}` : "board"}
+            id="match-board"
+            ref={attachBoardViewport}
+            onScroll={(event) => {
+              boardScroll.current = { left: event.currentTarget.scrollLeft, top: event.currentTarget.scrollTop };
+            }}
+            data-expanded={boardExpanded && game.phase !== "setup" && !resultVisible}
             className={`board turn-${displayAccent}${eventFiring ? " field-event-firing" : ""}${game.phase === "setup" && isItemVariant(game.variant) ? " item-selection-dim" : ""}${resultVisible ? " result-dim" : ""}`}
             data-perspective={perspectiveSlot}
             style={{
@@ -2266,6 +2278,7 @@ function Game() {
             }}
             aria-label={tf("boardAria", { size: game.size })}
           >
+            <div className="board-surface" style={{ minWidth: boardExpanded && game.phase !== "setup" && !resultVisible ? `min(var(--expanded-board-size, 0px), ${game.size * UI_LAYOUT.expandedCellMinimumPx}px)` : undefined }}>
             <EventBoardEffect size={game.size} event={game.matchEvent} perspective={perspectiveSlot} firing={eventFiring} />
             <BoardFeedback game={game} perspective={perspectiveSlot} enabled={effectsEnabled} />
             {Array.from({ length: game.size * game.size }, (_, index) => {
@@ -2431,6 +2444,7 @@ function Game() {
                 </button>
               );
             })}
+            </div>
           </div>
 
           {resultVisible && (
@@ -2640,7 +2654,7 @@ function Game() {
 
       <footer className="battle-hud global-hud" aria-label={localize("共通操作バー", "Global controls")}>
             <button className="hud-player" type="button" onClick={() => setSettingsOpen(true)} aria-label={localize("設定を開く", "Open settings")}>
-              <span className="hud-settings-icon" aria-hidden="true">⚙</span>
+              <span className="hud-settings-icon" aria-hidden="true"><UiIcon kind="settings" /></span>
               <i className={online.role ?? game.turn} aria-hidden="true" />
               <span><small>PROBE CONTROL</small><b>{mode === "online" ? ownDisplayName || "PLAYER" : nickname.trim() || "GUEST PLAYER"}</b><em>{mode === "online" && online.role ? playerName(online.role) : `${rankTier(rankRating)} ${rankRating}`}</em></span>
             </button>

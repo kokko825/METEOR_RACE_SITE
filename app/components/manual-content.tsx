@@ -90,6 +90,18 @@ export function RulesArchive({
   const t = (key: Parameters<typeof uiText>[1]) => uiText(language, key);
   return (
     <div className="manual-onepage">
+      <figure className="manual-board-overview">
+        <svg viewBox="0 0 220 220" role="img" aria-label={language === "ja" ? "盤面の中央がCORE。外側から探査機が進み、途中のメテオが障害物になります。" : "Probes approach the central CORE from the edges. Meteors block cells along the way."}>
+          <rect x="10" y="10" width="200" height="200" fill="var(--space)" stroke="currentColor" strokeWidth="2" />
+          {Array.from({length:8},(_,i)=><path key={i} d={`M${10+(i+1)*200/9} 10v200 M10 ${10+(i+1)*200/9}h200`} stroke="currentColor" opacity=".4" />)}
+          <path d="m110 100 10 10-10 10-10-10Z" fill="var(--gold)" />
+          <path d="m110 181-8 16 8-4 8 4Z" fill="var(--red)" />
+          <path d="m110 39-8-16 8 4 8-4Z" fill="var(--blue)" />
+          <path d="m86 142 8 2 3 8-5 7-9-2-3-8Z" fill="var(--red)" />
+          <path d="m132 61 8 2 3 8-5 7-9-2-3-8Z" fill="var(--blue)" />
+        </svg>
+        <figcaption>{language === "ja" ? "外側から中央のCOREへ。探査機は縦横に進み、メテオの爆風を使えば斜めにも移動できます。" : "Race from the edges to the central CORE. Move horizontally or vertically; meteor blasts can propel probes diagonally."}</figcaption>
+      </figure>
       <section className="manual-rules">
         <header>
           <small>01</small>

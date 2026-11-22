@@ -22,9 +22,9 @@ export const SITE_PRESENTATION = {
   musicZeroGravityBaseUrl: "",
   musicCosmicErrorBaseUrl: "",
   themeAccent: "#63dfff",
-  themeWarm: "#ff9248",
+  themeWarm: "#ff6000",
   themeBackground: "#03070d",
-  themeText: "#e8f7ff",
+  themeText: "#f7fbff",
   themeGlow: 100,
   themePanelOpacity: 86,
 } as const;

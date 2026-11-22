@@ -558,7 +558,7 @@ test("uses shared spacing tokens for the battle shell", async () => {
   assert.match(css, /padding-top:max\(16px,calc\(env\(safe-area-inset-top\) \+ 6px\)\)/);
   assert.match(css, /\.hud-mode \.brand-symbol\{width:clamp\(56px,4\.7vw,72px\)/);
   assert.match(css, /\.hud-mode \.brand p\{margin-top:1px;[^}]*font-size:7px/);
-  assert.match(css, /--game-ui-button:13px/);
+  assert.match(css, /--game-ui-button:16px/);
   assert.match(css, /\.title-screen nav \.title-start,[^}]*min-height:62px/);
   assert.match(css, /\.action-panel button,[^}]*min-height:48px/);
   assert.match(css, /\.shell\.hud-mode\{height:100dvh;min-height:0;padding:8px 12px calc\(82px \+ env\(safe-area-inset-bottom\)\);overflow:hidden\}/);
@@ -661,7 +661,9 @@ test("supports replaceable wordmark and symbol artwork with text fallbacks", asy
   assert.match(assets, /symbol: "\/assets\/branding\/METEOR_RACE_logo\.svg"/);
   assert.match(page, /className="title-wordmark"/);
   assert.match(page, /className="title-brand-lockup"/);
-  assert.match(page, /className="header-wordmark"/);
+  // Approved visual v5 keeps branding on the title, not in the match toolbar.
+  assert.doesNotMatch(page, /className="header-wordmark"/);
+  assert.doesNotMatch(page, /className="battle-planet"/);
   assert.match(page, /ASSET_PATHS\.branding\.wordmark/);
   assert.match(page, /ASSET_PATHS\.branding\.symbol/);
   assert.match(page, /<h1>METEOR<br\/><span>RACE<\/span><\/h1>/);

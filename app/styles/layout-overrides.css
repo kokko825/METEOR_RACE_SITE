@@ -196,18 +196,52 @@
 }
 
 /* All-ages game UI: readable at a glance, generous to click and tap. */
-.shell{--game-ui-text:13px;--game-ui-small:10px;--game-ui-button:13px;--game-ui-primary:16px}
-.shell.text-size-large{--game-ui-text:15px;--game-ui-small:12px;--game-ui-button:15px;--game-ui-primary:19px}
-.shell.text-size-xlarge{--game-ui-text:17px;--game-ui-small:14px;--game-ui-button:17px;--game-ui-primary:22px}
+.shell{--game-ui-text:16px;--game-ui-small:12px;--game-ui-button:16px;--game-ui-primary:20px}
+.shell.text-size-large{--game-ui-text:20px;--game-ui-small:15px;--game-ui-button:20px;--game-ui-primary:25px}
+.shell.text-size-xlarge{--game-ui-text:24px;--game-ui-small:18px;--game-ui-button:24px;--game-ui-primary:30px}
 .entry-flow button,.title-screen nav button,.settings-drawer button,.manual-tabs button,.online-panel button,.action-panel button,.battle-hud button,.comms-panel button{min-height:48px;font-size:var(--game-ui-button);line-height:1.25}
 .title-screen nav .title-start,.entry-confirm,.apply-room-settings,.setup-confirm-actions button{min-height:62px;font-size:var(--game-ui-primary)}
 .entry-panel>p,.entry-panel label,.choice-row button span,.settings-drawer label,.settings-drawer p,.online-panel small,.online-panel label,.comms-panel input{font-size:var(--game-ui-text);line-height:1.55}
 .eyebrow,.inventory>span,.action-label,.manual-now small,.manual-onepage small,.battle-hud small{font-size:var(--game-ui-small);line-height:1.35}
 .meteor-choice,.item-choice,.drawer-toggle,.quick-comms button{font-weight:800;letter-spacing:.04em}
 @media(max-width:560px){
-  .shell{--game-ui-text:12px;--game-ui-small:9px;--game-ui-button:12px;--game-ui-primary:15px}
   .entry-flow button,.settings-drawer button,.online-panel button,.action-panel button,.battle-hud button,.comms-panel button{min-height:46px}
 }
+
+/* Shared menu controls. Battle pieces/feedback retain their semantic colours.
+   These replace screen-specific visual treatments, not responsive geometry. */
+.shell :is(.entry-flow,.settings-drawer,.manual-drawer,.online-panel,.title-screen,.tutorial-confirm,.tutorial-coach) button{
+  border:1px solid var(--ui-border);border-radius:4px;background:var(--space)!important;color:var(--ink)!important;
+  box-shadow:none!important;text-shadow:none!important;min-height:44px;font-family:var(--font-ui-display);font-size:var(--game-ui-button);letter-spacing:.02em;
+  transition:background-color .12s,border-color .12s,filter .12s;
+}
+.shell :is(.entry-flow,.settings-drawer,.manual-drawer,.online-panel,.title-screen,.tutorial-confirm,.tutorial-coach) button:hover:not(:disabled){filter:brightness(1.15);border-color:var(--ink)}
+.shell :is(.entry-flow,.settings-drawer,.manual-drawer,.online-panel,.title-screen,.tutorial-confirm,.tutorial-coach) button:active:not(:disabled){translate:0 2px}
+.shell :is(.entry-flow,.settings-drawer,.manual-drawer,.online-panel,.title-screen,.tutorial-confirm,.tutorial-coach) button:disabled{opacity:.4;filter:grayscale(1);cursor:not-allowed}
+.shell :is(.entry-flow,.settings-drawer,.online-panel,.title-screen,.tutorial-confirm) button:is(.entry-confirm,.title-start,.primary-action,.apply-room-settings){background:var(--ui-warm)!important;color:var(--space)!important;border-color:var(--ui-warm);font-weight:800}
+.shell :is(.choice-row,.rank-choice,.event-toggle-grid,.ui-choice-group) button{position:relative;border:2px solid var(--ui-border)!important;padding:16px;box-shadow:none!important;transform:none!important;min-width:0;white-space:normal}
+.shell :is(.choice-row,.rank-choice,.event-toggle-grid,.ui-choice-group) button[aria-pressed="true"],.shell :is(.choice-row,.rank-choice) button.selected{border-color:var(--ink)!important;background:var(--ui-surface)!important;outline:1px solid var(--ink);outline-offset:-4px}
+.shell :is(.choice-row,.rank-choice,.event-toggle-grid) button[aria-pressed="true"]::after,.shell :is(.choice-row,.rank-choice) button.selected::after{content:"✓";position:absolute;top:4px;right:8px;font-size:16px;color:var(--ink);background:none;inset-inline-start:auto;width:auto;height:auto;transform:none}
+.shell :is(.entry-flow,.settings-drawer,.online-panel) :is(input:not([type="range"]):not([type="checkbox"]),select,textarea){appearance:none;border:1px solid var(--ui-border);border-radius:4px;background:var(--space);color:var(--ink);padding:8px 16px;min-height:44px;font:inherit;max-width:100%}
+.shell :is(.entry-flow,.settings-drawer,.online-panel) select{padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f7fbff' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:24px}
+.shell :is(.settings-drawer,.manual-drawer,.entry-panel,.online-panel){scrollbar-width:thin;scrollbar-color:var(--ui-border) var(--space)}
+.shell :is(.entry-panel,.settings-drawer,.manual-drawer,.online-panel) h2{font-size:var(--ui-text-heading);color:var(--ink)}
+.shell :is(.entry-panel,.settings-drawer,.manual-drawer) p{font-family:var(--font-ui-body);color:var(--ink);font-size:var(--game-ui-text);line-height:1.6;text-wrap:pretty}
+.shell :is(.entry-panel,.settings-drawer,.manual-drawer) small{font-size:var(--game-ui-small);color:var(--muted)}
+.ui-choice-group{min-width:0;margin:0;padding:0;border:0;text-align:left}
+.ui-choice-group legend{padding:0;margin-bottom:8px;color:var(--muted);font-size:var(--game-ui-small)}
+.ui-choice-group>div{display:flex;flex-wrap:wrap;gap:8px}
+.shell .entry-settings .ui-choice-group button{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px!important}
+.ui-choice-check{display:inline-block;width:1em;font-size:16px}
+.difficulty-field{min-width:0;grid-column:1/-1}.difficulty-description{display:block;margin-top:8px}
+.shell .entry-settings{align-items:start;gap:16px}
+.shell .event-toggle-grid{gap:8px}
+.shell .event-toggle-grid button{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left}
+.shell .event-toggle-grid .event-brief{line-height:1.5;min-height:3em;white-space:normal}
+.shell .room-rule-console>label{min-width:0;grid-template-columns:minmax(0,1fr)}
+.shell .room-rule-console select{width:100%;min-width:0;box-sizing:border-box}
+.shell .room-rule-console button.on{border:2px solid var(--ink);outline:1px solid var(--ink);outline-offset:-4px;background:var(--ui-surface)!important}
+@media(max-width:700px){.shell .entry-panel .choice-row.three{grid-template-columns:1fr}.shell .entry-settings{grid-template-columns:1fr}}
 
 /* Keep the enlarged meteor/item controls outside the square board. */
 @media (min-width:901px) and (min-height:761px) {
@@ -267,10 +301,24 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 @media(max-width:850px){.tutorial-screen{padding:12px 12px calc(18px + env(safe-area-inset-bottom))}.tutorial-screen>header{grid-template-columns:auto 1fr}.tutorial-screen>header>b{display:none}.tutorial-arena{grid-template-columns:1fr;gap:10px}.tutorial-board{width:min(100%,68dvh);margin:auto}.tutorial-dialog{position:relative;z-index:20;padding:16px;border-left:0;border-top:4px solid #71def4}.tutorial-dialog h2{font-size:21px}.tutorial-dialog p{font-size:14px;line-height:1.6}.tutorial-dialog button{min-height:50px}}
 @media(max-width:700px){.title-guide-actions{top:14px;right:14px;gap:4px}.title-guide-actions .title-manual{min-width:88px;height:42px}.title-guide-actions .title-beginner{min-width:44px;height:42px;padding:0 8px}.title-beginner span{display:none}}
 @media(max-width:520px){.tutorial-screen>header div strong{font-size:14px}.tutorial-screen>header small{font-size:8px}.tutorial-board{width:100%}.tutorial-dialog{gap:9px}.tutorial-dialog h2{font-size:18px}.tutorial-dialog p{font-size:13px}}
-.tutorial-active .arena{position:relative}.tutorial-coach{position:absolute;z-index:95;left:50%;top:clamp(72px,10vh,112px);width:min(620px,calc(100% - 24px));transform:translateX(-50%);display:grid;gap:9px;padding:16px 20px;border:1px solid #70def4;border-left:5px solid #70def4;background:linear-gradient(120deg,rgba(7,36,47,.97),rgba(3,17,24,.97));box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 28px rgba(60,215,244,.16);color:#ecfbff;pointer-events:none}.tutorial-coach.explain{top:50%;transform:translate(-50%,-50%)}.tutorial-coach small{color:#72e3f7;font-size:10px;font-weight:1000;letter-spacing:.16em}.tutorial-coach h2,.tutorial-coach p{margin:0}.tutorial-coach h2{font-size:clamp(18px,2.4vw,28px);line-height:1.3}.tutorial-coach p{color:#b8d0d8;font-size:14px;line-height:1.65}.tutorial-coach button{justify-self:end;min-height:46px;padding:0 18px;border:1px solid #70def4;background:#0d4252;color:#fff;font-weight:900;pointer-events:auto}.tutorial-active .board .cell.legal{z-index:3;box-shadow:inset 0 0 0 2px #ffe06a,0 0 14px rgba(255,211,74,.7)}.tutorial-active .action-panel{position:relative;z-index:96}.tutorial-active .manual-trigger,.tutorial-active .game-back{z-index:110}.tutorial-active .tutorial-coach.explain~.board{filter:brightness(.34) saturate(.65)}
-@media(max-width:700px){.tutorial-coach{top:58px;width:calc(100% - 12px);padding:12px 14px}.tutorial-coach.explain{top:45%}.tutorial-coach h2{font-size:17px}.tutorial-coach p{font-size:12px;line-height:1.5}.tutorial-coach button{min-height:42px}.tutorial-active .arena{padding-top:0}}
+.tutorial-active .arena{position:relative}
+.tutorial-coach{position:relative;grid-row:3;order:3;width:100%;display:grid;gap:8px;padding:16px;border:1px solid var(--ui-accent);background:var(--space);color:var(--ink);text-align:left}
+.tutorial-coach small{color:var(--ui-accent);font-size:12px;font-weight:700;letter-spacing:.08em}
+.tutorial-coach h2,.tutorial-coach p{margin:0}
+.tutorial-coach h2{font-size:20px;line-height:1.3}
+.tutorial-coach p{font-size:16px;line-height:1.5}
+.tutorial-coach button{justify-self:end;min-height:44px;padding:8px 16px;border:1px solid var(--ui-accent);background:var(--space);color:var(--ink);font-weight:700}
+.tutorial-active .board .cell.legal{z-index:3;box-shadow:inset 0 0 0 2px #ffe06a}
+.tutorial-active .arena:has(.tutorial-coach.guide) .cell:not(.legal):not(:has(.suggestion-mark)){filter:brightness(.65)}
+.tutorial-active .action-panel{position:relative;z-index:96}
+.tutorial-active .manual-trigger,.tutorial-active .game-back{z-index:110}
+@media(min-width:901px){
+  .shell.hud-mode.tutorial-active>.game-layout{grid-template-rows:minmax(0,1fr)}
+  .shell.hud-mode.tutorial-active .arena:has(>.tutorial-coach){grid-template-rows:minmax(0,1fr) var(--battle-action-reserve,92px) auto;overflow:visible}
+}
 
 /* Icon-only controls use drawn geometry so every font and device centers them identically. */
+.ui-icon{display:inline-block;width:24px;height:24px;flex:0 0 24px;vertical-align:middle}
 .icon-close{position:relative;flex:0 0 auto;display:grid!important;place-items:center!important;padding:0!important;line-height:1!important;font-size:0!important;box-sizing:border-box}
 .icon-close::before,.icon-close::after{content:"";position:absolute;left:50%;top:50%;width:46%;height:2px;border-radius:2px;background:currentColor;transform:translate(-50%,-50%) rotate(45deg)}
 .icon-close::after{transform:translate(-50%,-50%) rotate(-45deg)}
@@ -385,6 +433,13 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .shell.online-lobby-only .ai-member-controls{grid-template-columns:minmax(0,1fr)}
 }
 
+.release-month-links{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.release-month-links a{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;border:1px solid currentColor}
+.release-month h2{font-size:20px;margin:24px 0 16px;scroll-margin-top:16px}
+.release-history>li{scroll-margin-top:16px}
+.release-detail h3{font-size:20px;line-height:1.4;margin:8px 0}
+.release-detail ul{padding-left:20px}
+.release-latest{display:inline-block;padding:4px 8px;border:1px solid currentColor;font-size:12px}
 /* Readable content uses natural height; shrinking type is never a fit strategy. */
 .manual-drawer .manual-onepage{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:max-content;align-content:start;min-height:0}
 .manual-drawer .manual-onepage>section{display:block;min-height:0;overflow:visible}
@@ -410,6 +465,10 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
  .manual-drawer>header .icon-close{grid-area:1/2/3/3;align-self:start}
 }
 .manual-blast-examples{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px;color:#c8dee8;font-size:max(14px,var(--game-ui-body));line-height:1.6}
+.manual-board-overview{grid-column:1/-1;display:flex;align-items:center;gap:16px;margin:0;padding:16px;border:1px solid var(--ui-accent);color:var(--ink)}
+.manual-board-overview svg{width:200px;max-width:100%;flex-shrink:0}
+.manual-board-overview figcaption{font-size:16px;line-height:1.6}
+@media(max-width:700px){.manual-board-overview{flex-direction:column;align-items:center}}
 .manual-blast-examples figure{margin:0;display:grid;justify-items:center;gap:8px;text-align:center}
 .manual-blast-examples>p{grid-column:1/-1;margin:0}
 .blast-diagram{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr));width:min(100%,180px);aspect-ratio:1;gap:3px}
@@ -443,9 +502,9 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 }
 @media(min-width:701px){
   .shell.hud-mode>.topbar{display:grid!important;grid-template-columns:auto minmax(180px,1fr) auto;align-items:center;gap:8px 20px;flex:0 0 auto!important;height:auto!important;min-height:0!important;padding:0 0 8px!important;width:100%}
-  .shell.hud-mode>.topbar>.game-back{grid-area:1/1;margin:0}.shell.hud-mode>.topbar>.brand{grid-area:1/2;max-width:340px}
+  .shell.hud-mode>.topbar>.game-back{grid-area:1/1;margin:0}
   .shell.hud-mode>.topbar>.topbar-guide-actions{grid-area:1/3;position:static!important;transform:none!important}
-  .shell.hud-mode>.topbar>.match-meta{grid-area:2/1/3/4;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;margin:0;width:100%;gap:8px 18px}
+  .shell.hud-mode>.topbar>.match-meta{grid-area:1/2;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;margin:0;width:100%;gap:8px 16px}
   .shell.hud-mode .match-meta>.event-sequence,.shell.hud-mode .match-meta>.event-status{flex-basis:auto}
   .shell.hud-mode .regula-console{min-width:0;width:auto;max-width:350px;padding:6px 10px}.shell.hud-mode .regula-console small{font-size:12px;line-height:1.3}.shell.hud-mode .regula-console em{font-size:13px;line-height:1.3;letter-spacing:0}
   .shell.hud-mode .round{font-size:16px!important;line-height:1.4;white-space:normal}
@@ -622,6 +681,15 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 .item-icon.clean-icon::before,.item-icon.clean-icon::after{content:none!important;display:none!important}
 .item-icon.clean-icon svg{display:block;width:100%;height:100%;min-width:0;overflow:visible}
 @media(max-width:700px){.event-summary-popover{position:fixed;left:16px;right:16px;top:min(160px,20dvh);width:auto;max-height:calc(75dvh - 80px)}}
+/* Zoom changes only the inner grid, never the board slot or action controls. */
+.board:has(>.board-surface){display:block}
+.board-surface{position:relative;width:100%;aspect-ratio:1;display:grid;grid-template-columns:inherit;grid-template-rows:inherit;isolation:isolate}
+.board-zoom-toggle{display:none}
+@media(max-width:900px){
+  .board[data-expanded="true"]{overflow:auto;overscroll-behavior:contain;touch-action:pan-x pan-y;--expanded-board-size:9999px}
+  .board-zoom-toggle{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:64px;min-height:44px;padding:8px;border:1px solid var(--ink);color:var(--ink);background:var(--space);font-size:14px;letter-spacing:0}
+  .board-zoom-toggle[aria-pressed="true"]{border-width:2px}
+}
 /* Stable desktop battle tracks: hover/phase controls never resize the board slot. */
 @media(min-width:901px){
   .shell.hud-mode .arena:not(:has(.readable-loadout)){
@@ -713,7 +781,7 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .shell.hud-mode .player-card .mini-meteor{width:16px!important;height:18px!important;font-size:16px!important;line-height:18px!important}
   .shell.hud-mode .arena:not(:has(.readable-loadout)){grid-area:auto!important;grid-column:1/-1!important;grid-row:3!important;display:flex!important;flex-direction:column;align-items:center;gap:6px;height:auto!important;min-height:0!important;overflow:visible!important}
   .shell.hud-mode .arena:has(.readable-loadout){grid-area:auto!important;grid-column:1/-1!important;grid-row:3!important}
-  .shell.hud-mode .arena>.status{width:100%;min-height:28px;padding:3px 0;margin:0;font-size:max(13px,var(--game-ui-body,14px));line-height:1.4}
+  .shell.hud-mode .arena>.status{width:100%;min-height:44px;padding:0;margin:0;font-size:max(13px,var(--game-ui-body,14px));line-height:1.4}
   .shell.hud-mode .arena:not(:has(.readable-loadout))>.board{width:min(100%,320px)!important;height:auto!important;aspect-ratio:1;max-height:none!important;flex:none!important;margin:0 auto!important}
   .shell.hud-mode .arena:not(:has(.readable-loadout))>.action-panel{position:relative!important;inset:auto!important;transform:none!important;display:flex!important;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:6px;width:100%!important;height:auto!important;min-height:76px!important;max-height:none!important;margin:0!important;padding:6px 0!important;overflow:visible!important}
   .shell.hud-mode .action-panel button{min-height:44px}
@@ -730,7 +798,7 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
   .shell.hud-mode .arena:not(:has(.readable-loadout))>.board{width:100%!important}
   /* Reserve the same compact action track before and after moving. The board
      never changes size when controls appear, and inventories stay close by. */
-  .shell.hud-mode .arena:not(:has(.readable-loadout))>.action-panel{min-height:70px!important;padding:4px 0!important;gap:4px}
+  .shell.hud-mode .arena:not(:has(.readable-loadout))>.action-panel{min-height:56px!important;padding:0!important;gap:4px}
   .shell.hud-mode .placement-controls{padding:3px;border-color:#365362;border-radius:4px}
   .shell.hud-mode .placement-controls>legend,
   .shell.hud-mode .placement-options>.meteor-choice>span{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

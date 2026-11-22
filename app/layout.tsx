@@ -4,6 +4,7 @@ import { ASSET_PATHS } from "../config/asset-paths";
 import { GOOGLE_ANALYTICS_ID } from "../config/analytics";
 import "./globals.css";
 import { SITE_URL } from "./site-url";
+import { SELECTABLE_ITEMS } from "./game-rules";
 
 /**
  * The katakana reading leads the description on purpose: it is the term a
@@ -12,7 +13,7 @@ import { SITE_URL } from "./site-url";
  * has to appear for Google to connect the query to this site.
  */
 const DESCRIPTION =
-  "「メテオレース」はメテオの爆風で相手を吹き飛ばし、中央のCOREを目指す2〜4人用のオンライン戦略ボードゲームです。7種類のアイテムを駆使したCPU対戦・オンライン対戦・ランク戦を、インストール不要・登録不要でブラウザからすぐに遊べます。";
+  `「メテオレース」はメテオの爆風で相手を吹き飛ばし、中央のCOREを目指す2〜4人用のオンライン戦略ボードゲームです。${SELECTABLE_ITEMS.length}種類のアイテムを駆使したCPU対戦・オンライン対戦・ランク戦を、インストール不要・登録不要でブラウザからすぐに遊べます。`;
 
 const TITLE = "メテオレース | METEOR RACE";
 

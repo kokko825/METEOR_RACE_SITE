@@ -13,6 +13,7 @@ export function useResponsiveBoard(
   actionRef: RefObject<HTMLElement | null>,
   verticalFill: number,
   hasItems: boolean,
+  tutorialStep: string | null = null,
 ) {
   useEffect(() => {
     const arena = arenaRef.current;
@@ -31,7 +32,9 @@ export function useResponsiveBoard(
       const fontSize = parseFloat(getComputedStyle(arena).getPropertyValue("--game-ui-button")) || 16;
       const actionHeight = Math.max(hasItems ? UI_LAYOUT.battleActionReservePx : UI_LAYOUT.classicActionReservePx, fontSize * (hasItems ? 8 : 5));
       arena.style.setProperty("--battle-action-reserve", `${actionHeight}px`);
-      const availableHeight = arena.clientHeight - actionHeight - (actionHeight > 0 ? UI_LAYOUT.actionPanelGapPx : 0);
+      const coach = arena.querySelector<HTMLElement>(".tutorial-coach");
+      const coachHeight = coach ? coach.offsetHeight + 16 : 0;
+      const availableHeight = arena.clientHeight - actionHeight - coachHeight - (actionHeight > 0 ? UI_LAYOUT.actionPanelGapPx : 0);
       const size = Math.floor(Math.min(
         UI_LAYOUT.boardMaximumPx,
         arena.clientWidth,
@@ -62,5 +65,5 @@ export function useResponsiveBoard(
       arena.style.removeProperty("--board-available-size");
       arena.style.removeProperty("--battle-action-reserve");
     };
-  }, [actionRef, arenaRef, verticalFill, hasItems]);
+  }, [actionRef, arenaRef, verticalFill, hasItems, tutorialStep]);
 }
