@@ -6,5 +6,9 @@ export function UiIcon({ kind }: { kind: "tutorial" | "book" | "book-open" | "se
     "book-open": "M12 6 3 3v15l9 3 9-3V3l-9 3v15",
     settings: "m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z M16 12a4 4 0 1 1-8 0 4 4 0 1 1 8 0",
   } as const;
-  return <svg className="ui-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="miter" aria-hidden="true" focusable="false"><path d={paths[kind]} /></svg>;
+  const book = kind === "book" || kind === "book-open";
+  return <svg className="ui-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinejoin="miter" aria-hidden="true" focusable="false">
+    {kind === "tutorial" && <path d="M12 7l2-3h6v12l-8 5Z" fill="#52d995" />}
+    <path d={paths[kind]} fill={book ? "#a13748" : "none"} stroke={book ? "#ffa8ad" : kind === "tutorial" ? "#ffe16b" : "currentColor"} />
+  </svg>;
 }

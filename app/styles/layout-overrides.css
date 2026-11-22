@@ -244,6 +244,35 @@
 @media(max-width:700px){.shell .entry-panel .choice-row.three{grid-template-columns:1fr}.shell .entry-settings{grid-template-columns:1fr}}
 
 /* Keep the enlarged meteor/item controls outside the square board. */
+.shell .entry-flow:has(.entry-settings) {
+  --rail:#35515e; --signal:#73e3fa;
+  background:radial-gradient(ellipse at 72% 34%,#10273280,transparent 62%),linear-gradient(115deg,#081720,#060d16 65%);
+}
+.shell .entry-flow:has(.entry-settings) :is(.choice-row,.ui-choice-group,.event-toggle-grid) button {
+  border:1px solid var(--rail)!important;border-radius:2px;
+  background:linear-gradient(140deg,#10202a,#08121a)!important;
+  color:#cfdee4!important;outline:0;box-shadow:inset 0 1px #ffffff08!important;
+}
+.shell .entry-flow:has(.entry-settings) :is(.choice-row,.ui-choice-group,.event-toggle-grid) button[aria-pressed=true] {
+  border-color:var(--signal)!important;background:linear-gradient(115deg,#164050,#0b202a 90%)!important;
+  box-shadow:inset 3px 0 var(--signal)!important;color:#f2fcff!important;
+}
+.shell .entry-flow:has(.entry-settings) button:focus-visible {outline:2px dashed white!important;outline-offset:2px}
+.shell .entry-flow:has(.entry-settings) :is(.choice-row,.event-toggle-grid) button[aria-pressed=true]::after{content:none}
+.shell .entry-flow:has(.entry-settings) .ui-choice-check{display:none}
+.shell .entry-flow:has(.entry-settings) :is(.ui-choice-group legend,.entry-panel h3){color:#a3d6df;letter-spacing:.08em}
+.shell .entry-flow:has(.entry-settings) .entry-confirm{background:linear-gradient(100deg,#c85119,#ff8841)!important;color:#100c08!important;border-radius:2px}
+.shell .entry-settings .ui-choice-group>div{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.shell .entry-settings .ui-choice-group button{padding-inline:4px}
+@media(min-width:1024px){
+ .shell .entry-flow>.entry-panel:has(>.entry-settings){grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+ .shell .entry-panel:has(>.entry-settings)>h3:nth-of-type(2){grid-area:2/2}
+ .shell .entry-panel:has(>.entry-settings)>.choice-row:nth-of-type(2){grid-area:3/2}
+ .shell .entry-panel:has(>.entry-settings)>.entry-settings{grid-area:4/1/5/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;align-items:end}
+ .shell .entry-settings .cpu-stepper{height:48px;box-sizing:border-box;padding-block:0}
+ .shell .entry-settings .difficulty-description{margin-top:4px}
+}
+
 @media (min-width:901px) and (min-height:761px) {
   .hud-mode .action-panel{max-height:124px;overflow-y:auto;overscroll-behavior:contain}
 }
