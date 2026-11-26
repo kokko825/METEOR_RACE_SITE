@@ -335,10 +335,6 @@ function Game() {
   const rankRating = isItemVariant(variant) ? itemRankRating : classicRankRating;
   const regulaCore = { r: Math.floor(game.size / 2), c: Math.floor(game.size / 2) };
   const regulaClosestDistance = Math.min(...activePlayers(game).map((player) => distance(game.probes[player], regulaCore)));
-  const nearestSides = new Set(activePlayers(game)
-    .filter(player => distance(game.probes[player], regulaCore) === regulaClosestDistance)
-    .map(player => isTeamVariant(game.variant) ? (teamOf(player) === "sun" ? "RED TEAM" : "BLUE TEAM") : playerName(player)));
-  const leadLabel = nearestSides.size === 1 ? [...nearestSides][0] : language === "ja" ? "同率" : "TIED";
   const startingCoreDistance = Math.floor(game.size / 2) - (game.size === 9 ? 0 : 1);
   const regulaProgress = game.phase === "over" ? 100 : Math.max(0, Math.min(99, Math.round((1 - regulaClosestDistance / Math.max(1, startingCoreDistance)) * 100)));
   useEffect(() => {
@@ -2103,7 +2099,7 @@ function Game() {
       {tutorialConfirmOpen && <div className="tutorial-confirm-backdrop" role="presentation" onPointerDown={() => setTutorialConfirmOpen(false)}><section className="tutorial-confirm" role="dialog" aria-modal="true" aria-labelledby="tutorial-confirm-title" onPointerDown={(event) => event.stopPropagation()}><small>AEQRIS // TRAINING REQUEST</small><h2 id="tutorial-confirm-title">{localize("チュートリアルを開始しますか？", "START THE TUTORIAL?")}</h2><div><button type="button" className="primary-action" autoFocus onClick={startTutorial}>{localize("はじめる", "Start")}</button><button type="button" className="secondary-action" onClick={() => setTutorialConfirmOpen(false)}>{localize("やめる", "Cancel")}</button></div></section></div>}
       <header className="topbar">
         <button className="game-back" type="button" onClick={() => tutorialStep ? leaveTutorial() : mode === "online" && online.code ? void (online.status === "waiting" ? leaveOnlineRoom() : returnOnlineLobby()) : setEntryStage("rule")}>{tutorialStep ? localize("← 終了", "← EXIT") : mode === "online" && online.code ? online.status === "waiting" ? t("leaveRoom") : t("lobby") : t("back")}</button>
-        <MatchMeta leader={leadLabel} eventDetails={game.phase !== "setup" ? <EventSummary event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} /> : undefined} language={language} progress={regulaProgress} distance={regulaClosestDistance} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
+        <MatchMeta game={game} eventDetails={game.phase !== "setup" ? <EventSummary event={game.matchEvent} language={language} perspective={perspectiveSlot} firing={eventFiring} /> : undefined} language={language} roundLabel={t("round")} roundNumber={Math.floor(game.turnCount / activePlayers(game).length) + 1} rankedDetails={game.ranked ? <><b>{localize("真剣タイマン", "RANKED DUEL")} · {rankTier(rankRating)} {rankRating}</b><em>GRAVITY IN {game.rankedGravityRoundsRemaining ?? balance.rankedGravityRounds} ROUNDS</em></> : undefined} />
         <div className="topbar-guide-actions">
           {!tutorialStep && (mode !== "online" || !online.code) ? <button className="manual-trigger tutorial-trigger" type="button" aria-label={localize("チュートリアルを始める", "Start tutorial")} onClick={requestTutorial}><UiIcon kind="tutorial" /> <span>{localize("チュートリアル", "TUTORIAL")}</span></button> : null}
           <button className="manual-trigger" type="button" aria-label={manualOpen ? t("closeManual") : t("openManual")} aria-expanded={manualOpen} onClick={() => setManualOpen((open) => !open)}><UiIcon kind={manualOpen ? "book-open" : "book"} /> <span>{t("manualLabel")}</span></button>

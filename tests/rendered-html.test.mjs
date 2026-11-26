@@ -354,9 +354,9 @@ test("uses a METEOR RACE favicon and mark-free AEQRIS CORE-arrival presentation"
   assert.ok((await readFile(new URL("../public/assets/branding/METEOR_RACE_logo_w.png", import.meta.url))).byteLength > 10000);
   assert.doesNotMatch(assets, /regulaMark:/);
   assert.doesNotMatch(page, /branding\.(?:meteorRaceMark|regulaMark)/);
-  assert.match(matchMeta, /AEQRIS \/\/ CORE到達管制/);
+  assert.match(matchMeta, /AEQRIS 形勢評価/);
   assert.match(page, /INTERSTELLAR NETWORK/);
-  assert.match(matchMeta, /COREまで\$\{distance\}マス/);
+  assert.match(matchMeta, /推定勝率/);
   assert.match(page, /<WorldArchive language=\{language\} progress=\{regulaProgress\}/);
   assert.match(css, /\.regula-console\{/);
   assert.match(matchMeta, /className="match-meta"/);
