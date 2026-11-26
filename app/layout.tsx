@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { ASSET_PATHS } from "../config/asset-paths";
 import { GOOGLE_ANALYTICS_ID } from "../config/analytics";
@@ -16,6 +16,7 @@ const DESCRIPTION =
   `「メテオレース」はメテオの爆風で相手を吹き飛ばし、中央のCOREを目指す2〜4人用のオンライン戦略ボードゲームです。${SELECTABLE_ITEMS.length}種類のアイテムを駆使したCPU対戦・オンライン対戦・ランク戦を、インストール不要・登録不要でブラウザからすぐに遊べます。`;
 
 const TITLE = "メテオレース | METEOR RACE";
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

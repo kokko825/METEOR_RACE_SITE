@@ -850,3 +850,15 @@ html:has(.release-page),body:has(.release-page),html:has(.doc-page),body:has(.do
 }
 @media(prefers-reduced-motion:reduce){.battle-orbit,.shell.hud-mode .player-card.active::after{animation:none}}
 .reduced-motion .battle-orbit,.shell.hud-mode.reduced-motion .player-card.active::after{animation:none}
+@media(max-width:700px){
+  .shell.hud-mode .match-meta .regula-console{display:block;width:auto;min-width:0;max-width:100%;padding:0;border:0;background:none;box-shadow:none}
+  .shell.hud-mode .match-meta .regula-console > span{gap:0}
+  .shell.hud-mode .match-meta .regula-console :is(small,i,em>span){display:none}
+  .shell.hud-mode .match-meta .regula-console em{color:#abe6f4;font:600 12px/1.25 var(--font-ui-technical);white-space:normal;text-align:center}
+  .shell.hud-mode .match-meta .regula-console strong::before{content:"AEQRIS · "}
+}
+@media(display-mode:standalone){
+  :root{--app-top:calc(env(safe-area-inset-top,0px) + 12px)}
+  .shell.entry-active :is(.title-screen,.entry-flow){top:var(--app-top)!important}
+  .shell.hud-mode,.shell.online-lobby-only .control-strip{padding-top:var(--app-top)!important}
+}
